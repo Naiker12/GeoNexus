@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+.vite/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Rust / Tauri build output
+target/
+crates/**/target/
+src-tauri/target/
+
+# Python environments and caches
+ai/.venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local databases, vector stores and generated app data
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+chroma/
+ai/chroma/
+ai/.chroma/
+ai/data/
+local-data/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp

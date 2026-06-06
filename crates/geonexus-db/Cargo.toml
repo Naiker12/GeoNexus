@@ -1,0 +1,10 @@
+[package]
+name = "geonexus-db"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "geonexus_db"
+path = "src/lib.rs"
+
+[dependencies]

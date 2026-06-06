@@ -1,0 +1,10 @@
+[package]
+name = "geonexus-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "geonexus_core"
+path = "src/lib.rs"
+
+[dependencies]

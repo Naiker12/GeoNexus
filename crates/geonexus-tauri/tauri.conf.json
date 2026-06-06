@@ -1,0 +1,10 @@
+{
+  "build": {
+    "distDir": "../../dist",
+    "devPath": "http://localhost:5173"
+  },
+  "package": {
+    "productName": "GeoNexus",
+    "version": "0.1.0"
+  }
+}
