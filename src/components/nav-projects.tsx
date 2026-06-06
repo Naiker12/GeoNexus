@@ -31,7 +31,7 @@ export function NavProjects({
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>Proyectos</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
@@ -49,7 +49,7 @@ export function NavProjects({
                 >
                   <MoreHorizontalIcon
                   />
-                  <span className="sr-only">More</span>
+                  <span className="sr-only">Mas</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -60,18 +60,18 @@ export function NavProjects({
                 <DropdownMenuItem>
                   <FolderIcon
                   />
-                  <span>View Project</span>
+                  <span>Ver proyecto</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <ArrowRightIcon
                   />
-                  <span>Share Project</span>
+                  <span>Compartir proyecto</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive">
                   <Trash2Icon
                   />
-                  <span>Delete Project</span>
+                  <span>Eliminar proyecto</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -80,7 +80,7 @@ export function NavProjects({
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
             <MoreHorizontalIcon className="text-sidebar-foreground/70" />
-            <span>More</span>
+            <span>Mas</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

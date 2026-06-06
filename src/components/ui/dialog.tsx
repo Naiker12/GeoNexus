@@ -48,7 +48,7 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
             className="absolute right-4 top-4 h-9 w-9 rounded-full"
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">Cerrar</span>
           </Button>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

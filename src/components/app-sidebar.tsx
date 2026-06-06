@@ -2,12 +2,12 @@
 
 import * as React from "react"
 import {
-  GalleryVerticalEndIcon,
-  MoreHorizontalIcon,
+  PlusIcon,
   ServerIcon,
   Settings2Icon,
 } from "lucide-react"
 
+import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -46,7 +47,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="font-semibold">
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <GalleryVerticalEndIcon className="size-4" />
+                <GeoNexusIcon className="size-5" variant="nexus" />
               </div>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-base font-semibold">
@@ -63,29 +64,31 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
           <SidebarGroupContent>
-            <div className="space-y-1">
+            <SidebarMenu>
               {navigationItems.map((item) => (
-                <div key={item.title}>
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={item.isActive}
+                    tooltip={item.title}
+                  >
                   <a
                     href={item.url}
-                    className={cn(
-                      "flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors hover:bg-sidebar-accent",
-                      item.isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
-                    )}
                   >
                     <item.icon className="size-4" />
                     <span className="truncate">{item.title}</span>
                   </a>
-                </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               ))}
-            </div>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarGroupLabel>Proyectos</SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="space-y-1">
               {recentProjects.map((project) => (
@@ -106,11 +109,11 @@ export function AppSidebar({
                 </a>
               ))}
               <a
-                href="#more"
-                className="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                href="#nuevo-proyecto"
+                className="flex h-8 items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/60 px-2 text-sm font-medium text-sidebar-foreground transition-colors hover:border-sidebar-primary/40 hover:bg-sidebar-accent"
               >
-                <MoreHorizontalIcon className="size-4" />
-                More
+                <PlusIcon className="size-4" />
+                Crear proyecto
               </a>
             </div>
           </SidebarGroupContent>
@@ -118,31 +121,33 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <a
-          href="#mcp"
-          className="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors hover:bg-sidebar-accent"
-        >
-          <ServerIcon className="size-4" />
-          <span className="group-data-[collapsible=icon]:hidden">
-            MCP Servers
-          </span>
-          <span className="ml-auto rounded-md bg-primary/10 px-1.5 py-0.5 text-xs text-primary group-data-[collapsible=icon]:hidden">
-            3
-          </span>
-        </a>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Servidores MCP">
+              <a href="#mcp">
+                <ServerIcon className="size-4" />
+                <span>Servidores MCP</span>
+              </a>
+            </SidebarMenuButton>
+            <SidebarMenuBadge className="bg-primary/10 text-primary">
+              3
+            </SidebarMenuBadge>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <ThemeSettingsDialog
           activeTheme={activeTheme}
           onThemeChange={onThemeChange}
         />
-        <a
-          href="#configuracion"
-          className="flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors hover:bg-sidebar-accent"
-        >
-          <Settings2Icon className="size-4" />
-          <span className="group-data-[collapsible=icon]:hidden">
-            Configuracion
-          </span>
-        </a>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Configuracion">
+              <a href="#configuracion">
+                <Settings2Icon className="size-4" />
+                <span>Configuracion</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
 
       <SidebarRail />

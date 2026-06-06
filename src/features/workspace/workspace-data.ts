@@ -83,14 +83,12 @@ export const navigationItems: NavItem[] = [
 ]
 
 export const systemItems: NavItem[] = [
-  { title: "MCP Servers", url: "#mcp", icon: ServerIcon },
+  { title: "Servidores MCP", url: "#mcp", icon: ServerIcon },
   { title: "Configuracion", url: "#configuracion", icon: Settings2Icon },
 ]
 
 export const recentProjects: RecentProject[] = [
   { name: "POT Barranquilla 2024", layers: 12, analyses: 3, active: true },
-  { name: "Zona Industrial Norte", layers: 7, analyses: 1 },
-  { name: "Corredor Verde Atlantico", layers: 5, analyses: 0 },
 ]
 
 export const aiConnectors: AiConnector[] = [
