@@ -1,5 +1,5 @@
 import * as React from "react"
-import { KeyRoundIcon, ShieldCheckIcon } from "lucide-react"
+import { KeyRoundIcon } from "lucide-react"
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { Button } from "@/components/ui/Button"
@@ -28,25 +28,21 @@ export function AiContainersPage() {
 
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-auto px-3 py-3 sm:px-5 sm:py-4">
-      <div className="mx-auto flex w-full max-w-[88rem] flex-col gap-4">
-        <header className="overflow-hidden rounded-xl border border-border/80 bg-card/95 shadow-sm backdrop-blur">
+      <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-3">
+        <header className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
           <div className="h-0.5 bg-[linear-gradient(90deg,var(--primary),transparent)]" />
-          <div className="p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="p-3">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
-                <div className="inline-flex h-6 items-center gap-1.5 rounded-md border border-border bg-background/90 px-2 text-xs font-medium text-primary">
-                  <ShieldCheckIcon className="size-3" />
-                  Contenedores IA
-                </div>
-                <div className="mt-3 flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                    <GeoNexusIcon className="size-5" variant="agent" />
+                <div className="flex items-start gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+                    <GeoNexusIcon className="size-4" variant="agent" />
                   </div>
                   <div className="min-w-0">
-                    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+                    <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
                       Conecta modelos, APIs y herramientas IA
                     </h1>
-                    <p className="mt-1.5 max-w-3xl text-sm leading-5 text-muted-foreground">
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">
                       Panel multi-LLM para Ollama, LM Studio, OpenRouter, APIs
                       directas y MCP, siguiendo la arquitectura offline-first de
                       GeoNexus.
@@ -56,12 +52,16 @@ export function AiContainersPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => openProviderDialog(providerOptions[0])}>
+                <Button
+                  size="sm"
+                  onClick={() => openProviderDialog(providerOptions[0])}
+                >
                   <GeoNexusIcon className="size-4" variant="agent" />
                   Agregar modelo
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() =>
                     openProviderDialog(
                       providerOptions.find((option) => option.id === "custom-api") ??
@@ -75,7 +75,7 @@ export function AiContainersPage() {
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-2.5">
               <AiSummaryCards connectors={aiConnectors} />
             </div>
           </div>

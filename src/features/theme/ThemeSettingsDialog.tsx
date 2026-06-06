@@ -26,7 +26,7 @@ export function ThemeSettingsDialog({
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full justify-start gap-2 overflow-hidden px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
+          className="w-full justify-start gap-2 overflow-hidden px-2 hover:bg-transparent hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
         >
           <PaletteIcon className="size-4" />
           <span className="group-data-[collapsible=icon]:hidden">
@@ -34,15 +34,15 @@ export function ThemeSettingsDialog({
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-lg p-0 sm:max-w-[46rem]">
-        <DialogHeader className="mb-0 border-b border-border px-5 pb-4 pt-5">
+      <DialogContent className="rounded-lg p-0 sm:max-w-[38rem]">
+        <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-start gap-3 pr-8">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <PaletteIcon className="size-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle>Apariencia</DialogTitle>
-              <DialogDescription className="mt-1">
+              <DialogTitle className="text-base">Apariencia</DialogTitle>
+              <DialogDescription className="mt-1 max-w-md text-sm leading-5">
                 Ajusta el tema visual de GeoNexus sin cambiar tus datos ni el
                 contexto de trabajo.
               </DialogDescription>
@@ -50,7 +50,7 @@ export function ThemeSettingsDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid max-h-[min(34rem,calc(100svh-9rem))] gap-2 overflow-auto p-5 sm:grid-cols-2">
+        <div className="grid max-h-[min(30rem,calc(100svh-8rem))] gap-2 overflow-auto p-3 [scrollbar-width:thin] sm:grid-cols-2 sm:p-4">
           {themePresets.map((theme) => {
             const active = activeTheme === theme.id
 
@@ -60,30 +60,30 @@ export function ThemeSettingsDialog({
                 type="button"
                 aria-pressed={active}
                 className={cn(
-                  "group flex min-h-28 items-stretch gap-3 rounded-lg border bg-background p-2 text-left transition-colors hover:bg-muted",
+                  "group relative min-h-32 rounded-lg border bg-background p-2.5 text-left transition-colors hover:bg-muted",
                   active
                     ? "border-primary bg-primary/10 text-foreground"
                     : "border-border text-muted-foreground"
                 )}
                 onClick={() => onThemeChange(theme.id)}
               >
-                <ThemePreview theme={theme} />
-                <span className="min-w-0 flex-1 py-1">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">
+                <span className="flex items-start gap-2.5 pr-7">
+                  <ThemePreview theme={theme} />
+                  <span className="min-w-0 flex-1 pt-0.5">
+                    <span className="block text-sm font-semibold leading-5 text-foreground">
                       {theme.name}
                     </span>
-                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground group-aria-pressed:bg-primary/10 group-aria-pressed:text-primary">
+                    <span className="mt-1 inline-flex rounded-md bg-muted px-1.5 py-0.5 text-[0.68rem] leading-4 text-muted-foreground group-aria-pressed:bg-primary/10 group-aria-pressed:text-primary">
                       {theme.tone}
                     </span>
                   </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {theme.description}
-                  </span>
+                </span>
+                <span className="mt-2 block line-clamp-2 text-xs leading-4 text-muted-foreground">
+                  {theme.description}
                 </span>
                 <span
                   className={cn(
-                    "mt-1 flex size-6 shrink-0 items-center justify-center rounded-md border",
+                    "absolute right-2 top-2 flex size-5 items-center justify-center rounded-md border",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background text-transparent"
@@ -109,7 +109,7 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
   return (
     <span
       className={cn(
-        "flex h-20 w-24 shrink-0 overflow-hidden rounded-md border border-border p-2",
+        "flex h-14 w-20 shrink-0 overflow-hidden rounded-md border border-border p-1.5",
         theme.swatch,
         isBright && "border-slate-200"
       )}
@@ -117,30 +117,30 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
     >
       <span
         className={cn(
-          "flex w-7 flex-col gap-1 border-r pr-1",
+          "flex w-5 flex-col gap-1 border-r pr-1",
           isBright ? "border-black/10" : "border-white/20"
         )}
       >
         <span
           className={cn(
-            "h-2 rounded-sm",
+            "h-1.5 rounded-sm",
             isBright ? "bg-black/45" : "bg-white/70"
           )}
         />
         <span
           className={cn(
-            "h-2 rounded-sm",
+            "h-1.5 rounded-sm",
             isBright ? "bg-black/25" : "bg-white/35"
           )}
         />
         <span
           className={cn(
-            "h-2 rounded-sm",
+            "h-1.5 rounded-sm",
             isBright ? "bg-black/25" : "bg-white/35"
           )}
         />
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1 pl-2">
+      <span className="flex min-w-0 flex-1 flex-col gap-1 pl-1.5">
         <span className="flex items-center gap-1">
           <SparklesIcon
             className={cn("size-3", isBright ? "text-black/55" : "text-white/80")}
@@ -154,7 +154,7 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
         </span>
         <span
           className={cn(
-            "mt-auto h-5 rounded-md shadow-sm",
+            "mt-auto h-4 rounded-md shadow-sm",
             isBright ? "bg-white" : "bg-white/85"
           )}
         >

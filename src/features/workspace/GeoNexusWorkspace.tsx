@@ -1,6 +1,7 @@
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
+import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { aiConnectors } from "@/features/workspace/workspace-data"
 
 type GeoNexusWorkspaceProps = {
@@ -13,6 +14,7 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
     ["chat", "embedding"].includes(connector.role)
   )
   const isAiContainers = activeRoute.startsWith("#contenedores-ia")
+  const isDocuments = activeRoute.startsWith("#documentos")
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -24,7 +26,9 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
 
       <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
         <MapBackdrop />
-        {isAiContainers ? (
+        {isDocuments ? (
+          <DocumentsPage />
+        ) : isAiContainers ? (
           <AiContainersPage />
         ) : (
           <ChatPanel models={selectableModels} />

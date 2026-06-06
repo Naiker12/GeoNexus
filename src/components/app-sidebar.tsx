@@ -30,6 +30,9 @@ import {
 } from "@/features/workspace/workspace-data"
 import { cn } from "@/lib/utils"
 
+const cleanSidebarButton =
+  "hover:bg-transparent hover:text-sidebar-foreground data-[active=true]:bg-transparent data-[active=true]:text-sidebar-foreground"
+
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   activeRoute: string
   activeTheme: ThemePreset["id"]
@@ -47,7 +50,10 @@ export function AppSidebar({
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="font-semibold">
+            <SidebarMenuButton
+              size="lg"
+              className={cn("font-semibold", cleanSidebarButton)}
+            >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <GeoNexusIcon className="size-5" variant="nexus" />
               </div>
@@ -74,6 +80,7 @@ export function AppSidebar({
                   <SidebarMenuButton
                     asChild
                     isActive={isActiveRoute(activeRoute, item.url)}
+                    className={cleanSidebarButton}
                     tooltip={item.title}
                   >
                   <a
@@ -98,8 +105,8 @@ export function AppSidebar({
                   key={project.name}
                   href="#project"
                   className={cn(
-                    "block rounded-lg border border-sidebar-border p-3 text-sm transition-colors hover:bg-sidebar-accent",
-                    project.active && "border-sidebar-primary/50 bg-sidebar-accent"
+                    "block rounded-lg border border-sidebar-border bg-transparent p-3 text-sm transition-colors hover:border-sidebar-primary/40 hover:bg-transparent",
+                    project.active && "border-sidebar-primary/50"
                   )}
                 >
                   <span className="block truncate font-medium">
@@ -112,7 +119,7 @@ export function AppSidebar({
               ))}
               <a
                 href="#nuevo-proyecto"
-                className="flex h-8 items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/60 px-2 text-sm font-medium text-sidebar-foreground transition-colors hover:border-sidebar-primary/40 hover:bg-sidebar-accent"
+                className="flex h-8 items-center gap-2 rounded-md border border-sidebar-border bg-transparent px-2 text-sm font-medium text-sidebar-foreground transition-colors hover:border-sidebar-primary/40 hover:bg-transparent"
               >
                 <PlusIcon className="size-4" />
                 Crear proyecto
@@ -125,7 +132,11 @@ export function AppSidebar({
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Servidores MCP">
+            <SidebarMenuButton
+              asChild
+              className={cleanSidebarButton}
+              tooltip="Servidores MCP"
+            >
               <a href="#mcp">
                 <ServerIcon className="size-4" />
                 <span>Servidores MCP</span>
@@ -142,7 +153,11 @@ export function AppSidebar({
         />
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Configuracion">
+            <SidebarMenuButton
+              asChild
+              className={cleanSidebarButton}
+              tooltip="Configuracion"
+            >
               <a href="#configuracion">
                 <Settings2Icon className="size-4" />
                 <span>Configuracion</span>

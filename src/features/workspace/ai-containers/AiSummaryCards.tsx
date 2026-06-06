@@ -24,10 +24,10 @@ export function AiSummaryCards({ connectors }: { connectors: AiConnector[] }) {
       {summaries.map((item) => (
         <div
           key={item.label}
-          className="rounded-lg border border-border bg-background/75 px-3 py-2"
+          className="rounded-md border border-border bg-background/75 px-3 py-1.5"
         >
           <p className="text-xs text-muted-foreground">{item.label}</p>
-          <p className="mt-1 text-lg font-semibold">
+          <p className="text-base font-semibold leading-5">
             {item.getValue(connectors)}
           </p>
         </div>
