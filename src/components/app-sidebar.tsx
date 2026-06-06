@@ -31,11 +31,13 @@ import {
 import { cn } from "@/lib/utils"
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  activeRoute: string
   activeTheme: ThemePreset["id"]
   onThemeChange: (theme: ThemePreset["id"]) => void
 }
 
 export function AppSidebar({
+  activeRoute,
   activeTheme,
   onThemeChange,
   ...props
@@ -71,7 +73,7 @@ export function AppSidebar({
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={item.isActive}
+                    isActive={isActiveRoute(activeRoute, item.url)}
                     tooltip={item.title}
                   >
                   <a
@@ -153,4 +155,12 @@ export function AppSidebar({
       <SidebarRail />
     </Sidebar>
   )
+}
+
+function isActiveRoute(activeRoute: string, itemUrl: string) {
+  if (itemUrl === "#contenedores-ia") {
+    return activeRoute.startsWith("#contenedores-ia")
+  }
+
+  return activeRoute === itemUrl
 }

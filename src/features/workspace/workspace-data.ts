@@ -58,7 +58,15 @@ export type GisTool = {
 }
 
 export type ThemePreset = {
-  id: "geo-dark" | "geo-light" | "emerald" | "cobalt"
+  id:
+    | "geo-dark"
+    | "geo-light"
+    | "emerald"
+    | "cobalt"
+    | "midnight"
+    | "lagoon"
+    | "graphite"
+    | "terra"
   name: string
   description: string
   swatch: string
@@ -235,6 +243,34 @@ export const themePresets: ThemePreset[] = [
     description: "Acento azul para supervision de datos.",
     swatch: "bg-sky-500",
     tone: "Datos",
+  },
+  {
+    id: "midnight",
+    name: "Midnight",
+    description: "Oscuro elegante con acento cyan para trabajo nocturno.",
+    swatch: "bg-[#07111f]",
+    tone: "Nocturno",
+  },
+  {
+    id: "lagoon",
+    name: "Lagoon",
+    description: "Azules y verdes suaves para lectura tecnica y mapas.",
+    swatch: "bg-teal-500",
+    tone: "Fresco",
+  },
+  {
+    id: "graphite",
+    name: "Graphite",
+    description: "Neutro moderno con contraste alto para paneles densos.",
+    swatch: "bg-zinc-800",
+    tone: "Pro",
+  },
+  {
+    id: "terra",
+    name: "Terra",
+    description: "Tonos tierra sobrios para planeacion urbana y POT.",
+    swatch: "bg-stone-500",
+    tone: "Urbano",
   },
 ]
 

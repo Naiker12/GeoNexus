@@ -9,6 +9,7 @@ import type { CSSProperties } from "react"
 export default function App() {
   const [activeTheme, setActiveTheme] =
     React.useState<ThemePreset["id"]>("geo-light")
+  const activeRoute = useHashRoute()
 
   return (
     <SidebarProvider
@@ -19,10 +20,33 @@ export default function App() {
         } as CSSProperties
       }
     >
-      <AppSidebar activeTheme={activeTheme} onThemeChange={setActiveTheme} />
+      <AppSidebar
+        activeRoute={activeRoute}
+        activeTheme={activeTheme}
+        onThemeChange={setActiveTheme}
+      />
       <SidebarInset>
-        <GeoNexusWorkspace />
+        <GeoNexusWorkspace activeRoute={activeRoute} />
       </SidebarInset>
     </SidebarProvider>
   )
+}
+
+function useHashRoute() {
+  const getRoute = React.useCallback(
+    () => window.location.hash || "#chat",
+    []
+  )
+  const [route, setRoute] = React.useState(getRoute)
+
+  React.useEffect(() => {
+    const handleHashChange = () => setRoute(getRoute())
+
+    handleHashChange()
+    window.addEventListener("hashchange", handleHashChange)
+
+    return () => window.removeEventListener("hashchange", handleHashChange)
+  }, [getRoute])
+
+  return route
 }

@@ -5,7 +5,6 @@ import {
   DatabaseIcon,
   FileUpIcon,
   GlobeIcon,
-  ImageIcon,
   MenuIcon,
   MicIcon,
   MoreHorizontalIcon,
@@ -238,10 +237,6 @@ function ToolMenu() {
         <DropdownMenuGroup>
           <DropdownMenuLabel>Herramientas GIS</DropdownMenuLabel>
           <DropdownMenuItem className="gap-3 px-3 py-2">
-            <ImageIcon className="size-4" />
-            Crear visualizacion
-          </DropdownMenuItem>
-          <DropdownMenuItem className="gap-3 px-3 py-2">
             <BrainCircuitIcon className="size-4" />
             Razonamiento GIS
             <DropdownMenuShortcut>MCP</DropdownMenuShortcut>
@@ -333,13 +328,17 @@ function ModelMenu({ models }: { models: typeof aiConnectors }) {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="gap-3 px-3 py-2">
-          <PlusIcon className="size-4" />
-          Agregar modelo
+        <DropdownMenuItem asChild className="gap-3 px-3 py-2">
+          <a href="#contenedores-ia-nuevo">
+            <PlusIcon className="size-4" />
+            Agregar modelo
+          </a>
         </DropdownMenuItem>
-        <DropdownMenuItem className="gap-3 px-3 py-2">
-          <PencilIcon className="size-4" />
-          Conectar proveedor
+        <DropdownMenuItem asChild className="gap-3 px-3 py-2">
+          <a href="#contenedores-ia-api">
+            <PencilIcon className="size-4" />
+            Conectar proveedor
+          </a>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
