@@ -1,10 +1,6 @@
 import {
   BrainCircuitIcon,
-  CloudIcon,
   FileTextIcon,
-  FolderOpenIcon,
-  LinkIcon,
-  UploadCloudIcon,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -12,7 +8,6 @@ export type DocumentSource = {
   name: string
   detail: string
   status: string
-  icon: LucideIcon
 }
 
 export type WorkspaceDocument = {
@@ -35,25 +30,21 @@ export const documentSources: DocumentSource[] = [
     name: "OneDrive",
     detail: "Sincroniza carpetas POT, licencias y anexos tecnicos.",
     status: "Listo para conectar",
-    icon: CloudIcon,
   },
   {
     name: "Carpeta Windows",
     detail: "Lee una ruta local y detecta cambios sin mover archivos.",
     status: "Local",
-    icon: FolderOpenIcon,
   },
   {
     name: "Subir archivos",
     detail: "PDF, DOCX, DXF, SHP comprimido o imagenes de campo.",
     status: "Manual",
-    icon: UploadCloudIcon,
   },
   {
     name: "URL / SharePoint",
     detail: "Registra enlaces externos para descarga controlada.",
     status: "Pendiente",
-    icon: LinkIcon,
   },
 ]
 

@@ -86,6 +86,7 @@ export const navigationItems: NavItem[] = [
   { title: "Mapa", url: "#mapa", icon: MapIcon },
   { title: "Chat IA", url: "#chat", icon: BotIcon, isActive: true },
   { title: "Documentos", url: "#documentos", icon: FileTextIcon },
+  { title: "Conectores", url: "#conectores", icon: LayersIcon },
   { title: "Grafo", url: "#grafo", icon: GitBranchIcon },
   { title: "Analisis", url: "#analisis", icon: BarChart3Icon },
   { title: "Datos", url: "#datos", icon: DatabaseIcon },

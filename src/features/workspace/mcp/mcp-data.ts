@@ -1,4 +1,10 @@
-import { Layers3Icon, MapIcon, MemoryStickIcon, type LucideIcon } from "lucide-react"
+import {
+  DatabaseIcon,
+  Layers3Icon,
+  MapIcon,
+  MemoryStickIcon,
+  type LucideIcon,
+} from "lucide-react"
 
 export type McpServerStatus = "online" | "degraded" | "offline" | "planned"
 
@@ -16,7 +22,7 @@ export type McpServer = {
 export type McpTool = {
   name: string
   server: string
-  category: "GIS" | "Memoria" | "IA" | "UI"
+  category: "GIS" | "Memoria" | "Datos" | "IA" | "UI"
   args: string
   result: string
   status: "ready" | "guarded" | "planned"
@@ -60,6 +66,17 @@ export const mcpServers: McpServer[] = [
     tools: 0,
     description: "Sincronizacion futura con ArcGIS Online, Portal y servicios WMS/WFS externos.",
     icon: Layers3Icon,
+  },
+  {
+    id: "supabase-mcp",
+    name: "Supabase MCP",
+    url: "mcp.supabase.com/mcp?read_only=true",
+    status: "planned",
+    latency: "-",
+    tools: 4,
+    description:
+      "Consulta Postgres/Supabase por MCP para schemas, SQL controlado, contexto de proyecto y auditorias de seguridad.",
+    icon: DatabaseIcon,
   },
 ]
 
@@ -128,6 +145,38 @@ export const mcpTools: McpTool[] = [
     result: "Lista de memorias relevantes",
     status: "ready",
   },
+  {
+    name: "supabase_list_tables",
+    server: "supabase-mcp",
+    category: "Datos",
+    args: "schema, project_ref",
+    result: "Tablas, columnas, relaciones y metadata Postgres",
+    status: "planned",
+  },
+  {
+    name: "supabase_execute_sql",
+    server: "supabase-mcp",
+    category: "Datos",
+    args: "sql_readonly, params, project_ref",
+    result: "Filas y resumen de consulta en modo solo lectura",
+    status: "guarded",
+  },
+  {
+    name: "supabase_store_context",
+    server: "supabase-mcp",
+    category: "Datos",
+    args: "workspace_id, content, metadata",
+    result: "Registro de contexto para memoria del proyecto",
+    status: "planned",
+  },
+  {
+    name: "supabase_security_advisors",
+    server: "supabase-mcp",
+    category: "Datos",
+    args: "schema, project_ref",
+    result: "Alertas de RLS, grants y exposicion Data API",
+    status: "planned",
+  },
 ]
 
 export const mcpTraces: McpTrace[] = [
@@ -158,5 +207,12 @@ export const mcpTraces: McpTrace[] = [
     server: "qgis-mcp",
     duration: "blocked",
     status: "blocked",
+  },
+  {
+    traceId: "trc-b77c",
+    tool: "supabase_execute_sql",
+    server: "supabase-mcp",
+    duration: "queued",
+    status: "queued",
   },
 ]

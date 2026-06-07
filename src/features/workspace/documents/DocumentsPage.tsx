@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
 import {
   documentSources,
   documents,
@@ -141,7 +142,11 @@ function SourceStrip({
               className="flex min-h-24 w-full items-start gap-3 rounded-md border border-border bg-background/75 p-3 text-left"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <source.icon className="size-4" />
+                <DocumentAssetIcon
+                  kind={source.name}
+                  variant="source"
+                  className="size-4"
+                />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold">
@@ -202,7 +207,9 @@ function DocumentRow({ document }: { document: WorkspaceDocument }) {
     <article className="grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] md:items-center">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <FileTextIcon className="size-4 shrink-0 text-primary" />
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-background">
+            <DocumentAssetIcon kind={document.type} className="size-4" />
+          </span>
           <h3 className="truncate text-sm font-medium">{document.name}</h3>
         </div>
         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
@@ -232,7 +239,11 @@ function OneDriveDialog({
         <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-start gap-2.5 pr-8">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <CloudIcon className="size-4" />
+              <DocumentAssetIcon
+                kind="OneDrive"
+                variant="source"
+                className="size-4"
+              />
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base">Conectar OneDrive</DialogTitle>

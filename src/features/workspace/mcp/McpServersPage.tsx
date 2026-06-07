@@ -72,6 +72,11 @@ const consoleLines: McpConsoleLine[] = [
     message: "schema arcgis-mcp pendiente hasta registrar endpoint local",
   },
   {
+    time: "18:41:06",
+    level: "warn",
+    message: "schema supabase-mcp pendiente: OAuth y project_ref sin autenticar",
+  },
+  {
     time: "18:41:07",
     level: "error",
     message: "dispatch load_layer bloqueado: ruta fuera de allowlist",
@@ -160,9 +165,14 @@ function McpHeader({ onRegister }: { onRegister: () => void }) {
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
-          <Metric label="Servidores" value="3" />
-          <Metric label="Tools V1" value="8" />
-          <Metric label="Online" value="2" />
+          <Metric label="Servidores" value={String(mcpServers.length)} />
+          <Metric label="Tools V1" value={String(mcpTools.length)} />
+          <Metric
+            label="Online"
+            value={String(
+              mcpServers.filter((server) => server.status === "online").length
+            )}
+          />
           <Metric label="Rate limit" value="60/min" />
         </div>
       </div>
@@ -463,11 +473,12 @@ function RegisterMcpDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const exampleConfig = `{
-  "id": "qgis-mcp",
-  "name": "QGIS MCP",
-  "url": "http://localhost:7021",
-  "token": "env:GEONEXUS_QGIS_MCP_TOKEN",
-  "tools": ["buffer", "distance", "load_layer"]
+  "id": "supabase-mcp",
+  "name": "Supabase MCP",
+  "type": "http",
+  "url": "https://mcp.supabase.com/mcp?project_ref=env:SUPABASE_PROJECT_REF&read_only=true",
+  "auth": "oauth:auto",
+  "tools": ["list_tables", "execute_sql", "get_advisors"]
 }`
 
   return (
@@ -497,10 +508,16 @@ function RegisterMcpDialog({
                 <KeyRoundIcon className="size-4 text-primary" />
                 Registro manual
               </div>
-              <FormField label="Nombre" placeholder="QGIS MCP" />
-              <FormField label="URL local" placeholder="http://localhost:7021" />
-              <FormField label="Token ref" placeholder="env:GEONEXUS_MCP_TOKEN" />
-              <FormField label="Tools" placeholder="buffer, distance, load_layer" />
+              <FormField label="Nombre" placeholder="Supabase MCP" />
+              <FormField
+                label="URL local/remota"
+                placeholder="https://mcp.supabase.com/mcp?read_only=true"
+              />
+              <FormField label="Auth ref" placeholder="oauth:auto o env:MCP_TOKEN" />
+              <FormField
+                label="Tools"
+                placeholder="list_tables, execute_sql, get_advisors"
+              />
             </section>
 
             <section className="grid gap-2 rounded-lg border border-border bg-background/75 p-3">
