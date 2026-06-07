@@ -6,14 +6,15 @@ import {
 
 import { Button } from "@/components/ui/Button"
 import { Metric } from "@/features/workspace/data/DataUi"
-import { dataAssets } from "@/features/workspace/data/data-data"
+import type { DataAsset } from "@/features/workspace/data/data-data"
 
-export function DataHeader() {
-  const totalChunks = dataAssets.reduce((total, asset) => total + asset.chunks, 0)
-  const totalVectors = dataAssets.reduce(
-    (total, asset) => total + asset.embeddings,
-    0
-  )
+type DataHeaderProps = {
+  assets: DataAsset[]
+}
+
+export function DataHeader({ assets }: DataHeaderProps) {
+  const totalChunks = assets.reduce((total, asset) => total + asset.chunks, 0)
+  const totalVectors = assets.reduce((total, asset) => total + asset.embeddings, 0)
 
   return (
     <header className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
@@ -47,7 +48,7 @@ export function DataHeader() {
         </div>
 
         <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
-          <Metric label="Assets" value={String(dataAssets.length)} />
+          <Metric label="Assets" value={String(assets.length)} />
           <Metric label="Chunks" value={String(totalChunks)} />
           <Metric label="Vectores" value={String(totalVectors)} />
           <Metric label="Grafo" value="44 nodos" />

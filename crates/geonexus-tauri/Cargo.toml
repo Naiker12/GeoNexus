@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tauri = { version = "1", features = ["api-all"] }
+geonexus-core = { path = "../geonexus-core" }
+geonexus-db = { path = "../geonexus-db" }
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }

@@ -1,5 +1,32 @@
 {
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GeoNexus",
+  "version": "0.1.0",
+  "identifier": "com.geonexus.desktop",
   "build": {
-    "distDir": "dist"
+    "beforeDevCommand": "pnpm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "pnpm run build",
+    "frontendDist": "dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "GeoNexus",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 720
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["crates/geonexus-tauri/icons/icon.ico"]
   }
 }

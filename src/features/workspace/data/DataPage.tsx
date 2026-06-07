@@ -1,29 +1,64 @@
 import * as React from "react"
 
+import {
+  getDataStoreMetrics,
+  getSyncEvents,
+  listDataAssets,
+} from "@/api/data"
 import { AssetCatalog } from "@/features/workspace/data/AssetCatalog"
 import { AssetSheet } from "@/features/workspace/data/AssetSheet"
 import { DataHeader } from "@/features/workspace/data/DataHeader"
 import { LineagePanel, StoresPanel, SyncPanel } from "@/features/workspace/data/DataPanels"
-import { dataAssets } from "@/features/workspace/data/data-data"
+import {
+  dataAssets,
+  dataStores,
+  syncEvents,
+  type DataAsset,
+  type DataStoreMetric,
+  type SyncEvent,
+} from "@/features/workspace/data/data-data"
 
 export function DataPage() {
+  const [assets, setAssets] = React.useState<DataAsset[]>(dataAssets)
+  const [stores, setStores] = React.useState<DataStoreMetric[]>(dataStores)
+  const [events, setEvents] = React.useState<SyncEvent[]>(syncEvents)
   const [query, setQuery] = React.useState("")
   const [selectedAssetId, setSelectedAssetId] = React.useState<string | null>(null)
 
-  const filteredAssets = dataAssets.filter((asset) =>
+  React.useEffect(() => {
+    let active = true
+
+    Promise.all([
+      listDataAssets(),
+      getDataStoreMetrics(),
+      getSyncEvents(),
+    ]).then(([nextAssets, nextStores, nextEvents]) => {
+      if (!active) return
+
+      setAssets(nextAssets)
+      setStores(nextStores)
+      setEvents(nextEvents)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const filteredAssets = assets.filter((asset) =>
     [asset.name, asset.source, asset.location, asset.kind]
       .join(" ")
       .toLowerCase()
       .includes(query.trim().toLowerCase())
   )
   const selectedAsset = selectedAssetId
-    ? dataAssets.find((asset) => asset.id === selectedAssetId)
+    ? assets.find((asset) => asset.id === selectedAssetId)
     : undefined
 
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-auto px-3 py-3 sm:px-5 sm:py-4">
       <div className="mx-auto grid w-full max-w-[110rem] gap-3">
-        <DataHeader />
+        <DataHeader assets={assets} />
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_25rem]">
           <div className="grid min-w-0 gap-3">
@@ -36,8 +71,8 @@ export function DataPage() {
             <LineagePanel />
           </div>
           <aside className="grid content-start gap-3">
-            <StoresPanel />
-            <SyncPanel />
+            <StoresPanel stores={stores} />
+            <SyncPanel events={events} />
           </aside>
         </div>
       </div>

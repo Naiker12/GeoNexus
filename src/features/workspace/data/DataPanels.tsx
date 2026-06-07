@@ -7,9 +7,12 @@ import {
 
 import { Button } from "@/components/ui/Button"
 import { EventStatus } from "@/features/workspace/data/DataUi"
-import { dataStores, syncEvents, type SyncEvent } from "@/features/workspace/data/data-data"
+import type {
+  DataStoreMetric,
+  SyncEvent,
+} from "@/features/workspace/data/data-data"
 
-export function StoresPanel() {
+export function StoresPanel({ stores }: { stores: DataStoreMetric[] }) {
   return (
     <section className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
       <div className="mb-3 flex items-center gap-2">
@@ -17,7 +20,7 @@ export function StoresPanel() {
         <h2 className="text-sm font-semibold">Memoria y almacenamiento</h2>
       </div>
       <div className="grid gap-2">
-        {dataStores.map((store) => (
+        {stores.map((store) => (
           <article
             key={store.name}
             className="rounded-md border border-border bg-background/75 p-2.5"
@@ -42,7 +45,7 @@ export function StoresPanel() {
   )
 }
 
-export function SyncPanel() {
+export function SyncPanel({ events }: { events: SyncEvent[] }) {
   return (
     <section className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -55,7 +58,7 @@ export function SyncPanel() {
         </Button>
       </div>
       <div className="grid gap-2">
-        {syncEvents.map((event) => (
+        {events.map((event) => (
           <SyncEventRow key={event.id} event={event} />
         ))}
       </div>

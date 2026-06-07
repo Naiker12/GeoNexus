@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permisos base para la ventana principal de GeoNexus.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

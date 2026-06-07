@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri:dev": "pnpm exec tauri dev -- --config crates/geonexus-tauri/tauri.conf.json",
-    "tauri:build": "pnpm exec tauri build -- --config crates/geonexus-tauri/tauri.conf.json"
+    "tauri:dev": "cd crates/geonexus-tauri && pnpm exec tauri dev",
+    "tauri:build": "cd crates/geonexus-tauri && pnpm exec tauri build"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
