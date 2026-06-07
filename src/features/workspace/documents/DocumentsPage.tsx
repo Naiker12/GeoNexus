@@ -371,8 +371,10 @@ function Status({ status }: { status: WorkspaceDocument["status"] }) {
     <span
       className={cn(
         "inline-flex h-5 w-fit items-center rounded-md px-2 text-[0.7rem] font-medium",
-        status === "Analizado" && "bg-emerald-500/10 text-emerald-700",
-        status === "Indexando" && "bg-sky-500/10 text-sky-700",
+        status === "Analizado" &&
+          "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300",
+        status === "Indexando" &&
+          "bg-sky-500/10 text-sky-700 [.geo-dark_&]:text-sky-300 [.graphite_&]:text-sky-300 [.midnight_&]:text-sky-300",
         status === "Listo" && "bg-primary/10 text-primary",
         status === "Pendiente" && "bg-muted text-muted-foreground"
       )}

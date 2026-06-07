@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  PlusIcon,
   ServerIcon,
   Settings2Icon,
 } from "lucide-react"
@@ -28,6 +27,7 @@ import {
   recentProjects,
   type ThemePreset,
 } from "@/features/workspace/workspace-data"
+import { CreateProjectDialog } from "@/features/workspace/projects/CreateProjectDialog"
 import { cn } from "@/lib/utils"
 
 const cleanSidebarButton =
@@ -117,13 +117,7 @@ export function AppSidebar({
                   </span>
                 </a>
               ))}
-              <a
-                href="#nuevo-proyecto"
-                className="flex h-8 items-center gap-2 rounded-md border border-sidebar-border bg-transparent px-2 text-sm font-medium text-sidebar-foreground transition-colors hover:border-sidebar-primary/40 hover:bg-transparent"
-              >
-                <PlusIcon className="size-4" />
-                Crear proyecto
-              </a>
+              <CreateProjectDialog />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

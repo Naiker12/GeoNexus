@@ -1,7 +1,11 @@
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
+import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
+import { GraphPage } from "@/features/workspace/graph/GraphPage"
+import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
+import { SettingsPage } from "@/features/workspace/settings/SettingsPage"
 import { aiConnectors } from "@/features/workspace/workspace-data"
 
 type GeoNexusWorkspaceProps = {
@@ -15,6 +19,10 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
   )
   const isAiContainers = activeRoute.startsWith("#contenedores-ia")
   const isDocuments = activeRoute.startsWith("#documentos")
+  const isGraph = activeRoute.startsWith("#grafo")
+  const isAnalysis = activeRoute.startsWith("#analisis")
+  const isMcp = activeRoute.startsWith("#mcp")
+  const isSettings = activeRoute.startsWith("#configuracion")
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -28,6 +36,14 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
         <MapBackdrop />
         {isDocuments ? (
           <DocumentsPage />
+        ) : isGraph ? (
+          <GraphPage />
+        ) : isAnalysis ? (
+          <AnalysisPage />
+        ) : isMcp ? (
+          <McpServersPage />
+        ) : isSettings ? (
+          <SettingsPage />
         ) : isAiContainers ? (
           <AiContainersPage />
         ) : (
@@ -49,7 +65,7 @@ function MapBackdrop() {
 
 function LightMapBackdrop() {
   return (
-    <div className="absolute inset-0 block [.geo-dark_&]:hidden">
+    <div className="absolute inset-0 block [.geo-dark_&]:hidden [.graphite_&]:hidden [.midnight_&]:hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:72px_72px]" />
       <svg
         className="absolute inset-0 size-full opacity-45"
@@ -87,7 +103,7 @@ function LightMapBackdrop() {
 
 function DarkMapBackdrop() {
   return (
-    <div className="absolute inset-0 hidden [.geo-dark_&]:block">
+    <div className="absolute inset-0 hidden [.geo-dark_&]:block [.graphite_&]:block [.midnight_&]:block">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[size:72px_72px]" />
       <svg
         className="absolute inset-0 size-full opacity-35"

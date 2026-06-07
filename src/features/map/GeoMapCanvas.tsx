@@ -10,7 +10,7 @@ import {
 
 export function GeoMapCanvas() {
   return (
-    <section className="relative min-h-[calc(100svh-4rem)] overflow-hidden border-x border-border bg-[#e8f2ea]">
+    <section className="relative min-h-[calc(100svh-4rem)] overflow-hidden border-x border-border bg-[#e8f2ea] [.geo-dark_&]:bg-background [.graphite_&]:bg-background [.midnight_&]:bg-background">
       <MapToolbar />
       <MapLegend />
       <MapArtwork />
@@ -79,7 +79,7 @@ function AssistantCard() {
     <article className="absolute bottom-6 left-6 z-20 w-[min(24rem,calc(100%-3rem))] rounded-lg border border-border bg-card/95 p-5 text-card-foreground shadow-sm backdrop-blur">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+          <div className="flex size-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 [.geo-dark_&]:bg-emerald-500/10 [.geo-dark_&]:text-emerald-300 [.graphite_&]:bg-emerald-500/10 [.graphite_&]:text-emerald-300 [.midnight_&]:bg-emerald-500/10 [.midnight_&]:text-emerald-300">
             IA
           </div>
           <div>
@@ -89,7 +89,7 @@ function AssistantCard() {
             </p>
           </div>
         </div>
-        <span className="rounded-md bg-sky-50 px-2.5 py-1 text-sm font-medium text-sky-700">
+        <span className="rounded-md bg-sky-50 px-2.5 py-1 text-sm font-medium text-sky-700 [.geo-dark_&]:bg-sky-500/10 [.geo-dark_&]:text-sky-300 [.graphite_&]:bg-sky-500/10 [.graphite_&]:text-sky-300 [.midnight_&]:bg-sky-500/10 [.midnight_&]:text-sky-300">
           QGIS MCP
         </span>
       </div>

@@ -35,8 +35,8 @@ export function GisToolPanel({ tools }: GisToolPanelProps) {
                 className={cn(
                   "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md",
                   ready
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-slate-100 text-slate-500"
+                    ? "bg-emerald-50 text-emerald-700 [.geo-dark_&]:bg-emerald-500/10 [.geo-dark_&]:text-emerald-300 [.graphite_&]:bg-emerald-500/10 [.graphite_&]:text-emerald-300 [.midnight_&]:bg-emerald-500/10 [.midnight_&]:text-emerald-300"
+                    : "bg-slate-100 text-slate-500 [.geo-dark_&]:bg-muted [.geo-dark_&]:text-muted-foreground [.graphite_&]:bg-muted [.graphite_&]:text-muted-foreground [.midnight_&]:bg-muted [.midnight_&]:text-muted-foreground"
                 )}
               >
                 <tool.icon className="size-4" />
@@ -45,9 +45,9 @@ export function GisToolPanel({ tools }: GisToolPanelProps) {
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="font-medium">{tool.name}</h3>
                   {ready ? (
-                    <CheckIcon className="size-4 text-emerald-600" />
+                    <CheckIcon className="size-4 text-emerald-600 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300" />
                   ) : (
-                    <LockIcon className="size-4 text-slate-400" />
+                    <LockIcon className="size-4 text-muted-foreground" />
                   )}
                 </div>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">

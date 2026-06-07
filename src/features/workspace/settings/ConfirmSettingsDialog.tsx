@@ -1,0 +1,64 @@
+import { Trash2Icon, XCircleIcon } from "lucide-react"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { DialogActions } from "@/features/workspace/settings/DialogActions"
+
+export function ConfirmSettingsDialog({
+  open,
+  name,
+  isDelete,
+  isMcp,
+  onOpenChange,
+}: {
+  open: boolean
+  name: string
+  isDelete: boolean
+  isMcp: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(94vw,34rem)] rounded-lg p-0">
+        <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
+          <div className="flex items-start gap-2.5 pr-8">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+              {isDelete ? (
+                <Trash2Icon className="size-4" />
+              ) : (
+                <XCircleIcon className="size-4" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <DialogTitle className="text-base">
+                {isDelete ? "Confirmar eliminacion" : "Confirmar desactivacion"}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm leading-5">
+                {isDelete
+                  ? `Esto eliminara ${name} de la configuracion local.`
+                  : `Esto desactivara ${name} sin eliminar sus datos.`}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+        <div className="grid gap-3 p-4">
+          <div className="rounded-lg border border-border bg-muted/45 p-3 text-sm text-muted-foreground">
+            {isMcp
+              ? "Rust debera actualizar el registry MCP y detener nuevas llamadas a sus tools."
+              : "Tauri debera actualizar llm_configs y conservar la clave en keychain hasta borrado explicito."}
+          </div>
+          <DialogActions
+            destructive={isDelete}
+            submitLabel={isDelete ? "Eliminar" : "Desactivar"}
+            onCancel={() => onOpenChange(false)}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

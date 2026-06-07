@@ -1,6 +1,7 @@
 import {
   BotIcon,
   BrainCircuitIcon,
+  BarChart3Icon,
   CloudIcon,
   DatabaseIcon,
   FileTextIcon,
@@ -86,6 +87,7 @@ export const navigationItems: NavItem[] = [
   { title: "Chat IA", url: "#chat", icon: BotIcon, isActive: true },
   { title: "Documentos", url: "#documentos", icon: FileTextIcon },
   { title: "Grafo", url: "#grafo", icon: GitBranchIcon },
+  { title: "Analisis", url: "#analisis", icon: BarChart3Icon },
   { title: "Datos", url: "#datos", icon: DatabaseIcon },
 ]
 

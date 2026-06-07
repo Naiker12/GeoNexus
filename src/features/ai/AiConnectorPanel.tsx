@@ -17,17 +17,20 @@ const statusMeta = {
   online: {
     label: "Online",
     icon: CheckCircle2Icon,
-    className: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 [.geo-dark_&]:border-emerald-400/20 [.geo-dark_&]:bg-emerald-500/10 [.geo-dark_&]:text-emerald-300 [.graphite_&]:border-emerald-400/20 [.graphite_&]:bg-emerald-500/10 [.graphite_&]:text-emerald-300 [.midnight_&]:border-emerald-400/20 [.midnight_&]:bg-emerald-500/10 [.midnight_&]:text-emerald-300",
   },
   offline: {
     label: "Offline",
     icon: WifiOffIcon,
-    className: "text-slate-600 bg-slate-50 border-slate-200",
+    className:
+      "border-slate-200 bg-slate-50 text-slate-600 [.geo-dark_&]:border-border [.geo-dark_&]:bg-muted [.geo-dark_&]:text-muted-foreground [.graphite_&]:border-border [.graphite_&]:bg-muted [.graphite_&]:text-muted-foreground [.midnight_&]:border-border [.midnight_&]:bg-muted [.midnight_&]:text-muted-foreground",
   },
   "needs-key": {
     label: "API key",
     icon: KeyRoundIcon,
-    className: "text-amber-700 bg-amber-50 border-amber-200",
+    className:
+      "border-amber-200 bg-amber-50 text-amber-700 [.geo-dark_&]:border-amber-400/20 [.geo-dark_&]:bg-amber-500/10 [.geo-dark_&]:text-amber-300 [.graphite_&]:border-amber-400/20 [.graphite_&]:bg-amber-500/10 [.graphite_&]:text-amber-300 [.midnight_&]:border-amber-400/20 [.midnight_&]:bg-amber-500/10 [.midnight_&]:text-amber-300",
   },
 }
 

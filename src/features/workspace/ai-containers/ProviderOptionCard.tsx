@@ -85,9 +85,11 @@ function StatusBadge({ status }: { status: AiConnector["status"] }) {
     <span
       className={cn(
         "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[0.7rem] font-medium",
-        status === "online" && "bg-emerald-500/10 text-emerald-700",
+        status === "online" &&
+          "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300",
         status === "offline" && "bg-muted text-muted-foreground",
-        status === "needs-key" && "bg-orange-500/10 text-orange-700"
+        status === "needs-key" &&
+          "bg-orange-500/10 text-orange-700 [.geo-dark_&]:text-orange-300 [.graphite_&]:text-orange-300 [.midnight_&]:text-orange-300"
       )}
     >
       {status === "online" ? <CheckCircle2Icon className="size-3" /> : null}

@@ -7,6 +7,7 @@ import {
   GlobeIcon,
   MenuIcon,
   MicIcon,
+  MonitorIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -230,6 +231,13 @@ function ToolMenu() {
             </span>
             <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
               PDF/DXF
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
+            <MonitorIcon className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">Controlar este PC</span>
+            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
+              LOCAL
             </DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuGroup>
