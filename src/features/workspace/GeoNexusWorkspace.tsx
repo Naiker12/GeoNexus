@@ -3,6 +3,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
 import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
+import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
@@ -20,6 +21,7 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
   )
   const isAiContainers = activeRoute.startsWith("#contenedores-ia")
   const isConnectors = activeRoute.startsWith("#conectores")
+  const isData = activeRoute.startsWith("#datos")
   const isDocuments = activeRoute.startsWith("#documentos")
   const isGraph = activeRoute.startsWith("#grafo")
   const isAnalysis = activeRoute.startsWith("#analisis")
@@ -38,6 +40,8 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
         <MapBackdrop />
         {isDocuments ? (
           <DocumentsPage />
+        ) : isData ? (
+          <DataPage />
         ) : isGraph ? (
           <GraphPage />
         ) : isAnalysis ? (
