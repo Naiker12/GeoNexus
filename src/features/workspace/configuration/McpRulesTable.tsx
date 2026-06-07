@@ -7,8 +7,8 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
-import type { SettingsDialog } from "@/features/workspace/settings/settings-types"
-import { CheckRow } from "@/features/workspace/settings/settings-ui"
+import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
+import { CheckRow } from "@/features/workspace/configuration/settings-ui"
 
 const mcpRules = [
   {

@@ -20,6 +20,7 @@ const themeClassNames: ThemePreset["id"][] = [
 export default function App() {
   const [activeTheme, setActiveTheme] =
     React.useState<ThemePreset["id"]>("geo-light")
+  const [configOpen, setConfigOpen] = React.useState(false)
   const activeRoute = useHashRoute()
 
   React.useEffect(() => {
@@ -44,9 +45,14 @@ export default function App() {
         activeRoute={activeRoute}
         activeTheme={activeTheme}
         onThemeChange={setActiveTheme}
+        onOpenConfig={() => setConfigOpen(true)}
       />
       <SidebarInset>
-        <GeoNexusWorkspace activeRoute={activeRoute} />
+        <GeoNexusWorkspace
+          activeRoute={activeRoute}
+          configOpen={configOpen}
+          onConfigOpenChange={setConfigOpen}
+        />
       </SidebarInset>
     </SidebarProvider>
   )

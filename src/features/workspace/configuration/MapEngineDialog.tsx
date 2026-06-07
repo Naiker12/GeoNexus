@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/Input"
 import { NativeSelect } from "@/components/ui/native-select"
-import { DialogActions } from "@/features/workspace/settings/DialogActions"
+import { DialogActions } from "@/features/workspace/configuration/DialogActions"
 import {
   CheckRow,
   Field,
   SideMetric,
-} from "@/features/workspace/settings/settings-ui"
+} from "@/features/workspace/configuration/settings-ui"
 
 const engineDefaults: Record<
   string,

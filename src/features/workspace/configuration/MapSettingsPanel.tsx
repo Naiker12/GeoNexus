@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/Button"
 import { NativeSelect } from "@/components/ui/native-select"
-import type { SettingsDialog } from "@/features/workspace/settings/settings-types"
-import { Field } from "@/features/workspace/settings/settings-ui"
+import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
+import { Field } from "@/features/workspace/configuration/settings-ui"
 
 const mapEngines = [
   {

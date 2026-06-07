@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { DialogActions } from "@/features/workspace/settings/DialogActions"
+import { DialogActions } from "@/features/workspace/configuration/DialogActions"
 
 export function ConfirmSettingsDialog({
   open,

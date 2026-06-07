@@ -7,7 +7,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
-import type { SettingsDialog } from "@/features/workspace/settings/settings-types"
+import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 
 const configuredModels = [
   {

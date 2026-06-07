@@ -37,12 +37,14 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   activeRoute: string
   activeTheme: ThemePreset["id"]
   onThemeChange: (theme: ThemePreset["id"]) => void
+  onOpenConfig: () => void
 }
 
 export function AppSidebar({
   activeRoute,
   activeTheme,
   onThemeChange,
+  onOpenConfig,
   ...props
 }: AppSidebarProps) {
   return (
@@ -148,14 +150,12 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              asChild
               className={cleanSidebarButton}
               tooltip="Configuracion"
+              onClick={onOpenConfig}
             >
-              <a href="#configuracion">
-                <Settings2Icon className="size-4" />
-                <span>Configuracion</span>
-              </a>
+              <Settings2Icon className="size-4" />
+              <span>Configuracion</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

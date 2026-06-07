@@ -2,19 +2,25 @@ import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
+import { ConfigurationDialog } from "@/features/workspace/configuration/ConfigurationDialog"
 import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
 import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
-import { SettingsPage } from "@/features/workspace/settings/SettingsPage"
 import { aiConnectors } from "@/features/workspace/workspace-data"
 
 type GeoNexusWorkspaceProps = {
   activeRoute: string
+  configOpen: boolean
+  onConfigOpenChange: (open: boolean) => void
 }
 
-export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
+export function GeoNexusWorkspace({
+  activeRoute,
+  configOpen,
+  onConfigOpenChange,
+}: GeoNexusWorkspaceProps) {
   const activeConnector = aiConnectors[0]
   const selectableModels = aiConnectors.filter((connector) =>
     ["chat", "embedding"].includes(connector.role)
@@ -26,7 +32,6 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
   const isGraph = activeRoute.startsWith("#grafo")
   const isAnalysis = activeRoute.startsWith("#analisis")
   const isMcp = activeRoute.startsWith("#mcp")
-  const isSettings = activeRoute.startsWith("#configuracion")
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -48,8 +53,6 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
           <AnalysisPage />
         ) : isMcp ? (
           <McpServersPage />
-        ) : isSettings ? (
-          <SettingsPage />
         ) : isConnectors ? (
           <ConnectorsPage />
         ) : isAiContainers ? (
@@ -58,6 +61,11 @@ export function GeoNexusWorkspace({ activeRoute }: GeoNexusWorkspaceProps) {
           <ChatPanel models={selectableModels} />
         )}
       </main>
+
+      <ConfigurationDialog
+        open={configOpen}
+        onOpenChange={onConfigOpenChange}
+      />
     </div>
   )
 }

@@ -1,12 +1,12 @@
 import { Dialog } from "@/components/ui/dialog"
-import { ConfirmSettingsDialog } from "@/features/workspace/settings/ConfirmSettingsDialog"
-import { MapEngineDialog } from "@/features/workspace/settings/MapEngineDialog"
-import { McpSettingsDialog } from "@/features/workspace/settings/McpSettingsDialog"
+import { ConfirmSettingsDialog } from "@/features/workspace/configuration/ConfirmSettingsDialog"
+import { MapEngineDialog } from "@/features/workspace/configuration/MapEngineDialog"
+import { McpSettingsDialog } from "@/features/workspace/configuration/McpSettingsDialog"
 import {
   KeyReferenceDialog,
   ModelSettingsDialog,
-} from "@/features/workspace/settings/ModelSettingsDialogs"
-import type { SettingsDialog } from "@/features/workspace/settings/settings-types"
+} from "@/features/workspace/configuration/ModelSettingsDialogs"
+import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 
 export function SettingsDialogs({
   dialog,
