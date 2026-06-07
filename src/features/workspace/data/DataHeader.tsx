@@ -6,7 +6,8 @@ import {
 
 import { Button } from "@/components/ui/Button"
 import { Metric } from "@/features/workspace/data/DataUi"
-import type { DataAsset } from "@/features/workspace/data/data-data"
+import { formatBytes } from "@/features/workspace/data/data-data"
+import type { DataAsset } from "@/types/data"
 
 type DataHeaderProps = {
   assets: DataAsset[]
@@ -15,6 +16,8 @@ type DataHeaderProps = {
 export function DataHeader({ assets }: DataHeaderProps) {
   const totalChunks = assets.reduce((total, asset) => total + asset.chunks, 0)
   const totalVectors = assets.reduce((total, asset) => total + asset.embeddings, 0)
+  const totalGraphNodes = assets.reduce((total, asset) => total + asset.graph_nodes, 0)
+  const totalSize = assets.reduce((total, asset) => total + (asset.size_bytes ?? 0), 0)
 
   return (
     <header className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
@@ -30,7 +33,7 @@ export function DataHeader({ assets }: DataHeaderProps) {
                 Centro de datos
               </h1>
               <p className="mt-0.5 max-w-4xl text-xs leading-4 text-muted-foreground">
-                Inventario simulado de archivos, cache, embeddings, sync y grafo
+                Inventario de archivos, cache, embeddings, sync y grafo
                 para auditar como entra la informacion a GeoNexus IA.
               </p>
             </div>
@@ -47,11 +50,12 @@ export function DataHeader({ assets }: DataHeaderProps) {
           </div>
         </div>
 
-        <div className="mt-2 grid gap-1.5 sm:grid-cols-4">
+        <div className="mt-2 grid gap-1.5 sm:grid-cols-5">
           <Metric label="Assets" value={String(assets.length)} />
           <Metric label="Chunks" value={String(totalChunks)} />
           <Metric label="Vectores" value={String(totalVectors)} />
-          <Metric label="Grafo" value="44 nodos" />
+          <Metric label="Grafo" value={`${totalGraphNodes} nodos`} />
+          <Metric label="Tamaño" value={formatBytes(totalSize)} />
         </div>
       </div>
     </header>

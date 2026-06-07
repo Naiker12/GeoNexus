@@ -11,16 +11,14 @@ import { DataHeader } from "@/features/workspace/data/DataHeader"
 import { LineagePanel, StoresPanel, SyncPanel } from "@/features/workspace/data/DataPanels"
 import {
   dataAssets,
-  dataStores,
+  defaultMetrics,
   syncEvents,
-  type DataAsset,
-  type DataStoreMetric,
-  type SyncEvent,
 } from "@/features/workspace/data/data-data"
+import type { DataAsset, DataStoreMetrics, SyncEvent } from "@/types/data"
 
 export function DataPage() {
   const [assets, setAssets] = React.useState<DataAsset[]>(dataAssets)
-  const [stores, setStores] = React.useState<DataStoreMetric[]>(dataStores)
+  const [metrics, setMetrics] = React.useState<DataStoreMetrics>(defaultMetrics)
   const [events, setEvents] = React.useState<SyncEvent[]>(syncEvents)
   const [query, setQuery] = React.useState("")
   const [selectedAssetId, setSelectedAssetId] = React.useState<string | null>(null)
@@ -32,11 +30,11 @@ export function DataPage() {
       listDataAssets(),
       getDataStoreMetrics(),
       getSyncEvents(),
-    ]).then(([nextAssets, nextStores, nextEvents]) => {
+    ]).then(([nextAssets, nextMetrics, nextEvents]) => {
       if (!active) return
 
       setAssets(nextAssets)
-      setStores(nextStores)
+      setMetrics(nextMetrics)
       setEvents(nextEvents)
     })
 
@@ -71,7 +69,7 @@ export function DataPage() {
             <LineagePanel />
           </div>
           <aside className="grid content-start gap-3">
-            <StoresPanel stores={stores} />
+            <StoresPanel metrics={metrics} />
             <SyncPanel events={events} />
           </aside>
         </div>

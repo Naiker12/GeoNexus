@@ -33,9 +33,19 @@ const configuredModels = [
   },
 ]
 
+export type ConfiguredModel = {
+  provider: string
+  model: string
+  endpoint: string
+  key: string
+  status: string
+}
+
 export function AiModelsTable({
+  models,
   onDialogChange,
 }: {
+  models: ConfiguredModel[]
   onDialogChange: (dialog: SettingsDialog) => void
 }) {
   return (
@@ -44,7 +54,7 @@ export function AiModelsTable({
         <div>
           <h4 className="text-sm font-semibold">Modelos IA configurados</h4>
           <p className="text-xs text-muted-foreground">
-            Aqui se podra ver, editar, desactivar o eliminar cada proveedor.
+            Aquí se podrá ver, editar, desactivar o eliminar cada proveedor.
           </p>
         </div>
         <Button
@@ -57,7 +67,7 @@ export function AiModelsTable({
         </Button>
       </div>
       <div className="divide-y divide-border">
-        {configuredModels.map((item) => (
+        {models.map((item) => (
           <article
             key={`${item.provider}-${item.model}`}
             className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)_8rem_auto] md:items-center"

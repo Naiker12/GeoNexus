@@ -10,26 +10,7 @@ import { Button } from "@/components/ui/Button"
 import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 import { CheckRow } from "@/features/workspace/configuration/settings-ui"
 
-const mcpRules = [
-  {
-    server: "QGIS MCP",
-    allowlist: "localhost:7021",
-    rate: "60/min",
-    status: "Activo",
-  },
-  {
-    server: "Memory MCP",
-    allowlist: "localhost:7011",
-    rate: "60/min",
-    status: "Activo",
-  },
-  {
-    server: "ArcGIS MCP",
-    allowlist: "localhost:7041",
-    rate: "30/min",
-    status: "Pendiente",
-  },
-]
+import { mcpServers } from "@/features/workspace/mcp/mcp-data"
 
 export function McpRulesTable({
   onDialogChange,
@@ -42,7 +23,7 @@ export function McpRulesTable({
         <div>
           <h4 className="text-sm font-semibold">Reglas MCP Router</h4>
           <p className="text-xs text-muted-foreground">
-            Rust validara allowlist, schema y rate limit antes de usar tools.
+            Rust validará allowlist, schema y rate limit antes de usar tools.
           </p>
         </div>
         <Button variant="outline" size="sm" className="h-7">
@@ -51,36 +32,42 @@ export function McpRulesTable({
         </Button>
       </div>
       <div className="divide-y divide-border">
-        {mcpRules.map((rule) => (
-          <article
-            key={rule.server}
-            className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_6rem_7rem_auto] md:items-center"
-          >
-            <div>
-              <p className="truncate text-sm font-medium">{rule.server}</p>
-              <p className="text-xs text-muted-foreground">{rule.status}</p>
-            </div>
-            <code className="truncate font-mono text-xs text-muted-foreground">
-              {rule.allowlist}
-            </code>
-            <span className="text-xs text-muted-foreground">{rule.rate}</span>
-            <CheckRow label="Schema" checked />
-            <RowActions
-              onView={() =>
-                onDialogChange({ type: "edit-mcp", name: rule.server })
-              }
-              onEdit={() =>
-                onDialogChange({ type: "edit-mcp", name: rule.server })
-              }
-              onDisable={() =>
-                onDialogChange({ type: "disable-mcp", name: rule.server })
-              }
-              onDelete={() =>
-                onDialogChange({ type: "delete-mcp", name: rule.server })
-              }
-            />
-          </article>
-        ))}
+        {mcpServers.map((server) => {
+          const isActive = server.status === "online"
+          const statusText = server.status === "online" ? "Activo" : server.status === "planned" ? "Pendiente" : "Inactivo"
+          const rateText = isActive ? "60/min" : "30/min"
+
+          return (
+            <article
+              key={server.id}
+              className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_6rem_7rem_auto] md:items-center"
+            >
+              <div>
+                <p className="truncate text-sm font-medium">{server.name}</p>
+                <p className="text-xs text-muted-foreground">{statusText}</p>
+              </div>
+              <code className="truncate font-mono text-xs text-muted-foreground">
+                {server.url}
+              </code>
+              <span className="text-xs text-muted-foreground">{rateText}</span>
+              <CheckRow label="Schema" checked={isActive} />
+              <RowActions
+                onView={() =>
+                  onDialogChange({ type: "edit-mcp", name: server.name })
+                }
+                onEdit={() =>
+                  onDialogChange({ type: "edit-mcp", name: server.name })
+                }
+                onDisable={() =>
+                  onDialogChange({ type: "disable-mcp", name: server.name })
+                }
+                onDelete={() =>
+                  onDialogChange({ type: "delete-mcp", name: server.name })
+                }
+              />
+            </article>
+          )
+        })}
       </div>
     </div>
   )

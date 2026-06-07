@@ -11,9 +11,25 @@ import type { SettingsDialog } from "@/features/workspace/configuration/settings
 export function SettingsDialogs({
   dialog,
   onOpenChange,
+  models = [],
+  onAdd = () => {},
+  onEdit = () => {},
+  onDelete = () => {},
+  onToggleStatus = () => {},
 }: {
   dialog: SettingsDialog
   onOpenChange: (dialog: SettingsDialog) => void
+  models?: {
+    provider: string
+    model: string
+    endpoint: string
+    key: string
+    status: string
+  }[]
+  onAdd?: (model: any) => void
+  onEdit?: (oldName: string, model: any) => void
+  onDelete?: (name: string) => void
+  onToggleStatus?: (name: string) => void
 }) {
   const open = dialog !== null
   const close = (next: boolean) => !next && onOpenChange(null)
@@ -23,12 +39,19 @@ export function SettingsDialogs({
   }
 
   if (dialog.type === "add-model" || dialog.type === "edit-model") {
+    const initialData = dialog.type === "edit-model"
+      ? models.find((m) => m.provider === dialog.name)
+      : undefined
+
     return (
       <ModelSettingsDialog
         open={open}
         name={dialog.type === "edit-model" ? dialog.name : undefined}
         editing={dialog.type === "edit-model"}
         onOpenChange={close}
+        onAdd={onAdd}
+        onEdit={onEdit}
+        initialData={initialData}
       />
     )
   }
@@ -63,6 +86,14 @@ export function SettingsDialogs({
     )
   }
 
+  const handleConfirm = () => {
+    if (dialog.type === "delete-model") {
+      onDelete(dialog.name)
+    } else if (dialog.type === "disable-model") {
+      onToggleStatus(dialog.name)
+    }
+  }
+
   return (
     <ConfirmSettingsDialog
       open={open}
@@ -70,6 +101,7 @@ export function SettingsDialogs({
       isDelete={dialog.type === "delete-model" || dialog.type === "delete-mcp"}
       isMcp={dialog.type === "delete-mcp" || dialog.type === "disable-mcp"}
       onOpenChange={close}
+      onConfirm={handleConfirm}
     />
   )
 }

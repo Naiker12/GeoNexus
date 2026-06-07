@@ -6,8 +6,57 @@ import { SettingsDialogs } from "@/features/workspace/configuration/SettingsDial
 import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 import { Field } from "@/features/workspace/configuration/settings-ui"
 
+const initialModels = [
+  {
+    provider: "Ollama",
+    model: "llama3.1",
+    endpoint: "localhost:11434",
+    key: "Sin clave",
+    status: "Activo",
+  },
+  {
+    provider: "LM Studio",
+    model: "OpenAI compatible",
+    endpoint: "localhost:1234/v1",
+    key: "Sin clave",
+    status: "Inactivo",
+  },
+  {
+    provider: "OpenRouter",
+    model: "claude / gpt / gemini",
+    endpoint: "openrouter.ai/api/v1",
+    key: "keychain: openrouter",
+    status: "Revisar",
+  },
+]
+
 export function AiEmbeddingsSection() {
   const [dialog, setDialog] = React.useState<SettingsDialog>(null)
+  const [models, setModels] = React.useState(initialModels)
+
+  const handleAdd = (newModel: any) => {
+    setModels((prev) => [...prev, newModel])
+  }
+
+  const handleEdit = (oldName: string, updatedModel: any) => {
+    setModels((prev) =>
+      prev.map((m) => (m.provider === oldName ? updatedModel : m))
+    )
+  }
+
+  const handleDelete = (name: string) => {
+    setModels((prev) => prev.filter((m) => m.provider !== name))
+  }
+
+  const handleToggleStatus = (name: string) => {
+    setModels((prev) =>
+      prev.map((m) =>
+        m.provider === name
+          ? { ...m, status: m.status === "Activo" ? "Inactivo" : "Activo" }
+          : m
+      )
+    )
+  }
 
   return (
     <>
@@ -22,7 +71,7 @@ export function AiEmbeddingsSection() {
           </p>
         </div>
 
-        <AiModelsTable onDialogChange={setDialog} />
+        <AiModelsTable models={models} onDialogChange={setDialog} />
 
         <div className="rounded-lg border border-border bg-background/75 p-3">
           <h3 className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -41,7 +90,15 @@ export function AiEmbeddingsSection() {
         </div>
       </div>
 
-      <SettingsDialogs dialog={dialog} onOpenChange={setDialog} />
+      <SettingsDialogs
+        dialog={dialog}
+        onOpenChange={setDialog}
+        models={models}
+        onAdd={handleAdd}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onToggleStatus={handleToggleStatus}
+      />
     </>
   )
 }

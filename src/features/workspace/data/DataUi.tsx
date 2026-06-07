@@ -1,6 +1,7 @@
-import { CheckCircle2Icon, Clock3Icon } from "lucide-react"
+import { CheckCircle2Icon, Clock3Icon, AlertTriangleIcon, XCircleIcon } from "lucide-react"
 
-import type { DataAssetStatus, SyncEvent } from "@/features/workspace/data/data-data"
+import type { AssetStatus as AssetStatusType, SyncEventType } from "@/types/data"
+import { statusLabel, eventTypeLabel } from "@/features/workspace/data/data-data"
 import { cn } from "@/lib/utils"
 
 export function Metric({ label, value }: { label: string; value: string }) {
@@ -23,39 +24,53 @@ export function Info({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function AssetStatus({ status }: { status: DataAssetStatus }) {
+export function AssetStatusBadge({ status }: { status: AssetStatusType }) {
   return (
     <span
       className={cn(
         "inline-flex h-5 w-fit items-center rounded-md px-2 text-[0.7rem] font-medium",
-        status === "Indexado" &&
+        status === "ready" &&
           "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300",
-        status === "Sincronizando" &&
+        status === "indexing" &&
           "bg-sky-500/10 text-sky-700 [.geo-dark_&]:text-sky-300 [.graphite_&]:text-sky-300 [.midnight_&]:text-sky-300",
-        status === "Pendiente" && "bg-muted text-muted-foreground",
-        status === "Conflicto" && "bg-destructive/10 text-destructive"
+        status === "pending" && "bg-muted text-muted-foreground",
+        status === "conflict" && "bg-amber-500/10 text-amber-700 [.geo-dark_&]:text-amber-300 [.graphite_&]:text-amber-300 [.midnight_&]:text-amber-300",
+        status === "error" && "bg-destructive/10 text-destructive"
       )}
     >
-      {status}
+      {statusLabel[status]}
     </span>
   )
 }
 
-export function EventStatus({ status }: { status: SyncEvent["status"] }) {
-  const Icon = status === "ok" ? CheckCircle2Icon : Clock3Icon
+export function EventStatusBadge({ eventType }: { eventType: SyncEventType }) {
+  const Icon =
+    eventType === "indexed" || eventType === "downloaded" || eventType === "discovered"
+      ? CheckCircle2Icon
+      : eventType === "error"
+        ? XCircleIcon
+        : eventType === "conflict"
+          ? AlertTriangleIcon
+          : Clock3Icon
+
+  const colorClass =
+    eventType === "indexed" || eventType === "downloaded" || eventType === "discovered"
+      ? "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300"
+      : eventType === "error"
+        ? "bg-destructive/10 text-destructive"
+        : eventType === "conflict"
+          ? "bg-amber-500/10 text-amber-700 [.geo-dark_&]:text-amber-300"
+          : "bg-muted text-muted-foreground"
 
   return (
     <span
       className={cn(
         "inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[0.68rem] font-medium",
-        status === "ok" &&
-          "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300",
-        status === "queued" && "bg-muted text-muted-foreground",
-        status === "blocked" && "bg-destructive/10 text-destructive"
+        colorClass
       )}
     >
       <Icon className="size-3" />
-      {status}
+      {eventTypeLabel[eventType]}
     </span>
   )
 }

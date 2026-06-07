@@ -13,8 +13,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Info, Metric } from "@/features/workspace/data/DataUi"
-import type { DataAsset } from "@/features/workspace/data/data-data"
+import {
+  cacheLabel,
+  formatBytes,
+  formatRelativeTime,
+  statusLabel,
+} from "@/features/workspace/data/data-data"
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
+import type { DataAsset } from "@/types/data"
 
 type AssetSheetProps = {
   asset?: DataAsset
@@ -37,7 +43,7 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
             <div className="min-w-0">
               <SheetTitle className="text-base">{asset.name}</SheetTitle>
               <SheetDescription className="mt-1">
-                {asset.source} / {asset.size} / {asset.updated}
+                {asset.source} / {formatBytes(asset.size_bytes)} / {formatRelativeTime(asset.updated_at)}
               </SheetDescription>
             </div>
           </div>
@@ -47,14 +53,14 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
           <div className="grid grid-cols-3 gap-2">
             <Metric label="Chunks" value={String(asset.chunks)} />
             <Metric label="Vectores" value={String(asset.embeddings)} />
-            <Metric label="Nodos" value={String(asset.graphNodes)} />
+            <Metric label="Nodos" value={String(asset.graph_nodes)} />
           </div>
 
           <section className="rounded-lg border border-border bg-background/75 p-3">
             <h3 className="text-sm font-semibold">Estado operativo</h3>
             <div className="mt-2 grid gap-2 text-sm">
-              <Info label="Estado" value={asset.status} />
-              <Info label="Cache" value={asset.cacheState} />
+              <Info label="Estado" value={statusLabel[asset.status]} />
+              <Info label="Cache" value={cacheLabel[asset.cache_state]} />
               <Info label="Ruta" value={asset.location} />
             </div>
           </section>
@@ -62,7 +68,7 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
           <section className="rounded-lg border border-border bg-background/75 p-3">
             <h3 className="text-sm font-semibold">Lineage</h3>
             <div className="mt-3 grid gap-2">
-              {asset.lineage.map((step, index) => (
+              {getLineageSteps(asset).map((step, index) => (
                 <div key={`${step}-${index}`} className="flex items-center gap-2">
                   <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[0.65rem] font-semibold text-primary">
                     {index + 1}
@@ -89,4 +95,48 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
       </SheetContent>
     </Sheet>
   )
+}
+
+/** Genera pasos de lineage basado en el source del asset */
+function getLineageSteps(asset: DataAsset): string[] {
+  const steps: string[] = []
+
+  // Source
+  const sourceNames: Record<string, string> = {
+    onedrive: "OneDrive",
+    sharepoint: "SharePoint",
+    google_drive: "Google Drive",
+    dropbox: "Dropbox",
+    s3: "Amazon S3",
+    local: "Carpeta local",
+  }
+  steps.push(sourceNames[asset.source] ?? asset.source)
+
+  // Cache
+  if (asset.cache_state !== "none") {
+    steps.push("Cache local")
+  }
+
+  // Indexer
+  const indexerNames: Record<string, string> = {
+    document: "Extractor PDF/DOCX",
+    layer: "Indexador GIS",
+    shapefile: "Indexador GIS",
+    csv: "Parser CSV",
+    raster: "Indexador Raster",
+    other: "Indexador genérico",
+  }
+  steps.push(indexerNames[asset.kind] ?? "Indexador")
+
+  // ChromaDB (if has embeddings)
+  if (asset.embeddings > 0) {
+    steps.push("ChromaDB")
+  }
+
+  // Knowledge Graph (if has graph nodes)
+  if (asset.graph_nodes > 0) {
+    steps.push("Knowledge Graph")
+  }
+
+  return steps
 }

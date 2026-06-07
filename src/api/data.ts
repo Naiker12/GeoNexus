@@ -1,10 +1,13 @@
+import type {
+  AssetValidation,
+  DataAsset,
+  DataStoreMetrics,
+  SyncEvent,
+} from "@/types/data"
 import {
   dataAssets,
-  dataStores,
+  defaultMetrics,
   syncEvents,
-  type DataAsset,
-  type DataStoreMetric,
-  type SyncEvent,
 } from "@/features/workspace/data/data-data"
 
 type InvokeFn = <T>(command: string, args?: Record<string, unknown>) => Promise<T>
@@ -44,23 +47,56 @@ async function invokeOrFallback<T>(
 export function listDataAssets(
   projectId = DEFAULT_PROJECT_ID
 ): Promise<DataAsset[]> {
-  return invokeOrFallback("list_data_assets", { projectId }, dataAssets)
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback("list_data_assets", { project_id: projectId }, dataAssets)
 }
 
-export function getDataAsset(assetId: string): Promise<DataAsset | undefined> {
+export function getDataAsset(assetId: string): Promise<DataAsset | null> {
+  if (!assetId.trim()) throw new Error("asset_id requerido")
   return invokeOrFallback(
     "get_data_asset",
-    { assetId },
-    dataAssets.find((asset) => asset.id === assetId)
+    { asset_id: assetId },
+    dataAssets.find((a) => a.id === assetId) ?? null
   )
 }
 
 export function getDataStoreMetrics(
   projectId = DEFAULT_PROJECT_ID
-): Promise<DataStoreMetric[]> {
-  return invokeOrFallback("get_data_store_metrics", { projectId }, dataStores)
+): Promise<DataStoreMetrics> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback(
+    "get_data_store_metrics",
+    { project_id: projectId },
+    defaultMetrics
+  )
 }
 
-export function getSyncEvents(projectId = DEFAULT_PROJECT_ID): Promise<SyncEvent[]> {
-  return invokeOrFallback("get_sync_events", { projectId }, syncEvents)
+export function getSyncEvents(
+  projectId = DEFAULT_PROJECT_ID,
+  limit = 50
+): Promise<SyncEvent[]> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback(
+    "get_sync_events",
+    { project_id: projectId, limit },
+    syncEvents
+  )
+}
+
+export function validateDataAsset(assetId: string): Promise<AssetValidation> {
+  if (!assetId.trim()) throw new Error("asset_id requerido")
+
+  // Fallback local cuando no hay Tauri
+  const fallback: AssetValidation = {
+    asset_id: assetId,
+    file_exists: false,
+    path_allowed: false,
+    metadata_ok: false,
+    cache_valid: false,
+    chunks_exist: false,
+    is_ready: false,
+    issues: ["Tauri no disponible — validación solo en app nativa"],
+  }
+
+  return invokeOrFallback("validate_data_asset", { asset_id: assetId }, fallback)
 }

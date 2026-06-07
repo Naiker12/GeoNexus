@@ -1,10 +1,8 @@
 import * as React from "react"
-import { KeyRoundIcon } from "lucide-react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
-import { Button } from "@/components/ui/Button"
-import { AiSummaryCards } from "@/features/workspace/ai-containers/AiSummaryCards"
-import { ProviderOptionCard } from "@/features/workspace/ai-containers/ProviderOptionCard"
+import { ActiveProviderPanel } from "@/features/workspace/ai-containers/ActiveProviderPanel"
+import { AiContainersHeader } from "@/features/workspace/ai-containers/AiContainersHeader"
+import { ConfiguredProvidersList } from "@/features/workspace/ai-containers/ConfiguredProvidersList"
 import { ProviderSetupDialog } from "@/features/workspace/ai-containers/ProviderSetupDialog"
 import {
   providerOptions,
@@ -13,93 +11,83 @@ import {
 import { aiConnectors } from "@/features/workspace/workspace-data"
 
 export function AiContainersPage() {
-  const [selectedProvider, setSelectedProvider] =
-    React.useState<ProviderOption | null>(null)
-  const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [configDialogOpen, setConfigDialogOpen] = React.useState(false)
+  const [setupOption, setSetupOption] = React.useState<ProviderOption | null>(
+    null
+  )
+  const [activeProvider, setActiveProvider] =
+    React.useState<ProviderOption | null>(providerOptions[0])
+  const [testingProviderId, setTestingProviderId] = React.useState<
+    string | null
+  >(null)
 
-  const openProviderDialog = (option: ProviderOption) => {
-    setSelectedProvider(option)
-    setDialogOpen(true)
+  const handleConfig = (option: ProviderOption) => {
+    setSetupOption(option)
+    setConfigDialogOpen(true)
   }
 
-  const selectedConnector = selectedProvider
-    ? aiConnectors.find((connector) => connector.id === selectedProvider.id)
+  const handleTest = (option: ProviderOption) => {
+    setTestingProviderId(option.id)
+    setActiveProvider(option) // Cambia el panel derecho de inmediato
+    
+    // Simula una latencia de red para ver el skeleton
+    setTimeout(() => {
+      setTestingProviderId(null)
+    }, 1500)
+  }
+
+  const handleAddProvider = () => {
+    handleConfig(providerOptions[0])
+  }
+
+  const handleConnectApi = () => {
+    const customApiOption = providerOptions.find((o) => o.id === "custom-api")
+    handleConfig(customApiOption ?? providerOptions[0])
+  }
+
+  const setupConnector = setupOption
+    ? aiConnectors.find((c) => c.id === setupOption.id)
     : undefined
+
+  const activeConnector = activeProvider
+    ? aiConnectors.find((c) => c.id === activeProvider.id)
+    : undefined
+
+  const isTestingActiveProvider = testingProviderId === activeProvider?.id
 
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-auto px-3 py-3 sm:px-5 sm:py-4">
-      <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-3">
-        <header className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
-          <div className="h-0.5 bg-[linear-gradient(90deg,var(--primary),transparent)]" />
-          <div className="p-3">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-2xl">
-                <div className="flex items-start gap-2.5">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-                    <GeoNexusIcon className="size-4" variant="agent" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-                      Conecta modelos, APIs y herramientas IA
-                    </h1>
-                    <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">
-                      Panel multi-LLM para Ollama, LM Studio, OpenRouter, APIs
-                      directas y MCP, siguiendo la arquitectura offline-first de
-                      GeoNexus.
-                    </p>
-                  </div>
-                </div>
-              </div>
+      <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-5">
+        <AiContainersHeader
+          connectors={aiConnectors}
+          onAddProvider={handleAddProvider}
+          onConnectApi={handleConnectApi}
+        />
 
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => openProviderDialog(providerOptions[0])}
-                >
-                  <GeoNexusIcon className="size-4" variant="agent" />
-                  Agregar modelo
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    openProviderDialog(
-                      providerOptions.find((option) => option.id === "custom-api") ??
-                        providerOptions[0]
-                    )
-                  }
-                >
-                  <KeyRoundIcon className="size-4" />
-                  Conectar por API
-                </Button>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
+          <ConfiguredProvidersList
+            options={providerOptions}
+            connectors={aiConnectors}
+            testingProviderId={testingProviderId}
+            onConfig={handleConfig}
+            onTest={handleTest}
+          />
 
-            <div className="mt-2.5">
-              <AiSummaryCards connectors={aiConnectors} />
-            </div>
-          </div>
-        </header>
-
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {providerOptions.map((option) => (
-            <ProviderOptionCard
-              key={option.id}
-              option={option}
-              connector={aiConnectors.find(
-                (connector) => connector.id === option.id
-              )}
-              onSelect={openProviderDialog}
+          <div className="sticky top-0">
+            <ActiveProviderPanel
+              activeOption={activeProvider}
+              activeConnector={activeConnector}
+              isTesting={isTestingActiveProvider}
             />
-          ))}
-        </section>
+          </div>
+        </div>
       </div>
 
       <ProviderSetupDialog
-        connector={selectedConnector}
-        open={dialogOpen}
-        option={selectedProvider}
-        onOpenChange={setDialogOpen}
+        connector={setupConnector}
+        open={configDialogOpen}
+        option={setupOption}
+        onOpenChange={setConfigDialogOpen}
       />
     </section>
   )

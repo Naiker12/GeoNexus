@@ -1,5 +1,7 @@
 import type { ComponentType, SVGProps } from "react"
 
+import { cn } from "@/lib/utils"
+
 type ProviderBrandIconProps = SVGProps<SVGSVGElement> & {
   providerId: string
   fallback?: ComponentType<{ className?: string }>
@@ -11,13 +13,18 @@ export function ProviderBrandIcon({
   ...props
 }: ProviderBrandIconProps) {
   const svglRoute = providerBrandRoutes[providerId]
+  const whiteIcons = ["ollama", "openai", "anthropic", "openrouter"]
+  const shouldInvert = whiteIcons.includes(providerId)
 
   if (svglRoute) {
     return (
       <img
         alt=""
         aria-hidden="true"
-        className={props.className}
+        className={cn(
+          props.className,
+          shouldInvert && "invert [.geo-dark_&]:invert-0 [.graphite_&]:invert-0 [.midnight_&]:invert-0"
+        )}
         src={svglRoute}
       />
     )

@@ -1,9 +1,10 @@
 import { SearchIcon } from "lucide-react"
 
 import { Input } from "@/components/ui/Input"
-import { AssetStatus } from "@/features/workspace/data/DataUi"
-import type { DataAsset } from "@/features/workspace/data/data-data"
+import { AssetStatusBadge } from "@/features/workspace/data/DataUi"
+import { formatRelativeTime } from "@/features/workspace/data/data-data"
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
+import type { DataAsset } from "@/types/data"
 
 type AssetCatalogProps = {
   assets: DataAsset[]
@@ -75,13 +76,13 @@ function AssetRow({
           {asset.source} / {asset.location}
         </p>
       </div>
-      <AssetStatus status={asset.status} />
+      <AssetStatusBadge status={asset.status} />
       <span className="text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{asset.chunks}</span>{" "}
         chunks
       </span>
       <span className="text-xs text-muted-foreground md:text-right">
-        {asset.updated}
+        {formatRelativeTime(asset.updated_at)}
       </span>
     </button>
   )

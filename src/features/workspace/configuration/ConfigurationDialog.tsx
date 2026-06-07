@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { ConfigurationFooter } from "@/features/workspace/configuration/ConfigurationFooter"
 import { ConfigurationHeader } from "@/features/workspace/configuration/ConfigurationHeader"
 import { ConfigurationSidebar } from "@/features/workspace/configuration/ConfigurationSidebar"
@@ -39,7 +39,8 @@ export function ConfigurationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(85vh,720px)] w-[min(96vw,960px)] flex-col overflow-hidden rounded-xl p-0">
+      <DialogContent className="flex h-[min(85vh,720px)] w-[min(96vw,960px)] flex-col overflow-hidden rounded-xl p-0" aria-describedby={undefined}>
+        <DialogTitle className="sr-only">Configuración</DialogTitle>
         <ConfigurationHeader />
 
         <div className="flex min-h-0 flex-1">

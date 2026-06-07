@@ -57,16 +57,19 @@ export function Field({
 export function CheckRow({
   label,
   checked = false,
+  onCheckedChange,
 }: {
   label: string
   checked?: boolean
+  onCheckedChange?: (checked: boolean) => void
 }) {
   return (
     <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card/70 px-2.5 py-2 text-sm">
       <span className="min-w-0 text-muted-foreground">{label}</span>
       <input
         type="checkbox"
-        defaultChecked={checked}
+        checked={checked}
+        onChange={(e) => onCheckedChange?.(e.target.checked)}
         className="size-4 accent-[var(--primary)]"
       />
     </label>

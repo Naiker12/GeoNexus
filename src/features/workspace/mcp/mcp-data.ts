@@ -17,6 +17,9 @@ export type McpServer = {
   tools: number
   description: string
   icon: LucideIcon
+  errors?: number
+  schemaStatus?: string
+  authMethod?: string
 }
 
 export type McpTool = {
@@ -42,9 +45,10 @@ export const mcpServers: McpServer[] = [
     name: "QGIS MCP",
     url: "localhost:7021",
     status: "online",
-    latency: "142 ms",
+    latency: "142ms",
     tools: 5,
-    description: "Procesamiento GIS complejo: buffers, distancia, capas, heatmaps y clustering.",
+    errors: 1,
+    description: "Geoprocesos, buffers, distancia, capas, heatmaps y clustering. PyQGIS directo.",
     icon: MapIcon,
   },
   {
@@ -52,9 +56,10 @@ export const mcpServers: McpServer[] = [
     name: "Memory MCP",
     url: "localhost:7011",
     status: "online",
-    latency: "38 ms",
+    latency: "38ms",
     tools: 3,
-    description: "Recupera normas POT, guarda contexto y consulta memoria semantica local.",
+    errors: 0,
+    description: "Recupera normas POT, guarda contexto y consulta memoria semantica via ChromaDB.",
     icon: MemoryStickIcon,
   },
   {
@@ -64,18 +69,20 @@ export const mcpServers: McpServer[] = [
     status: "planned",
     latency: "-",
     tools: 0,
-    description: "Sincronizacion futura con ArcGIS Online, Portal y servicios WMS/WFS externos.",
+    schemaStatus: "falta",
+    description: "Sincronizacion con ArcGIS Online, Portal y servicios WMS/WFS externos.",
     icon: Layers3Icon,
   },
   {
     id: "supabase-mcp",
     name: "Supabase MCP",
-    url: "mcp.supabase.com/mcp?read_only=true",
+    url: "mcp.supabase.com/mcp",
     status: "planned",
     latency: "-",
     tools: 4,
+    authMethod: "OAuth",
     description:
-      "Consulta Postgres/Supabase por MCP para schemas, SQL controlado, contexto de proyecto y auditorias de seguridad.",
+      "Consulta Postgres/Supabase: schemas, SQL controlado, contexto y auditorias.",
     icon: DatabaseIcon,
   },
 ]
