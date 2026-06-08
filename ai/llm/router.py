@@ -79,6 +79,59 @@ def ping_llm_provider(provider_type: str, base_url: str, model: str = "") -> Dic
         }
 
 
+def list_llm_models(provider_type: str, base_url: str) -> Dict:
+    """Lista modelos disponibles para un proveedor LLM."""
+    import requests
+
+    provider = provider_type.lower().strip()
+    url = base_url.rstrip("/")
+
+    try:
+        if provider == "ollama":
+            response = requests.get(f"{url}/api/tags", timeout=8)
+            response.raise_for_status()
+            data = response.json()
+            models = [
+                item.get("name", "")
+                for item in data.get("models", [])
+                if item.get("name")
+            ]
+        elif provider in OPENAI_COMPATIBLE_PROVIDERS:
+            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            headers = {}
+            if api_key:
+                headers["authorization"] = f"Bearer {api_key}"
+
+            response = requests.get(f"{url}/models", headers=headers, timeout=12)
+            response.raise_for_status()
+            data = response.json()
+            models = [
+                item.get("id", "")
+                for item in data.get("data", [])
+                if item.get("id")
+            ]
+        else:
+            return {
+                "status": "error",
+                "provider_type": provider,
+                "models": [],
+                "message": f"Listado de modelos no soportado para: {provider_type}",
+            }
+
+        return {
+            "status": "ok",
+            "provider_type": provider,
+            "models": sorted(models),
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "provider_type": provider,
+            "models": [],
+            "message": str(exc),
+        }
+
+
 def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str) -> Dict:
     """Envia un mensaje simple sin tools ni streaming a un proveedor LLM."""
     import requests

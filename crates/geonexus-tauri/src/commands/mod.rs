@@ -3,3 +3,4 @@ pub mod connector;
 pub mod document;
 pub mod containers_mcp;
 pub mod llm;
+pub mod chat;

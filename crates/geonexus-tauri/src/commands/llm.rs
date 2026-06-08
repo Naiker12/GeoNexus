@@ -17,6 +17,13 @@ pub struct LlmChatRequest {
     pub prompt: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LlmModelsRequest {
+    pub provider_type: String,
+    pub endpoint: String,
+    pub api_key: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmPingResult {
     pub status: String,
@@ -32,6 +39,14 @@ pub struct LlmChatResult {
     pub provider_type: String,
     pub model: Option<String>,
     pub text: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LlmModelsResult {
+    pub status: String,
+    pub provider_type: String,
+    pub models: Vec<String>,
     pub message: Option<String>,
 }
 
@@ -91,7 +106,56 @@ pub async fn send_llm_message(request: LlmChatRequest) -> Result<LlmChatResult, 
         .map_err(|e| format!("Error deserializando chat LLM: {e}. Output: {output}"))
 }
 
-fn run_sidecar(args: &[&str]) -> Result<String, String> {
+#[tauri::command]
+pub async fn list_llm_models(request: LlmModelsRequest) -> Result<LlmModelsResult, String> {
+    if request.provider_type.trim().is_empty() {
+        return Err("provider_type requerido".into());
+    }
+    if request.endpoint.trim().is_empty() {
+        return Err("endpoint requerido".into());
+    }
+
+    let output = run_sidecar_with_api_key(
+        &[
+            "--action",
+            "list_llm_models",
+            "--provider_type",
+            &request.provider_type,
+            "--base_url",
+            &request.endpoint,
+        ],
+        &request.provider_type,
+        request.api_key.as_deref(),
+    )?;
+
+    serde_json::from_str(&output)
+        .map_err(|e| format!("Error deserializando modelos LLM: {e}. Output: {output}"))
+}
+
+pub(crate) fn run_sidecar(args: &[&str]) -> Result<String, String> {
+    run_sidecar_with_env(args, None)
+}
+
+fn run_sidecar_with_api_key(
+    args: &[&str],
+    provider_type: &str,
+    api_key: Option<&str>,
+) -> Result<String, String> {
+    let Some(clean_key) = api_key.map(str::trim).filter(|key| !key.is_empty()) else {
+        return run_sidecar(args);
+    };
+
+    let provider = provider_type.trim().to_lowercase();
+    let key_name = if provider == "openrouter" {
+        "OPENROUTER_API_KEY"
+    } else {
+        "OPENAI_API_KEY"
+    };
+
+    run_sidecar_with_env(args, Some((key_name, clean_key)))
+}
+
+fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<String, String> {
     let root_path = project_root();
     let python_exe = python_executable(&root_path);
     let sidecar_script = root_path.join("ai").join("sidecar.py");
@@ -103,10 +167,13 @@ fn run_sidecar(args: &[&str]) -> Result<String, String> {
         ));
     }
 
-    let output = std::process::Command::new(&python_exe)
-        .arg(&sidecar_script)
-        .args(args)
-        .current_dir(&root_path)
+    let mut command = std::process::Command::new(&python_exe);
+    command.arg(&sidecar_script).args(args).current_dir(&root_path);
+    if let Some((key, value)) = env_var {
+        command.env(key, value);
+    }
+
+    let output = command
         .output()
         .map_err(|e| format!("Fallo al ejecutar sidecar Python: {e}"))?;
 

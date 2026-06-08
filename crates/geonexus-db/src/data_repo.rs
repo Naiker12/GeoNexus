@@ -1,5 +1,6 @@
 use std::path::Path;
-use sqlx::{SqlitePool, Row};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::{ConnectOptions, SqlitePool, Row};
 use geonexus_core::{
     AssetKind, AssetStatus, AssetValidation, CacheState, DataAsset, DataStoreMetrics, SyncEvent,
     SyncEventType, DocumentChunk, GraphNode, GraphEdge,
@@ -14,18 +15,26 @@ pub struct DataRepository {
 
 impl DataRepository {
     /// Inicializa la base de datos, ejecuta las migraciones y si está vacía, inserta datos semilla.
-    pub async fn new(db_url: &str) -> Result<Self, String> {
+    pub async fn new<P: AsRef<Path>>(db_path: P) -> Result<Self, String> {
+        let db_path = db_path.as_ref();
+
         // Asegurar la existencia del directorio padre si es una ruta local de archivo
-        if let Some(clean_path) = db_url.strip_prefix("sqlite://") {
-            if let Some(parent) = Path::new(clean_path).parent() {
-                if !parent.as_os_str().is_empty() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
+        if let Some(parent) = db_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("Error creando directorio de SQLite: {e}"))?;
             }
         }
 
-        // Conectar a la base de datos (crea el archivo automáticamente si no existe)
-        let pool = SqlitePool::connect(db_url)
+        // Conectar a la base de datos usando la ruta de archivo directa.
+        // En Windows el archivo no existe al inicio, así que hay que habilitar create_if_missing.
+        let options = SqliteConnectOptions::new()
+            .filename(db_path)
+            .create_if_missing(true)
+            .disable_statement_logging();
+
+        let pool = SqlitePoolOptions::new()
+            .connect_with(options)
             .await
             .map_err(|e| format!("Error conectando a SQLite: {e}"))?;
 

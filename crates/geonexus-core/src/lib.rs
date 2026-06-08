@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod allowlist;
+pub mod chat;
 pub mod connector;
 pub mod local_connector;
 

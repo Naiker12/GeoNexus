@@ -20,11 +20,24 @@ export type LlmChatRequest = {
   prompt: string
 }
 
+export type LlmModelsRequest = {
+  provider_type: string
+  endpoint: string
+  api_key?: string
+}
+
 export type LlmChatResult = {
   status: "ok" | "error"
   provider_type: string
   model?: string | null
   text?: string | null
+  message?: string | null
+}
+
+export type LlmModelsResult = {
+  status: "ok" | "error"
+  provider_type: string
+  models: string[]
   message?: string | null
 }
 
@@ -64,4 +77,10 @@ export function sendLlmMessage(
   request: LlmChatRequest
 ): Promise<LlmChatResult> {
   return invokeRequired("send_llm_message", { request })
+}
+
+export function listLlmModels(
+  request: LlmModelsRequest
+): Promise<LlmModelsResult> {
+  return invokeRequired("list_llm_models", { request })
 }

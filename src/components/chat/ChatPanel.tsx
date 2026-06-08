@@ -1,3 +1,4 @@
+import * as React from "react"
 import {
   AudioLinesIcon,
   BrainCircuitIcon,
@@ -35,6 +36,8 @@ import {
   InputGroupControl,
 } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/Textarea"
+import { ChatTranscript } from "@/components/chat/ChatTranscript"
+import { useChatSession } from "@/components/chat/useChatSession"
 import {
   type AiConnector,
 } from "@/features/workspace/workspace-data"
@@ -44,13 +47,25 @@ type ChatPanelProps = {
 }
 
 export function ChatPanel({ models }: ChatPanelProps) {
+  const { activeProvider, error, messages, pending, submit } = useChatSession(models)
+
   return (
     <section className="relative z-10 mx-auto flex h-[calc(100svh-3.5rem)] w-full max-w-6xl flex-col px-4 sm:px-5">
       <div className="min-h-0 flex-1 overflow-auto pb-36 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <EmptyChatState />
+        {messages.length > 0 || pending ? (
+          <ChatTranscript messages={messages} pending={pending} />
+        ) : (
+          <EmptyChatState />
+        )}
       </div>
 
-      <ChatComposer models={models} />
+      <ChatComposer
+        activeProvider={activeProvider}
+        error={error}
+        models={models}
+        pending={pending}
+        onSubmit={submit}
+      />
     </section>
   )
 }
@@ -74,10 +89,35 @@ function EmptyChatState() {
   )
 }
 
-function ChatComposer({ models }: { models: AiConnector[] }) {
+function ChatComposer({
+  activeProvider,
+  error,
+  models,
+  pending,
+  onSubmit,
+}: {
+  activeProvider: { provider: string; model: string; endpoint: string }
+  error: string | null
+  models: AiConnector[]
+  pending: boolean
+  onSubmit: (content: string) => void
+}) {
+  const [value, setValue] = React.useState("")
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const clean = value.trim()
+    if (!clean || pending) return
+    setValue("")
+    onSubmit(clean)
+  }
+
   return (
     <div className="pointer-events-none absolute inset-x-4 bottom-4 mx-auto max-w-3xl sm:inset-x-5 sm:bottom-5">
-      <div className="pointer-events-auto rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+      <form
+        className="pointer-events-auto rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+        onSubmit={handleSubmit}
+      >
         <InputGroup className="min-h-12 items-center rounded-xl bg-background/95 py-1">
           <InputGroupAddon className="items-center">
             <ToolMenu />
@@ -85,22 +125,32 @@ function ChatComposer({ models }: { models: AiConnector[] }) {
           <InputGroupControl className="flex items-center">
             <Textarea
               rows={1}
+              value={value}
               className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
               placeholder="Pregunta lo que quieras"
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault()
+                  event.currentTarget.form?.requestSubmit()
+                }
+              }}
             />
           </InputGroupControl>
           <InputGroupAddon className="items-center">
-            <Button variant="ghost" size="icon-sm" aria-label="Grabar audio">
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Grabar audio">
               <MicIcon className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Modo voz">
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Modo voz">
               <AudioLinesIcon className="size-4" />
             </Button>
             <ModelMenu models={models} />
             <Button
+              type="submit"
               size="icon"
               className="rounded-xl"
               aria-label="Enviar mensaje"
+              disabled={pending || !value.trim()}
             >
               <SendIcon className="size-4" />
             </Button>
@@ -108,12 +158,21 @@ function ChatComposer({ models }: { models: AiConnector[] }) {
         </InputGroup>
 
         <div className="mt-2 flex flex-wrap gap-1.5 px-2">
-          <Button variant="outline" size="sm">
+          <Button type="button" variant="outline" size="sm">
             <SparklesIcon className="size-4" />
             Usar contexto GIS
           </Button>
+          <span className="inline-flex min-h-8 items-center rounded-md bg-muted px-2 text-xs text-muted-foreground">
+            {activeProvider.provider} / {activeProvider.model}
+          </span>
         </div>
-      </div>
+
+        {error ? (
+          <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
+      </form>
     </div>
   )
 }
@@ -123,6 +182,7 @@ function ToolMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          type="button"
           variant="secondary"
           size="icon"
           className="rounded-xl"
@@ -199,6 +259,7 @@ function ModelMenu({ models }: { models: AiConnector[] }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          type="button"
           variant="ghost"
           size="icon-sm"
           aria-label="Modelos y conexiones"

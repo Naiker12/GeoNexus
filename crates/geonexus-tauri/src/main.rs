@@ -19,11 +19,10 @@ fn main() {
                 .app_data_dir()
                 .unwrap_or_else(|_| std::env::current_dir().unwrap());
             let db_path = app_data_dir.join("geonexus.db");
-            let db_url = format!("sqlite://{}", db_path.to_string_lossy());
 
             // Inicializar el repositorio asincrónicamente usando el runtime de Tauri
             let repo = tauri::async_runtime::block_on(async {
-                DataRepository::new(&db_url).await
+                DataRepository::new(&db_path).await
             })?;
 
             let db = repo.pool.clone();
@@ -55,7 +54,12 @@ fn main() {
             commands::containers_mcp::dispatch_container_tool,
             // Fase 6
             commands::llm::ping_llm_provider,
-            commands::llm::send_llm_message
+            commands::llm::list_llm_models,
+            commands::llm::send_llm_message,
+            // Fase 7
+            commands::chat::send_message,
+            commands::chat::list_conversations,
+            commands::chat::list_messages
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

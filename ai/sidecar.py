@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from docs.reader import extract_text
-from llm.router import chat_llm_provider, ping_llm_provider
+from llm.router import chat_llm_provider, list_llm_models, ping_llm_provider
 from pipeline.indexer import index_document_file
 
 
@@ -15,7 +15,7 @@ def main() -> None:
     parser.add_argument(
         "--action",
         required=True,
-        choices=["index", "extract", "ping_llm", "chat_llm"],
+        choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models"],
         help="Accion a realizar",
     )
     parser.add_argument("--file", default="", help="Ruta al archivo")
@@ -46,6 +46,12 @@ def main() -> None:
                 args.prompt,
             )
         )
+        return
+
+    if args.action == "list_llm_models":
+        if not args.provider_type or not args.base_url:
+            _print_error("provider_type y base_url son requeridos")
+        _print_json(list_llm_models(args.provider_type, args.base_url))
         return
 
     if not args.file:
