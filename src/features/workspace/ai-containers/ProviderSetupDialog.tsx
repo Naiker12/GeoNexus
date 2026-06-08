@@ -1,4 +1,4 @@
-import { KeyRoundIcon, PlugZapIcon, RefreshCwIcon } from "lucide-react"
+import { KeyRoundIcon, RefreshCwIcon } from "lucide-react"
 import * as React from "react"
 
 import { listLlmModels } from "@/api/llm"
@@ -57,7 +57,49 @@ export function ProviderSetupDialog({
     setApiKey("")
     setModels(nextModel ? [nextModel] : option.models)
     setModelError(null)
+    
+    // Auto-load models cuando se abre el diálogo con endpoint válido
+    if (nextEndpoint && nextEndpoint.trim()) {
+      autoLoadModels(option.id, nextEndpoint)
+    }
   }, [connector, open, option])
+
+  // Auto-load models cuando cambia el endpoint (patrón Odysseus)
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (endpoint.trim() && !loadingModels) {
+        autoLoadModels(option?.id || "", endpoint)
+      }
+    }, 800) // Espera 800ms para que usuario termine de escribir
+    
+    return () => clearTimeout(timer)
+  }, [endpoint, option])
+
+  const autoLoadModels = async (providerId: string, endpointUrl: string) => {
+    if (!providerId || !endpointUrl.trim()) return
+
+    setLoadingModels(true)
+    setModelError(null)
+
+    try {
+      const result = await listLlmModels({
+        provider_type: providerId,
+        endpoint: endpointUrl,
+        api_key: apiKey.trim() || undefined,
+      })
+
+      if (result.status === "ok") {
+        setModels(result.models)
+        if (result.models.length > 0 && !model) {
+          setModel(result.models[0])
+        }
+      }
+    } catch (error) {
+      // Silencioso en auto-load - no mostrar error mientras escribe
+    } finally {
+      setLoadingModels(false)
+    }
+  }
 
   const handleLoadModels = async () => {
     if (!option) return
@@ -90,6 +132,15 @@ export function ProviderSetupDialog({
         setModel((current) =>
           current && result.models.includes(current) ? current : result.models[0]
         )
+        // Auto-show success toast
+        const toast = (window as any).__toastRef
+        if (toast) {
+          toast({
+            title: "Modelos detectados",
+            description: `Se cargaron ${result.models.length} modelos disponibles.`,
+            variant: "success",
+          })
+        }
       } else {
         setModel("")
         setModelError("El proveedor respondio, pero no devolvio modelos.")
@@ -197,63 +248,67 @@ export function ProviderSetupDialog({
                 variant="outline"
                 size="sm"
                 onClick={handleLoadModels}
-                disabled={loadingModels}
+                disabled={loadingModels || !endpoint.trim()}
               >
                 {loadingModels ? (
                   <RefreshCwIcon className="size-4 animate-spin" />
                 ) : (
-                  <PlugZapIcon className="size-4" />
+                  <RefreshCwIcon className="size-4" />
                 )}
-                Probar y cargar
+                {loadingModels ? "Detectando..." : "Refrescar"}
               </Button>
             </div>
-            <NativeSelect
-              value={model}
-              onChange={(event) => setModel(event.target.value)}
-              disabled={models.length === 0}
-              className="h-9 rounded-lg"
-            >
-              {models.length > 0 ? (
-                models.map((item) => <option key={item}>{item}</option>)
-              ) : (
-                <option value="">Sin modelos detectados</option>
-              )}
-            </NativeSelect>
-            {modelError ? (
-              <p className="text-xs leading-4 text-destructive">{modelError}</p>
-            ) : null}
+
+            {loadingModels && models.length === 0 ? (
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground flex items-center gap-2">
+                <RefreshCwIcon className="size-4 animate-spin" />
+                Detectando modelos disponibles...
+              </div>
+            ) : modelError ? (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+                ⚠️ {modelError}
+              </div>
+            ) : models.length > 0 ? (
+              <NativeSelect
+                value={model}
+                onChange={(event) => setModel(event.target.value)}
+                className="h-9 rounded-lg"
+              >
+                {models.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </NativeSelect>
+            ) : (
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm text-muted-foreground">
+                Cargando modelos automáticamente cuando cambies el endpoint...
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-border bg-muted/45 px-3 py-2.5 text-sm leading-5 text-muted-foreground">
-            Al guardar, GeoNexus debe persistir la configuracion LLM y usar
-            keychain cuando exista clave segura.
+            Los modelos se detectan automáticamente al cambiar endpoint. 
+            Luego GeoNexus guardará la configuración en keychain cuando exista clave segura.
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-between">
+          <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               size="sm"
               type="button"
-              onClick={handleLoadModels}
-              disabled={loadingModels}
+              onClick={() => onOpenChange(false)}
             >
-              <PlugZapIcon className="size-4" />
-              Probar conexion
+              Cancelar
             </Button>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button size="sm" type="submit">
-                <KeyRoundIcon className="size-4" />
-                Guardar proveedor
-              </Button>
-            </div>
+            <Button 
+              size="sm" 
+              type="submit"
+              disabled={!model}
+            >
+              <KeyRoundIcon className="size-4" />
+              Guardar proveedor
+            </Button>
           </div>
         </form>
       </DialogContent>

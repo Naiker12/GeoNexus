@@ -79,12 +79,14 @@ export function AiContainersPage() {
         variant: result.status === "ok" ? "success" : "error",
       })
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "No fue posible ejecutar ping_llm_provider."
+      
       toast({
         title: "Prueba no disponible",
-        description:
-          error instanceof Error
-            ? error.message
-            : "No fue posible ejecutar ping_llm_provider.",
+        description: 
+          errorMsg === "Tauri no disponible"
+            ? "Asegúrate de estar ejecutando 'npm run tauri dev' (no 'npm run dev')"
+            : errorMsg,
         variant: "error",
       })
     } finally {

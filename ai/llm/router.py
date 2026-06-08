@@ -23,8 +23,41 @@ def ping_llm_provider(provider_type: str, base_url: str, model: str = "") -> Dic
     try:
         if provider == "ollama":
             response = requests.get(f"{url}/api/tags", timeout=3)
+        elif provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                return {
+                    "status": "needs-key",
+                    "provider_type": provider,
+                    "message": "OPENROUTER_API_KEY no esta configurado.",
+                }
+            headers = {
+                "authorization": f"Bearer {api_key}",
+                "http-referer": "https://geonexus.local",
+                "x-title": "GeoNexus",
+            }
+            response = requests.post(
+                f"{url}/chat/completions",
+                headers=headers,
+                json={
+                    "model": model or "openrouter/auto",
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 1,
+                },
+                timeout=8,
+            )
         elif provider in OPENAI_COMPATIBLE_PROVIDERS:
-            response = requests.get(f"{url}/models", timeout=5)
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key and provider != "lmstudio":
+                return {
+                    "status": "needs-key",
+                    "provider_type": provider,
+                    "message": f"{provider.upper()}_API_KEY no esta configurado.",
+                }
+            headers = {}
+            if api_key:
+                headers["authorization"] = f"Bearer {api_key}"
+            response = requests.get(f"{url}/models", headers=headers, timeout=5)
         elif provider == "anthropic":
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
@@ -96,12 +129,33 @@ def list_llm_models(provider_type: str, base_url: str) -> Dict:
                 for item in data.get("models", [])
                 if item.get("name")
             ]
+        elif provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                return {
+                    "status": "needs-key",
+                    "provider_type": provider,
+                    "models": [],
+                    "message": "OPENROUTER_API_KEY no esta configurado.",
+                }
+            headers = {
+                "authorization": f"Bearer {api_key}",
+                "http-referer": "https://geonexus.local",
+                "x-title": "GeoNexus",
+            }
+            response = requests.get(f"{url}/models", headers=headers, timeout=12)
+            response.raise_for_status()
+            data = response.json()
+            models = [
+                item.get("id", "")
+                for item in data.get("data", [])
+                if item.get("id")
+            ]
         elif provider in OPENAI_COMPATIBLE_PROVIDERS:
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            api_key = os.getenv("OPENAI_API_KEY")
             headers = {}
             if api_key:
                 headers["authorization"] = f"Bearer {api_key}"
-
             response = requests.get(f"{url}/models", headers=headers, timeout=12)
             response.raise_for_status()
             data = response.json()
@@ -159,8 +213,42 @@ def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str
                 "text": data.get("message", {}).get("content", ""),
             }
 
+        if provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                return {
+                    "status": "needs-key",
+                    "provider_type": provider,
+                    "model": model,
+                    "message": "OPENROUTER_API_KEY no esta configurado.",
+                }
+            headers = {
+                "authorization": f"Bearer {api_key}",
+                "http-referer": "https://geonexus.local",
+                "x-title": "GeoNexus",
+                "content-type": "application/json",
+            }
+            response = requests.post(
+                f"{url}/chat/completions",
+                headers=headers,
+                json={
+                    "model": model,
+                    "stream": False,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=60,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return {
+                "status": "ok",
+                "provider_type": provider,
+                "model": model,
+                "text": data.get("choices", [{}])[0].get("message", {}).get("content", ""),
+            }
+
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
-            api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            api_key = os.getenv("OPENAI_API_KEY")
             headers = {"content-type": "application/json"}
             if api_key:
                 headers["authorization"] = f"Bearer {api_key}"
