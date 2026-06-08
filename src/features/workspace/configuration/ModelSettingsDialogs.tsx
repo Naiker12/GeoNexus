@@ -105,7 +105,7 @@ export function ModelSettingsDialog({
               <Input
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
-                placeholder="OpenRouter"
+                placeholder="Proveedor"
                 required
               />
             </Field>
@@ -113,7 +113,7 @@ export function ModelSettingsDialog({
               <Input
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="claude-3.5-sonnet"
+                placeholder="Modelo"
                 required
               />
             </Field>
@@ -121,7 +121,7 @@ export function ModelSettingsDialog({
               <Input
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
-                placeholder="https://openrouter.ai/api/v1"
+                placeholder="Endpoint"
                 required
               />
             </Field>
@@ -129,7 +129,7 @@ export function ModelSettingsDialog({
               <Input
                 value={keychain}
                 onChange={(e) => setKeychain(e.target.value)}
-                placeholder="keychain: openrouter"
+                placeholder="Referencia keychain"
               />
             </Field>
           </div>
@@ -173,7 +173,7 @@ export function KeyReferenceDialog({
         </DialogHeader>
         <div className="grid gap-3 p-4">
           <code className="rounded-lg border border-border bg-[#090a0c] p-3 font-mono text-xs text-slate-300">
-            keychain:{name.toLowerCase()} / sk-****************
+            keychain:{name.toLowerCase()} / clave protegida
           </code>
           <DialogActions submitLabel="Copiar referencia" onCancel={() => onOpenChange(false)} />
         </div>

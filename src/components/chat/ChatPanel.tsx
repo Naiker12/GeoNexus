@@ -1,7 +1,6 @@
 import {
   AudioLinesIcon,
   BrainCircuitIcon,
-  CheckCircle2Icon,
   DatabaseIcon,
   FileUpIcon,
   GlobeIcon,
@@ -11,13 +10,11 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
-  RadarIcon,
   SendIcon,
   SparklesIcon,
 } from "lucide-react"
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
-import { AssistantMessage, MessageBubble } from "@/components/chat/MessageBubble"
 import { Button } from "@/components/ui/Button"
 import {
   DropdownMenu,
@@ -39,8 +36,6 @@ import {
 } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/Textarea"
 import {
-  aiConnectors,
-  recentAnalyses,
   type AiConnector,
 } from "@/features/workspace/workspace-data"
 
@@ -48,32 +43,11 @@ type ChatPanelProps = {
   models: AiConnector[]
 }
 
-const promptExamples = [
-  {
-    label: "Restricciones de suelo",
-    prompt: "Analiza la zona seleccionada y marca alertas POT",
-  },
-  {
-    label: "Resumen documental",
-    prompt: "Extrae normas clave de un documento POT",
-  },
-  {
-    label: "Buffer espacial",
-    prompt: "Calcula un radio de 300m y cruza capas cercanas",
-  },
-]
-
 export function ChatPanel({ models }: ChatPanelProps) {
-  const hasConversation = false
-
   return (
     <section className="relative z-10 mx-auto flex h-[calc(100svh-3.5rem)] w-full max-w-6xl flex-col px-4 sm:px-5">
       <div className="min-h-0 flex-1 overflow-auto pb-36 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {hasConversation ? (
-          <ConversationPreview />
-        ) : (
-          <EmptyChatState />
-        )}
+        <EmptyChatState />
       </div>
 
       <ChatComposer models={models} />
@@ -95,63 +69,12 @@ function EmptyChatState() {
           Consulta normas POT, analiza capas GIS, sube archivos o graba una
           nota de campo. El resultado aparece aqui cuando empieces a escribir.
         </p>
-        <div className="mt-6 grid gap-2 sm:grid-cols-3">
-          {promptExamples.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="group rounded-lg border border-border/80 bg-card/70 p-3 text-left shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
-            >
-              <span className="flex items-center gap-2 text-xs font-medium text-primary">
-                <span className="flex size-6 items-center justify-center rounded-md bg-primary/10">
-                  <RadarIcon className="size-3.5" />
-                </span>
-                {item.label}
-              </span>
-              <span className="mt-2 block text-sm leading-5 text-muted-foreground group-hover:text-foreground">
-                {item.prompt}
-              </span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   )
 }
 
-function ConversationPreview() {
-  return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 py-6">
-      <MessageBubble role="user" eyebrow="Tu">
-        <p className="font-medium">
-          Cuales son las restricciones de uso de suelo en la zona norte del
-          sector industrial?
-        </p>
-      </MessageBubble>
-      <AssistantMessage
-        title="GeoNexus IA"
-        summary="Analizando capas de zonificacion del POT 2024 para la zona norte..."
-        findings={[
-          {
-            title: "Normativa industrial",
-            text: "Permitido tipo II bajo impacto. Prohibido tipo III pesada.",
-          },
-          {
-            title: "Alturas maximas",
-            text: "Limite de 15 metros para estructuras operativas.",
-          },
-        ]}
-        warning={{
-          title: "Proteccion hidrica",
-          text: "Franja de retiro obligatoria de 30 metros respecto al canal principal.",
-        }}
-        toolCall={`qgis.query_layer(id="zonas_norte", filter="uso_suelo='industrial'")`}
-      />
-    </div>
-  )
-}
-
-function ChatComposer({ models }: { models: typeof aiConnectors }) {
+function ChatComposer({ models }: { models: AiConnector[] }) {
   return (
     <div className="pointer-events-none absolute inset-x-4 bottom-4 mx-auto max-w-3xl sm:inset-x-5 sm:bottom-5">
       <div className="pointer-events-auto rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl">
@@ -189,14 +112,6 @@ function ChatComposer({ models }: { models: typeof aiConnectors }) {
             <SparklesIcon className="size-4" />
             Usar contexto GIS
           </Button>
-          {recentAnalyses.slice(0, 2).map((item) => (
-            <span
-              key={item.traceId}
-              className="inline-flex h-7 items-center rounded-md border border-border bg-background px-2 text-xs text-muted-foreground"
-            >
-              {item.name}
-            </span>
-          ))}
         </div>
       </div>
     </div>
@@ -277,7 +192,7 @@ function ToolMenu() {
   )
 }
 
-function ModelMenu({ models }: { models: typeof aiConnectors }) {
+function ModelMenu({ models }: { models: AiConnector[] }) {
   const activeModel = models[0]
 
   return (
@@ -300,7 +215,7 @@ function ModelMenu({ models }: { models: typeof aiConnectors }) {
         <DropdownMenuLabel>Modelo activo</DropdownMenuLabel>
         {activeModel ? (
           <DropdownMenuItem className="gap-3 px-3 py-2">
-            <CheckCircle2Icon className="size-4 text-primary" />
+            <GeoNexusIcon className="size-4" variant="agent" />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
                 <span className="truncate font-medium">{activeModel.name}</span>
@@ -313,26 +228,45 @@ function ModelMenu({ models }: { models: typeof aiConnectors }) {
               </span>
             </span>
           </DropdownMenuItem>
-        ) : null}
+        ) : (
+          <DropdownMenuItem disabled className="gap-3 px-3 py-2">
+            <GeoNexusIcon className="size-4" variant="agent" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">
+                Sin modelo configurado
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                Conecta un proveedor para habilitar el chat
+              </span>
+            </span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
             <GeoNexusIcon className="size-4" variant="agent" />
             Cambiar modelo
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-60 rounded-xl p-2">
-            {models.map((connector) => (
-              <DropdownMenuItem key={connector.id} className="gap-3">
+            {models.length ? (
+              models.map((connector) => (
+                <DropdownMenuItem key={connector.id} className="gap-3">
+                  <GeoNexusIcon className="size-4" variant="agent" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">
+                      {connector.name}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {connector.model}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem disabled className="gap-3">
                 <GeoNexusIcon className="size-4" variant="agent" />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">
-                    {connector.name}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {connector.model}
-                  </span>
-                </span>
+                No hay modelos conectados
               </DropdownMenuItem>
-            ))}
+            )}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />

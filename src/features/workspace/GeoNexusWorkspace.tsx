@@ -21,7 +21,11 @@ export function GeoNexusWorkspace({
   configOpen,
   onConfigOpenChange,
 }: GeoNexusWorkspaceProps) {
-  const activeConnector = aiConnectors[0]
+  const activeConnector = aiConnectors[0] ?? {
+    name: "Sin proveedor",
+    model: "Sin modelo",
+    status: "offline" as const,
+  }
   const selectableModels = aiConnectors.filter((connector) =>
     ["chat", "embedding"].includes(connector.role)
   )

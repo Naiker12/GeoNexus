@@ -1,4 +1,4 @@
-// geonexus-mcp: MCP router/client placeholder
+pub mod containers;
 
 pub fn hello() -> &'static str {
     "geonexus-mcp"

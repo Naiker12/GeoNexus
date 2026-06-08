@@ -2,6 +2,7 @@ use tauri::State;
 use uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::AppState;
+use geonexus_core::{DataAsset, AssetKind, AssetStatus, CacheState};
 use geonexus_core::connector::{
     ConnectorConfig, ConnectorFile, ConnectorProvider,
     RegisterLocalConnectorInput, SyncReport,
@@ -31,9 +32,11 @@ pub async fn register_local_connector(
     let cfg = ConnectorConfig {
         id: Uuid::new_v4().to_string(),
         project_id: input.project_id,
+        workspace_id: input.workspace_id,
         provider: ConnectorProvider::Local,
         display_name: input.display_name,
         root_path: Some(input.root_path),
+        qgis_project_path: None,
         base_url: None,
         client_id: None,
         tenant_id: None,
@@ -114,13 +117,63 @@ pub async fn cache_connector_file(
     .await
     .map_err(|_| "Error al actualizar status".to_string())?;
 
+    // Obtener la configuración del conector para conocer project_id y workspace_id
+    let configs = connector_repo::list_connector_configs(&state.db, "")
+        .await
+        .map_err(|_| "Error al leer conectores".to_string())?;
+
+    let cfg = configs
+        .into_iter()
+        .find(|c| c.id == connector_id)
+        .ok_or_else(|| format!("Conector no encontrado: {connector_id}"))?;
+
+    let trace_id = Uuid::new_v4().to_string();
+    let now = unix_now();
+    let location = file.local_path.clone().unwrap_or_else(|| file.path.clone());
+
+    // Mapear proveedor del conector a string
+    let source_str = match cfg.provider {
+        ConnectorProvider::Local => "local",
+        ConnectorProvider::OneDrive => "onedrive",
+        ConnectorProvider::SharePoint => "sharepoint",
+        ConnectorProvider::GoogleDrive => "googledrive",
+        ConnectorProvider::Dropbox => "dropbox",
+        ConnectorProvider::S3 => "s3",
+    };
+
+    // Insertar/actualizar en la tabla de activos (data_assets / assets) en estado Pending
+    let asset = DataAsset {
+        id: file.id.clone(),
+        project_id: cfg.project_id.clone(),
+        workspace_id: cfg.workspace_id.clone(),
+        name: file.name.clone(),
+        kind: map_extension_to_kind(&file.name),
+        source: source_str.to_string(),
+        location,
+        agent_id: None,
+        connector_id: Some(connector_id.clone()),
+        status: AssetStatus::Pending,
+        size_bytes: file.size_bytes,
+        chunks: 0,
+        embeddings: 0,
+        graph_nodes: 0,
+        cache_state: CacheState::Cached,
+        trace_id: Some(trace_id.clone()),
+        created_at: now,
+        updated_at: now,
+    };
+
+    state.repo.upsert_data_asset(&asset).await?;
+
     // Registrar evento en sync_events
     insert_sync_event(
         &state.db,
         &file.connector_id,
+        Some(&asset.id),
         None,
         "downloaded",
-        Some(format!("Archivo cacheado: {}", file.name)),
+        Some(format!("Archivo cacheado y registrado como activo: {}", file.name)),
+        Some(&trace_id),
     )
     .await;
 
@@ -128,6 +181,24 @@ pub async fn cache_connector_file(
         sync_status: geonexus_core::connector::FileSyncStatus::Synced,
         ..file
     })
+}
+
+fn map_extension_to_kind(name: &str) -> AssetKind {
+    let ext = std::path::Path::new(name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    match ext.as_str() {
+        "pdf" => AssetKind::Document,
+        "docx" | "doc" => AssetKind::Word,
+        "xlsx" | "xls" => AssetKind::Excel,
+        "geojson" | "json" => AssetKind::Layer,
+        "shp" => AssetKind::Shapefile,
+        "csv" => AssetKind::Csv,
+        "tif" | "tiff" => AssetKind::Raster,
+        _ => AssetKind::Other,
+    }
 }
 
 /// Sincroniza el conector local: descubre cambios, actualiza connector_files
@@ -181,12 +252,15 @@ pub async fn sync_local_connector(
         }
     }
 
+    let trace_id = Uuid::new_v4().to_string();
     insert_sync_event(
         &state.db,
         &connector_id,
         None,
+        None,
         "discovered",
         Some(format!("{} archivos descubiertos", descubiertos_count)),
+        Some(&trace_id),
     )
     .await;
 
@@ -206,21 +280,26 @@ async fn insert_sync_event(
     pool: &sqlx::SqlitePool,
     connector_id: &str,
     asset_id: Option<&str>,
+    agent_id: Option<&str>,
     event_type: &str,
     detail: Option<String>,
+    trace_id: Option<&str>,
 ) {
     let id = Uuid::new_v4().to_string();
     let now = unix_now();
+    let trace_str = trace_id.unwrap_or("");
     let _ = sqlx::query(
-        "INSERT INTO sync_events (id, project_id, connector_id, asset_id, event_type, detail, created_at)
-         SELECT ?, project_id, ?, ?, ?, ?, ?
+        "INSERT INTO sync_events (id, project_id, workspace_id, connector_id, asset_id, agent_id, event_type, detail, trace_id, created_at)
+         SELECT ?, project_id, workspace_id, ?, ?, ?, ?, ?, ?, ?
          FROM connector_configs WHERE id = ?"
     )
     .bind(id)
     .bind(connector_id)
     .bind(asset_id)
+    .bind(agent_id)
     .bind(event_type)
     .bind(detail)
+    .bind(trace_str)
     .bind(now)
     .bind(connector_id)
     .execute(pool)

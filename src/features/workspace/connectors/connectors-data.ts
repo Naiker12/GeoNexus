@@ -175,7 +175,7 @@ export const connectorProviders: ConnectorProvider[] = [
     phase: "V2",
     auth: "API key / OAuth",
     scope: "Endpoints allowlist",
-    endpoint: "https://api.ejemplo.com",
+    endpoint: "Configurable",
     description: "Integra servicios REST para catastros, datos abiertos o sistemas internos.",
     accent: "text-violet-500 bg-violet-500/10 border-violet-500/20",
     formats: ["JSON", "GeoJSON", "CSV", "XML"],

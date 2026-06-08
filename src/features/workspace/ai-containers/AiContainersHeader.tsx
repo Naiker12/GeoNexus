@@ -2,7 +2,6 @@ import { KeyRoundIcon } from "lucide-react"
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { Button } from "@/components/ui/Button"
-import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 
 type AiContainersHeaderProps = {
@@ -53,8 +52,7 @@ export function AiContainersHeader({
                 Conecta modelos, APIs y herramientas IA
               </h1>
               <p className="mt-1 max-w-3xl truncate text-xs text-muted-foreground sm:text-sm">
-                multi-LLM · offline-first · ollama · openrouter · openai · vllm
-                · llama.cpp
+                Multi-LLM, offline-first, proveedores locales, cloud y MCP
               </p>
             </div>
           </div>

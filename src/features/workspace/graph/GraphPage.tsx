@@ -23,34 +23,73 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import {
-  graphEdges,
-  graphNodes,
-  type GraphEdge,
-  type GraphNode,
-  type GraphNodeType,
-} from "@/features/workspace/graph/graph-data"
 import { cn } from "@/lib/utils"
+import { listGraphNodes, listGraphEdges, rebuildKnowledgeGraph } from "@/api/data"
+import type { GraphEdge, GraphNode, GraphNodeType } from "@/types/data"
 
-type NodePosition = Pick<GraphNode, "x" | "y">
-
-const nodeById = new Map(graphNodes.map((node) => [node.id, node]))
-const initialPositions = Object.fromEntries(
-  graphNodes.map((node) => [node.id, { x: node.x, y: node.y }])
-) as Record<string, NodePosition>
+type NodePosition = { x: number; y: number }
 
 export function GraphPage() {
-  const [positions, setPositions] =
-    React.useState<Record<string, NodePosition>>(initialPositions)
+  const [nodes, setNodes] = React.useState<GraphNode[]>([])
+  const [edges, setEdges] = React.useState<GraphEdge[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [rebuilding, setRebuilding] = React.useState(false)
+  const [positions, setPositions] = React.useState<Record<string, NodePosition>>({})
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null)
   const [draggingNodeId, setDraggingNodeId] = React.useState<string | null>(null)
   const canvasRef = React.useRef<HTMLDivElement | null>(null)
   const dragMovedRef = React.useRef(false)
 
+  const loadGraphData = React.useCallback(async () => {
+    try {
+      const dbNodes = await listGraphNodes()
+      const dbEdges = await listGraphEdges()
+      setNodes(dbNodes)
+      setEdges(dbEdges)
+
+      const initialPositions: Record<string, NodePosition> = {}
+      dbNodes.forEach((node) => {
+        initialPositions[node.id] = { x: node.x, y: node.y }
+      })
+      setPositions(initialPositions)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadGraphData()
+  }, [loadGraphData])
+
+  const handleRebuild = async () => {
+    setRebuilding(true)
+    try {
+      await rebuildKnowledgeGraph()
+      await loadGraphData()
+    } catch (e) {
+      console.error(e)
+      alert(`Error al recalcular red: ${e}`)
+    } finally {
+      setRebuilding(false)
+    }
+  }
+
+  const nodeById = React.useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes])
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) : undefined
-  const selectedRelations = selectedNode
-    ? getNodeRelations(selectedNode.id)
-    : []
+
+  const selectedRelations = React.useMemo(() => {
+    if (!selectedNode) return []
+    return edges.flatMap((edge) => {
+      if (edge.source !== selectedNode.id && edge.target !== selectedNode.id) return []
+
+      const connectedNodeId = edge.source === selectedNode.id ? edge.target : edge.source
+      const connectedNode = nodeById.get(connectedNodeId)
+
+      return connectedNode ? [{ edge, connectedNode }] : []
+    })
+  }, [selectedNode, edges, nodeById])
 
   const updateNodePosition = React.useCallback(
     (nodeId: string, event: React.PointerEvent) => {
@@ -75,35 +114,44 @@ export function GraphPage() {
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-hidden px-3 py-3 sm:px-5 sm:py-4">
       <div className="mx-auto flex size-full max-w-[110rem] flex-col gap-3">
-        <GraphHeader />
+        <GraphHeader onRebuild={handleRebuild} rebuilding={rebuilding} />
 
         <section className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
           <GraphToolbar />
-          <GraphCanvas
-            canvasRef={canvasRef}
-            draggingNodeId={draggingNodeId}
-            positions={positions}
-            selectedNodeId={selectedNodeId}
-            onNodePointerDown={(nodeId, event) => {
-              dragMovedRef.current = false
-              setDraggingNodeId(nodeId)
-              event.currentTarget.setPointerCapture(event.pointerId)
-            }}
-            onNodePointerMove={(nodeId, event) => {
-              if (draggingNodeId !== nodeId) return
+          {loading ? (
+            <div className="flex size-full items-center justify-center gap-2 text-sm text-muted-foreground bg-background/75">
+              <RefreshCwIcon className="size-4 animate-spin" />
+              Cargando grafo de conocimiento...
+            </div>
+          ) : (
+            <GraphCanvas
+              canvasRef={canvasRef}
+              draggingNodeId={draggingNodeId}
+              positions={positions}
+              selectedNodeId={selectedNodeId}
+              nodes={nodes}
+              edges={edges}
+              onNodePointerDown={(nodeId, event) => {
+                dragMovedRef.current = false
+                setDraggingNodeId(nodeId)
+                event.currentTarget.setPointerCapture(event.pointerId)
+              }}
+              onNodePointerMove={(nodeId, event) => {
+                if (draggingNodeId !== nodeId) return
 
-              dragMovedRef.current = true
-              updateNodePosition(nodeId, event)
-            }}
-            onNodePointerUp={(nodeId, event) => {
-              if (draggingNodeId === nodeId && !dragMovedRef.current) {
-                setSelectedNodeId(nodeId)
-              }
+                dragMovedRef.current = true
+                updateNodePosition(nodeId, event)
+              }}
+              onNodePointerUp={(nodeId, event) => {
+                if (draggingNodeId === nodeId && !dragMovedRef.current) {
+                  setSelectedNodeId(nodeId)
+                }
 
-              event.currentTarget.releasePointerCapture(event.pointerId)
-              setDraggingNodeId(null)
-            }}
-          />
+                event.currentTarget.releasePointerCapture(event.pointerId)
+                setDraggingNodeId(null)
+              }}
+            />
+          )}
           <GraphLegend />
         </section>
       </div>
@@ -120,7 +168,7 @@ export function GraphPage() {
   )
 }
 
-function GraphHeader() {
+function GraphHeader({ onRebuild, rebuilding }: { onRebuild: () => void; rebuilding: boolean }) {
   return (
     <header className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -145,9 +193,9 @@ function GraphHeader() {
             <BrainCircuitIcon className="size-4" />
             Analizar con IA
           </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCwIcon className="size-4" />
-            Recalcular red
+          <Button variant="outline" size="sm" onClick={onRebuild} disabled={rebuilding}>
+            <RefreshCwIcon className={cn("size-4", rebuilding && "animate-spin")} />
+            {rebuilding ? "Recalculando..." : "Recalcular red"}
           </Button>
         </div>
       </div>
@@ -181,6 +229,8 @@ function GraphCanvas({
   onNodePointerDown,
   onNodePointerMove,
   onNodePointerUp,
+  nodes,
+  edges,
 }: {
   canvasRef: React.RefObject<HTMLDivElement>
   draggingNodeId: string | null
@@ -189,6 +239,8 @@ function GraphCanvas({
   onNodePointerDown: (nodeId: string, event: React.PointerEvent<HTMLButtonElement>) => void
   onNodePointerMove: (nodeId: string, event: React.PointerEvent<HTMLButtonElement>) => void
   onNodePointerUp: (nodeId: string, event: React.PointerEvent<HTMLButtonElement>) => void
+  nodes: GraphNode[]
+  edges: GraphEdge[]
 }) {
   return (
     <div
@@ -205,7 +257,7 @@ function GraphCanvas({
         aria-label="Red animada de conocimiento territorial"
         preserveAspectRatio="none"
       >
-        {graphEdges.map((edge) => {
+        {edges.map((edge) => {
           const source = positions[edge.source]
           const target = positions[edge.target]
           const active =
@@ -242,7 +294,7 @@ function GraphCanvas({
         })}
       </svg>
 
-      {graphNodes.map((node) => (
+      {nodes.map((node) => (
         <GraphNodeBubble
           key={node.id}
           dragging={draggingNodeId === node.id}
@@ -496,17 +548,6 @@ function NodeMetric({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-semibold leading-5">{value}</p>
     </div>
   )
-}
-
-function getNodeRelations(nodeId: string) {
-  return graphEdges.flatMap((edge) => {
-    if (edge.source !== nodeId && edge.target !== nodeId) return []
-
-    const connectedNodeId = edge.source === nodeId ? edge.target : edge.source
-    const connectedNode = nodeById.get(connectedNodeId)
-
-    return connectedNode ? [{ edge, connectedNode }] : []
-  })
 }
 
 function clamp(value: number, min: number, max: number) {

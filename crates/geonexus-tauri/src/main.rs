@@ -43,7 +43,19 @@ fn main() {
             commands::connector::register_local_connector,
             commands::connector::list_connector_files,
             commands::connector::cache_connector_file,
-            commands::connector::sync_local_connector
+            commands::connector::sync_local_connector,
+            // Fase 3
+            commands::document::index_document,
+            commands::document::list_document_chunks,
+            commands::document::list_graph_nodes,
+            commands::document::list_graph_edges,
+            commands::document::rebuild_knowledge_graph,
+            // Fase 4
+            commands::containers_mcp::init_containers_mcp,
+            commands::containers_mcp::dispatch_container_tool,
+            // Fase 6
+            commands::llm::ping_llm_provider,
+            commands::llm::send_llm_message
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

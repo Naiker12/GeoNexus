@@ -1159,6 +1159,10 @@ dependencies = [
 [[package]]
 name = "geonexus-mcp"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "geonexus-tauri"
@@ -1166,9 +1170,14 @@ version = "0.1.0"
 dependencies = [
  "geonexus-core",
  "geonexus-db",
+ "geonexus-mcp",
+ "serde",
+ "serde_json",
+ "sqlx",
  "tauri",
  "tauri-build",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

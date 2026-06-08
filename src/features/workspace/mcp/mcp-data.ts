@@ -187,39 +187,4 @@ export const mcpTools: McpTool[] = [
 ]
 
 export const mcpTraces: McpTrace[] = [
-  {
-    traceId: "trc-8f21",
-    tool: "buffer",
-    server: "qgis-mcp",
-    duration: "142 ms",
-    status: "ok",
-  },
-  {
-    traceId: "trc-44ad",
-    tool: "query_pot",
-    server: "memory-mcp",
-    duration: "38 ms",
-    status: "ok",
-  },
-  {
-    traceId: "trc-91c0",
-    tool: "distance",
-    server: "qgis-mcp",
-    duration: "queued",
-    status: "queued",
-  },
-  {
-    traceId: "trc-a12e",
-    tool: "load_layer",
-    server: "qgis-mcp",
-    duration: "blocked",
-    status: "blocked",
-  },
-  {
-    traceId: "trc-b77c",
-    tool: "supabase_execute_sql",
-    server: "supabase-mcp",
-    duration: "queued",
-    status: "queued",
-  },
 ]

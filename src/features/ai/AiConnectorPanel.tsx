@@ -42,7 +42,7 @@ export function AiConnectorPanel({ connectors }: AiConnectorPanelProps) {
           <div>
             <h2 className="font-semibold">Conectores IA</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Local primero: Ollama y LM Studio. Cloud solo con API key segura.
+              Local primero. Cloud solo con API key segura.
             </p>
           </div>
           <Button variant="outline" size="sm">
@@ -53,7 +53,8 @@ export function AiConnectorPanel({ connectors }: AiConnectorPanelProps) {
       </div>
 
       <div className="mt-4 space-y-3">
-        {connectors.map((connector) => {
+        {connectors.length ? (
+          connectors.map((connector) => {
           const meta = statusMeta[connector.status]
           const StatusIcon = meta.icon
 
@@ -90,7 +91,12 @@ export function AiConnectorPanel({ connectors }: AiConnectorPanelProps) {
               </div>
             </article>
           )
-        })}
+          })
+        ) : (
+          <div className="rounded-lg border border-border bg-background px-3 py-8 text-center text-sm text-muted-foreground">
+            Sin conectores IA configurados
+          </div>
+        )}
       </div>
     </section>
   )

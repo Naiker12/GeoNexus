@@ -1,7 +1,3 @@
-import {
-  BrainCircuitIcon,
-  FileTextIcon,
-} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 export type DocumentSource = {
@@ -48,49 +44,8 @@ export const documentSources: DocumentSource[] = [
   },
 ]
 
-export const documents: WorkspaceDocument[] = [
-  {
-    name: "GeoNexus_Arquitectura_Sistema.pdf",
-    source: "Subido",
-    type: "PDF",
-    status: "Analizado",
-    chunks: 42,
-    updated: "Hoy 12:00",
-  },
-  {
-    name: "POT Barranquilla 2024.pdf",
-    source: "OneDrive",
-    type: "PDF",
-    status: "Indexando",
-    chunks: 118,
-    updated: "Hoy 10:45",
-  },
-  {
-    name: "Anexos cartograficos.zip",
-    source: "Carpeta Windows",
-    type: "GIS",
-    status: "Listo",
-    chunks: 27,
-    updated: "Ayer",
-  },
-  {
-    name: "Resolucion uso de suelo.docx",
-    source: "OneDrive",
-    type: "DOCX",
-    status: "Pendiente",
-    chunks: 0,
-    updated: "Ayer",
-  },
-]
+export const documents: WorkspaceDocument[] = []
 
-export const aiFindings = [
-  "Arquitectura offline-first con conectores locales, cloud y MCP.",
-  "Los documentos se deben convertir en chunks versionados antes de pasar a memoria.",
-  "La IA necesita citas por archivo, pagina y seccion para responder con trazabilidad.",
-]
+export const aiFindings: string[] = []
 
-export const pipelineSteps: PipelineStepItem[] = [
-  { icon: FileTextIcon, label: "Extraer texto y metadatos", done: true },
-  { icon: BrainCircuitIcon, label: "Crear chunks y embeddings", done: true },
-  { icon: BrainCircuitIcon, label: "Enviar contexto al chat IA" },
-]
+export const pipelineSteps: PipelineStepItem[] = []

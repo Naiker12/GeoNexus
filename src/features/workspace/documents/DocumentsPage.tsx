@@ -23,21 +23,66 @@ import {
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
 import {
   documentSources,
-  documents,
-  type WorkspaceDocument,
 } from "@/features/workspace/documents/documents-data"
 import { cn } from "@/lib/utils"
+import { listDataAssets, indexDocument } from "@/api/data"
+import type { DataAsset } from "@/types/data"
 
 export function DocumentsPage() {
   const [oneDriveOpen, setOneDriveOpen] = React.useState(false)
+  const [assets, setAssets] = React.useState<DataAsset[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [indexingAssetId, setIndexingAssetId] = React.useState<string | null>(null)
+
+  const fetchAssets = React.useCallback(async () => {
+    try {
+      const data = await listDataAssets()
+      // Filtrar sólo assets documentales
+      const docTypes = ["document", "word", "excel", "other"]
+      const filtered = data.filter((a) => docTypes.includes(a.kind))
+      setAssets(filtered)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchAssets()
+  }, [fetchAssets])
+
+  const handleIndex = async (assetId: string) => {
+    setIndexingAssetId(assetId)
+    try {
+      await indexDocument(assetId)
+      await fetchAssets()
+    } catch (e) {
+      console.error(e)
+      alert(`Error al indexar documento: ${e}`)
+    } finally {
+      setIndexingAssetId(null)
+    }
+  }
+
+  const totalChunks = assets.reduce((sum, a) => sum + a.chunks, 0)
 
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-auto px-3 py-3 sm:px-5 sm:py-4">
       <div className="mx-auto grid w-full max-w-[110rem] gap-3">
-        <DocumentHeader onConnectOneDrive={() => setOneDriveOpen(true)} />
+        <DocumentHeader
+          onConnectOneDrive={() => setOneDriveOpen(true)}
+          totalFiles={assets.length}
+          totalChunks={totalChunks}
+        />
         <SourceStrip onConnectOneDrive={() => setOneDriveOpen(true)} />
 
-        <DocumentTable />
+        <DocumentTable
+          assets={assets}
+          loading={loading}
+          indexingAssetId={indexingAssetId}
+          onIndex={handleIndex}
+        />
       </div>
 
       <OneDriveDialog open={oneDriveOpen} onOpenChange={setOneDriveOpen} />
@@ -47,8 +92,12 @@ export function DocumentsPage() {
 
 function DocumentHeader({
   onConnectOneDrive,
+  totalFiles,
+  totalChunks,
 }: {
   onConnectOneDrive: () => void
+  totalFiles: number
+  totalChunks: number
 }) {
   return (
     <header className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
@@ -97,8 +146,8 @@ function DocumentHeader({
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <Metric label="Archivos" value="4" />
-        <Metric label="Chunks IA" value="187" />
+        <Metric label="Archivos" value={String(totalFiles)} />
+        <Metric label="Chunks IA" value={String(totalChunks)} />
         <Metric label="Fuentes activas" value="3" />
       </div>
     </header>
@@ -177,7 +226,17 @@ function SourceStrip({
   )
 }
 
-function DocumentTable() {
+function DocumentTable({
+  assets,
+  loading,
+  indexingAssetId,
+  onIndex,
+}: {
+  assets: DataAsset[]
+  loading: boolean
+  indexingAssetId: string | null
+  onIndex: (id: string) => void
+}) {
   return (
     <section className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
       <div className="flex flex-col gap-1.5 border-b border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
@@ -187,40 +246,85 @@ function DocumentTable() {
             Archivos listos para extraccion, chunks y consulta semantica.
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-7">
-          <FileSearchIcon className="size-4" />
-          Analizar seleccion
-        </Button>
       </div>
 
-      <div className="divide-y divide-border">
-        {documents.map((document) => (
-          <DocumentRow key={document.name} document={document} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <RefreshCwIcon className="size-4 animate-spin" />
+          Cargando biblioteca documental...
+        </div>
+      ) : assets.length === 0 ? (
+        <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+          No hay documentos registrados. Sincroniza y descarga archivos desde Conectores.
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {assets.map((asset) => (
+            <DocumentRow
+              key={asset.id}
+              asset={asset}
+              isIndexing={indexingAssetId === asset.id}
+              onIndex={() => onIndex(asset.id)}
+            />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
 
-function DocumentRow({ document }: { document: WorkspaceDocument }) {
+function DocumentRow({
+  asset,
+  isIndexing,
+  onIndex,
+}: {
+  asset: DataAsset
+  isIndexing: boolean
+  onIndex: () => void
+}) {
+  const typeLabel = asset.kind.toUpperCase()
+  const sizeLabel = asset.size_bytes
+    ? `${(asset.size_bytes / 1024 / 1024).toFixed(2)} MB`
+    : "0 MB"
+
   return (
-    <article className="grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] md:items-center">
+    <article className="grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem_8rem] md:items-center">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-background">
-            <DocumentAssetIcon kind={document.type} className="size-4" />
+            <DocumentAssetIcon kind={typeLabel} className="size-4" />
           </span>
-          <h3 className="truncate text-sm font-medium">{document.name}</h3>
+          <h3 className="truncate text-sm font-medium">{asset.name}</h3>
         </div>
         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-          {document.source} / {document.updated}
+          {asset.source} / {sizeLabel}
         </p>
       </div>
-      <Pill>{document.type}</Pill>
-      <Status status={document.status} />
+      <Pill>{typeLabel}</Pill>
+      <Status status={asset.status} />
       <div className="text-xs text-muted-foreground md:text-right">
-        <span className="font-medium text-foreground">{document.chunks}</span>{" "}
+        <span className="font-medium text-foreground">{asset.chunks}</span>{" "}
         chunks
+      </div>
+      <div className="flex justify-end">
+        <Button
+          variant={asset.status === "ready" ? "outline" : "default"}
+          size="sm"
+          className="h-7 px-2 text-xs gap-1"
+          disabled={isIndexing || asset.status === "indexing"}
+          onClick={onIndex}
+        >
+          {isIndexing || asset.status === "indexing" ? (
+            <>
+              <RefreshCwIcon className="size-3 animate-spin" />
+              Indexando
+            </>
+          ) : asset.status === "ready" ? (
+            "Reindexar"
+          ) : (
+            "Indexar"
+          )}
+        </Button>
       </div>
     </article>
   )
@@ -377,20 +481,23 @@ function Pill({ children }: { children: string }) {
   )
 }
 
-function Status({ status }: { status: WorkspaceDocument["status"] }) {
+function Status({ status }: { status: string }) {
+  const isReady = status === "ready" || status === "Listo" || status === "Analizado"
+  const isIndexing = status === "indexing" || status === "Indexando"
+  const isPending = status === "pending" || status === "Pendiente"
+  const isError = status === "error" || status === "Error"
+
   return (
     <span
       className={cn(
         "inline-flex h-5 w-fit items-center rounded-md px-2 text-[0.7rem] font-medium",
-        status === "Analizado" &&
-          "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300",
-        status === "Indexando" &&
-          "bg-sky-500/10 text-sky-700 [.geo-dark_&]:text-sky-300 [.graphite_&]:text-sky-300 [.midnight_&]:text-sky-300",
-        status === "Listo" && "bg-primary/10 text-primary",
-        status === "Pendiente" && "bg-muted text-muted-foreground"
+        isReady && "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300",
+        isIndexing && "bg-sky-500/10 text-sky-700 [.geo-dark_&]:text-sky-300 animate-pulse",
+        isPending && "bg-muted text-muted-foreground",
+        isError && "bg-destructive/10 text-destructive [.geo-dark_&]:text-red-400"
       )}
     >
-      {status}
+      {isReady ? "Listo" : isIndexing ? "Indexando" : isPending ? "Pendiente" : "Error"}
     </span>
   )
 }

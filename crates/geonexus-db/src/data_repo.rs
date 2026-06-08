@@ -2,8 +2,9 @@ use std::path::Path;
 use sqlx::{SqlitePool, Row};
 use geonexus_core::{
     AssetKind, AssetStatus, AssetValidation, CacheState, DataAsset, DataStoreMetrics, SyncEvent,
-    SyncEventType,
+    SyncEventType, DocumentChunk, GraphNode, GraphEdge,
 };
+use geonexus_core::allowlist::ruta_segura;
 
 /// Repositorio de datos asíncrono con SQLite y sqlx.
 #[derive(Debug, Clone)]
@@ -51,70 +52,103 @@ impl DataRepository {
             .get(0);
 
         if count == 0 {
-            // Sembrar assets
             let now = 1717790400; // 2024-06-07T18:00:00Z
+
+            // Sembrar default workspace
+            sqlx::query(
+                "INSERT INTO workspaces (id, project_id, name, description, is_default, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )
+            .bind("workspace-main")
+            .bind("pot-barranquilla-2024")
+            .bind("Principal")
+            .bind("Workspace principal del proyecto")
+            .bind(1i64)
+            .bind(now)
+            .bind(now)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error sembrando workspace: {e}"))?;
+
+            // Sembrar assets
             let seed_assets = vec![
                 DataAsset {
                     id: "asset-pot-baq".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     name: "POT Barranquilla 2024.pdf".into(),
                     kind: AssetKind::Document,
                     source: "onedrive".into(),
                     location: "/GeoNexus/POT/documentos/POT_Barranquilla_2024.pdf".into(),
+                    agent_id: None,
+                    connector_id: Some("onedrive-main".into()),
                     status: AssetStatus::Ready,
                     size_bytes: Some(44_136_857),
                     chunks: 118,
                     embeddings: 118,
                     graph_nodes: 24,
                     cache_state: CacheState::Cached,
+                    trace_id: Some("tr-003".into()),
                     created_at: now - 86400 * 7,
                     updated_at: now - 3600,
                 },
                 DataAsset {
                     id: "asset-predios".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     name: "predios_zona_norte.geojson".into(),
                     kind: AssetKind::Layer,
                     source: "onedrive".into(),
                     location: "/GIS/capas/predios_zona_norte.geojson".into(),
+                    agent_id: Some("agent-gis".into()),
+                    connector_id: Some("onedrive-main".into()),
                     status: AssetStatus::Indexing,
                     size_bytes: Some(19_293_798),
                     chunks: 36,
                     embeddings: 36,
                     graph_nodes: 9,
                     cache_state: CacheState::Stale,
+                    trace_id: Some("tr-001".into()),
                     created_at: now - 86400 * 3,
                     updated_at: now - 720,
                 },
                 DataAsset {
                     id: "asset-cartografia".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     name: "Anexos cartograficos.zip".into(),
                     kind: AssetKind::Shapefile,
                     source: "local".into(),
                     location: "C:/GIS/Proyectos/POT/Anexos_cartograficos.zip".into(),
+                    agent_id: None,
+                    connector_id: Some("local-connector-main".into()),
                     status: AssetStatus::Ready,
                     size_bytes: Some(90_177_536),
                     chunks: 27,
                     embeddings: 27,
                     graph_nodes: 11,
                     cache_state: CacheState::Cached,
+                    trace_id: None,
                     created_at: now - 86400 * 14,
                     updated_at: now - 86400,
                 },
                 DataAsset {
                     id: "asset-resolucion".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     name: "Resolucion uso de suelo.docx".into(),
-                    kind: AssetKind::Document,
+                    kind: AssetKind::Word,
                     source: "sharepoint".into(),
                     location: "/Sites/Urbanismo/Normativa/Resolucion_uso_suelo.docx".into(),
+                    agent_id: None,
+                    connector_id: Some("sharepoint-urb".into()),
                     status: AssetStatus::Pending,
                     size_bytes: Some(5_872_026),
                     chunks: 0,
                     embeddings: 0,
                     graph_nodes: 0,
                     cache_state: CacheState::None,
+                    trace_id: Some("tr-002".into()),
                     created_at: now - 86400 * 2,
                     updated_at: now - 86400,
                 },
@@ -122,21 +156,25 @@ impl DataRepository {
 
             for a in seed_assets {
                 sqlx::query(
-                    "INSERT INTO assets (id, project_id, name, kind, source, location, status, size_bytes, chunks, embeddings, graph_nodes, cache_state, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                    "INSERT INTO assets (id, project_id, workspace_id, name, kind, source, location, agent_id, connector_id, status, size_bytes, chunks, embeddings, graph_nodes, cache_state, trace_id, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 )
                 .bind(&a.id)
                 .bind(&a.project_id)
+                .bind(&a.workspace_id)
                 .bind(&a.name)
                 .bind(to_str(&a.kind))
                 .bind(&a.source)
                 .bind(&a.location)
+                .bind(&a.agent_id)
+                .bind(&a.connector_id)
                 .bind(to_str(&a.status))
                 .bind(a.size_bytes)
                 .bind(a.chunks)
                 .bind(a.embeddings)
                 .bind(a.graph_nodes)
                 .bind(to_str(&a.cache_state))
+                .bind(&a.trace_id)
                 .bind(a.created_at)
                 .bind(a.updated_at)
                 .execute(&self.pool)
@@ -149,8 +187,10 @@ impl DataRepository {
                 SyncEvent {
                     id: "sync-1".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     connector_id: Some("onedrive-main".into()),
                     asset_id: Some("asset-predios".into()),
+                    agent_id: Some("agent-gis".into()),
                     event_type: SyncEventType::Discovered,
                     detail: Some("predios_zona_norte.geojson encontrado e indexado.".into()),
                     trace_id: Some("tr-001".into()),
@@ -159,8 +199,10 @@ impl DataRepository {
                 SyncEvent {
                     id: "sync-2".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     connector_id: Some("sharepoint-urb".into()),
                     asset_id: Some("asset-resolucion".into()),
+                    agent_id: None,
                     event_type: SyncEventType::Error,
                     detail: Some("Pendiente de OAuth para biblioteca Urbanismo.".into()),
                     trace_id: Some("tr-002".into()),
@@ -169,8 +211,10 @@ impl DataRepository {
                 SyncEvent {
                     id: "sync-3".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     connector_id: None,
                     asset_id: Some("asset-pot-baq".into()),
+                    agent_id: Some("agent-document".into()),
                     event_type: SyncEventType::Indexed,
                     detail: Some("2 archivos vigentes, 1 archivo en validación.".into()),
                     trace_id: Some("tr-003".into()),
@@ -179,8 +223,10 @@ impl DataRepository {
                 SyncEvent {
                     id: "sync-4".into(),
                     project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
                     connector_id: Some("mcp-router".into()),
                     asset_id: None,
+                    agent_id: None,
                     event_type: SyncEventType::Error,
                     detail: Some("Lectura bloqueada fuera de allowlist local.".into()),
                     trace_id: Some("tr-004".into()),
@@ -190,13 +236,15 @@ impl DataRepository {
 
             for e in seed_events {
                 sqlx::query(
-                    "INSERT INTO sync_events (id, project_id, connector_id, asset_id, event_type, detail, trace_id, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                    "INSERT INTO sync_events (id, project_id, workspace_id, connector_id, asset_id, agent_id, event_type, detail, trace_id, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 )
                 .bind(&e.id)
                 .bind(&e.project_id)
+                .bind(&e.workspace_id)
                 .bind(&e.connector_id)
                 .bind(&e.asset_id)
+                .bind(&e.agent_id)
                 .bind(to_str(&e.event_type))
                 .bind(&e.detail)
                 .bind(&e.trace_id)
@@ -204,6 +252,223 @@ impl DataRepository {
                 .execute(&self.pool)
                 .await
                 .map_err(|err| format!("Error sembrando event {}: {err}", e.id))?;
+            }
+
+            // Sembrar document chunks de ejemplo
+            let seed_chunks = vec![
+                DocumentChunk {
+                    id: "chk-pot-1".into(),
+                    asset_id: "asset-pot-baq".into(),
+                    chunk_index: 0,
+                    content: "Art. 142: Restriccion de altura para zonas cercanas a corredores hidricos.".into(),
+                    token_count: 14,
+                    page_number: Some(318),
+                    created_at: now - 3600,
+                },
+                DocumentChunk {
+                    id: "chk-pot-2".into(),
+                    asset_id: "asset-pot-baq".into(),
+                    chunk_index: 1,
+                    content: "Los proyectos colindantes a la ronda de protección ambiental deben dejar un retiro mínimo de 30 metros.".into(),
+                    token_count: 18,
+                    page_number: Some(318),
+                    created_at: now - 3550,
+                },
+            ];
+
+            for c in seed_chunks {
+                sqlx::query(
+                    "INSERT INTO document_chunks (id, asset_id, chunk_index, content, token_count, page_number, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&c.id)
+                .bind(&c.asset_id)
+                .bind(c.chunk_index)
+                .bind(&c.content)
+                .bind(c.token_count)
+                .bind(c.page_number)
+                .bind(c.created_at)
+                .execute(&self.pool)
+                .await
+                .map_err(|err| format!("Error sembrando chunk {}: {err}", c.id))?;
+            }
+
+            // Sembrar nodos del grafo de ejemplo
+            let seed_nodes = vec![
+                GraphNode {
+                    id: "pot-142".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "Art. 142".into(),
+                    kind: "norma".into(),
+                    description: "Restriccion de altura para zonas cercanas a corredores hidricos.".into(),
+                    evidence: "POT Barranquilla 2024 / pagina 318".into(),
+                    x: 42.0,
+                    y: 28.0,
+                    weight: 3,
+                    created_at: now,
+                },
+                GraphNode {
+                    id: "zona-norte".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "Zona norte".into(),
+                    kind: "zona".into(),
+                    description: "Sector industrial con restricciones urbanisticas activas.".into(),
+                    evidence: "Capa zonificacion_norte.geojson".into(),
+                    x: 58.0,
+                    y: 42.0,
+                    weight: 4,
+                    created_at: now,
+                },
+                GraphNode {
+                    id: "retiro-hidrico".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "Retiro hidrico".into(),
+                    kind: "concepto".into(),
+                    description: "Franja de proteccion obligatoria alrededor de canales y arroyos.".into(),
+                    evidence: "Memoria tecnica ambiental / seccion 4.2".into(),
+                    x: 36.0,
+                    y: 58.0,
+                    weight: 2,
+                    created_at: now,
+                },
+                GraphNode {
+                    id: "dxf-catastro".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "DXF Catastro".into(),
+                    kind: "documento".into(),
+                    description: "Plano importado con predios, linderos y vias secundarias.".into(),
+                    evidence: "catastro_sector_norte.dxf".into(),
+                    x: 70.0,
+                    y: 64.0,
+                    weight: 2,
+                    created_at: now,
+                },
+                GraphNode {
+                    id: "uso-industrial".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "Uso industrial II".into(),
+                    kind: "norma".into(),
+                    description: "Uso permitido bajo impacto con control de ruido y emisiones.".into(),
+                    evidence: "POT Barranquilla 2024 / articulo 88".into(),
+                    x: 24.0,
+                    y: 35.0,
+                    weight: 2,
+                    created_at: now,
+                },
+                GraphNode {
+                    id: "capa-canales".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    workspace_id: Some("workspace-main".into()),
+                    name: "Canales".into(),
+                    kind: "capa".into(),
+                    description: "Capa GIS de drenaje urbano usada para cruces espaciales.".into(),
+                    evidence: "canales_principales.geojson".into(),
+                    x: 50.0,
+                    y: 76.0,
+                    weight: 3,
+                    created_at: now,
+                },
+            ];
+
+            for n in seed_nodes {
+                sqlx::query(
+                    "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&n.id)
+                .bind(&n.project_id)
+                .bind(&n.workspace_id)
+                .bind(&n.name)
+                .bind(&n.kind)
+                .bind(&n.description)
+                .bind(&n.evidence)
+                .bind(n.x)
+                .bind(n.y)
+                .bind(n.weight)
+                .bind(n.created_at)
+                .execute(&self.pool)
+                .await
+                .map_err(|err| format!("Error sembrando nodo {}: {err}", n.id))?;
+            }
+
+            // Sembrar aristas del grafo de ejemplo
+            let seed_edges = vec![
+                GraphEdge {
+                    id: "e1".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "pot-142".into(),
+                    target: "zona-norte".into(),
+                    relation: "limita".into(),
+                    strength: 92,
+                    created_at: now,
+                },
+                GraphEdge {
+                    id: "e2".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "pot-142".into(),
+                    target: "retiro-hidrico".into(),
+                    relation: "define".into(),
+                    strength: 88,
+                    created_at: now,
+                },
+                GraphEdge {
+                    id: "e3".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "retiro-hidrico".into(),
+                    target: "capa-canales".into(),
+                    relation: "se calcula con".into(),
+                    strength: 84,
+                    created_at: now,
+                },
+                GraphEdge {
+                    id: "e4".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "zona-norte".into(),
+                    target: "dxf-catastro".into(),
+                    relation: "intersecta".into(),
+                    strength: 79,
+                    created_at: now,
+                },
+                GraphEdge {
+                    id: "e5".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "uso-industrial".into(),
+                    target: "zona-norte".into(),
+                    relation: "aplica en".into(),
+                    strength: 86,
+                    created_at: now,
+                },
+                GraphEdge {
+                    id: "e6".into(),
+                    project_id: "pot-barranquilla-2024".into(),
+                    source: "dxf-catastro".into(),
+                    target: "capa-canales".into(),
+                    relation: "cruza con".into(),
+                    strength: 71,
+                    created_at: now,
+                },
+            ];
+
+            for e in seed_edges {
+                sqlx::query(
+                    "INSERT INTO graph_edges (id, project_id, source, target, relation, strength, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)"
+                )
+                .bind(&e.id)
+                .bind(&e.project_id)
+                .bind(&e.source)
+                .bind(&e.target)
+                .bind(&e.relation)
+                .bind(e.strength)
+                .bind(e.created_at)
+                .execute(&self.pool)
+                .await
+                .map_err(|err| format!("Error sembrando arista {}: {err}", e.id))?;
             }
         }
 
@@ -301,6 +566,22 @@ impl DataRepository {
     }
 
     /// Ejecuta la validación de integridad para el activo.
+    async fn local_connector_root(&self, connector_id: Option<&str>) -> Result<Option<String>, String> {
+        let Some(connector_id) = connector_id else {
+            return Ok(None);
+        };
+
+        let row = sqlx::query(
+            "SELECT root_path FROM connector_configs WHERE id = ? AND provider = 'local' AND is_active = 1"
+        )
+        .bind(connector_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| format!("Error validando allowlist del conector: {e}"))?;
+
+        Ok(row.and_then(|r| r.get("root_path")))
+    }
+
     pub async fn validate_data_asset(&self, asset_id: &str) -> Result<AssetValidation, String> {
         if asset_id.trim().is_empty() {
             return Err("asset_id requerido".into());
@@ -324,7 +605,14 @@ impl DataRepository {
             true // cloud se verificará en fase posterior
         };
 
-        let path_allowed = file_exists;
+        let path_allowed = if asset.source == "local" {
+            match self.local_connector_root(asset.connector_id.as_deref()).await? {
+                Some(root_path) => ruta_segura(&root_path, &asset.location).is_ok(),
+                None => false,
+            }
+        } else {
+            true
+        };
         if !path_allowed {
             issues.push("Ruta fuera de allowlist del conector".into());
         }
@@ -356,6 +644,219 @@ impl DataRepository {
             chunks_exist,
             issues,
         ))
+    }
+
+    /// Guarda un fragmento (chunk) en la base de datos.
+    pub async fn insert_document_chunks(&self, chunks: &[DocumentChunk]) -> Result<(), String> {
+        for chunk in chunks {
+            sqlx::query(
+                "INSERT INTO document_chunks (id, asset_id, chunk_index, content, token_count, page_number, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                    content     = excluded.content,
+                    token_count = excluded.token_count,
+                    page_number = excluded.page_number"
+            )
+            .bind(&chunk.id)
+            .bind(&chunk.asset_id)
+            .bind(chunk.chunk_index)
+            .bind(&chunk.content)
+            .bind(chunk.token_count)
+            .bind(chunk.page_number)
+            .bind(chunk.created_at)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error insertando chunk: {e}"))?;
+        }
+        Ok(())
+    }
+
+    /// Lista los fragmentos (chunks) de un activo ordenados por su índice.
+    pub async fn list_document_chunks(&self, asset_id: &str) -> Result<Vec<DocumentChunk>, String> {
+        let rows = sqlx::query("SELECT * FROM document_chunks WHERE asset_id = ? ORDER BY chunk_index ASC")
+            .bind(asset_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| format!("Error listando chunks: {e}"))?;
+
+        let mut list = Vec::new();
+        for r in rows {
+            list.push(row_to_chunk(&r)?);
+        }
+        Ok(list)
+    }
+
+    /// Elimina todos los fragmentos (chunks) asociados a un activo.
+    pub async fn delete_document_chunks(&self, asset_id: &str) -> Result<(), String> {
+        sqlx::query("DELETE FROM document_chunks WHERE asset_id = ?")
+            .bind(asset_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error eliminando chunks del asset: {e}"))?;
+        Ok(())
+    }
+
+    /// Inserta o actualiza un activo de datos directamente (útil para registrar nuevos assets).
+    pub async fn upsert_data_asset(&self, asset: &DataAsset) -> Result<(), String> {
+        sqlx::query(
+            "INSERT INTO assets (id, project_id, workspace_id, name, kind, source, location, agent_id, connector_id, status, size_bytes, chunks, embeddings, graph_nodes, cache_state, trace_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+                status      = excluded.status,
+                size_bytes  = excluded.size_bytes,
+                chunks      = excluded.chunks,
+                embeddings  = excluded.embeddings,
+                graph_nodes = excluded.graph_nodes,
+                cache_state = excluded.cache_state,
+                trace_id    = excluded.trace_id,
+                updated_at  = excluded.updated_at"
+        )
+        .bind(&asset.id)
+        .bind(&asset.project_id)
+        .bind(&asset.workspace_id)
+        .bind(&asset.name)
+        .bind(to_str(&asset.kind))
+        .bind(&asset.source)
+        .bind(&asset.location)
+        .bind(&asset.agent_id)
+        .bind(&asset.connector_id)
+        .bind(to_str(&asset.status))
+        .bind(asset.size_bytes)
+        .bind(asset.chunks)
+        .bind(asset.embeddings)
+        .bind(asset.graph_nodes)
+        .bind(to_str(&asset.cache_state))
+        .bind(&asset.trace_id)
+        .bind(asset.created_at)
+        .bind(asset.updated_at)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Error en upsert_data_asset: {e}"))?;
+        Ok(())
+    }
+
+    /// Actualiza el estado y los contadores de indexación de un activo.
+    pub async fn update_asset_indexing_result(
+        &self,
+        asset_id: &str,
+        status: AssetStatus,
+        chunks: i64,
+        embeddings: i64,
+        graph_nodes: i64,
+        updated_at: i64,
+    ) -> Result<(), String> {
+        sqlx::query(
+            "UPDATE assets 
+             SET status = ?, chunks = ?, embeddings = ?, graph_nodes = ?, updated_at = ?
+             WHERE id = ?"
+        )
+        .bind(to_str(&status))
+        .bind(chunks)
+        .bind(embeddings)
+        .bind(graph_nodes)
+        .bind(updated_at)
+        .bind(asset_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Error actualizando resultado de indexación del asset: {e}"))?;
+        Ok(())
+    }
+
+    /// Inserta una lista de nodos en el grafo de conocimiento.
+    pub async fn insert_graph_nodes(&self, nodes: &[GraphNode]) -> Result<(), String> {
+        for node in nodes {
+            sqlx::query(
+                "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                    name        = excluded.name,
+                    kind        = excluded.kind,
+                    description = excluded.description,
+                    evidence    = excluded.evidence,
+                    x           = excluded.x,
+                    y           = excluded.y,
+                    weight      = excluded.weight"
+            )
+            .bind(&node.id)
+            .bind(&node.project_id)
+            .bind(&node.workspace_id)
+            .bind(&node.name)
+            .bind(&node.kind)
+            .bind(&node.description)
+            .bind(&node.evidence)
+            .bind(node.x)
+            .bind(node.y)
+            .bind(node.weight)
+            .bind(node.created_at)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error insertando nodo de grafo: {e}"))?;
+        }
+        Ok(())
+    }
+
+    /// Obtiene todos los nodos del grafo para un proyecto.
+    pub async fn list_graph_nodes(&self, project_id: &str) -> Result<Vec<GraphNode>, String> {
+        let rows = sqlx::query("SELECT * FROM graph_nodes WHERE project_id = ?")
+            .bind(project_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| format!("Error listando nodos de grafo: {e}"))?;
+
+        let mut list = Vec::new();
+        for r in rows {
+            list.push(row_to_node(&r)?);
+        }
+        Ok(list)
+    }
+
+    /// Inserta una lista de aristas en el grafo de conocimiento.
+    pub async fn insert_graph_edges(&self, edges: &[GraphEdge]) -> Result<(), String> {
+        for edge in edges {
+            sqlx::query(
+                "INSERT INTO graph_edges (id, project_id, source, target, relation, strength, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO UPDATE SET
+                    relation = excluded.relation,
+                    strength = excluded.strength"
+            )
+            .bind(&edge.id)
+            .bind(&edge.project_id)
+            .bind(&edge.source)
+            .bind(&edge.target)
+            .bind(&edge.relation)
+            .bind(edge.strength)
+            .bind(edge.created_at)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error insertando arista de grafo: {e}"))?;
+        }
+        Ok(())
+    }
+
+    /// Obtiene todas las aristas/relaciones del grafo para un proyecto.
+    pub async fn list_graph_edges(&self, project_id: &str) -> Result<Vec<GraphEdge>, String> {
+        let rows = sqlx::query("SELECT * FROM graph_edges WHERE project_id = ?")
+            .bind(project_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| format!("Error listando aristas de grafo: {e}"))?;
+
+        let mut list = Vec::new();
+        for r in rows {
+            list.push(row_to_edge(&r)?);
+        }
+        Ok(list)
+    }
+
+    /// Vacía todo el grafo de un proyecto (nodos y aristas asociados se eliminan por CASCADE).
+    pub async fn clear_graph(&self, project_id: &str) -> Result<(), String> {
+        sqlx::query("DELETE FROM graph_nodes WHERE project_id = ?")
+            .bind(project_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error vaciando grafo de proyecto: {e}"))?;
+        Ok(())
     }
 }
 
@@ -390,16 +891,20 @@ fn row_to_asset(row: &sqlx::sqlite::SqliteRow) -> Result<DataAsset, String> {
     Ok(DataAsset {
         id: row.get("id"),
         project_id: row.get("project_id"),
+        workspace_id: row.get("workspace_id"),
         name: row.get("name"),
         kind: parse_kind(&kind_str),
         source: row.get("source"),
         location: row.get("location"),
+        agent_id: row.get("agent_id"),
+        connector_id: row.get("connector_id"),
         status: parse_status(&status_str),
         size_bytes: row.get("size_bytes"),
         chunks: row.get("chunks"),
         embeddings: row.get("embeddings"),
         graph_nodes: row.get("graph_nodes"),
         cache_state: parse_cache(&cache_str),
+        trace_id: row.get("trace_id"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
     })
@@ -411,11 +916,194 @@ fn row_to_event(row: &sqlx::sqlite::SqliteRow) -> Result<SyncEvent, String> {
     Ok(SyncEvent {
         id: row.get("id"),
         project_id: row.get("project_id"),
+        workspace_id: row.get("workspace_id"),
         connector_id: row.get("connector_id"),
         asset_id: row.get("asset_id"),
+        agent_id: row.get("agent_id"),
         event_type: parse_event_type(&type_str),
         detail: row.get("detail"),
         trace_id: row.get("trace_id"),
         created_at: row.get("created_at"),
     })
+}
+
+fn row_to_chunk(row: &sqlx::sqlite::SqliteRow) -> Result<DocumentChunk, String> {
+    Ok(DocumentChunk {
+        id: row.get("id"),
+        asset_id: row.get("asset_id"),
+        chunk_index: row.get("chunk_index"),
+        content: row.get("content"),
+        token_count: row.get("token_count"),
+        page_number: row.get("page_number"),
+        created_at: row.get("created_at"),
+    })
+}
+
+fn row_to_node(row: &sqlx::sqlite::SqliteRow) -> Result<GraphNode, String> {
+    Ok(GraphNode {
+        id: row.get("id"),
+        project_id: row.get("project_id"),
+        workspace_id: row.get("workspace_id"),
+        name: row.get("name"),
+        kind: row.get("kind"),
+        description: row.get("description"),
+        evidence: row.get("evidence"),
+        x: row.get("x"),
+        y: row.get("y"),
+        weight: row.get("weight"),
+        created_at: row.get("created_at"),
+    })
+}
+
+fn row_to_edge(row: &sqlx::sqlite::SqliteRow) -> Result<GraphEdge, String> {
+    Ok(GraphEdge {
+        id: row.get("id"),
+        project_id: row.get("project_id"),
+        source: row.get("source"),
+        target: row.get("target"),
+        relation: row.get("relation"),
+        strength: row.get("strength"),
+        created_at: row.get("created_at"),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn db_en_memoria() -> sqlx::SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_document_chunks_crud() {
+        let pool = db_en_memoria().await;
+        let repo = DataRepository { pool };
+
+        // Insertar un asset de prueba primero (ya que los chunks tienen clave foránea a assets)
+        let asset = DataAsset {
+            id: "asset1".into(),
+            project_id: "proj1".into(),
+            workspace_id: Some("work1".into()),
+            name: "test.pdf".into(),
+            kind: AssetKind::Document,
+            source: "local".into(),
+            location: "/tmp/test.pdf".into(),
+            agent_id: None,
+            connector_id: None,
+            status: AssetStatus::Pending,
+            size_bytes: Some(100),
+            chunks: 0,
+            embeddings: 0,
+            graph_nodes: 0,
+            cache_state: CacheState::None,
+            trace_id: None,
+            created_at: 0,
+            updated_at: 0,
+        };
+        repo.upsert_data_asset(&asset).await.unwrap();
+
+        // Probar inserción de chunks
+        let chunks = vec![
+            DocumentChunk {
+                id: "c1".into(),
+                asset_id: "asset1".into(),
+                chunk_index: 0,
+                content: "hola mundo".into(),
+                token_count: 2,
+                page_number: Some(1),
+                created_at: 100,
+            },
+            DocumentChunk {
+                id: "c2".into(),
+                asset_id: "asset1".into(),
+                chunk_index: 1,
+                content: "adios mundo".into(),
+                token_count: 2,
+                page_number: Some(2),
+                created_at: 100,
+            },
+        ];
+        repo.insert_document_chunks(&chunks).await.unwrap();
+
+        // Probar listado
+        let listed = repo.list_document_chunks("asset1").await.unwrap();
+        assert_eq!(listed.len(), 2);
+        assert_eq!(listed[0].id, "c1");
+        assert_eq!(listed[1].content, "adios mundo");
+
+        // Probar eliminación
+        repo.delete_document_chunks("asset1").await.unwrap();
+        let listed_after = repo.list_document_chunks("asset1").await.unwrap();
+        assert!(listed_after.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_graph_nodes_and_edges_crud() {
+        let pool = db_en_memoria().await;
+        let repo = DataRepository { pool };
+
+        let nodes = vec![
+            GraphNode {
+                id: "n1".into(),
+                project_id: "proj1".into(),
+                workspace_id: None,
+                name: "Node 1".into(),
+                kind: "concepto".into(),
+                description: "Desc 1".into(),
+                evidence: "Ev 1".into(),
+                x: 10.0,
+                y: 10.0,
+                weight: 1,
+                created_at: 100,
+            },
+            GraphNode {
+                id: "n2".into(),
+                project_id: "proj1".into(),
+                workspace_id: None,
+                name: "Node 2".into(),
+                kind: "norma".into(),
+                description: "Desc 2".into(),
+                evidence: "Ev 2".into(),
+                x: 20.0,
+                y: 20.0,
+                weight: 2,
+                created_at: 100,
+            },
+        ];
+        repo.insert_graph_nodes(&nodes).await.unwrap();
+
+        let edges = vec![
+            GraphEdge {
+                id: "e1".into(),
+                project_id: "proj1".into(),
+                source: "n1".into(),
+                target: "n2".into(),
+                relation: "related".into(),
+                strength: 75,
+                created_at: 100,
+            },
+        ];
+        repo.insert_graph_edges(&edges).await.unwrap();
+
+        let listed_nodes = repo.list_graph_nodes("proj1").await.unwrap();
+        assert_eq!(listed_nodes.len(), 2);
+
+        let listed_edges = repo.list_graph_edges("proj1").await.unwrap();
+        assert_eq!(listed_edges.len(), 1);
+        assert_eq!(listed_edges[0].source, "n1");
+
+        // Probar vaciado del grafo
+        repo.clear_graph("proj1").await.unwrap();
+        let listed_nodes_after = repo.list_graph_nodes("proj1").await.unwrap();
+        assert!(listed_nodes_after.is_empty());
+        let listed_edges_after = repo.list_graph_edges("proj1").await.unwrap();
+        assert!(listed_edges_after.is_empty());
+    }
 }

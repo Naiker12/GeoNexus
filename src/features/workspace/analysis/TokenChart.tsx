@@ -1,8 +1,10 @@
 import { tokenTimeline } from "@/features/workspace/analysis/analysis-data"
 
-const maxTokens = Math.max(...tokenTimeline.map((item) => item.tokens))
-
 export function TokenChart() {
+  const hasData = tokenTimeline.length > 1
+  const maxTokens = hasData
+    ? Math.max(...tokenTimeline.map((item) => item.tokens))
+    : 0
   const points = tokenTimeline
     .map((item, index) => {
       const x = (index / (tokenTimeline.length - 1)) * 100
@@ -26,30 +28,37 @@ export function TokenChart() {
       </div>
       <div className="grid gap-3 p-3">
         <div className="h-56 rounded-lg border border-border bg-background/75 p-3">
-          <svg
-            className="size-full overflow-visible"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            role="img"
-            aria-label="Linea de consumo de tokens por hora"
-          >
-            <defs>
-              <linearGradient id="tokenFill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <polygon points={`0,100 ${points} 100,100`} fill="url(#tokenFill)" />
-            <polyline
-              points={points}
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth="2.5"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
+          {hasData ? (
+            <svg
+              className="size-full overflow-visible"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="Linea de consumo de tokens por hora"
+            >
+              <defs>
+                <linearGradient id="tokenFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon points={`0,100 ${points} 100,100`} fill="url(#tokenFill)" />
+              <polyline
+                points={points}
+                fill="none"
+                stroke="var(--primary)"
+                strokeWidth="2.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Sin consumo registrado
+            </div>
+          )}
         </div>
-        <div className="grid grid-cols-7 gap-2">
+        {hasData ? (
+          <div className="grid grid-cols-7 gap-2">
           {tokenTimeline.map((item) => (
             <div key={item.hour} className="text-center">
               <div className="mx-auto flex h-16 w-full items-end rounded-md border border-border bg-background/75 px-1">
@@ -61,7 +70,8 @@ export function TokenChart() {
               <p className="mt-1 text-[0.68rem] text-muted-foreground">{item.hour}</p>
             </div>
           ))}
-        </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )

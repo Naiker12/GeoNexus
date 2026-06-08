@@ -28,9 +28,11 @@ pub enum FileSyncStatus {
 pub struct ConnectorConfig {
     pub id: String,
     pub project_id: String,
+    pub workspace_id: Option<String>,
     pub provider: ConnectorProvider,
     pub display_name: String,
     pub root_path: Option<String>,     // solo para Local
+    pub qgis_project_path: Option<String>,
     pub base_url: Option<String>,      // SharePoint on-prem, S3 custom
     pub client_id: Option<String>,     // App registration (no secret)
     pub tenant_id: Option<String>,     // Microsoft tenant
@@ -76,6 +78,7 @@ pub struct SyncReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegisterLocalConnectorInput {
     pub project_id: String,
+    pub workspace_id: Option<String>,
     pub display_name: String,
     pub root_path: String,
     pub file_filter: Vec<String>,  // vacío = usar ALLOWED_EXTENSIONS globales

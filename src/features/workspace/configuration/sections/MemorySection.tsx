@@ -27,17 +27,15 @@ export function MemorySection() {
         </Field>
 
         <Field label="Modelo de embeddings">
-          <NativeSelect className="w-full">
-            <option>nomic-embed-text</option>
-            <option>all-minilm-l6-v2</option>
-            <option>bge-small-en</option>
-          </NativeSelect>
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Sin modelo configurado
+          </div>
         </Field>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <SideMetric label="Coleccion POT" value="pot_normas" />
-        <SideMetric label="Coleccion GIS" value="gis_knowledge" />
+        <SideMetric label="Coleccion documental" value="Sin coleccion" />
+        <SideMetric label="Coleccion GIS" value="Sin coleccion" />
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">

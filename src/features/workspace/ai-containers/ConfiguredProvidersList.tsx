@@ -23,16 +23,29 @@ export function ConfiguredProvidersList({
         Proveedores configurados
       </h2>
       <div className="flex flex-col gap-3">
-        {options.map((option) => (
-          <ProviderCardItem
-            key={option.id}
-            option={option}
-            connector={connectors.find((c) => c.id === option.id)}
-            isTesting={testingProviderId === option.id}
-            onConfig={onConfig}
-            onTest={onTest}
-          />
-        ))}
+        {connectors.length ? (
+          connectors.map((connector) => {
+            const option =
+              options.find((candidate) => candidate.id === connector.id) ??
+              options[0]
+            if (!option) return null
+
+            return (
+              <ProviderCardItem
+                key={connector.id}
+                option={option}
+                connector={connector}
+                isTesting={testingProviderId === option.id}
+                onConfig={onConfig}
+                onTest={onTest}
+              />
+            )
+          })
+        ) : (
+          <div className="rounded-lg border border-border/80 bg-card/95 px-3 py-10 text-center text-sm text-muted-foreground shadow-sm backdrop-blur">
+            Sin proveedores configurados
+          </div>
+        )}
       </div>
     </div>
   )

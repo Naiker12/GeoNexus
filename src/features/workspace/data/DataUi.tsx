@@ -44,23 +44,24 @@ export function AssetStatusBadge({ status }: { status: AssetStatusType }) {
 }
 
 export function EventStatusBadge({ eventType }: { eventType: SyncEventType }) {
-  const Icon =
-    eventType === "indexed" || eventType === "downloaded" || eventType === "discovered"
-      ? CheckCircle2Icon
-      : eventType === "error"
-        ? XCircleIcon
-        : eventType === "conflict"
-          ? AlertTriangleIcon
-          : Clock3Icon
+  const isSuccess =
+    eventType === "indexed" || eventType === "downloaded" || eventType === "discovered" || eventType === "conversation_saved"
 
-  const colorClass =
-    eventType === "indexed" || eventType === "downloaded" || eventType === "discovered"
-      ? "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300"
-      : eventType === "error"
-        ? "bg-destructive/10 text-destructive"
-        : eventType === "conflict"
-          ? "bg-amber-500/10 text-amber-700 [.geo-dark_&]:text-amber-300"
-          : "bg-muted text-muted-foreground"
+  const Icon = isSuccess
+    ? CheckCircle2Icon
+    : eventType === "error"
+      ? XCircleIcon
+      : eventType === "conflict"
+        ? AlertTriangleIcon
+        : Clock3Icon
+
+  const colorClass = isSuccess
+    ? "bg-emerald-500/10 text-emerald-700 [.geo-dark_&]:text-emerald-300 [.graphite_&]:text-emerald-300 [.midnight_&]:text-emerald-300"
+    : eventType === "error"
+      ? "bg-destructive/10 text-destructive"
+      : eventType === "conflict"
+        ? "bg-amber-500/10 text-amber-700 [.geo-dark_&]:text-amber-300"
+        : "bg-muted text-muted-foreground"
 
   return (
     <span

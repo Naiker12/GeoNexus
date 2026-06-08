@@ -33,6 +33,9 @@ pub enum AssetKind {
     Shapefile,
     Csv,
     Raster,
+    Word,
+    Excel,
+    Output,
     Other,
 }
 
@@ -46,6 +49,7 @@ pub enum SyncEventType {
     GraphLinked,
     Conflict,
     Error,
+    ConversationSaved,
 }
 
 // ─── Structs de dominio ───────────────────────────────────────────────────────
@@ -55,16 +59,20 @@ pub enum SyncEventType {
 pub struct DataAsset {
     pub id: String,
     pub project_id: String,
+    pub workspace_id: Option<String>,
     pub name: String,
     pub kind: AssetKind,
     pub source: String,
     pub location: String,
+    pub agent_id: Option<String>,
+    pub connector_id: Option<String>,
     pub status: AssetStatus,
     pub size_bytes: Option<i64>,
     pub chunks: i64,
     pub embeddings: i64,
     pub graph_nodes: i64,
     pub cache_state: CacheState,
+    pub trace_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -88,8 +96,10 @@ pub struct DataStoreMetrics {
 pub struct SyncEvent {
     pub id: String,
     pub project_id: String,
+    pub workspace_id: Option<String>,
     pub connector_id: Option<String>,
     pub asset_id: Option<String>,
+    pub agent_id: Option<String>,
     pub event_type: SyncEventType,
     pub detail: Option<String>,
     pub trace_id: Option<String>,
@@ -134,6 +144,46 @@ impl AssetValidation {
     }
 }
 
+/// Fragmento de texto extraído de un documento para búsqueda vectorial.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentChunk {
+    pub id: String,
+    pub asset_id: String,
+    pub chunk_index: i64,
+    pub content: String,
+    pub token_count: i64,
+    pub page_number: Option<i64>,
+    pub created_at: i64,
+}
+
+/// Nodo en el grafo de conocimiento.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphNode {
+    pub id: String,
+    pub project_id: String,
+    pub workspace_id: Option<String>,
+    pub name: String,
+    pub kind: String, // "norma" | "documento" | "capa" | "zona" | "concepto"
+    pub description: String,
+    pub evidence: String,
+    pub x: f64,
+    pub y: f64,
+    pub weight: i64,
+    pub created_at: i64,
+}
+
+/// Relación/Arista en el grafo de conocimiento.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphEdge {
+    pub id: String,
+    pub project_id: String,
+    pub source: String,
+    pub target: String,
+    pub relation: String,
+    pub strength: i64,
+    pub created_at: i64,
+}
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -175,6 +225,9 @@ mod tests {
             (AssetKind::Shapefile, r#""shapefile""#),
             (AssetKind::Csv, r#""csv""#),
             (AssetKind::Raster, r#""raster""#),
+            (AssetKind::Word, r#""word""#),
+            (AssetKind::Excel, r#""excel""#),
+            (AssetKind::Output, r#""output""#),
             (AssetKind::Other, r#""other""#),
         ];
         for (kind, expected) in cases {
@@ -192,6 +245,7 @@ mod tests {
             (SyncEventType::GraphLinked, r#""graph_linked""#),
             (SyncEventType::Conflict, r#""conflict""#),
             (SyncEventType::Error, r#""error""#),
+            (SyncEventType::ConversationSaved, r#""conversation_saved""#),
         ];
         for (event_type, expected) in cases {
             assert_eq!(serde_json::to_string(&event_type).unwrap(), expected);
@@ -257,16 +311,20 @@ mod tests {
         let a = DataAsset {
             id: "a1".into(),
             project_id: "p1".into(),
+            workspace_id: Some("w1".into()),
             name: "test.geojson".into(),
             kind: AssetKind::Layer,
             source: "local".into(),
             location: "/tmp/test.geojson".into(),
+            agent_id: Some("ag1".into()),
+            connector_id: Some("c1".into()),
             status: AssetStatus::Ready,
             size_bytes: Some(42_000_000),
             chunks: 118,
             embeddings: 118,
             graph_nodes: 24,
             cache_state: CacheState::Cached,
+            trace_id: Some("tr1".into()),
             created_at: 1700000000,
             updated_at: 1700000000,
         };
@@ -276,6 +334,10 @@ mod tests {
         assert_eq!(de.kind, AssetKind::Layer);
         assert_eq!(de.status, AssetStatus::Ready);
         assert_eq!(de.size_bytes, Some(42_000_000));
+        assert_eq!(de.workspace_id, Some("w1".into()));
+        assert_eq!(de.agent_id, Some("ag1".into()));
+        assert_eq!(de.connector_id, Some("c1".into()));
+        assert_eq!(de.trace_id, Some("tr1".into()));
     }
 
     #[test]
@@ -283,8 +345,10 @@ mod tests {
         let e = SyncEvent {
             id: "ev1".into(),
             project_id: "p1".into(),
+            workspace_id: Some("w1".into()),
             connector_id: Some("c1".into()),
             asset_id: Some("a1".into()),
+            agent_id: Some("ag1".into()),
             event_type: SyncEventType::Discovered,
             detail: Some("encontrado".into()),
             trace_id: None,
@@ -294,6 +358,68 @@ mod tests {
         let de: SyncEvent = serde_json::from_str(&json).unwrap();
         assert_eq!(de.event_type, SyncEventType::Discovered);
         assert_eq!(de.connector_id, Some("c1".into()));
+        assert_eq!(de.workspace_id, Some("w1".into()));
+        assert_eq!(de.agent_id, Some("ag1".into()));
         assert!(de.trace_id.is_none());
+    }
+
+    #[test]
+    fn document_chunk_roundtrip_json() {
+        let c = DocumentChunk {
+            id: "c1".into(),
+            asset_id: "a1".into(),
+            chunk_index: 0,
+            content: "contenido de prueba".into(),
+            token_count: 3,
+            page_number: Some(1),
+            created_at: 1700000000,
+        };
+        let json = serde_json::to_string(&c).unwrap();
+        let de: DocumentChunk = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.id, c.id);
+        assert_eq!(de.asset_id, c.asset_id);
+        assert_eq!(de.content, c.content);
+        assert_eq!(de.page_number, Some(1));
+    }
+
+    #[test]
+    fn graph_node_roundtrip_json() {
+        let n = GraphNode {
+            id: "node1".into(),
+            project_id: "p1".into(),
+            workspace_id: Some("w1".into()),
+            name: "Art. 142".into(),
+            kind: "norma".into(),
+            description: "Restricción de altura".into(),
+            evidence: "POT / pág 3".into(),
+            x: 10.0,
+            y: 20.0,
+            weight: 3,
+            created_at: 1700000000,
+        };
+        let json = serde_json::to_string(&n).unwrap();
+        let de: GraphNode = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.id, n.id);
+        assert_eq!(de.name, n.name);
+        assert_eq!(de.x, 10.0);
+    }
+
+    #[test]
+    fn graph_edge_roundtrip_json() {
+        let e = GraphEdge {
+            id: "edge1".into(),
+            project_id: "p1".into(),
+            source: "node1".into(),
+            target: "node2".into(),
+            relation: "limita".into(),
+            strength: 90,
+            created_at: 1700000000,
+        };
+        let json = serde_json::to_string(&e).unwrap();
+        let de: GraphEdge = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.id, e.id);
+        assert_eq!(de.source, e.source);
+        assert_eq!(de.relation, e.relation);
+        assert_eq!(de.strength, 90);
     }
 }

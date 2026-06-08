@@ -2,7 +2,16 @@
 
 export type AssetStatus = "pending" | "indexing" | "ready" | "conflict" | "error"
 export type CacheState = "none" | "partial" | "cached" | "stale"
-export type AssetKind = "document" | "layer" | "shapefile" | "csv" | "raster" | "other"
+export type AssetKind =
+  | "document"
+  | "layer"
+  | "shapefile"
+  | "csv"
+  | "raster"
+  | "word"
+  | "excel"
+  | "output"
+  | "other"
 export type SyncEventType =
   | "discovered"
   | "downloaded"
@@ -11,22 +20,27 @@ export type SyncEventType =
   | "graph_linked"
   | "conflict"
   | "error"
+  | "conversation_saved"
 
 // ─── Domain structs ──────────────────────────────────────────────────────────
 
 export interface DataAsset {
   id: string
   project_id: string
+  workspace_id: string | null
   name: string
   kind: AssetKind
   source: string
   location: string
+  agent_id: string | null
+  connector_id: string | null
   status: AssetStatus
   size_bytes: number | null
   chunks: number
   embeddings: number
   graph_nodes: number
   cache_state: CacheState
+  trace_id: string | null
   created_at: number
   updated_at: number
 }
@@ -46,8 +60,10 @@ export interface DataStoreMetrics {
 export interface SyncEvent {
   id: string
   project_id: string
+  workspace_id: string | null
   connector_id: string | null
   asset_id: string | null
+  agent_id: string | null
   event_type: SyncEventType
   detail: string | null
   trace_id: string | null
@@ -63,4 +79,61 @@ export interface AssetValidation {
   chunks_exist: boolean
   is_ready: boolean
   issues: string[]
+}
+
+export interface DocumentChunk {
+  id: string
+  asset_id: string
+  chunk_index: number
+  content: string
+  token_count: number
+  page_number: number | null
+  created_at: number
+}
+
+export type GraphNodeType = "norma" | "documento" | "capa" | "zona" | "concepto"
+
+export interface BackendGraphNode {
+  id: string
+  project_id: string
+  workspace_id: string | null
+  name: string
+  kind: string
+  description: string
+  evidence: string
+  x: number
+  y: number
+  weight: number
+  created_at: number
+}
+
+export interface GraphNode {
+  id: string
+  project_id: string
+  workspace_id: string | null
+  label: string
+  type: GraphNodeType
+  description: string
+  evidence: string
+  x: number
+  y: number
+  weight: number
+  created_at: number
+}
+
+export interface BackendGraphEdge {
+  id: string
+  project_id: string
+  source: string
+  target: string
+  relation: string
+  strength: number
+  created_at: number
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  relation: string
+  strength: number
 }

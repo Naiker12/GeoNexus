@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use uuid::Uuid;
-use crate::allowlist::{extension_permitida, MAX_FILE_BYTES_DEFAULT};
+use crate::allowlist::extension_permitida;
 use crate::connector::{ConnectorFile, FileSyncStatus};
 
 /// Lista archivos en `root_path` filtrados por extensión y tamaño.
@@ -91,7 +90,7 @@ fn listar_dir_recursivo(
             .unwrap_or_else(|_| nombre.clone());
 
         acum.push(ConnectorFile {
-            id: Uuid::new_v4().to_string(),
+            id: stable_file_id(connector_id, &rel_path),
             connector_id: connector_id.to_string(),
             name: nombre,
             path: rel_path,
@@ -147,9 +146,15 @@ fn unix_now() -> i64 {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
+fn stable_file_id(connector_id: &str, rel_path: &str) -> String {
+    let normalized_path = rel_path.replace('\\', "/");
+    format!("{connector_id}:{normalized_path}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::allowlist::MAX_FILE_BYTES_DEFAULT;
     use std::fs;
     use std::path::PathBuf;
 

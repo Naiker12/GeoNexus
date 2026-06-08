@@ -22,6 +22,8 @@ export function ProviderCardItem({
   onTest,
 }: ProviderCardItemProps) {
   const status = connector?.status ?? "needs-key"
+  const primaryModel = connector?.model || "Sin modelo"
+  const endpoint = connector?.endpoint || "Sin endpoint"
 
   return (
     <article className="group flex flex-col rounded-lg border border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur transition hover:border-primary/30 hover:shadow-md">
@@ -39,7 +41,7 @@ export function ProviderCardItem({
             <StatusBadge status={status} />
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {option.models[0]} · {option.models[1] ?? option.role}
+            {primaryModel} - {option.role}
           </p>
         </div>
       </div>
@@ -48,16 +50,12 @@ export function ProviderCardItem({
         <MetaPill>{option.type}</MetaPill>
         <MetaPill>{option.role}</MetaPill>
         <MetaPill>{option.auth === "api-key" ? "keychain" : "sin key"}</MetaPill>
-        {option.models.slice(0, 2).map((model) => (
-          <MetaPill key={model} className="font-mono">
-            {model}
-          </MetaPill>
-        ))}
+        <MetaPill className="font-mono">{primaryModel}</MetaPill>
       </div>
 
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <span className="truncate font-mono text-[0.68rem] text-muted-foreground/80">
-          {connector?.endpoint ?? option.defaultEndpoint}
+          {endpoint}
         </span>
         <div className="flex shrink-0 gap-2">
           <Button

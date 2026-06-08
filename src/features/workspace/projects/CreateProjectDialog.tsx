@@ -85,10 +85,10 @@ export function CreateProjectDialog() {
             <div className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Nombre del proyecto">
-                  <Input placeholder="POT Barranquilla 2024" />
+                  <Input placeholder="Nombre del proyecto" />
                 </Field>
                 <Field label="Municipio / area">
-                  <Input placeholder="Barranquilla, Atlantico" />
+                  <Input placeholder="Municipio o area de trabajo" />
                 </Field>
                 <Field label="Tipo de proyecto">
                   <NativeSelect className="w-full">
@@ -99,7 +99,7 @@ export function CreateProjectDialog() {
                   </NativeSelect>
                 </Field>
                 <Field label="Periodo">
-                  <Input placeholder="2024 - 2027" />
+                  <Input placeholder="Periodo del proyecto" />
                 </Field>
               </div>
 
@@ -147,7 +147,7 @@ export function CreateProjectDialog() {
                   <h3 className="text-sm font-semibold">Memoria</h3>
                 </div>
                 <Field label="Coleccion">
-                  <Input placeholder="pot_barranquilla_2024" />
+                  <Input placeholder="Nombre de coleccion" />
                 </Field>
                 <Field label="Privacidad">
                   <NativeSelect className="w-full">

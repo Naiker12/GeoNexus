@@ -1,34 +1,17 @@
 import * as React from "react"
 
 import { AiModelsTable } from "@/features/workspace/configuration/AiModelsTable"
-import { NativeSelect } from "@/components/ui/native-select"
 import { SettingsDialogs } from "@/features/workspace/configuration/SettingsDialogs"
 import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 import { Field } from "@/features/workspace/configuration/settings-ui"
 
-const initialModels = [
-  {
-    provider: "Ollama",
-    model: "llama3.1",
-    endpoint: "localhost:11434",
-    key: "Sin clave",
-    status: "Activo",
-  },
-  {
-    provider: "LM Studio",
-    model: "OpenAI compatible",
-    endpoint: "localhost:1234/v1",
-    key: "Sin clave",
-    status: "Inactivo",
-  },
-  {
-    provider: "OpenRouter",
-    model: "claude / gpt / gemini",
-    endpoint: "openrouter.ai/api/v1",
-    key: "keychain: openrouter",
-    status: "Revisar",
-  },
-]
+const initialModels: {
+  provider: string
+  model: string
+  endpoint: string
+  key: string
+  status: string
+}[] = []
 
 export function AiEmbeddingsSection() {
   const [dialog, setDialog] = React.useState<SettingsDialog>(null)
@@ -81,11 +64,9 @@ export function AiEmbeddingsSection() {
             Modelo activo para ChromaDB y búsqueda semántica.
           </p>
           <Field label="Modelo de embeddings">
-            <NativeSelect className="w-full">
-              <option>nomic-embed-text (activo)</option>
-              <option>all-minilm-l6-v2</option>
-              <option>bge-small-en</option>
-            </NativeSelect>
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              Sin modelo de embeddings configurado
+            </div>
           </Field>
         </div>
       </div>

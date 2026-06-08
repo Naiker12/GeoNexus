@@ -9,30 +9,6 @@ import {
 import { Button } from "@/components/ui/Button"
 import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 
-const configuredModels = [
-  {
-    provider: "Ollama",
-    model: "llama3.1",
-    endpoint: "localhost:11434",
-    key: "Sin clave",
-    status: "Activo",
-  },
-  {
-    provider: "LM Studio",
-    model: "OpenAI compatible",
-    endpoint: "localhost:1234/v1",
-    key: "Sin clave",
-    status: "Inactivo",
-  },
-  {
-    provider: "OpenRouter",
-    model: "claude / gpt / gemini",
-    endpoint: "openrouter.ai/api/v1",
-    key: "keychain: openrouter",
-    status: "Revisar",
-  },
-]
-
 export type ConfiguredModel = {
   provider: string
   model: string
@@ -67,40 +43,46 @@ export function AiModelsTable({
         </Button>
       </div>
       <div className="divide-y divide-border">
-        {models.map((item) => (
-          <article
-            key={`${item.provider}-${item.model}`}
-            className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)_8rem_auto] md:items-center"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{item.provider}</p>
-              <p className="text-xs text-muted-foreground">{item.status}</p>
-            </div>
-            <p className="truncate text-sm text-muted-foreground">
-              {item.model}
-            </p>
-            <code className="truncate font-mono text-xs text-muted-foreground">
-              {item.endpoint}
-            </code>
-            <span className="truncate text-xs text-muted-foreground">
-              {item.key}
-            </span>
-            <RowActions
-              onView={() =>
-                onDialogChange({ type: "view-key", name: item.provider })
-              }
-              onEdit={() =>
-                onDialogChange({ type: "edit-model", name: item.provider })
-              }
-              onDisable={() =>
-                onDialogChange({ type: "disable-model", name: item.provider })
-              }
-              onDelete={() =>
-                onDialogChange({ type: "delete-model", name: item.provider })
-              }
-            />
-          </article>
-        ))}
+        {models.length ? (
+          models.map((item) => (
+            <article
+              key={`${item.provider}-${item.model}`}
+              className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_minmax(0,1fr)_8rem_auto] md:items-center"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{item.provider}</p>
+                <p className="text-xs text-muted-foreground">{item.status}</p>
+              </div>
+              <p className="truncate text-sm text-muted-foreground">
+                {item.model}
+              </p>
+              <code className="truncate font-mono text-xs text-muted-foreground">
+                {item.endpoint}
+              </code>
+              <span className="truncate text-xs text-muted-foreground">
+                {item.key}
+              </span>
+              <RowActions
+                onView={() =>
+                  onDialogChange({ type: "view-key", name: item.provider })
+                }
+                onEdit={() =>
+                  onDialogChange({ type: "edit-model", name: item.provider })
+                }
+                onDisable={() =>
+                  onDialogChange({ type: "disable-model", name: item.provider })
+                }
+                onDelete={() =>
+                  onDialogChange({ type: "delete-model", name: item.provider })
+                }
+              />
+            </article>
+          ))
+        ) : (
+          <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+            Sin modelos configurados
+          </div>
+        )}
       </div>
     </div>
   )

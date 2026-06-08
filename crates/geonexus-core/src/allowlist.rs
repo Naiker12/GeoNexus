@@ -13,6 +13,9 @@ pub const ALLOWED_EXTENSIONS: &[&str] = &[
     ".xlsx", ".xls",                               // Excel
     ".zip",                                        // Comprimido (puede contener SHP)
     ".json",                                       // GeoJSON sin extensión explícita
+    ".docx", ".doc", ".xlsm",                      // Word y Excel adicionales
+    ".tar.gz",                                     // Otros comprimidos
+    ".cpg", ".img", ".ecw",                        // Auxiliares y rasters GIS
 ];
 
 /// Tamaño máximo por defecto en bytes (500 MB).

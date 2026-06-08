@@ -12,16 +12,18 @@ pub async fn insert_connector_config(
 
     sqlx::query(
         "INSERT INTO connector_configs
-            (id, project_id, provider, display_name, root_path, base_url,
-             client_id, tenant_id, sync_folders, file_filter, max_file_mb,
-             is_active, last_synced, created_at, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            (id, project_id, workspace_id, provider, display_name, root_path,
+             qgis_project_path, base_url, client_id, tenant_id, sync_folders,
+             file_filter, max_file_mb, is_active, last_synced, created_at, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     )
     .bind(&cfg.id)
     .bind(&cfg.project_id)
+    .bind(&cfg.workspace_id)
     .bind(provider.trim_matches('"'))
     .bind(&cfg.display_name)
     .bind(&cfg.root_path)
+    .bind(&cfg.qgis_project_path)
     .bind(&cfg.base_url)
     .bind(&cfg.client_id)
     .bind(&cfg.tenant_id)
@@ -144,9 +146,11 @@ fn row_to_config(row: &sqlx::sqlite::SqliteRow) -> Result<ConnectorConfig, Strin
     Ok(ConnectorConfig {
         id: row.get("id"),
         project_id: row.get("project_id"),
+        workspace_id: row.get("workspace_id"),
         provider,
         display_name: row.get("display_name"),
         root_path: row.get("root_path"),
+        qgis_project_path: row.get("qgis_project_path"),
         base_url: row.get("base_url"),
         client_id: row.get("client_id"),
         tenant_id: row.get("tenant_id"),
@@ -200,9 +204,11 @@ mod tests {
         let now = 1_700_000_000i64;
         ConnectorConfig {
             id: id.into(), project_id: project_id.into(),
+            workspace_id: Some("w1".into()),
             provider: ConnectorProvider::Local,
             display_name: "Carpeta POT".into(),
             root_path: Some("/tmp/gis".into()),
+            qgis_project_path: None,
             base_url: None, client_id: None, tenant_id: None,
             sync_folders: vec![], file_filter: vec![],
             max_file_mb: 500, is_active: true,

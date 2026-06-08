@@ -62,6 +62,10 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
               <Info label="Estado" value={statusLabel[asset.status]} />
               <Info label="Cache" value={cacheLabel[asset.cache_state]} />
               <Info label="Ruta" value={asset.location} />
+              <Info label="Conector" value={asset.connector_id ?? "—"} />
+              <Info label="Agente" value={asset.agent_id ?? "—"} />
+              <Info label="Workspace" value={asset.workspace_id ?? "—"} />
+              {asset.trace_id && <Info label="Trace ID" value={asset.trace_id} />}
             </div>
           </section>
 

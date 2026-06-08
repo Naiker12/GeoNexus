@@ -98,85 +98,9 @@ export const systemItems: NavItem[] = [
 ]
 
 export const recentProjects: RecentProject[] = [
-  { name: "POT Barranquilla 2024", layers: 12, analyses: 3, active: true },
 ]
 
 export const aiConnectors: AiConnector[] = [
-  {
-    id: "ollama",
-    name: "Ollama",
-    provider: "local",
-    role: "chat",
-    status: "online",
-    model: "llama3.1",
-    models: ["llama3.1", "mistral", "qwen2", "phi3"],
-    endpoint: "localhost:11434",
-    supportsTools: true,
-    privacy: "localhost",
-    latency: "Local",
-    description: "Proveedor local detectado automaticamente para chat y tool-calls.",
-    icon: TerminalIcon,
-  },
-  {
-    id: "lmstudio",
-    name: "LM Studio",
-    provider: "local",
-    role: "chat",
-    status: "offline",
-    model: "OpenAI compatible",
-    models: ["openai-compatible", "gguf-local"],
-    endpoint: "localhost:1234/v1",
-    supportsTools: true,
-    privacy: "localhost",
-    latency: "Local",
-    description: "Servidor local compatible con OpenAI API cuando el usuario lo activa.",
-    icon: TerminalIcon,
-  },
-  {
-    id: "openrouter",
-    name: "OpenRouter",
-    provider: "cloud",
-    role: "chat",
-    status: "needs-key",
-    model: "claude / gpt / gemini",
-    models: ["claude-3.5-sonnet", "gpt-4o", "gemini-1.5-pro"],
-    endpoint: "openrouter.ai/api/v1",
-    supportsTools: true,
-    privacy: "keychain",
-    latency: "Cloud",
-    description: "Gateway multi-modelo; las keys van al keychain del sistema.",
-    icon: CloudIcon,
-  },
-  {
-    id: "nomic-embed",
-    name: "Embeddings locales",
-    provider: "local",
-    role: "embedding",
-    status: "online",
-    model: "nomic-embed-text",
-    models: ["nomic-embed-text"],
-    endpoint: "localhost:11434",
-    supportsTools: false,
-    privacy: "localhost",
-    latency: "Local",
-    description: "Vectoriza POT, memorias y conocimiento GIS sin salir del equipo.",
-    icon: BrainCircuitIcon,
-  },
-  {
-    id: "memory-mcp",
-    name: "Memory MCP",
-    provider: "mcp",
-    role: "memory",
-    status: "online",
-    model: "pot_normas + project_memory",
-    models: ["pot_normas", "project_memory", "gis_knowledge"],
-    endpoint: "localhost:7011",
-    supportsTools: false,
-    privacy: "local",
-    latency: "MCP",
-    description: "Recupera memoria semantica, normas POT y contexto del proyecto.",
-    icon: NetworkIcon,
-  },
 ]
 
 export const gisTools: GisTool[] = [
@@ -277,27 +201,6 @@ export const themePresets: ThemePreset[] = [
 ]
 
 export const recentAnalyses: AnalysisItem[] = [
-  {
-    name: "Buffer 500m",
-    tool: "buffer",
-    provider: "Ollama",
-    traceId: "trc-8f21",
-    status: "completed",
-  },
-  {
-    name: "Consulta POT",
-    tool: "query_pot",
-    provider: "Memory MCP",
-    traceId: "trc-44ad",
-    status: "completed",
-  },
-  {
-    name: "Medicion vial",
-    tool: "distance",
-    provider: "QGIS MCP",
-    traceId: "trc-91c0",
-    status: "queued",
-  },
 ]
 
 export const layerLegend = [
@@ -308,15 +211,14 @@ export const layerLegend = [
 
 export const activeAssistant = {
   name: "GeoNexus IA",
-  connector: "Ollama",
-  model: "llama3.1",
-  status: "online",
-  insight:
-    "Detecte 3 zonas de restriccion POT en el area seleccionada. La zona naranja tiene restriccion de altura maxima de 6m segun el art. 142.",
+  connector: "Sin proveedor",
+  model: "Sin modelo",
+  status: "offline",
+  insight: "Conecta un proveedor IA para habilitar respuestas con trazabilidad.",
 }
 
 export const quickActions = [
   { label: "Ver norma completa", icon: FileTextIcon },
-  { label: "Buffer 500m", icon: MousePointer2Icon },
+  { label: "Crear buffer", icon: MousePointer2Icon },
   { label: "Exportar analisis", icon: SparklesIcon },
 ]
