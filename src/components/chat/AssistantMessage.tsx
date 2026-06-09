@@ -1,6 +1,7 @@
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
+import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 
@@ -8,12 +9,14 @@ interface AssistantMessageProps {
   content: string
   isStreaming?: boolean
   onSendMessage?: (text: string) => void
+  sources?: string[]
 }
 
 export function AssistantMessage({
   content,
   isStreaming,
   onSendMessage,
+  sources,
 }: AssistantMessageProps) {
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: content, suggestions: [] as string[] }
@@ -32,6 +35,9 @@ export function AssistantMessage({
         ) : (
           <>
             <MarkdownContent content={mainContent} isStreaming={isStreaming} />
+            {sources && sources.length > 0 && (
+              <SearchSourcesBlock sources={sources} />
+            )}
             <ActionSuggestions
               suggestions={suggestions}
               onSelect={(s) => onSendMessage?.(s)}

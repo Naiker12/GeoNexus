@@ -68,6 +68,7 @@ export function ChatTranscript({ messages, pending, onSendMessage }: ChatTranscr
             key={message.id}
             content={message.content}
             isStreaming={false}
+            sources={message.sources}
             onSendMessage={onSendMessage}
           />
         )

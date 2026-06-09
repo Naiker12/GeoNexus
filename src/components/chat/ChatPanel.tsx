@@ -16,6 +16,7 @@ import {
   SendIcon,
   SettingsIcon,
   SparklesIcon,
+  XIcon,
 } from "lucide-react"
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
@@ -147,6 +148,7 @@ export function ChatPanel(_props: ChatPanelProps) {
         </div>
 
         <ChatComposer
+          key={conversationId ?? "new"}
           activeProvider={activeProvider}
           error={error}
           pending={pending}
@@ -244,6 +246,7 @@ function ChatComposer({
             <Textarea
               rows={1}
               value={value}
+              autoComplete="off"
               className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
               placeholder="Pregunta lo que quieras"
               onChange={(event) => setValue(event.target.value)}
@@ -296,6 +299,23 @@ function ChatComposer({
             {contextActive ? "Contexto activo" : "Usar contexto GIS"}
           </Button>
         </div>
+
+        {webSearchEnabled && (
+          <div className="mt-2 flex items-center gap-1.5 px-2">
+            <GlobeIcon className="size-3 text-emerald-500" />
+            <span className="text-[11px] text-emerald-500 font-medium">
+              Búsqueda web activa
+            </span>
+            <button
+              type="button"
+              onClick={onToggleWebSearch}
+              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Desactivar búsqueda web"
+            >
+              <XIcon className="size-3" />
+            </button>
+          </div>
+        )}
 
         {error ? (
           <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
