@@ -1,4 +1,13 @@
+import * as React from "react"
+import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/Button"
 import { Switch } from "@/components/ui/switch"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/features/workspace/workspace-data"
@@ -8,12 +17,14 @@ type ActiveProviderPanelProps = {
   activeOption: ProviderOption | null
   activeConnector?: AiConnector
   isTesting?: boolean
+  onModelChange?: (model: string) => void
 }
 
 export function ActiveProviderPanel({
   activeOption,
   activeConnector,
   isTesting,
+  onModelChange,
 }: ActiveProviderPanelProps) {
   if (!activeOption) {
     return (
@@ -28,6 +39,7 @@ export function ActiveProviderPanel({
   const status = activeConnector?.status ?? "needs-key"
   const model = activeConnector?.model || "Sin modelo"
   const endpoint = activeConnector?.endpoint || "Sin endpoint"
+  const allModels = activeConnector?.models ?? []
 
   return (
     <aside className="flex flex-col gap-6">
@@ -87,9 +99,19 @@ export function ActiveProviderPanel({
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Modelos disponibles
         </h2>
-        <div className="rounded-lg border border-border/80 bg-card/95 p-3 text-sm text-muted-foreground shadow-sm backdrop-blur">
-          Sin modelos detectados
-        </div>
+        {allModels.length > 0 ? (
+          <div className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
+            <ModelCard
+              models={allModels}
+              selected={model}
+              onSelect={onModelChange}
+            />
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border/80 bg-card/95 p-3 text-sm text-muted-foreground shadow-sm backdrop-blur">
+            Sin modelos detectados
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -109,5 +131,111 @@ export function ActiveProviderPanel({
         </div>
       </section>
     </aside>
+  )
+}
+
+function ModelCard({
+  models,
+  selected,
+  onSelect,
+}: {
+  models: string[]
+  selected: string
+  onSelect?: (model: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState("")
+
+  const filtered = React.useMemo(
+    () =>
+      query
+        ? models.filter((m) => m.toLowerCase().includes(query.toLowerCase()))
+        : models,
+    [models, query]
+  )
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          {models.length} modelo{models.length !== 1 ? "s" : ""}
+        </span>
+        {selected !== "Sin modelo" && (
+          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            {selected}
+          </span>
+        )}
+      </div>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-between text-xs"
+          >
+            {selected !== "Sin modelo" ? (
+              <span className="truncate">{selected}</span>
+            ) : (
+              <span className="text-muted-foreground">
+                Seleccionar modelo...
+              </span>
+            )}
+            <ChevronDownIcon className="size-3.5 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-(--radix-popover-trigger-width) overflow-hidden rounded-lg p-0"
+          align="start"
+        >
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+            <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filtrar modelos..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center gap-1 py-8 text-center text-sm text-muted-foreground">
+                <SearchIcon className="size-5 opacity-30" />
+                <span>No se encontraron modelos</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-xs text-muted-foreground">
+                  {filtered.length} de {models.length} modelos
+                </div>
+                {filtered.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      onSelect?.(m)
+                      setOpen(false)
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground",
+                      selected === m && "bg-accent/60 font-medium"
+                    )}
+                  >
+                    <CheckIcon
+                      className={cn(
+                        "size-4 shrink-0 transition-opacity",
+                        selected === m ? "opacity-100 text-primary" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{m}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }

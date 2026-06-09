@@ -107,3 +107,119 @@ impl RegisterLocalConnectorInput {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_input() -> RegisterLocalConnectorInput {
+        RegisterLocalConnectorInput {
+            project_id: "proj-1".into(),
+            workspace_id: None,
+            display_name: "Mi conector".into(),
+            root_path: std::env::temp_dir().to_string_lossy().to_string(),
+            file_filter: vec![],
+            max_file_mb: Some(100),
+        }
+    }
+
+    #[test]
+    fn connector_provider_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_value(ConnectorProvider::Local).unwrap(),
+            serde_json::json!("local")
+        );
+        assert_eq!(
+            serde_json::to_value(ConnectorProvider::OneDrive).unwrap(),
+            serde_json::json!("one_drive")
+        );
+        assert_eq!(
+            serde_json::to_value(ConnectorProvider::GoogleDrive).unwrap(),
+            serde_json::json!("google_drive")
+        );
+    }
+
+    #[test]
+    fn file_sync_status_serializes_snake_case() {
+        assert_eq!(
+            serde_json::to_value(FileSyncStatus::Pending).unwrap(),
+            serde_json::json!("pending")
+        );
+        assert_eq!(
+            serde_json::to_value(FileSyncStatus::Synced).unwrap(),
+            serde_json::json!("synced")
+        );
+        assert_eq!(
+            serde_json::to_value(FileSyncStatus::Conflict).unwrap(),
+            serde_json::json!("conflict")
+        );
+    }
+
+    #[test]
+    fn validate_rechaza_project_id_vacio() {
+        let input = RegisterLocalConnectorInput {
+            project_id: "".into(),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rechaza_display_name_vacio() {
+        let input = RegisterLocalConnectorInput {
+            display_name: "".into(),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rechaza_root_path_vacio() {
+        let input = RegisterLocalConnectorInput {
+            root_path: "".into(),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rechaza_root_path_inexistente() {
+        let input = RegisterLocalConnectorInput {
+            root_path: "C:\\no_existe_xyz_123".into(),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rechaza_max_file_mb_menor_que_1() {
+        let input = RegisterLocalConnectorInput {
+            max_file_mb: Some(0),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_rechaza_max_file_mb_mayor_que_2048() {
+        let input = RegisterLocalConnectorInput {
+            max_file_mb: Some(2049),
+            ..valid_input()
+        };
+        assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn validate_acepta_input_valido() {
+        assert!(valid_input().validate().is_ok());
+    }
+
+    #[test]
+    fn validate_acepta_max_file_mb_sin_valor() {
+        let input = RegisterLocalConnectorInput {
+            max_file_mb: None,
+            ..valid_input()
+        };
+        assert!(input.validate().is_ok());
+    }
+}

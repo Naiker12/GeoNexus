@@ -1,6 +1,7 @@
+import json
 import os
 import time
-from typing import Dict
+from typing import Any, Dict, List, Optional
 
 
 OPENAI_COMPATIBLE_PROVIDERS = {
@@ -186,32 +187,42 @@ def list_llm_models(provider_type: str, base_url: str) -> Dict:
         }
 
 
-def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str) -> Dict:
-    """Envia un mensaje simple sin tools ni streaming a un proveedor LLM."""
+def chat_llm_provider(
+    provider_type: str,
+    base_url: str,
+    model: str,
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]] = None,
+) -> Dict:
+    """Envia mensajes a un proveedor LLM, opcionalmente con tools.
+
+    Devuelve el objeto ``message`` completo tal cual lo devuelve la API,
+    incluyendo ``tool_calls`` si el LLM decidio llamar una herramienta.
+    """
     import requests
 
     provider = provider_type.lower().strip()
     url = base_url.rstrip("/")
 
+    body: dict = {
+        "model": model,
+        "messages": messages,
+    }
+    if tools:
+        body["tools"] = tools
+
     try:
         if provider == "ollama":
+            body["stream"] = False
             response = requests.post(
                 f"{url}/api/chat",
-                json={
-                    "model": model,
-                    "stream": False,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                timeout=60,
+                json=body,
+                timeout=120,
             )
             response.raise_for_status()
             data = response.json()
-            return {
-                "status": "ok",
-                "provider_type": provider,
-                "model": model,
-                "text": data.get("message", {}).get("content", ""),
-            }
+            raw = data.get("message", {})
+            return _make_chat_response(provider, model, raw)
 
         if provider == "openrouter":
             api_key = os.getenv("OPENROUTER_API_KEY")
@@ -231,21 +242,13 @@ def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str
             response = requests.post(
                 f"{url}/chat/completions",
                 headers=headers,
-                json={
-                    "model": model,
-                    "stream": False,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                timeout=60,
+                json=body,
+                timeout=120,
             )
             response.raise_for_status()
             data = response.json()
-            return {
-                "status": "ok",
-                "provider_type": provider,
-                "model": model,
-                "text": data.get("choices", [{}])[0].get("message", {}).get("content", ""),
-            }
+            raw = data.get("choices", [{}])[0].get("message", {})
+            return _make_chat_response(provider, model, raw)
 
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
             api_key = os.getenv("OPENAI_API_KEY")
@@ -256,21 +259,13 @@ def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str
             response = requests.post(
                 f"{url}/chat/completions",
                 headers=headers,
-                json={
-                    "model": model,
-                    "stream": False,
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                timeout=60,
+                json=body,
+                timeout=120,
             )
             response.raise_for_status()
             data = response.json()
-            return {
-                "status": "ok",
-                "provider_type": provider,
-                "model": model,
-                "text": data.get("choices", [{}])[0].get("message", {}).get("content", ""),
-            }
+            raw = data.get("choices", [{}])[0].get("message", {})
+            return _make_chat_response(provider, model, raw)
 
         return {
             "status": "error",
@@ -285,3 +280,19 @@ def chat_llm_provider(provider_type: str, base_url: str, model: str, prompt: str
             "model": model,
             "message": str(exc),
         }
+
+
+def _make_chat_response(provider: str, model: str, raw: dict) -> Dict:
+    """Envuelve el mensaje crudo de la API en el envelope estandar del sidecar."""
+    content = raw.get("content")
+    tool_calls = raw.get("tool_calls")
+    return {
+        "status": "ok",
+        "provider_type": provider,
+        "model": model,
+        "message": {
+            "role": "assistant",
+            "content": content,
+            "tool_calls": tool_calls,
+        },
+    }

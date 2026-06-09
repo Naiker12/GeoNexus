@@ -8,6 +8,7 @@ pub mod commands;
 pub struct AppState {
     pub db: sqlx::SqlitePool,
     pub repo: DataRepository,
+    pub db_path: String,
 }
 
 fn main() {
@@ -26,9 +27,10 @@ fn main() {
             })?;
 
             let db = repo.pool.clone();
+            let db_path_str = db_path.to_string_lossy().to_string();
 
             // Gestionar el estado global unificado de la aplicación
-            app.manage(AppState { db, repo });
+            app.manage(AppState { db, repo, db_path: db_path_str });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -59,7 +61,9 @@ fn main() {
             // Fase 7
             commands::chat::send_message,
             commands::chat::list_conversations,
-            commands::chat::list_messages
+            commands::chat::list_messages,
+            commands::chat::recall_chunks,
+            commands::chat::get_project_context
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

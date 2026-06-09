@@ -1,3 +1,10 @@
+import { invoke } from '@tauri-apps/api/core'
+import type { LlmModelInfo, ListLlmModelsInput } from '../types/llm'
+
+export type { LlmModelInfo, ListLlmModelsInput }
+
+// ── Tipos legacy (para ping y chat que siguen usando sidecar Python) ─────────
+
 export type LlmProviderConfig = {
   provider_type: string
   name?: string
@@ -20,12 +27,6 @@ export type LlmChatRequest = {
   prompt: string
 }
 
-export type LlmModelsRequest = {
-  provider_type: string
-  endpoint: string
-  api_key?: string
-}
-
 export type LlmChatResult = {
   status: "ok" | "error"
   provider_type: string
@@ -34,53 +35,29 @@ export type LlmChatResult = {
   message?: string | null
 }
 
-export type LlmModelsResult = {
-  status: "ok" | "error"
-  provider_type: string
-  models: string[]
-  message?: string | null
+// ── listLlmModels ─────────────────────────────────────────────────────────────
+
+export async function listLlmModels(
+  input: ListLlmModelsInput,
+): Promise<LlmModelInfo[]> {
+  if (!input.provider.trim()) throw new Error('provider requerido')
+  if (!input.endpoint.trim()) throw new Error('endpoint requerido')
+
+  return invoke('list_llm_models', { input })
 }
 
-type InvokeFn = <T>(command: string, args?: Record<string, unknown>) => Promise<T>
-type TauriWindow = Window & {
-  __TAURI__?: {
-    invoke?: InvokeFn
-    tauri?: {
-      invoke?: InvokeFn
-    }
-  }
-}
-
-function getTauriInvoke(): InvokeFn | null {
-  const tauri = (window as TauriWindow).__TAURI__
-  return tauri?.invoke ?? tauri?.tauri?.invoke ?? null
-}
-
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
-  const invoke = getTauriInvoke()
-  if (!invoke) {
-    throw new Error("Tauri no disponible")
-  }
-  return invoke<T>(command, args)
-}
+// ── pingLlmProvider ───────────────────────────────────────────────────────────
 
 export function pingLlmProvider(
   config: LlmProviderConfig
 ): Promise<LlmPingResult> {
-  return invokeRequired("ping_llm_provider", { config })
+  return invoke('ping_llm_provider', { config })
 }
+
+// ── sendLlmMessage ────────────────────────────────────────────────────────────
 
 export function sendLlmMessage(
   request: LlmChatRequest
 ): Promise<LlmChatResult> {
-  return invokeRequired("send_llm_message", { request })
-}
-
-export function listLlmModels(
-  request: LlmModelsRequest
-): Promise<LlmModelsResult> {
-  return invokeRequired("list_llm_models", { request })
+  return invoke('send_llm_message', { request })
 }

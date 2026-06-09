@@ -8,7 +8,7 @@ import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
-import { aiConnectors } from "@/features/workspace/workspace-data"
+import { useConnectors } from "@/contexts/ConnectorsContext"
 
 type GeoNexusWorkspaceProps = {
   activeRoute: string
@@ -21,14 +21,13 @@ export function GeoNexusWorkspace({
   configOpen,
   onConfigOpenChange,
 }: GeoNexusWorkspaceProps) {
-  const activeConnector = aiConnectors[0] ?? {
-    name: "Sin proveedor",
-    model: "Sin modelo",
-    status: "offline" as const,
-  }
-  const selectableModels = aiConnectors.filter((connector) =>
-    ["chat", "embedding"].includes(connector.role)
-  )
+  const { connectors, activeConnectorId } = useConnectors()
+  const activeConnector =
+    connectors.find((c) => c.id === activeConnectorId) ?? {
+      name: "Sin proveedor",
+      model: "Sin modelo",
+      status: "offline" as const,
+    }
   const isAiContainers = activeRoute.startsWith("#contenedores-ia")
   const isConnectors = activeRoute.startsWith("#conectores")
   const isData = activeRoute.startsWith("#datos")
@@ -62,7 +61,7 @@ export function GeoNexusWorkspace({
         ) : isAiContainers ? (
           <AiContainersPage />
         ) : (
-          <ChatPanel models={selectableModels} />
+          <ChatPanel />
         )}
       </main>
 

@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/toast"
 import { GeoNexusWorkspace } from "@/features/workspace/GeoNexusWorkspace"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
 import type { CSSProperties } from "react"
@@ -33,6 +34,7 @@ export default function App() {
   }, [activeTheme])
 
   return (
+    <>
     <SidebarProvider
       className={`${activeTheme} bg-background text-foreground`}
       style={
@@ -55,6 +57,8 @@ export default function App() {
         />
       </SidebarInset>
     </SidebarProvider>
+      <Toaster />
+    </>
   )
 }
 

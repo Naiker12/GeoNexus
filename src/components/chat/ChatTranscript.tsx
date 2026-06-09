@@ -1,6 +1,5 @@
-import { RefreshCwIcon } from "lucide-react"
-
 import { MessageBubble } from "@/components/chat/MessageBubble"
+import { ChatAnalysisLoader } from "@/components/chat/ChatAnalysisLoader"
 import type { Message } from "@/types/chat"
 
 type ChatTranscriptProps = {
@@ -18,6 +17,21 @@ export function ChatTranscript({ messages, pending }: ChatTranscriptProps) {
           eyebrow={message.role === "assistant" ? "GeoNexus IA" : "Tu"}
         >
           <p className="whitespace-pre-wrap">{message.content}</p>
+
+          {message.role === "assistant" && message.sources && message.sources.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {message.sources.map((source, i) => (
+                <span
+                  key={`${source}-${i}`}
+                  className="inline-flex items-center gap-1 rounded-full border
+                             bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {source}
+                </span>
+              ))}
+            </div>
+          )}
+
           {message.trace_id ? (
             <p className="mt-3 text-xs text-muted-foreground">
               trace_id: {message.trace_id}
@@ -28,10 +42,7 @@ export function ChatTranscript({ messages, pending }: ChatTranscriptProps) {
 
       {pending ? (
         <MessageBubble role="assistant" eyebrow="GeoNexus IA">
-          <span className="inline-flex items-center gap-2 text-muted-foreground">
-            <RefreshCwIcon className="size-4 animate-spin" />
-            Pensando...
-          </span>
+          <ChatAnalysisLoader />
         </MessageBubble>
       ) : null}
     </div>

@@ -9,6 +9,7 @@ export type Conversation = {
   model: string
   created_at: number
   updated_at: number
+  message_count: number | null
 }
 
 export type Message = {
@@ -22,7 +23,31 @@ export type Message = {
   chunks_used: string[]
   nodes_used: string[]
   tool_calls: unknown[]
+  sources: string[]
   created_at: number
+}
+
+export type RecallChunk = {
+  text: string
+  source: string
+  asset_id: string
+  score: number
+}
+
+export type ContextAsset = {
+  name: string
+  kind: string
+  status: string
+}
+
+export type ContextNode = {
+  label: string
+  kind: string
+}
+
+export type ProjectContext = {
+  assets: ContextAsset[]
+  graph_nodes: ContextNode[]
 }
 
 export type SendMessageInput = {

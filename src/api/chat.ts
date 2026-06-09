@@ -1,33 +1,12 @@
+import { invoke } from '@tauri-apps/api/core'
 import type {
   Conversation,
   Message,
+  ProjectContext,
+  RecallChunk,
   SendMessageInput,
   SendMessageResponse,
 } from "@/types/chat"
-
-type InvokeFn = <T>(command: string, args?: Record<string, unknown>) => Promise<T>
-type TauriWindow = Window & {
-  __TAURI__?: {
-    invoke?: InvokeFn
-    tauri?: {
-      invoke?: InvokeFn
-    }
-  }
-}
-
-function getTauriInvoke(): InvokeFn | null {
-  const tauri = (window as TauriWindow).__TAURI__
-  return tauri?.invoke ?? tauri?.tauri?.invoke ?? null
-}
-
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
-  const invoke = getTauriInvoke()
-  if (!invoke) throw new Error("Tauri no disponible")
-  return invoke<T>(command, args)
-}
 
 export function sendMessage(
   input: SendMessageInput
@@ -38,15 +17,30 @@ export function sendMessage(
   if (!input.model.trim()) throw new Error("model requerido")
   if (!input.endpoint.trim()) throw new Error("endpoint requerido")
 
-  return invokeRequired("send_message", { input })
+  return invoke("send_message", { input })
 }
 
 export function listConversations(projectId: string): Promise<Conversation[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeRequired("list_conversations", { project_id: projectId })
+  return invoke("list_conversations", { projectId })
 }
 
 export function listMessages(conversationId: string): Promise<Message[]> {
   if (!conversationId.trim()) throw new Error("conversation_id requerido")
-  return invokeRequired("list_messages", { conversation_id: conversationId })
+  return invoke("list_messages", { conversationId })
+}
+
+export function getProjectContext(projectId: string): Promise<ProjectContext> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invoke("get_project_context", { projectId })
+}
+
+export function recallChunks(
+  projectId: string,
+  query: string,
+  topK = 4
+): Promise<RecallChunk[]> {
+  return invoke("recall_chunks", {
+    input: { project_id: projectId, query, top_k: topK },
+  })
 }

@@ -19,6 +19,7 @@ pub struct Conversation {
     pub model: String,
     pub created_at: i64,
     pub updated_at: i64,
+    pub message_count: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,6 +34,7 @@ pub struct Message {
     pub chunks_used: Vec<String>,
     pub nodes_used: Vec<String>,
     pub tool_calls: Vec<serde_json::Value>,
+    pub sources: Vec<String>,
     pub created_at: i64,
 }
 

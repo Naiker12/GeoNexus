@@ -38,19 +38,48 @@ export function MessageBubble({
   return (
     <article
       className={cn(
-        "rounded-lg border p-4 text-sm shadow-sm backdrop-blur",
-        isUser
-          ? "ml-auto max-w-2xl border-border bg-muted/95 text-foreground"
-          : "max-w-3xl border-border bg-card/95 text-card-foreground",
+        "flex items-start gap-3",
+        isUser && "flex-row-reverse",
         className
       )}
     >
-      {eyebrow ? (
-        <p className="text-xs font-medium uppercase tracking-wide text-primary">
-          {eyebrow}
-        </p>
-      ) : null}
-      <div className={cn(eyebrow && "mt-2", "leading-6")}>{children}</div>
+      {/* Avatar */}
+      <div
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-xs",
+          isUser
+            ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+            : "bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20"
+        )}
+      >
+        {isUser ? (
+          <span>TU</span>
+        ) : (
+          <GeoNexusIcon className="size-4" variant="nexus" />
+        )}
+      </div>
+
+      {/* Bubble */}
+      <div
+        className={cn(
+          "min-w-0 max-w-2xl rounded-2xl px-4 py-3 text-sm shadow-xs",
+          isUser
+            ? "bg-primary/10 text-foreground"
+            : "bg-card text-card-foreground ring-1 ring-border/50"
+        )}
+      >
+        {eyebrow ? (
+          <p
+            className={cn(
+              "mb-1 text-[11px] font-semibold uppercase tracking-wider",
+              isUser ? "text-primary/60" : "text-emerald-600/60 dark:text-emerald-400/60"
+            )}
+          >
+            {eyebrow}
+          </p>
+        ) : null}
+        <div className="leading-6">{children}</div>
+      </div>
     </article>
   )
 }
@@ -63,7 +92,7 @@ export function AssistantMessage({
   toolCall,
 }: AssistantMessageProps) {
   return (
-    <MessageBubble role="assistant" className="p-5">
+    <MessageBubble role="assistant">
       <div className="flex items-center gap-2 text-sm font-semibold text-primary">
         <GeoNexusIcon className="size-4" variant="agent" />
         {title}

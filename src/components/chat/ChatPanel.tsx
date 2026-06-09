@@ -4,19 +4,25 @@ import {
   BrainCircuitIcon,
   DatabaseIcon,
   FileUpIcon,
+  FolderPlusIcon,
   GlobeIcon,
   MenuIcon,
+  MessageSquarePlusIcon,
+  MessageSquareTextIcon,
   MicIcon,
   MonitorIcon,
   MoreHorizontalIcon,
-  PencilIcon,
   PlusIcon,
   SendIcon,
+  SettingsIcon,
   SparklesIcon,
 } from "lucide-react"
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { Button } from "@/components/ui/Button"
+import { ConversationList } from "@/components/chat/ConversationList"
+import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
+import { ModelSelector } from "@/components/chat/ModelSelector"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,36 +41,121 @@ import {
   InputGroupAddon,
   InputGroupControl,
 } from "@/components/ui/input-group"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/Textarea"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
+import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
-import {
-  type AiConnector,
-} from "@/features/workspace/workspace-data"
+import { useConnectors } from "@/contexts/ConnectorsContext"
+import type { AiConnector } from "@/features/workspace/workspace-data"
+import { cn } from "@/lib/utils"
+
+const PROJECT_ID = "project-default"
 
 type ChatPanelProps = {
-  models: AiConnector[]
+  models?: AiConnector[]
 }
 
-export function ChatPanel({ models }: ChatPanelProps) {
-  const { activeProvider, error, messages, pending, submit } = useChatSession(models)
+export function ChatPanel(_props: ChatPanelProps) {
+  const { connectors, activeConnectorId, setActiveConnectorId } =
+    useConnectors()
+  const {
+    activeProvider,
+    conversationId,
+    error,
+    messages,
+    pending,
+    loadingHistory,
+    contextToggles,
+    setContextToggles,
+    submit,
+    loadConversation,
+    newConversation,
+  } = useChatSession(activeConnectorId, connectors)
+
+  const [sheetOpen, setSheetOpen] = React.useState(false)
+  const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
 
   return (
-    <section className="relative z-10 mx-auto flex h-[calc(100svh-3.5rem)] w-full max-w-6xl flex-col px-4 sm:px-5">
-      <div className="min-h-0 flex-1 overflow-auto pb-36 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {messages.length > 0 || pending ? (
-          <ChatTranscript messages={messages} pending={pending} />
-        ) : (
-          <EmptyChatState />
-        )}
+    <section className="relative z-10 flex h-[calc(100svh-3.5rem)]">
+      {/* Conversation sheet (slide from left) */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="left" className="w-72 p-0 sm:max-w-72">
+          <SheetHeader className="border-b border-border px-4 py-3">
+            <SheetTitle>Conversaciones</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-auto px-2 pb-4">
+            <ConversationList
+              projectId={PROJECT_ID}
+              activeId={conversationId}
+              onSelect={(id) => { loadConversation(id); setSheetOpen(false) }}
+              onNew={() => { newConversation(); setSheetOpen(false) }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Main chat area */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top bar */}
+        <div className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSheetOpen(true)}
+            aria-label="Historial de conversaciones"
+          >
+            <MessageSquareTextIcon className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => { newConversation() }}
+            aria-label="Nueva conversacion"
+          >
+            <MessageSquarePlusIcon className="size-4" />
+          </Button>
+          <div className="ml-auto">
+            <ModelHeaderPopover />
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto pb-36 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {loadingHistory ? (
+            <div className="flex min-h-full items-center justify-center pb-16 pt-10">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="inline-block size-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                Cargando historial...
+              </div>
+            </div>
+          ) : messages.length > 0 || pending ? (
+            <ChatTranscript messages={messages} pending={pending} />
+          ) : (
+            <EmptyChatState />
+          )}
+        </div>
+
+        <ChatComposer
+          activeProvider={activeProvider}
+          error={error}
+          pending={pending}
+          onSubmit={submit}
+          onToggleContext={() => setContextPanelOpen((v) => !v)}
+          contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
+        />
       </div>
 
-      <ChatComposer
-        activeProvider={activeProvider}
-        error={error}
-        models={models}
-        pending={pending}
-        onSubmit={submit}
+      <ProjectContextPanel
+        projectId={PROJECT_ID}
+        open={contextPanelOpen}
+        onClose={() => setContextPanelOpen(false)}
+        toggles={contextToggles}
+        onToggleChange={setContextToggles}
       />
     </section>
   )
@@ -92,15 +183,17 @@ function EmptyChatState() {
 function ChatComposer({
   activeProvider,
   error,
-  models,
   pending,
   onSubmit,
+  onToggleContext,
+  contextActive,
 }: {
-  activeProvider: { provider: string; model: string; endpoint: string }
+  activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
-  models: AiConnector[]
   pending: boolean
   onSubmit: (content: string) => void
+  onToggleContext: () => void
+  contextActive: boolean
 }) {
   const [value, setValue] = React.useState("")
 
@@ -144,13 +237,23 @@ function ChatComposer({
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Modo voz">
               <AudioLinesIcon className="size-4" />
             </Button>
-            <ModelMenu models={models} />
+            <ModelSelector>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="rounded-xl"
+                aria-label="Modelos y proveedores"
+              >
+                <MenuIcon className="size-5" />
+              </Button>
+            </ModelSelector>
             <Button
               type="submit"
               size="icon"
               className="rounded-xl"
               aria-label="Enviar mensaje"
-              disabled={pending || !value.trim()}
+              disabled={pending || !value.trim() || !activeProvider}
             >
               <SendIcon className="size-4" />
             </Button>
@@ -158,13 +261,15 @@ function ChatComposer({
         </InputGroup>
 
         <div className="mt-2 flex flex-wrap gap-1.5 px-2">
-          <Button type="button" variant="outline" size="sm">
+          <Button
+            type="button"
+            variant={contextActive ? "default" : "outline"}
+            size="sm"
+            onClick={onToggleContext}
+          >
             <SparklesIcon className="size-4" />
-            Usar contexto GIS
+            {contextActive ? "Contexto activo" : "Usar contexto GIS"}
           </Button>
-          <span className="inline-flex min-h-8 items-center rounded-md bg-muted px-2 text-xs text-muted-foreground">
-            {activeProvider.provider} / {activeProvider.model}
-          </span>
         </div>
 
         {error ? (
@@ -197,6 +302,18 @@ function ToolMenu() {
         sideOffset={10}
         className="w-72 rounded-xl p-2"
       >
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Proyecto</DropdownMenuLabel>
+          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
+            <FolderPlusIcon className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">Agregar proyecto</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
+            <SettingsIcon className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">Configurar proyecto</span>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Entrada</DropdownMenuLabel>
           <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
@@ -252,98 +369,4 @@ function ToolMenu() {
   )
 }
 
-function ModelMenu({ models }: { models: AiConnector[] }) {
-  const activeModel = models[0]
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Modelos y conexiones"
-        >
-          <MenuIcon className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        side="top"
-        sideOffset={10}
-        className="w-64 rounded-xl p-2"
-      >
-        <DropdownMenuLabel>Modelo activo</DropdownMenuLabel>
-        {activeModel ? (
-          <DropdownMenuItem className="gap-3 px-3 py-2">
-            <GeoNexusIcon className="size-4" variant="agent" />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="truncate font-medium">{activeModel.name}</span>
-                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[0.68rem] text-muted-foreground">
-                  {activeModel.provider}
-                </span>
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {activeModel.model}
-              </span>
-            </span>
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem disabled className="gap-3 px-3 py-2">
-            <GeoNexusIcon className="size-4" variant="agent" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">
-                Sin modelo configurado
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                Conecta un proveedor para habilitar el chat
-              </span>
-            </span>
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
-            <GeoNexusIcon className="size-4" variant="agent" />
-            Cambiar modelo
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-60 rounded-xl p-2">
-            {models.length ? (
-              models.map((connector) => (
-                <DropdownMenuItem key={connector.id} className="gap-3">
-                  <GeoNexusIcon className="size-4" variant="agent" />
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">
-                      {connector.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {connector.model}
-                    </span>
-                  </span>
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem disabled className="gap-3">
-                <GeoNexusIcon className="size-4" variant="agent" />
-                No hay modelos conectados
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="gap-3 px-3 py-2">
-          <a href="#contenedores-ia-nuevo">
-            <PlusIcon className="size-4" />
-            Agregar modelo
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="gap-3 px-3 py-2">
-          <a href="#contenedores-ia-api">
-            <PencilIcon className="size-4" />
-            Conectar proveedor
-          </a>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}

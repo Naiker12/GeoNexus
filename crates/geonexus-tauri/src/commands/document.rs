@@ -310,161 +310,16 @@ pub async fn rebuild_knowledge_graph(
     // 1. Limpiar el grafo actual
     state.repo.clear_graph(&project_id).await?;
 
-    // 2. Re-sembrar los datos base/semilla del grafo de conocimiento
-    let now = unix_now();
-    let seed_nodes = vec![
-        GraphNode {
-            id: "pot-142".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "Art. 142".into(),
-            kind: "norma".into(),
-            description: "Restriccion de altura para zonas cercanas a corredores hidricos.".into(),
-            evidence: "POT Barranquilla 2024 / pagina 318".into(),
-            x: 42.0,
-            y: 28.0,
-            weight: 3,
-            created_at: now,
-        },
-        GraphNode {
-            id: "zona-norte".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "Zona norte".into(),
-            kind: "zona".into(),
-            description: "Sector industrial con restricciones urbanisticas activas.".into(),
-            evidence: "Capa zonificacion_norte.geojson".into(),
-            x: 58.0,
-            y: 42.0,
-            weight: 4,
-            created_at: now,
-        },
-        GraphNode {
-            id: "retiro-hidrico".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "Retiro hidrico".into(),
-            kind: "concepto".into(),
-            description: "Franja de proteccion obligatoria alrededor de canales y arroyos.".into(),
-            evidence: "Memoria tecnica ambiental / seccion 4.2".into(),
-            x: 36.0,
-            y: 58.0,
-            weight: 2,
-            created_at: now,
-        },
-        GraphNode {
-            id: "dxf-catastro".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "DXF Catastro".into(),
-            kind: "documento".into(),
-            description: "Plano importado con predios, linderos y vias secundarias.".into(),
-            evidence: "catastro_sector_norte.dxf".into(),
-            x: 70.0,
-            y: 64.0,
-            weight: 2,
-            created_at: now,
-        },
-        GraphNode {
-            id: "uso-industrial".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "Uso industrial II".into(),
-            kind: "norma".into(),
-            description: "Uso permitido bajo impacto con control de ruido y emisiones.".into(),
-            evidence: "POT Barranquilla 2024 / articulo 88".into(),
-            x: 24.0,
-            y: 35.0,
-            weight: 2,
-            created_at: now,
-        },
-        GraphNode {
-            id: "capa-canales".into(),
-            project_id: project_id.clone(),
-            workspace_id: Some("workspace-main".into()),
-            name: "Canales".into(),
-            kind: "capa".into(),
-            description: "Capa GIS de drenaje urbano usada para cruces espaciales.".into(),
-            evidence: "canales_principales.geojson".into(),
-            x: 50.0,
-            y: 76.0,
-            weight: 3,
-            created_at: now,
-        },
-    ];
-
-    state.repo.insert_graph_nodes(&seed_nodes).await?;
-
-    let seed_edges = vec![
-        GraphEdge {
-            id: "e1".into(),
-            project_id: project_id.clone(),
-            source: "pot-142".into(),
-            target: "zona-norte".into(),
-            relation: "limita".into(),
-            strength: 92,
-            created_at: now,
-        },
-        GraphEdge {
-            id: "e2".into(),
-            project_id: project_id.clone(),
-            source: "pot-142".into(),
-            target: "retiro-hidrico".into(),
-            relation: "define".into(),
-            strength: 88,
-            created_at: now,
-        },
-        GraphEdge {
-            id: "e3".into(),
-            project_id: project_id.clone(),
-            source: "retiro-hidrico".into(),
-            target: "capa-canales".into(),
-            relation: "se calcula con".into(),
-            strength: 84,
-            created_at: now,
-        },
-        GraphEdge {
-            id: "e4".into(),
-            project_id: project_id.clone(),
-            source: "zona-norte".into(),
-            target: "dxf-catastro".into(),
-            relation: "intersecta".into(),
-            strength: 79,
-            created_at: now,
-        },
-        GraphEdge {
-            id: "e5".into(),
-            project_id: project_id.clone(),
-            source: "uso-industrial".into(),
-            target: "zona-norte".into(),
-            relation: "aplica en".into(),
-            strength: 86,
-            created_at: now,
-        },
-        GraphEdge {
-            id: "e6".into(),
-            project_id: project_id.clone(),
-            source: "dxf-catastro".into(),
-            target: "capa-canales".into(),
-            relation: "cruza con".into(),
-            strength: 71,
-            created_at: now,
-        },
-    ];
-
-    state.repo.insert_graph_edges(&seed_edges).await?;
-
-    // 3. Re-escanear documentos indexados para extraer y añadir sus nodos dinámicos
+    // 2. Escanear documentos indexados y construir nodos/aristas dinámicos
     let assets = state.repo.list_data_assets(&project_id).await?;
+    let now = unix_now();
     for asset in assets {
         if asset.status == AssetStatus::Ready && asset.chunks > 0 {
             let chunks = state.repo.list_document_chunks(&asset.id).await?;
             if !chunks.is_empty() {
-                // Usamos la misma función de análisis de grafos en Python pero la simulamos en Rust
-                // para evitar invocar el proceso múltiples veces en rebuild.
                 let doc_node_id = format!("doc-{}", asset.id);
                 let doc_node = GraphNode {
-                    id: doc_node_id.clone(),
+                    id: doc_node_id,
                     project_id: project_id.clone(),
                     workspace_id: asset.workspace_id.clone(),
                     name: asset.name.clone(),
@@ -477,18 +332,6 @@ pub async fn rebuild_knowledge_graph(
                     created_at: now,
                 };
                 let _ = state.repo.insert_graph_nodes(&[doc_node]).await;
-
-                // Crear relación entre el documento y el Art. 142 de forma predeterminada
-                let edge = GraphEdge {
-                    id: format!("edge-doc-{}-pot-142", asset.id),
-                    project_id: project_id.clone(),
-                    source: doc_node_id,
-                    target: "pot-142".to_string(),
-                    relation: "aporta contexto a".into(),
-                    strength: 85,
-                    created_at: now,
-                };
-                let _ = state.repo.insert_graph_edges(&[edge]).await;
             }
         }
     }

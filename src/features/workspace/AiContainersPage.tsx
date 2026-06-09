@@ -9,21 +9,24 @@ import {
   providerOptions,
   type ProviderOption,
 } from "@/features/workspace/ai-containers/provider-options"
-import { aiConnectors, type AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/features/workspace/workspace-data"
 import { useToast } from "@/components/ui/toast"
 import { pingLlmProvider } from "@/api/llm"
+import { useConnectors } from "@/contexts/ConnectorsContext"
 
 export function AiContainersPage() {
   const { toast } = useToast()
-  const [configuredConnectors, setConfiguredConnectors] =
-    React.useState<AiConnector[]>(aiConnectors)
+  const {
+    connectors: configuredConnectors,
+    setConnectors: setConfiguredConnectors,
+    activeConnectorId,
+    setActiveConnectorId,
+  } = useConnectors()
   const [catalogOpen, setCatalogOpen] = React.useState(false)
   const [configDialogOpen, setConfigDialogOpen] = React.useState(false)
   const [setupOption, setSetupOption] = React.useState<ProviderOption | null>(
     null
   )
-  const [activeProvider, setActiveProvider] =
-    React.useState<ProviderOption | null>(null)
   const [testingProviderId, setTestingProviderId] = React.useState<
     string | null
   >(null)
@@ -32,6 +35,11 @@ export function AiContainersPage() {
     setSetupOption(option)
     setConfigDialogOpen(true)
   }
+
+  const activeProvider = React.useMemo(() => {
+    if (!activeConnectorId) return null
+    return providerOptions.find((p) => p.id === activeConnectorId) ?? null
+  }, [activeConnectorId])
 
   const handleTest = async (option: ProviderOption) => {
     const connector = configuredConnectors.find((item) => item.id === option.id)
@@ -45,7 +53,6 @@ export function AiContainersPage() {
     }
 
     setTestingProviderId(option.id)
-    setActiveProvider(option)
 
     try {
       const result = await pingLlmProvider({
@@ -79,14 +86,24 @@ export function AiContainersPage() {
         variant: result.status === "ok" ? "success" : "error",
       })
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "No fue posible ejecutar ping_llm_provider."
-      
+      const errorMsg = typeof error === "string"
+        ? error
+        : error instanceof Error
+          ? error.message
+          : String(error)
+
+      const isTauriMissing =
+        errorMsg.includes("Tauri") ||
+        errorMsg.includes("backend") ||
+        errorMsg.includes("invoke") ||
+        errorMsg.includes("navigator") ||
+        errorMsg.includes("__TAURI__")
+
       toast({
         title: "Prueba no disponible",
-        description: 
-          errorMsg === "Tauri no disponible"
-            ? "Asegúrate de estar ejecutando 'npm run tauri dev' (no 'npm run dev')"
-            : errorMsg,
+        description: isTauriMissing
+          ? "Ejecuta 'npm run tauri dev' (no 'npm run dev') para usar el backend nativo"
+          : errorMsg,
         variant: "error",
       })
     } finally {
@@ -112,6 +129,7 @@ export function AiContainersPage() {
     model: string
     endpoint: string
     hasApiKey: boolean
+    allModels: string[]
   }) => {
     if (!setupOption) return
 
@@ -127,7 +145,7 @@ export function AiContainersPage() {
       role: setupOption.role === "tool-router" ? "tool-router" : setupOption.role,
       status: payload.hasApiKey || setupOption.auth !== "api-key" ? "offline" : "needs-key",
       model: payload.model || "Sin modelo",
-      models: payload.model ? [payload.model] : [],
+      models: payload.allModels,
       endpoint: payload.endpoint || "Sin endpoint",
       supportsTools: setupOption.role === "tool-router",
       privacy: setupOption.auth === "api-key" ? "keychain" : "localhost",
@@ -140,23 +158,34 @@ export function AiContainersPage() {
       connector,
       ...current.filter((item) => item.id !== connector.id),
     ])
-    setActiveProvider(setupOption)
+    setActiveConnectorId(setupOption.id)
     setConfigDialogOpen(false)
 
     toast({
-      title: "Proveedor preparado",
-      description:
-        "La configuracion quedo en memoria de UI. Falta persistir con Tauri/keychain para que sea real.",
+      title: payload.model ? "Proveedor preparado" : "Proveedor agregado",
+      description: payload.model
+        ? "Proveedor configurado con modelo seleccionado."
+        : "Proveedor agregado sin modelo. Selecciona uno desde el chat o vuelve a configurar.",
       variant: "success",
     })
+  }
+
+  const handleModelChange = (model: string) => {
+    if (!activeConnectorId) return
+
+    setConfiguredConnectors((current) =>
+      current.map((item) =>
+        item.id === activeConnectorId ? { ...item, model } : item
+      )
+    )
   }
 
   const setupConnector = setupOption
     ? configuredConnectors.find((c) => c.id === setupOption.id)
     : undefined
 
-  const activeConnector = activeProvider
-    ? configuredConnectors.find((c) => c.id === activeProvider.id)
+  const activeConnector = activeConnectorId
+    ? configuredConnectors.find((c) => c.id === activeConnectorId)
     : undefined
 
   const isTestingActiveProvider = testingProviderId === activeProvider?.id
@@ -184,6 +213,7 @@ export function AiContainersPage() {
               activeOption={activeProvider}
               activeConnector={activeConnector}
               isTesting={isTestingActiveProvider}
+              onModelChange={handleModelChange}
             />
           </div>
         </div>

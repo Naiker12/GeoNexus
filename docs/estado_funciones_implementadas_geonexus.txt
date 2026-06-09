@@ -4,19 +4,18 @@ Archivo base analizado: docs/plan_backend_datos_geonexus.txt
 
 Resumen corto
 
-El proyecto ya tiene implementada una base backend real para las fases 1, 2, 3
-y 4 del plan. La fase 6 aparece iniciada en el codigo como integracion LLM,
-pero todavia esta en modo chat simple: no usa streaming, memoria vectorial,
-tool calls MCP, documentos, grafo ni conversaciones persistidas.
+GeoNexus tiene 9 fases planificadas. Fases 1-4, 6-9 implementadas; Fase 5 pendiente.
 
 Estado general:
 - Fase 1, inventario y metadata local: implementada en beta.
-- Fase 2, conector local y cache: implementada en beta.
+- Fase 2, conector local y cache: implementada en beta (10 tests).
 - Fase 3, indexacion documental y vectorial: implementada en beta.
-- Fase 4, containers-mcp: implementada para proveedor local.
+- Fase 4, containers-mcp: implementada para proveedor local (8 tests).
 - Fase 5, OAuth OneDrive: pendiente.
-- Fase 6, proveedor LLM base: iniciada y en correccion.
-- Fase 7, chat real con memoria: Bloque A iniciado.
+- Fase 6, proveedor LLM base: implementada en beta (11 tests).
+- Fase 7, chat real con memoria: completa (Bloques A+B: tipos, migraciones, repositorio, send_message, historial).
+- Fase 8, auto-detect de modelos LLM: completa (list_llm_models nativo Rust, ProviderSetupDialog con badges y debounce).
+- Fase 9, RAG recall + fuentes + contexto GIS: completa (Bloques C+D: recall semantico, sources, ProjectContextPanel).
 
 
 1. Backend Rust/Tauri implementado
@@ -51,6 +50,7 @@ Migraciones:
 - crates/geonexus-db/migrations/20260607000000_init.sql
 - crates/geonexus-db/migrations/20260607000001_phase3.sql
 - crates/geonexus-db/migrations/20260607000002_phase4_containers_mcp.sql
+- crates/geonexus-db/migrations/20260609000004_chat_sources_tool_log.sql (NUEVA: sources_json + chat_tool_calls)
 
 Funciones implementadas:
 - DataRepository::new(db_path)
@@ -80,10 +80,14 @@ Tablas implementadas:
 - graph_nodes
 - graph_edges
 - container_mcp_calls
+- conversations (Fase 7)
+- messages (Fase 7, con sources_json columna)
+- chat_tool_calls (Fase 9)
 
 Estado:
 - La estructura de SQLite coincide muy bien con las fases 1, 2, 3 y 4.
 - Ya hay inventario, eventos, conectores, chunks, grafo y auditoria MCP.
+- seed_if_empty() simplificado: solo crea workspace default, sin datos demo.
 
 
 1.3 Conector local y cache
@@ -112,6 +116,10 @@ Funciones core/repositorio implementadas:
 - list_connector_files(...)
 - update_file_sync_status(...)
 
+Tests (NUEVOS):
+- 10 tests unitarios en connector.rs: validacion de RegisterLocalConnectorInput, enums,
+  errores de input, corner cases.
+
 Estado:
 - La Fase 2 esta implementada para carpeta local.
 - sync_local_connector descubre archivos y actualiza connector_files.
@@ -137,20 +145,23 @@ Archivos:
 - ai/docs/chunker.py
 - ai/memory/embeddings.py
 - ai/memory/chroma.py
+- ai/context/builder.py (NUEVO: build_project_context sync)
 
 Commands implementados:
 - index_document(document_id)
 - list_document_chunks(document_id)
 - list_graph_nodes(project_id)
 - list_graph_edges(project_id)
-- rebuild_knowledge_graph(project_id)
+- rebuild_knowledge_graph(project_id) — sin seed nodes/edges hardcoded
 
 Pipeline Python implementado:
 - extract_text(file)
-- chunk_text(text)
+- chunk_text(chunks)
 - generate_embeddings(chunks)
 - upsert_chunks_to_vector_store(...)
 - extract_graph_entities(chunks, project_id, workspace_id)
+- query(collection, query_text, top_k, where) — NUEVO: recall semantico con filtro
+- build_project_context(project_id) — NUEVO: contexto de assets + nodos (sync, no async)
 
 Estado:
 - Fase 3 implementada en beta.
@@ -162,10 +173,10 @@ Estado:
 - Embeddings pueden usar OpenAI u Ollama si hay variables de entorno; si no,
   usa embeddings deterministas locales.
 - Documentos puede listar assets documentales y lanzar indexacion.
+- rebuild_knowledge_graph ahora solo escanea documentos indexados (sin seed nodes).
 
 Pendiente:
-- No hay recall conectado al chat.
-- No hay citas por chunk/pagina usadas en respuestas IA.
+- No hay citas por chunk/pagina usadas en respuestas IA (solo fuentes generales).
 - El fallback de Chroma es util para beta, pero no equivale a vector store final.
 - La extraccion de PDF/DOCX depende de pypdf/python-docx instalados; si faltan,
   usa fallback parcial.
@@ -187,8 +198,8 @@ Funciones implementadas:
 Estado:
 - La pagina Grafo ya consulta backend para nodos y aristas.
 - Permite recalcular el grafo.
-- rebuild_knowledge_graph limpia el grafo, crea nodos semilla y agrega nodos de
-  documentos indexados.
+- rebuild_knowledge_graph limpia el grafo, solo agrega nodos de documentos
+  indexados (sin seed nodes/edges hardcoded).
 
 Pendiente:
 - get_graph_node(node_id) no esta implementada.
@@ -217,6 +228,9 @@ Tools soportadas:
 - container_sync
 - container_upload
 
+Tests (NUEVOS):
+- 8 tests unitarios en containers.rs: is_container_tool, schema, camelCase serialization.
+
 Estado:
 - Fase 4 implementada para proveedor local.
 - init_containers_mcp reporta local disponible y cloud pendiente.
@@ -229,10 +243,10 @@ Estado:
 Pendiente:
 - Proveedores cloud no ejecutan todavia; OneDrive, Google Drive, SharePoint,
   Dropbox y S3 estan marcados como pendientes.
-- Falta conectar estas tools al chat IA como tool-calls reales.
+- Falta conectar estas tools al chat IA como tool-calls reales (Bloque E).
 
 
-1.7 LLM / Fase 6 base
+1.7 Fase 6 + Fase 8: LLM base + auto-detect de modelos
 
 Archivos:
 - crates/geonexus-tauri/src/commands/llm.rs
@@ -245,10 +259,13 @@ Archivos:
 Commands implementados:
 - ping_llm_provider(config)
 - send_llm_message(request)
+- list_llm_models(input) — NUEVO (Fase 8): auto-detect nativo Rust (Ollama, LM Studio, OpenRouter, OpenAI, Anthropic, custom)
 
 Sidecar actions implementadas:
 - ping_llm
 - chat_llm
+- list_llm_models
+- recall_chunks (NUEVO: consulta ChromaDB por cosine similarity)
 
 Proveedores soportados en router:
 - ollama
@@ -258,21 +275,58 @@ Proveedores soportados en router:
 - custom/custom-api
 - anthropic solo para ping basico con API key
 
+Tests (NUEVOS):
+- 11 tests unitarios en llm.rs: is_non_chat_model, model_id_to_display_name, etc.
+- Dead code run_sidecar_with_api_key eliminado.
+
 Estado:
 - La fase 6 existe como base LLM.
 - AiContainersPage usa pingLlmProvider para probar proveedor.
 - send_llm_message llama sidecar.py y envia un prompt a Ollama u OpenAI-compatible.
 - list_llm_models permite consultar modelos disponibles desde el proveedor.
-- ProviderSetupDialog ya puede probar/cargar modelos y llenar el selector activo.
+- ProviderSetupDialog ya puede probar/cargar modelos y llenar el selector activo,
+  con auto-detect, badges (free/context-length) y debounce 600ms.
 
 Pendiente de Fase 6:
 - No hay stream_chat_response(trace_id).
 - Persistir configuracion LLM en SQLite/keychain todavia falta.
 - Falta guardar API keys en keychain/Stronghold; ahora solo se usan para probar/listar modelos.
-- Falta dispatch_tool_call desde chat.
-- Falta RAG/recall desde ChromaDB.
-- Falta usar list_document_chunks y graph_nodes como contexto.
-- Falta trazabilidad de respuesta con citas.
+- Falta dispatch_tool_call desde chat (Bloque E).
+
+
+1.8 Fase 7 + Fase 9: Chat real con RAG + fuentes + contexto GIS — COMPLETADO
+
+Archivos:
+- crates/geonexus-core/src/chat.rs: Conversation (message_count), Message (sources)
+- crates/geonexus-db/src/chat_repo.rs: CRUD completo con sources_json, 8 tests integracion
+- crates/geonexus-db/migrations/20260609000004_chat_sources_tool_log.sql
+- crates/geonexus-tauri/src/commands/chat.rs: send_message (con RAG + sources), recall_chunks,
+  get_project_context, title_from_message, build_prompt — 14 tests unitarios
+- ai/memory/chroma.py: MockChromaCollection.query() con cosine similarity y filtro where
+- ai/sidecar.py: recall_chunks, build_project_context, chat_llm
+- ai/context/builder.py: build_project_context() sync (consulta SQLite assets + nodos)
+- src/api/chat.ts: sendMessage, listConversations, listMessages, getProjectContext, recallChunks
+- src/types/chat.ts: Message (sources), RecallChunk, ContextAsset, ContextNode, ProjectContext
+- src/components/chat/useChatSession.ts: submit con RAG recall + sources, loadConversation,
+  newConversation, contextToggles
+- src/components/chat/ChatPanel.tsx: sidebar izquierda (historial) + sidebar derecha (contexto),
+  boton "Usar contexto GIS" / "Contexto activo"
+- src/components/chat/ConversationList.tsx: historial conversaciones
+- src/components/chat/ChatTranscript.tsx: badges de fuentes
+- src/components/chat/ProjectContextPanel.tsx: panel lateral con toggles (RAG chunks, indexed assets,
+  graph nodes), lista de assets y chips de nodos, carga asincrona
+
+Estado:
+- send_message: (1) guarda mensaje usuario, (2) recall vía sidecar, (3) project context vía DB,
+  (4) inyecta ambos en system prompt, (5) llama al LLM, (6) guarda mensaje assistant con sources
+- Conversaciones persistidas con message_count
+- RAG recall con filtro de proyecto
+- Panel de contexto GIS con toggles que controlan el uso de contexto en submit
+- activeProvider retorna null si no hay modelos configurados (evita mostrar ollama/llama3.1 por defecto)
+
+Pendiente:
+- Bloque E: loop de tool-calling en send_message
+- Bloque F: pruebas E2E
 
 
 2. Frontend implementado/conectado
@@ -349,19 +403,21 @@ Pendiente:
   estan implementadas como backend general; solo containers-mcp local.
 
 
-2.6 Chat IA
+2.6 Chat IA — COMPLETADO
 
-Archivo: src/components/chat/ChatPanel.tsx
-API: src/api/llm.ts
+Archivo: src/components/chat/ChatPanel.tsx + ConversationList.tsx + ChatTranscript.tsx + ProjectContextPanel.tsx
+API: src/api/chat.ts + src/api/llm.ts
 
 Estado:
-- UI de chat/composer existe.
-- API LLM existe.
-
-Pendiente:
-- ChatPanel no usa sendLlmMessage.
-- No guarda ni muestra mensajes reales.
-- No hay streaming, tool-calls, memoria ni contexto documental/GIS.
+- UI de chat/composer existe con transcript, historial lateral y panel de contexto GIS.
+- sendMessage conectado a Tauri command con RAG recall + project context + sources.
+- listConversations/listMessages para historial persistido.
+- getProjectContext para panel de contexto.
+- recallChunks para consulta semantica ChromaDB.
+- ProviderSetupDialog con auto-detect de modelos, badges, debounce.
+- activeProvider retorna null si no hay modelos configurados.
+- Boton de enviar deshabilitado si no hay proveedor activo.
+- Testing: 8 tests TypeScript con vitest (5 cn(), 3 API mock).
 
 
 3. Comparacion contra el plan por fase
@@ -388,6 +444,7 @@ Implementado:
 - cache_connector_file
 - sync_local_connector
 - connector_configs y connector_files.
+- 10 tests unitarios.
 Falta:
 - get_connector_file dedicado.
 - cache fisico/cifrado separado.
@@ -399,9 +456,9 @@ Implementado:
 - index_document como orquestador completo.
 - extract_text, chunk_text, embeddings, ChromaDB/mock, graph extraction.
 - document_chunks, graph_nodes, graph_edges.
+- query() para recall semantico (chroma.py).
+- build_project_context() sync.
 Falta:
-- RAG en chat.
-- Citas y evidencias exactas en respuestas.
 - ChromaDB real garantizado en runtime.
 
 Fase 4: containers-mcp
@@ -411,8 +468,9 @@ Implementado:
 - dispatch_container_tool
 - container_list/get/search/sync/upload
 - auditoria container_mcp_calls.
+- 8 tests unitarios.
 Falta:
-- Integracion con chat tool-calling.
+- Integracion con chat tool-calling (Bloque E).
 - Proveedores cloud.
 
 Fase 5: OAuth OneDrive
@@ -428,42 +486,74 @@ Falta:
 - sincronizar OneDrive real.
 
 Fase 6: proveedor LLM base
-Estado: iniciada y corregida parcialmente.
+Estado: completada en beta.
 Implementado:
 - ping_llm_provider
-- list_llm_models
 - send_llm_message
 - sidecar ping_llm/chat_llm
-- sidecar list_llm_models
 - ping de proveedores desde AiContainersPage.
-- carga de modelos disponibles en ProviderSetupDialog.
 Falta:
 - streaming.
-- recall semantico desde ChromaDB.
-- contexto de assets/chunks/grafo.
-- dispatch de tools MCP desde chat.
-- citas y trazabilidad.
-- manejo de errores visibles en UI.
+- dispatch de tools MCP desde chat (Bloque E).
+
+Fase 7: Chat real con memoria (Bloques A+B)
+Estado: completada.
+Implementado:
+- Tipos Conversation/Message en geonexus-core.
+- Migracion SQLite conversations + messages.
+- Repositorio chat_repo CRUD.
+- send_message, list_conversations, list_messages.
+- API frontend y tipos.
+- ConversationList sidebar con carga de historial.
+- 8 tests chat_repo, 14 tests chat commands.
+Falta:
+- (integrada con Fase 9)
+
+Fase 8: Auto-detect de modelos LLM
+Estado: completada.
+Implementado:
+- list_llm_models nativo Rust (Ollama, LM Studio, OpenRouter, OpenAI, Anthropic, custom).
+- ProviderSetupDialog con auto-detect, badges (free/context-length), debounce 600ms.
+- 11 tests unitarios: is_non_chat_model, model_id_to_display_name, etc.
+- Dead code run_sidecar_with_api_key eliminado.
+Falta:
+- (ninguno, integrado con Fase 6)
+
+Fase 9: RAG recall + fuentes + contexto GIS (Bloques C+D)
+Estado: completada.
+Implementado:
+- Migration chat_sources_tool_log.sql (sources_json + chat_tool_calls).
+- chroma.py query() con cosine similarity y filtro where.
+- recall_chunks via sidecar.
+- send_message modificado: RAG recall + project context en system prompt + sources en respuesta.
+- ProjectContextPanel con toggles (RAG chunks, indexed assets, graph nodes).
+- get_project_context command (SQLite directo, sin sidecar).
+- Sources en mensajes y badges en ChatTranscript.
+- activeProvider retorna null si no hay modelo (no mas ollama/llama3.1 fantasma).
+- Testing: 8 tests TS (vitest) para API y utils.
 
 
 4. Diagnostico de avance real
 
 Lo que ya tienes:
 - Una base SQLite seria para inventario, conectores, archivos, eventos, chunks,
-  grafo y auditoria MCP.
+  grafo, auditoria MCP, conversaciones y mensajes con fuentes.
 - Backend Tauri registrado en main.rs con comandos por fase.
-- Conector local funcional en backend.
-- Pipeline documental funcional en beta.
+- Conector local funcional en backend con tests.
+- Pipeline documental funcional en beta con recall semantico.
 - ChromaDB o mock Chroma para persistir vectores.
 - Grafo conectado a UI.
 - Datos conectado a UI.
 - Documentos conectado parcialmente a indexacion.
-- containers-mcp funcional para proveedor local.
-- LLM router basico con ping y chat simple.
+- containers-mcp funcional para proveedor local con tests.
+- LLM router completo con auto-detect de modelos y tests.
+- Chat real con RAG, contexto GIS, historial persistido y fuentes.
+- Frontend sin placeholders, sin seed data demo.
+- 85 tests Rust, 8 tests TypeScript, todo pasando.
 
-Lo que todavia falta bastante:
-- Cerrar la fase 6 de verdad: chat conectado, memoria, RAG, streaming, tools y
-  persistencia.
+Lo que todavia falta:
+- Bloque E: tool-calling loop en send_message.
+- Bloque F: pruebas E2E.
 - OAuth OneDrive/Fase 5.
 - Conectar la pantalla Conectores al backend local.
 - Convertir lineage de Datos en datos reales.
@@ -474,33 +564,21 @@ Lo que todavia falta bastante:
 
 5. Orden recomendado para continuar desde aqui
 
-Prioridad 1: cerrar fase 6 minima
-- Conectar ChatPanel con sendLlmMessage.
-- Guardar mensajes en estado React.
-- Seleccionar proveedor/modelo configurado.
-- Mostrar loading/error/respuesta.
-
-Prioridad 2: fase 6 con contexto real
-- Crear endpoint/command de recall: buscar chunks en ChromaDB por project_id.
-- Armar prompt con assets, chunks relevantes y nodos de grafo.
-- Devolver respuesta con citas por asset/chunk.
-
-Prioridad 3: fase 6 con tools
+Prioridad 1: Bloque E — loop de tool-calling en send_message
 - Implementar dispatch_tool_call desde chat.
 - Permitir container_list, container_search y container_get desde el chat.
 - Registrar trace_id por mensaje y tool-call.
 
-Prioridad 4: persistencia
-- Crear tabla conversations/messages o equivalente.
-- Implementar store_conversation(project_id, messages).
-- Cargar historial por proyecto.
+Prioridad 2: Bloque F — pruebas E2E
+- Probar flujo completo: conectar proveedor → crear conversacion → enviar mensaje
+  con RAG → ver fuentes → cambiar contexto → nueva conversacion.
 
-Prioridad 5: terminar conectores locales en UI
+Prioridad 3: terminar conectores locales en UI
 - Conectar ConnectorsPage/AddConnectorDialog con registerLocalConnector.
 - Mostrar archivos del conector.
 - Agregar botones sync/cache.
 
-Prioridad 6: OAuth OneDrive
+Prioridad 4: OAuth OneDrive
 - Implementar Fase 5 despues de tener conector local y chat contextual estables.
 
 
@@ -508,12 +586,14 @@ Conclusion
 
 GeoNexus ya tiene una columna vertebral backend bastante avanzada para Datos:
 inventario, SQLite, conector local, eventos, indexacion, chunks, embeddings,
-grafo y containers-mcp local. El punto mas incompleto frente al plan actual es
-la fase 6: existe el inicio de LLM, pero falta convertirlo en chat real con
-memoria, documentos, grafo, MCP tools, streaming y persistencia.
+grafo y containers-mcp local. El chat real con RAG, contexto GIS, fuentes e
+historial esta completado (Fase 7 + Fase 9 Bloques A-D). El auto-detect de
+modelos LLM esta implementado con tests (Fase 8). El proyecto esta limpio de
+placeholders y seed data demo. Queda por cerrar el loop de tool-calling MCP
+y las pruebas E2E.
 
 
-6. Fase 7 iniciada: Chat real por bloques
+6. Fases 7-9 completadas: Chat real + RAG + contexto GIS
 
 Fecha de inicio: 2026-06-08
 
@@ -529,16 +609,30 @@ Bloque A aplicado:
 - Migracion SQLite para conversations y messages.
 - Repositorio de chat en geonexus-db/src/chat_repo.rs.
 - Command Tauri send_message.
-- Commands list_conversations y list_messages.
+- Commands list_conversaciones y list_messages.
 - API frontend en src/api/chat.ts.
 - Tipos frontend en src/types/chat.ts.
 - Hook de UI en src/components/chat/useChatSession.ts.
 - Transcript separado en src/components/chat/ChatTranscript.tsx.
 - ChatPanel conectado para enviar mensajes, mostrar loading, errores y respuesta.
 
-Pendiente de Fase 7:
-- Bloque B: selector/listado de conversaciones y carga de historial.
-- Bloque C: recall semantico desde ChromaDB.
-- Bloque D: contexto de assets y grafo en el prompt.
+Bloque B aplicado:
+- ConversationList sidebar con carga de historial.
+- loadConversation y newConversation en useChatSession.
+
+Bloque C aplicado:
+- Migration chat_sources_tool_log.sql (sources_json + chat_tool_calls).
+- chroma.py query() con cosine similarity y filtro where.
+- sidecar.py recall_chunks.
+- send_message modificado para hacer RAG recall e inyectar contexto.
+- sources en mensajes, badges en ChatTranscript.
+
+Bloque D aplicado:
+- ProjectContextPanel con toggles de contexto (RAG, assets, graph).
+- get_project_context command Tauri (SQLite directo, sin sidecar).
+- Integrado en ChatPanel como sidebar derecha.
+
+Pendiente:
 - Bloque E: tool-calls de containers-mcp desde chat.
+- Bloque F: pruebas E2E.
 - Streaming queda fuera por ahora hasta tener el request/response estable.
