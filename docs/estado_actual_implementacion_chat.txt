@@ -1,0 +1,313 @@
+================================================================================
+  GEONEXUS — ESTADO ACTUAL DE IMPLEMENTACION (CHAT Y UI)
+  Fecha: 2026-06-09
+================================================================================
+
+Este documento recopila todos los cambios implementados en la sesion actual
+sobre la interfaz de chat y componentes relacionados.
+
+================================================================================
+  1. LAYOUT PRINCIPAL — Scroll solo en mensajes
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+  - src/index.css
+  - src/App.tsx
+  - src/features/workspace/GeoNexusWorkspace.tsx
+  - src/components/chat/ChatPanel.tsx
+
+PROBLEMA ORIGINAL:
+  El scroll afectaba toda la pagina en vez del area de mensajes. El header
+  se perdia y el footer se movia con los mensajes.
+
+CAUSA RAICES DETECTADAS:
+  a) #root usaba height: 100% sin overflow:hidden → el body scrolleaba
+  b) Div interno del ChatPanel (flex flex-1 flex-col) sin min-h-0 →
+     min-height:auto crecia al contenido, ignorando el flex-1 asignado
+  c) Section del ChatPanel usaba flex-1 en vez de altura explicita
+
+SOLUCION FINAL (3 cambios clave):
+
+  1.1 index.css — Root con altura absoluta
+      html, body, #root { height: 100vh; overflow: hidden; }
+      → NUNCA hay scroll en la pagina. Todo overflow se maneja interno.
+
+  1.2 ChatPanel — Altura explicita como las demas paginas
+      section: h-[calc(100svh-3.5rem)]  ← mismo patron que DocumentsPage,
+      → Altura DEFINIDA via calc(), no depende de cadena flex.               DataPage, AiContainersPage
+      div interno: min-h-0 añadido ← permite respetar la altura de section
+
+  1.3 Cadena completa de alturas:
+      #root (100vh, overflow:hidden)
+        SidebarProvider (min-h-svh flex row)
+          Sidebar (h-svh) → row = 100svh
+          SidebarInset (flex-col overflow-hidden)
+            GeoNexusWorkspace (flex-1 min-h-0 overflow-hidden)
+              AppTopbar (h-14 shrink-0) ← FIJO 56px, siempre visible
+              main (flex-1 overflow-hidden flex-col)
+                ChatPanel section (h-[calc(100svh-3.5rem)] flex-col overflow-hidden)
+                  div (flex-1 min-h-0 flex-col) ← AHORA CON min-h-0
+                    top bar (shrink-0) ← FIJO
+                    messages (flex-1 overflow-y-auto min-h-0) ← UNICO SCROLL
+                    composer (shrink-0 border-t) ← FIJO ABAJO
+
+================================================================================
+  2. BLOQUES DE CODIGO — Syntax highlighting + boton copiar
+================================================================================
+
+ARCHIVO MODIFICADO:
+  - src/components/chat/MarkdownContent.tsx (reescrito completo)
+
+DEPENDENCIAS NUEVAS:
+  - react-syntax-highlighter@16.1.1
+  - @types/react-syntax-highlighter@15.5.13
+  - remark-gfm@4.0.1 (dev)
+
+QUE CAMBIO:
+  Antes: Usaba Tailwind prose para codigo. Sin bordes, sin resaltado, plano.
+  Ahora: Componentes personalizados de ReactMarkdown con:
+
+  • Bloque de codigo (CodeBlock):
+    - Cabecera con lenguaje (uppercase, font-mono) + boton Copiar
+    - Feedback "Copiado" con icono Check verde (2 segundos)
+    - Syntax highlighting con Prism + tema oneDark
+    - border, rounded-lg, overflow-hidden
+    - Fondo: var(--color-muted)
+
+  • Codigo inline:
+    - bg-muted, px-1.5, py-0.5, rounded, text-[13px]
+
+  • Listas (ul/ol):
+    - mb-2 pl-5 list-disc/list-decimal space-y-0.5
+
+  • Headings (h1-h3):
+    - font-medium, tamaños 16/14/13px con márgenes consistentes
+
+  • Enlaces:
+    - text-emerald-600, no-underline, hover:underline, target=_blank
+
+  • Streaming:
+    - Cursor parpadeante ▋ despues del contenido (after:content-['▋'])
+
+  NOTA: Se eliminaron las clases prose de Tailwind y se reemplazaron por
+  componentes personalizados con espaciado explicito (space-y-2 en el
+  contenedor, mb-2 en parrafos).
+
+================================================================================
+  3. ACTION SUGGESTIONS — Sugerencias clicables del modelo
+================================================================================
+
+ARCHIVOS NUEVOS:
+  - src/utils/parseSuggestions.ts
+  - src/components/chat/ActionSuggestions.tsx
+
+ARCHIVOS MODIFICADOS:
+  - src/components/chat/AssistantMessage.tsx
+  - src/components/chat/ChatTranscript.tsx
+  - src/components/chat/ChatPanel.tsx
+
+QUE HACE:
+  Cuando el modelo termina su respuesta con frases como:
+    "Puedo ayudarte con:"
+    "- item 1"
+    "- item 2"
+    "- item 3"
+
+  parseSuggestions.ts detecta la frase gatillo al FINAL del contenido y
+  extrae los items como sugerencias. El componente ActionSuggestions las
+  renderiza como "pills" (rounded-full, border, bg-background, hover:bg-muted).
+
+  Al hacer clic en una pill, se envia ese texto como mensaje de usuario
+  (submit). El flujo completo:
+
+    ChatPanel.submit()
+      → ChatTranscript.onSendMessage
+        → AssistantMessage.onSendMessage
+          → ActionSuggestions.onSelect
+            → submit(texto)
+
+  Solo se parsea cuando NO esta en streaming (isStreaming=false).
+
+FRASES GATILLO DETECTADAS (regex):
+  - puedo ayudarte con:
+  - te interesa?
+  - en que puedo apoyarte?
+  - por ejemplo:
+  - aqui tienes (algunas/unas) sugerencias:
+  - puedes preguntarme:
+
+REQUISITOS:
+  - Minimo 2 items de sugerencia
+  - Items < 100 caracteres
+  - Items con prefijo -, *, bullet point limpio
+
+================================================================================
+  4. BOTON ELIMINAR CONVERSACION
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+  - src/components/chat/ConversationList.tsx
+  - src/components/chat/ChatPanel.tsx
+
+ARCHIVOS RELACIONADOS (backend):
+  - src/api/chat.ts → nueva funcion deleteConversation
+  - crates/geonexus-db/src/chat_repo.rs → nueva funcion delete_conversation
+  - crates/geonexus-tauri/src/commands/chat.rs → nuevo comando delete_conversation
+  - crates/geonexus-tauri/src/main.rs → registro del comando
+
+QUE CAMBIO:
+  • Cada conversacion en el listado tiene un icono Trash2Icon que aparece
+    al hacer hover (opacity-0 → group-hover:opacity-100).
+  • Al hacer clic: se abre ConfirmDialog.
+  • Confirmacion: llama a deleteConversation(id), remueve del estado local
+    (setConversations filter), y si es la conversacion activa, resetea el
+    chat (newConversation).
+  • Backend completo con comando Tauri y funcion Rust.
+
+COMPONENTE: ConfirmDialog
+  - Reutilizable (src/components/ui/confirm-dialog.tsx)
+  - Usa Dialog de shadcn
+  - Variant destructive (boton rojo) o default
+  - Props: open, onOpenChange, title, description, confirmLabel, cancelLabel,
+    variant, onConfirm
+
+================================================================================
+  5. BOTON ELIMINAR PROVEEDOR
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+  - src/features/workspace/ai-containers/ProviderCardItem.tsx
+  - src/features/workspace/ai-containers/ConfiguredProvidersList.tsx
+  - src/features/workspace/AiContainersPage.tsx
+
+QUE CAMBIO:
+  • Cada ProviderCardItem tiene boton "Eliminar" (Trash2Icon) con texto
+    destructive, al lado de Config y Test.
+  • ConfirmDialog con confirmacion antes de eliminar.
+  • AiContainersPage.handleDeleteProvider: filtra del array de conectores.
+
+================================================================================
+  6. BOTON ELIMINAR MODELO (dentro de proveedor activo)
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+  - src/features/workspace/ai-containers/ActiveProviderPanel.tsx
+  - src/features/workspace/AiContainersPage.tsx
+
+QUE CAMBIO:
+  • Cada modelo listado en ActiveProviderPanel tiene Trash2Icon hover-visible.
+  • ConfirmDialog antes de eliminar.
+  • handleModelDelete: filtra el modelo del array de modelos.
+
+================================================================================
+  7. COMPONENTES COMPACTADOS
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+
+  ModelHeaderPopover.tsx:
+    - Boton size="xs", h-6, text-[11px]
+    - PopoverContent w-64
+    - Textos en [10px]-[11px]
+
+  MessageBubble.tsx:
+    - Avatar size-8 → size-7
+    - Padding reducido en burbujas
+    - User bubble: max-w-2xl → max-w-[75%] sm:max-w-sm
+
+  AssistantMessage.tsx:
+    - Avatar size-8 → size-7
+    - gap-3 → gap-2
+
+  ChatTranscript.tsx:
+    - gap-6 → gap-4
+    - padding responsivo (px-4 py-4 sm:px-6 sm:py-5 md:px-8)
+
+================================================================================
+  8. WEB SEARCH TOGGLE
+================================================================================
+
+ARCHIVOS MODIFICADOS:
+  - src/components/chat/ChatPanel.tsx (ToolMenu)
+  - src/components/chat/useChatSession.ts
+
+QUE CAMBIO:
+  • Item "Buscar informacion" en el menu de herramientas (boton +).
+  • Switch inline dentro del DropdownMenuItem.
+  • onSelect={(e) => e.preventDefault()} → no cierra el menu al hacer clic.
+  • Estado webSearchEnabled en useChatSession.
+  • Toast al activar (variant: success) y desactivar (variant: info).
+
+================================================================================
+  9. DEPENDENCIAS INSTALADAS
+================================================================================
+
+  Produccion:
+    react-markdown@10.1.0         ← ya instalado antes
+    react-syntax-highlighter@16.1.1  ← NUEVO
+
+  Desarrollo:
+    @types/react-syntax-highlighter@15.5.13  ← NUEVO
+    remark-gfm@4.0.1                         ← NUEVO
+
+================================================================================
+  RESUMEN DE ARCHIVOS CREADOS/MODIFICADOS
+================================================================================
+
+  NUEVOS:
+    src/components/chat/ActionSuggestions.tsx
+    src/utils/parseSuggestions.ts
+    src/components/ui/confirm-dialog.tsx  ← en sesion anterior
+
+  MODIFICADOS (frontend):
+    src/index.css                         ← root overflow:hidden
+    src/App.tsx                           ← SidebarInset overflow-hidden
+    src/features/workspace/GeoNexusWorkspace.tsx  ← flex-1 min-h-0
+    src/components/chat/ChatPanel.tsx     ← h-[calc], min-h-0, onDelete, onSendMessage
+    src/components/chat/MarkdownContent.tsx  ← reescrito con syntax highlighting
+    src/components/chat/AssistantMessage.tsx ← parseSuggestions + ActionSuggestions
+    src/components/chat/ChatTranscript.tsx ← onSendMessage prop
+    src/components/chat/ConversationList.tsx ← delete button + onDelete callback
+    src/components/chat/MessageBubble.tsx  ← compactado
+    src/components/chat/ModelHeaderPopover.tsx ← compactado
+    src/components/chat/useChatSession.ts  ← webSearchEnabled
+    src/features/workspace/AiContainersPage.tsx ← handleDeleteProvider, handleModelDelete
+    src/features/workspace/ai-containers/ProviderCardItem.tsx ← delete button
+    src/features/workspace/ai-containers/ConfiguredProvidersList.tsx ← onDelete prop
+    src/features/workspace/ai-containers/ActiveProviderPanel.tsx ← delete model button
+
+  MODIFICADOS (backend):
+    src/api/chat.ts                       ← deleteConversation
+    crates/geonexus-db/src/chat_repo.rs   ← delete_conversation
+    crates/geonexus-tauri/src/commands/chat.rs ← delete_conversation command
+    crates/geonexus-tauri/src/main.rs     ← registro delete_conversation
+
+================================================================================
+  PENDIENTE (bugs activos)
+================================================================================
+
+  1. SCROLL: A pesar de los cambios, el usuario reporta que el scroll
+     sigue sin funcionar y el header no se ve con muchas conversaciones.
+     La teoria actual es que el cambio a h-[calc(100svh-3.5rem)] + min-h-0
+     en el div interno deberia resolverlo, pero requiere prueba.
+
+  2. ActionSuggestions: requiere que el modelo genere las frases gatillo
+     en espanol para que funcione la deteccion.
+
+================================================================================
+  NOTAS TECNICAS
+================================================================================
+
+  • Todas las otras paginas del workspace (DocumentsPage, DataPage,
+    AiContainersPage) usan h-[calc(100svh-3.5rem)] overflow-auto para su
+    layout y funcionan correctamente.
+
+  • La diferencia clave entre esas paginas y ChatPanel es que ellas
+    scrollean TODO el contenido de la pagina, mientras ChatPanel necesita
+    scroll SOLO en el area de mensajes (header y footer fijos).
+
+  • El div interno del ChatPanel necesitaba min-h-0 explicitamente porque
+    en una columna flex, min-height:auto hace que el item crezca a su
+    contenido en vez de respetar el tamano asignado por flex.
+
+================================================================================

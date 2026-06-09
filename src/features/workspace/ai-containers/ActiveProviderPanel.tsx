@@ -1,7 +1,8 @@
 import * as React from "react"
-import { CheckIcon, ChevronDownIcon, SearchIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, SearchIcon, Trash2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Switch } from "@/components/ui/switch"
 import {
   Popover,
@@ -18,6 +19,7 @@ type ActiveProviderPanelProps = {
   activeConnector?: AiConnector
   isTesting?: boolean
   onModelChange?: (model: string) => void
+  onModelDelete?: (model: string) => void
 }
 
 export function ActiveProviderPanel({
@@ -25,6 +27,7 @@ export function ActiveProviderPanel({
   activeConnector,
   isTesting,
   onModelChange,
+  onModelDelete,
 }: ActiveProviderPanelProps) {
   if (!activeOption) {
     return (
@@ -105,6 +108,7 @@ export function ActiveProviderPanel({
               models={allModels}
               selected={model}
               onSelect={onModelChange}
+              onDelete={onModelDelete}
             />
           </div>
         ) : (
@@ -138,11 +142,14 @@ function ModelCard({
   models,
   selected,
   onSelect,
+  onDelete,
 }: {
   models: string[]
   selected: string
   onSelect?: (model: string) => void
+  onDelete?: (model: string) => void
 }) {
+  const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null)
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
 
@@ -210,32 +217,61 @@ function ModelCard({
                   {filtered.length} de {models.length} modelos
                 </div>
                 {filtered.map((m) => (
-                  <button
+                  <div
                     key={m}
-                    type="button"
-                    onClick={() => {
-                      onSelect?.(m)
-                      setOpen(false)
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground",
-                      selected === m && "bg-accent/60 font-medium"
-                    )}
+                    className="group/model flex items-center gap-1"
                   >
-                    <CheckIcon
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelect?.(m)
+                        setOpen(false)
+                      }}
                       className={cn(
-                        "size-4 shrink-0 transition-opacity",
-                        selected === m ? "opacity-100 text-primary" : "opacity-0"
+                        "flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 py-2 text-sm text-left transition-colors hover:bg-accent hover:text-accent-foreground",
+                        selected === m && "bg-accent/60 font-medium"
                       )}
-                    />
-                    <span className="truncate">{m}</span>
-                  </button>
+                    >
+                      <CheckIcon
+                        className={cn(
+                          "size-4 shrink-0 transition-opacity",
+                          selected === m ? "opacity-100 text-primary" : "opacity-0"
+                        )}
+                      />
+                      <span className="truncate">{m}</span>
+                    </button>
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(m)}
+                        className="mr-1 flex size-6 shrink-0 items-center justify-center rounded opacity-0 group-hover/model:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                        aria-label={`Eliminar ${m}`}
+                      >
+                        <Trash2Icon className="size-3" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </PopoverContent>
       </Popover>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Eliminar modelo"
+        description={
+          <>
+            ¿Eliminar <strong>{deleteTarget}</strong>? El modelo dejará de estar
+            disponible en el chat y los conectores.
+          </>
+        }
+        onConfirm={() => {
+          if (deleteTarget) onDelete?.(deleteTarget)
+        }}
+      />
     </div>
   )
 }

@@ -47,6 +47,7 @@ pub struct SendMessageInput {
     pub provider: String,
     pub model: String,
     pub endpoint: String,
+    pub api_key: Option<String>,
     pub use_context: bool,
     pub max_context_chunks: Option<usize>,
 }
@@ -106,6 +107,7 @@ mod tests {
             provider: "ollama".into(),
             model: "llama3.1".into(),
             endpoint: "http://localhost:11434".into(),
+            api_key: None,
             use_context: false,
             max_context_chunks: None,
         }

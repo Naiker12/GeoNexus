@@ -20,6 +20,11 @@ export function sendMessage(
   return invoke("send_message", { input })
 }
 
+export function deleteConversation(conversationId: string): Promise<void> {
+  if (!conversationId.trim()) throw new Error("conversation_id requerido")
+  return invoke("delete_conversation", { conversationId })
+}
+
 export function listConversations(projectId: string): Promise<Conversation[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invoke("list_conversations", { projectId })

@@ -128,6 +128,7 @@ export function AiContainersPage() {
     providerName: string
     model: string
     endpoint: string
+    apiKey?: string
     hasApiKey: boolean
     allModels: string[]
   }) => {
@@ -147,6 +148,7 @@ export function AiContainersPage() {
       model: payload.model || "Sin modelo",
       models: payload.allModels,
       endpoint: payload.endpoint || "Sin endpoint",
+      apiKey: payload.apiKey,
       supportsTools: setupOption.role === "tool-router",
       privacy: setupOption.auth === "api-key" ? "keychain" : "localhost",
       latency: "-",
@@ -170,12 +172,42 @@ export function AiContainersPage() {
     })
   }
 
+  const handleDeleteProvider = (option: ProviderOption) => {
+    setConfiguredConnectors((current) =>
+      current.filter((item) => item.id !== option.id)
+    )
+    if (activeConnectorId === option.id) {
+      setActiveConnectorId(null)
+    }
+    toast({
+      title: "Proveedor eliminado",
+      description: `${option.name} se ha eliminado de la configuración.`,
+      variant: "success",
+    })
+  }
+
   const handleModelChange = (model: string) => {
     if (!activeConnectorId) return
 
     setConfiguredConnectors((current) =>
       current.map((item) =>
         item.id === activeConnectorId ? { ...item, model } : item
+      )
+    )
+  }
+
+  const handleModelDelete = (model: string) => {
+    if (!activeConnectorId) return
+
+    setConfiguredConnectors((current) =>
+      current.map((item) =>
+        item.id === activeConnectorId
+          ? {
+              ...item,
+              models: item.models.filter((m) => m !== model),
+              model: item.model === model ? "Sin modelo" : item.model,
+            }
+          : item
       )
     )
   }
@@ -206,6 +238,7 @@ export function AiContainersPage() {
             testingProviderId={testingProviderId}
             onConfig={handleConfig}
             onTest={handleTest}
+            onDelete={handleDeleteProvider}
           />
 
           <div className="sticky top-0">
@@ -214,6 +247,7 @@ export function AiContainersPage() {
               activeConnector={activeConnector}
               isTesting={isTestingActiveProvider}
               onModelChange={handleModelChange}
+              onModelDelete={handleModelDelete}
             />
           </div>
         </div>

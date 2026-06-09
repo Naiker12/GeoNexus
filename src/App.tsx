@@ -49,7 +49,7 @@ export default function App() {
         onThemeChange={setActiveTheme}
         onOpenConfig={() => setConfigOpen(true)}
       />
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden">
         <GeoNexusWorkspace
           activeRoute={activeRoute}
           configOpen={configOpen}

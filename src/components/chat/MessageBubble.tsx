@@ -38,7 +38,7 @@ export function MessageBubble({
   return (
     <article
       className={cn(
-        "flex items-start gap-3",
+        "flex items-start gap-2",
         isUser && "flex-row-reverse",
         className
       )}
@@ -46,7 +46,7 @@ export function MessageBubble({
       {/* Avatar */}
       <div
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-xs",
+          "flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold shadow-xs",
           isUser
             ? "bg-primary/10 text-primary ring-1 ring-primary/20"
             : "bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20"
@@ -55,23 +55,23 @@ export function MessageBubble({
         {isUser ? (
           <span>TU</span>
         ) : (
-          <GeoNexusIcon className="size-4" variant="nexus" />
+          <GeoNexusIcon className="size-3.5" variant="nexus" />
         )}
       </div>
 
       {/* Bubble */}
       <div
         className={cn(
-          "min-w-0 max-w-2xl rounded-2xl px-4 py-3 text-sm shadow-xs",
+          "min-w-0 rounded-2xl px-3.5 py-2.5 text-sm shadow-xs",
           isUser
-            ? "bg-primary/10 text-foreground"
-            : "bg-card text-card-foreground ring-1 ring-border/50"
+            ? "max-w-[75%] sm:max-w-sm bg-primary/10 text-foreground"
+            : "flex-1 bg-card text-card-foreground ring-1 ring-border/50"
         )}
       >
         {eyebrow ? (
           <p
             className={cn(
-              "mb-1 text-[11px] font-semibold uppercase tracking-wider",
+              "mb-1 text-[10px] font-semibold uppercase tracking-wider",
               isUser ? "text-primary/60" : "text-emerald-600/60 dark:text-emerald-400/60"
             )}
           >

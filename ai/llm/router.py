@@ -193,6 +193,7 @@ def chat_llm_provider(
     model: str,
     messages: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]] = None,
+    api_key: Optional[str] = None,
 ) -> Dict:
     """Envia mensajes a un proveedor LLM, opcionalmente con tools.
 
@@ -225,8 +226,8 @@ def chat_llm_provider(
             return _make_chat_response(provider, model, raw)
 
         if provider == "openrouter":
-            api_key = os.getenv("OPENROUTER_API_KEY")
-            if not api_key:
+            key = api_key or os.getenv("OPENROUTER_API_KEY")
+            if not key:
                 return {
                     "status": "needs-key",
                     "provider_type": provider,
@@ -234,7 +235,7 @@ def chat_llm_provider(
                     "message": "OPENROUTER_API_KEY no esta configurado.",
                 }
             headers = {
-                "authorization": f"Bearer {api_key}",
+                "authorization": f"Bearer {key}",
                 "http-referer": "https://geonexus.local",
                 "x-title": "GeoNexus",
                 "content-type": "application/json",

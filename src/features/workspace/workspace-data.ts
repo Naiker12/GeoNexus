@@ -43,6 +43,7 @@ export type AiConnector = {
   model: string
   models: string[]
   endpoint: string
+  apiKey?: string
   supportsTools: boolean
   privacy: "local" | "keychain" | "localhost"
   latency: string

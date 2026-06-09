@@ -37,14 +37,14 @@ export function GeoNexusWorkspace({
   const isMcp = activeRoute.startsWith("#mcp")
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
       <AppTopbar
         connector={activeConnector.name}
         model={activeConnector.model}
         status={activeConnector.status}
       />
 
-      <main className="relative min-h-0 flex-1 overflow-hidden bg-background">
+      <main className="relative min-h-0 flex-1 overflow-hidden bg-background flex flex-col">
         <MapBackdrop />
         {isDocuments ? (
           <DocumentsPage />

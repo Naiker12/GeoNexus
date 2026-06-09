@@ -130,6 +130,25 @@ pub async fn list_messages(
     rows.into_iter().map(row_to_message).collect()
 }
 
+pub async fn delete_conversation(
+    pool: &SqlitePool,
+    conversation_id: &str,
+) -> Result<(), String> {
+    sqlx::query("DELETE FROM messages WHERE conversation_id = ?")
+        .bind(conversation_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error eliminando mensajes: {e}"))?;
+
+    sqlx::query("DELETE FROM conversations WHERE id = ?")
+        .bind(conversation_id)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error eliminando conversacion: {e}"))?;
+
+    Ok(())
+}
+
 pub async fn update_conversation_title(
     pool: &SqlitePool,
     conversation_id: &str,

@@ -58,6 +58,7 @@ export type SendMessageInput = {
   provider: string
   model: string
   endpoint: string
+  api_key?: string | null
   use_context: boolean
   max_context_chunks?: number | null
 }

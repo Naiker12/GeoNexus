@@ -60,6 +60,7 @@ fn main() {
             commands::llm::send_llm_message,
             // Fase 7
             commands::chat::send_message,
+            commands::chat::delete_conversation,
             commands::chat::list_conversations,
             commands::chat::list_messages,
             commands::chat::recall_chunks,

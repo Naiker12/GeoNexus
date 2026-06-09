@@ -36,6 +36,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
 import {
   InputGroup,
   InputGroupAddon,
@@ -53,6 +54,7 @@ import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import type { AiConnector } from "@/features/workspace/workspace-data"
+import { useToast } from "@/components/ui/toast"
 import { cn } from "@/lib/utils"
 
 const PROJECT_ID = "project-default"
@@ -62,6 +64,7 @@ type ChatPanelProps = {
 }
 
 export function ChatPanel(_props: ChatPanelProps) {
+  const { toast } = useToast()
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
   const {
@@ -73,6 +76,8 @@ export function ChatPanel(_props: ChatPanelProps) {
     loadingHistory,
     contextToggles,
     setContextToggles,
+    webSearchEnabled,
+    setWebSearchEnabled,
     submit,
     loadConversation,
     newConversation,
@@ -82,7 +87,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
 
   return (
-    <section className="relative z-10 flex h-[calc(100svh-3.5rem)]">
+    <section className="relative z-10 h-[calc(100svh-3.5rem)] flex flex-col overflow-hidden">
       {/* Conversation sheet (slide from left) */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="left" className="w-72 p-0 sm:max-w-72">
@@ -95,15 +100,16 @@ export function ChatPanel(_props: ChatPanelProps) {
               activeId={conversationId}
               onSelect={(id) => { loadConversation(id); setSheetOpen(false) }}
               onNew={() => { newConversation(); setSheetOpen(false) }}
+              onDelete={() => { newConversation() }}
             />
           </div>
         </SheetContent>
       </Sheet>
 
       {/* Main chat area */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         {/* Top bar */}
-        <div className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+        <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5">
           <Button
             variant="ghost"
             size="icon-sm"
@@ -125,7 +131,7 @@ export function ChatPanel(_props: ChatPanelProps) {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto pb-36 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {loadingHistory ? (
             <div className="flex min-h-full items-center justify-center pb-16 pt-10">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -134,7 +140,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               </div>
             </div>
           ) : messages.length > 0 || pending ? (
-            <ChatTranscript messages={messages} pending={pending} />
+            <ChatTranscript messages={messages} pending={pending} onSendMessage={submit} />
           ) : (
             <EmptyChatState />
           )}
@@ -147,6 +153,18 @@ export function ChatPanel(_props: ChatPanelProps) {
           onSubmit={submit}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
+          webSearchEnabled={webSearchEnabled}
+          onToggleWebSearch={() => {
+            const next = !webSearchEnabled
+            setWebSearchEnabled(next)
+            toast({
+              title: next ? "Búsqueda web activada" : "Búsqueda web desactivada",
+              description: next
+                ? "El asistente podrá buscar en internet para responder"
+                : "El asistente solo usará información local del proyecto",
+              variant: next ? "success" : "info",
+            })
+          }}
         />
       </div>
 
@@ -187,6 +205,8 @@ function ChatComposer({
   onSubmit,
   onToggleContext,
   contextActive,
+  webSearchEnabled,
+  onToggleWebSearch,
 }: {
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
@@ -194,6 +214,8 @@ function ChatComposer({
   onSubmit: (content: string) => void
   onToggleContext: () => void
   contextActive: boolean
+  webSearchEnabled: boolean
+  onToggleWebSearch: () => void
 }) {
   const [value, setValue] = React.useState("")
 
@@ -206,14 +228,17 @@ function ChatComposer({
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-4 bottom-4 mx-auto max-w-3xl sm:inset-x-5 sm:bottom-5">
+    <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border bg-background px-4 py-3 sm:px-5">
       <form
-        className="pointer-events-auto rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+        className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
         onSubmit={handleSubmit}
       >
         <InputGroup className="min-h-12 items-center rounded-xl bg-background/95 py-1">
           <InputGroupAddon className="items-center">
-            <ToolMenu />
+            <ToolMenu
+              webSearchEnabled={webSearchEnabled}
+              onToggleWebSearch={onToggleWebSearch}
+            />
           </InputGroupAddon>
           <InputGroupControl className="flex items-center">
             <Textarea
@@ -282,7 +307,13 @@ function ChatComposer({
   )
 }
 
-function ToolMenu() {
+function ToolMenu({
+  webSearchEnabled,
+  onToggleWebSearch,
+}: {
+  webSearchEnabled: boolean
+  onToggleWebSearch: () => void
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -341,9 +372,20 @@ function ToolMenu() {
             Razonamiento GIS
             <DropdownMenuShortcut>MCP</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem className="gap-3 px-3 py-2">
-            <GlobeIcon className="size-4" />
-            Buscar informacion
+          <DropdownMenuItem
+            className="flex items-center justify-between gap-2 px-3 py-2"
+            onSelect={(e) => e.preventDefault()}
+          >
+            <div className="flex items-center gap-3">
+              <GlobeIcon className="size-4 text-muted-foreground" />
+              <span className="text-sm">Buscar información</span>
+            </div>
+            <Switch
+              checked={webSearchEnabled}
+              onCheckedChange={onToggleWebSearch}
+              className="scale-75"
+              aria-label="Activar búsqueda en internet"
+            />
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="gap-3 px-3 py-2">

@@ -178,20 +178,28 @@ pub async fn send_message(
         let messages_json = serde_json::to_string(&messages)
             .map_err(|e| format!("Error serializando mensajes: {e}"))?;
 
-        let output = run_sidecar(&[
-            "--action",
-            "chat_llm",
-            "--provider_type",
-            &input.provider,
-            "--base_url",
-            &input.endpoint,
-            "--model",
-            &input.model,
-            "--messages",
-            &messages_json,
-            "--tools",
-            &tools_json,
-        ])?;
+        let mut sidecar_args: Vec<String> = vec![
+            "--action".into(),
+            "chat_llm".into(),
+            "--provider_type".into(),
+            input.provider.clone(),
+            "--base_url".into(),
+            input.endpoint.clone(),
+            "--model".into(),
+            input.model.clone(),
+            "--messages".into(),
+            messages_json,
+            "--tools".into(),
+            tools_json.clone(),
+        ];
+        if let Some(ref key) = input.api_key {
+            sidecar_args.push("--api_key".into());
+            sidecar_args.push(key.clone());
+        }
+
+        let output = run_sidecar(
+            &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>()
+        )?;
 
         let sidecar: SidecarChatResult = serde_json::from_str(&output)
             .map_err(|e| format!("Error deserializando respuesta LLM: {e}. Output: {output}"))?;
@@ -264,6 +272,17 @@ pub async fn send_message(
         chunks_used: Vec::<ChunkReference>::new(),
         trace_id,
     })
+}
+
+#[tauri::command]
+pub async fn delete_conversation(
+    conversation_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if conversation_id.trim().is_empty() {
+        return Err("conversation_id requerido".into());
+    }
+    chat_repo::delete_conversation(&state.db, &conversation_id).await
 }
 
 #[tauri::command]

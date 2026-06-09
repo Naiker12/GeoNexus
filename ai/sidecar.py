@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--prompt", default="", help="Prompt plano para chat_llm (legacy)")
     parser.add_argument("--messages", default="", help="JSON con array de mensajes para chat_llm")
     parser.add_argument("--tools", default="", help="JSON con array de tool definitions (opcional)")
+    parser.add_argument("--api_key", default="", help="API key para el proveedor LLM")
     parser.add_argument("--query", default="", help="Query para recall")
     parser.add_argument("--top_k", type=int, default=4, help="Top K chunks para recall")
     parser.add_argument("--collection", default="project_memory", help="Coleccion ChromaDB")
@@ -114,6 +115,7 @@ def main() -> None:
                 args.model,
                 messages,
                 tools,
+                api_key=args.api_key or None,
             )
         )
         return

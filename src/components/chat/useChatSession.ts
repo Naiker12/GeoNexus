@@ -48,6 +48,7 @@ export function useChatSession(
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [contextToggles, setContextToggles] =
     React.useState<ContextToggle>(DEFAULT_TOGGLES)
+  const [webSearchEnabled, setWebSearchEnabled] = React.useState(false)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -130,6 +131,8 @@ export function useChatSession(
         || contextToggles.indexed_assets
         || contextToggles.graph_nodes
 
+      const active = allConnectors.find((c) => c.id === activeConnectorId)
+
       const input: SendMessageInput = {
         project_id: DEFAULT_PROJECT_ID,
         conversation_id: conversationId,
@@ -137,6 +140,7 @@ export function useChatSession(
         provider: activeProvider.provider,
         model: activeProvider.model,
         endpoint: activeProvider.endpoint,
+        api_key: active?.apiKey ?? null,
         use_context: useContext,
         max_context_chunks: useContext ? 4 : 0,
       }
@@ -169,7 +173,7 @@ export function useChatSession(
         setPending(false)
       }
     },
-    [activeProvider, conversationId, pending]
+    [activeProvider, activeConnectorId, allConnectors, conversationId, pending]
   )
 
   return {
@@ -181,6 +185,8 @@ export function useChatSession(
     loadingHistory,
     contextToggles,
     setContextToggles,
+    webSearchEnabled,
+    setWebSearchEnabled,
     submit,
     loadConversation,
     newConversation,

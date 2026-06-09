@@ -38,6 +38,7 @@ type ProviderSetupDialogProps = {
     providerName: string
     model: string
     endpoint: string
+    apiKey?: string
     hasApiKey: boolean
     allModels: string[]
   }) => void
@@ -120,6 +121,7 @@ export function ProviderSetupDialog({
       providerName: providerName || option.name,
       model: selectedModelId,
       endpoint,
+      apiKey: apiKey.trim() || undefined,
       hasApiKey: Boolean(apiKey),
       allModels: models.map((m) => m.id),
     })

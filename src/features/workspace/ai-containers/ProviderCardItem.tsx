@@ -1,10 +1,12 @@
-import { Loader2Icon, PlayIcon, Settings2Icon } from "lucide-react"
+import { Loader2Icon, PlayIcon, Settings2Icon, Trash2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import { cn } from "@/lib/utils"
+import { useState } from "react"
 
 type ProviderCardItemProps = {
   option: ProviderOption
@@ -12,6 +14,7 @@ type ProviderCardItemProps = {
   isTesting?: boolean
   onConfig: (option: ProviderOption) => void
   onTest: (option: ProviderOption) => void
+  onDelete: (option: ProviderOption) => void
 }
 
 export function ProviderCardItem({
@@ -20,7 +23,9 @@ export function ProviderCardItem({
   isTesting,
   onConfig,
   onTest,
+  onDelete,
 }: ProviderCardItemProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const status = connector?.status ?? "needs-key"
   const primaryModel = connector?.model || "Sin modelo"
   const endpoint = connector?.endpoint || "Sin endpoint"
@@ -81,8 +86,30 @@ export function ProviderCardItem({
             )}
             Test
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive bg-background"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2Icon className="size-3.5" />
+            Eliminar
+          </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Eliminar proveedor"
+        description={
+          <>
+            ¿Eliminar <strong>{option.name}</strong>? Se borrarán la API key, el endpoint
+            y todos los modelos asociados. Esta acción no se puede deshacer.
+          </>
+        }
+        onConfirm={() => onDelete(option)}
+      />
     </article>
   )
 }

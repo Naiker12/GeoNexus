@@ -8,6 +8,7 @@ type ConfiguredProvidersListProps = {
   testingProviderId: string | null
   onConfig: (option: ProviderOption) => void
   onTest: (option: ProviderOption) => void
+  onDelete: (option: ProviderOption) => void
 }
 
 export function ConfiguredProvidersList({
@@ -16,6 +17,7 @@ export function ConfiguredProvidersList({
   testingProviderId,
   onConfig,
   onTest,
+  onDelete,
 }: ConfiguredProvidersListProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -38,6 +40,7 @@ export function ConfiguredProvidersList({
                 isTesting={testingProviderId === option.id}
                 onConfig={onConfig}
                 onTest={onTest}
+                onDelete={onDelete}
               />
             )
           })
