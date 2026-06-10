@@ -1,28 +1,33 @@
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
+import { CopyButton } from "@/components/chat/MessageActions"
+import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
+import type { Message, ResearchSource } from "@/types/chat"
 
 interface AssistantMessageProps {
-  content: string
+  message: Message
   isStreaming?: boolean
   onSendMessage?: (text: string) => void
-  sources?: string[]
 }
 
 export function AssistantMessage({
-  content,
+  message,
   isStreaming,
   onSendMessage,
-  sources,
 }: AssistantMessageProps) {
   const { mainContent, suggestions } = isStreaming
-    ? { mainContent: content, suggestions: [] as string[] }
-    : parseSuggestions(content)
+    ? { mainContent: message.content, suggestions: [] as string[] }
+    : parseSuggestions(message.content)
+
+  console.log("[DEBUG] AssistantMessage researchSources:", message.researchSources, "isSearching:", message.isSearching)
+  const showResearch = message.isSearching !== undefined
+
   return (
-    <div className="flex items-start gap-2 py-0.5">
+    <div className="group flex items-start gap-2 py-0.5">
       <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
         <GeoNexusIcon className="size-3.5" variant="nexus" />
       </div>
@@ -30,18 +35,29 @@ export function AssistantMessage({
         <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
           GeoNexus IA
         </span>
-        {isStreaming && content.length === 0 ? (
+        {isStreaming && message.content.length === 0 ? (
           <TypingDots />
         ) : (
           <>
+            {showResearch && (
+              <DeepResearchPanel
+                sources={message.researchSources ?? []}
+                isSearching={message.isSearching ?? false}
+                currentQuery={message.currentSearchQuery}
+                elapsedSeconds={message.searchElapsedSeconds}
+              />
+            )}
             <MarkdownContent content={mainContent} isStreaming={isStreaming} />
-            {sources && sources.length > 0 && (
-              <SearchSourcesBlock sources={sources} />
+            {message.sources && message.sources.length > 0 && (
+              <SearchSourcesBlock sources={message.sources} />
             )}
             <ActionSuggestions
               suggestions={suggestions}
               onSelect={(s) => onSendMessage?.(s)}
             />
+            <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <CopyButton content={message.content} />
+            </div>
           </>
         )}
       </div>

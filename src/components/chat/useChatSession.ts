@@ -4,7 +4,7 @@ import { listMessages, sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { Message, SendMessageInput } from "@/types/chat"
+import type { Message, ResearchSource, SendMessageInput } from "@/types/chat"
 
 const DEFAULT_PROJECT_ID = "project-default"
 const DEFAULT_TOGGLES: ContextToggle = {
@@ -13,6 +13,7 @@ const DEFAULT_TOGGLES: ContextToggle = {
   graph_nodes: true,
 }
 const CONVERSATION_ID_KEY = "geonexus.activeConversationId"
+const WEB_SEARCH_KEY = "geonexus.webSearchEnabled"
 
 function loadConversationId(): string | null {
   try {
@@ -34,6 +35,25 @@ function saveConversationId(id: string | null) {
   }
 }
 
+function loadWebSearchEnabled(): boolean {
+  try {
+    const stored = localStorage.getItem(WEB_SEARCH_KEY)
+    return stored === "true"
+  } catch {
+    return false
+  }
+}
+
+function saveWebSearchEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem(WEB_SEARCH_KEY, enabled ? "true" : "false")
+  } catch {
+    // localStorage may be full or unavailable
+  }
+}
+
+let researchTimerId: ReturnType<typeof setInterval> | null = null
+
 export function useChatSession(
   activeConnectorId: string | null,
   allConnectors: AiConnector[]
@@ -48,11 +68,17 @@ export function useChatSession(
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [contextToggles, setContextToggles] =
     React.useState<ContextToggle>(DEFAULT_TOGGLES)
-  const [webSearchEnabled, setWebSearchEnabled] = React.useState(false)
+  const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(
+    () => loadWebSearchEnabled()
+  )
 
   React.useEffect(() => {
     saveConversationId(conversationId)
   }, [conversationId])
+
+  React.useEffect(() => {
+    saveWebSearchEnabled(webSearchEnabled)
+  }, [webSearchEnabled])
 
   const activeProvider = React.useMemo(() => {
     if (!activeConnectorId) return null
@@ -93,9 +119,29 @@ export function useChatSession(
   }, [])
 
   const newConversation = React.useCallback(() => {
+    if (researchTimerId) {
+      clearInterval(researchTimerId)
+      researchTimerId = null
+    }
     setMessages([])
     setConversationId(null)
     setError(null)
+  }, [])
+
+  const updateAssistantMessage = React.useCallback((
+    id: string,
+    updates: Partial<Message> | ((prev: Message) => Partial<Message>)
+  ) => {
+    setMessages((current) =>
+      current.map((msg) =>
+        msg.id === id
+          ? {
+              ...msg,
+              ...(typeof updates === "function" ? updates(msg) : updates),
+            }
+          : msg
+      )
+    )
   }, [])
 
   const submit = React.useCallback(
@@ -143,25 +189,96 @@ export function useChatSession(
         api_key: active?.apiKey ?? null,
         use_context: useContext,
         max_context_chunks: useContext ? 4 : 0,
+        web_search: webSearchEnabled || undefined,
       }
+
+      // When web search is active, create a placeholder assistant message
+      // showing the Deep Research panel during loading
+      let assistantMsgId: string | null = null
+      let startTime = Date.now()
+
+      if (webSearchEnabled) {
+        assistantMsgId = `research-${Date.now()}`
+        const placeholderAssistant: Message = {
+          id: assistantMsgId,
+          conversation_id: conversationId ?? "pending",
+          role: "assistant",
+          content: "",
+          provider: activeProvider.provider,
+          model: activeProvider.model,
+          trace_id: "",
+          chunks_used: [],
+          nodes_used: [],
+          tool_calls: [],
+          sources: [],
+          created_at: Math.floor(Date.now() / 1000),
+          isSearching: true,
+          currentSearchQuery: clean,
+          researchSources: [],
+          searchElapsedSeconds: 0,
+        }
+        setMessages((current) => [...current, placeholderAssistant])
+
+        researchTimerId = setInterval(() => {
+          const elapsed = (Date.now() - startTime) / 1000
+          updateAssistantMessage(assistantMsgId!, {
+            searchElapsedSeconds: elapsed,
+            currentSearchQuery: elapsed < 2
+              ? clean
+              : `${clean} ` + (elapsed < 4 ? "análisis de resultados" : "generando respuesta"),
+          })
+        }, 500)
+      }
+
       try {
         const response = await sendMessage(input)
+        console.log("[DEBUG] sendMessage response.research_sources:", response.research_sources)
         setConversationId(response.conversation_id)
 
-        setMessages((current) => [
-          ...current.map((message) =>
-            message.id === optimistic.id
-              ? { ...message, conversation_id: response.conversation_id }
-              : message
-          ),
-          response.message,
-        ])
+        if (researchTimerId) {
+          clearInterval(researchTimerId)
+          researchTimerId = null
+        }
+
+        const elapsed = (Date.now() - startTime) / 1000
+
+        if (webSearchEnabled && assistantMsgId) {
+          updateAssistantMessage(assistantMsgId, {
+            conversation_id: response.conversation_id,
+            content: response.message.content,
+            isSearching: false,
+            currentSearchQuery: response.search_query ?? clean,
+            researchSources: (response.research_sources ?? []) as ResearchSource[],
+            searchElapsedSeconds: elapsed,
+          })
+        } else {
+          setMessages((current) => [
+            ...current.map((message) =>
+              message.id === optimistic.id
+                ? { ...message, conversation_id: response.conversation_id }
+                : message
+            ),
+            response.message,
+          ])
+        }
 
         toast({ title: "Respuesta recibida", description: "GeoNexus ha completado el analisis", variant: "success" })
       } catch (err) {
-        setMessages((current) =>
-          current.filter((message) => message.id !== optimistic.id)
-        )
+        if (researchTimerId) {
+          clearInterval(researchTimerId)
+          researchTimerId = null
+        }
+
+        if (webSearchEnabled && assistantMsgId) {
+          setMessages((current) =>
+            current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
+          )
+        } else {
+          setMessages((current) =>
+            current.filter((message) => message.id !== optimistic.id)
+          )
+        }
+
         const message = typeof err === "string"
           ? err
           : err instanceof Error
@@ -173,8 +290,30 @@ export function useChatSession(
         setPending(false)
       }
     },
-    [activeProvider, activeConnectorId, allConnectors, conversationId, pending]
+    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage]
   )
+
+  const regenerate = React.useCallback(() => {
+    setError(null)
+    let contentToSubmit = ""
+
+    setMessages((current) => {
+      let lastUserIdx = -1
+      for (let i = current.length - 1; i >= 0; i--) {
+        if (current[i].role === "user") {
+          lastUserIdx = i
+          contentToSubmit = current[i].content
+          break
+        }
+      }
+      if (lastUserIdx === -1) return current
+      return current.slice(0, lastUserIdx)
+    })
+
+    if (contentToSubmit) {
+      submit(contentToSubmit)
+    }
+  }, [submit])
 
   return {
     activeProvider,
@@ -188,6 +327,7 @@ export function useChatSession(
     webSearchEnabled,
     setWebSearchEnabled,
     submit,
+    regenerate,
     loadConversation,
     newConversation,
   }

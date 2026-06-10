@@ -1,156 +1,123 @@
+#!/usr/bin/env python3
+"""GeoNexus Sidecar CLI — dispatcher puro. Cada accion en su modulo."""
+
 import argparse
 import json
 import os
 import sys
-from typing import Any, Dict, List, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from docs.reader import extract_text
-from llm.router import chat_llm_provider, list_llm_models, ping_llm_provider
-from pipeline.indexer import index_document_file
+
+def _print(payload: dict | list) -> None:
+    text = json.dumps(payload, ensure_ascii=False)
+    try:
+        sys.stdout.buffer.write((text + "\n").encode("utf-8"))
+        sys.stdout.buffer.flush()
+    except (UnicodeEncodeError, AttributeError):
+        print(text)
+
+
+def _err(msg: str) -> None:
+    _print({"status": "error", "message": msg})
+    raise SystemExit(1)
+
+
+def _recall(args) -> None:
+    from memory.chroma import query_chunks
+    from memory.embeddings import get_deterministic_embedding
+    emb = get_deterministic_embedding(args.query)
+    res = query_chunks(collection_name=args.collection, query_embeddings=[emb],
+                       n_results=args.top_k, where={"project_id": args.project_id})
+    if res["status"] != "success":
+        return _print([])
+    chunks = []
+    for i, doc_id in enumerate(res["results"].get("ids", [[]])[0]):
+        meta = (res["results"].get("metadatas", [[]])[0] or [{}])[i] if i < len(res["results"].get("metadatas", [[]])[0]) else {}
+        dist = (res["results"].get("distances", [[]])[0] or [0.0])[i] if i < len(res["results"].get("distances", [[]])[0]) else 0.0
+        chunks.append({"text": (res["results"].get("documents", [[]])[0] or [""])[i] if i < len(res["results"].get("documents", [[]])[0]) else "",
+                        "source": meta.get("source", "desconocido"),
+                        "asset_id": meta.get("asset_id", ""),
+                        "score": 1.0 - dist})
+    _print(chunks)
+
+
+def _build_context(args) -> None:
+    from context.builder import build_project_context
+    _print({"context": build_project_context(args.project_id, os.getenv("GEONEXUS_DB_PATH", ""))})
+
+
+def _ping(args) -> None:
+    from llm.router import ping_llm_provider
+    _print(ping_llm_provider(args.provider_type, args.base_url, args.model))
+
+
+def _chat(args) -> None:
+    from llm.router import chat_llm_provider
+    messages = json.loads(args.messages) if args.messages else [{"role": "user", "content": args.prompt}]
+    tools = json.loads(args.tools) if args.tools else None
+    _print(chat_llm_provider(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None))
+
+
+def _list_models(args) -> None:
+    from llm.router import list_llm_models
+    _print(list_llm_models(args.provider_type, args.base_url))
+
+
+def _search_web(args) -> None:
+    from web_search import search_web
+    results = search_web(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
+    import sys
+    print(f"[DEBUG] search_web returned {len(results)} results", file=sys.stderr)
+    _print(results)
+
+
+def _extract(args) -> None:
+    from docs.reader import extract_text
+    _print({"text": extract_text(args.file)})
+
+
+def _index(args) -> None:
+    from pipeline.indexer import index_document_file
+    _print(index_document_file(file_path=args.file, project_id=args.project_id, workspace_id=args.workspace_id, asset_id=args.asset_id))
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="GeoNexus AI Sidecar CLI")
-    parser.add_argument(
-        "--action",
-        required=True,
-        choices=[
-            "index", "extract", "ping_llm", "chat_llm", "list_llm_models",
-            "recall_chunks", "build_project_context",
-        ],
-        help="Accion a realizar",
-    )
-    parser.add_argument("--file", default="", help="Ruta al archivo")
-    parser.add_argument("--project_id", default="project-default", help="ID del proyecto")
-    parser.add_argument("--workspace_id", default="workspace-default", help="ID del workspace")
-    parser.add_argument("--asset_id", default="asset-default", help="ID del activo")
-    parser.add_argument("--provider_type", default="", help="Tipo de proveedor LLM")
-    parser.add_argument("--base_url", default="", help="Endpoint base del proveedor LLM")
-    parser.add_argument("--model", default="", help="Modelo LLM")
-    parser.add_argument("--prompt", default="", help="Prompt plano para chat_llm (legacy)")
-    parser.add_argument("--messages", default="", help="JSON con array de mensajes para chat_llm")
-    parser.add_argument("--tools", default="", help="JSON con array de tool definitions (opcional)")
-    parser.add_argument("--api_key", default="", help="API key para el proveedor LLM")
-    parser.add_argument("--query", default="", help="Query para recall")
-    parser.add_argument("--top_k", type=int, default=4, help="Top K chunks para recall")
-    parser.add_argument("--collection", default="project_memory", help="Coleccion ChromaDB")
+    p = argparse.ArgumentParser(description="GeoNexus AI Sidecar CLI")
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web"])
+    p.add_argument("--file", default="")
+    p.add_argument("--project_id", default="project-default")
+    p.add_argument("--workspace_id", default="workspace-default")
+    p.add_argument("--asset_id", default="asset-default")
+    p.add_argument("--provider_type", default="")
+    p.add_argument("--base_url", default="")
+    p.add_argument("--model", default="")
+    p.add_argument("--prompt", default="")
+    p.add_argument("--messages", default="")
+    p.add_argument("--tools", default="")
+    p.add_argument("--api_key", default="")
+    p.add_argument("--query", default="")
+    p.add_argument("--top_k", type=int, default=4)
+    p.add_argument("--collection", default="project_memory")
+    p.add_argument("--search_provider", default="duckduckgo")
+    p.add_argument("--cse_id", default="")
+    p.add_argument("--max_results", type=int, default=5)
+    args = p.parse_args()
 
-    args = parser.parse_args()
+    dispatch = {
+        "recall_chunks": _recall,
+        "build_project_context": _build_context,
+        "ping_llm": _ping,
+        "chat_llm": _chat,
+        "list_llm_models": _list_models,
+        "search_web": _search_web,
+        "extract": _extract,
+        "index": _index,
+    }
 
-    if args.action == "recall_chunks":
-        if not args.query or not args.project_id:
-            _print_error("query y project_id son requeridos")
-        # Los embeddings los genera el sidecar con EmbeddingModel
-        from memory.chroma import query_chunks
-        from memory.embeddings import get_deterministic_embedding
-
-        query_embedding = get_deterministic_embedding(args.query)
-        result = query_chunks(
-            collection_name=args.collection,
-            query_embeddings=[query_embedding],
-            n_results=args.top_k,
-            where={"project_id": args.project_id},
-        )
-
-        if result["status"] != "success":
-            _print_json([])
-            return
-
-        results = result["results"]
-        chunks = []
-        ids = results.get("ids", [[]])[0]
-        documents = results.get("documents", [[]])[0]
-        metadatas = results.get("metadatas", [[]])[0]
-        distances = results.get("distances", [[]])[0]
-
-        for i, doc_id in enumerate(ids):
-            meta = metadatas[i] if i < len(metadatas) else {}
-            chunks.append({
-                "text": documents[i] if i < len(documents) else "",
-                "source": meta.get("source", "desconocido"),
-                "asset_id": meta.get("asset_id", ""),
-                "score": 1.0 - distances[i] if i < len(distances) else 0.0,
-            })
-
-        _print_json(chunks)
-        return
-
-    if args.action == "build_project_context":
-        if not args.project_id:
-            _print_error("project_id requerido")
-        from context.builder import build_project_context
-        db_path = os.getenv("GEONEXUS_DB_PATH", "")
-        context = build_project_context(args.project_id, db_path)
-        _print_json({"context": context})
-        return
-
-    if args.action == "ping_llm":
-        if not args.provider_type or not args.base_url:
-            _print_error("provider_type y base_url son requeridos")
-        _print_json(ping_llm_provider(args.provider_type, args.base_url, args.model))
-        return
-
-    if args.action == "chat_llm":
-        if not args.provider_type or not args.base_url or not args.model:
-            _print_error("provider_type, base_url y model son requeridos")
-        if not args.messages and not args.prompt:
-            _print_error("messages o prompt es requerido")
-
-        messages: List[Dict[str, Any]]
-        if args.messages:
-            messages = json.loads(args.messages)
-        else:
-            messages = [{"role": "user", "content": args.prompt}]
-
-        tools: Optional[List[Dict[str, Any]]] = None
-        if args.tools:
-            tools = json.loads(args.tools)
-
-        _print_json(
-            chat_llm_provider(
-                args.provider_type,
-                args.base_url,
-                args.model,
-                messages,
-                tools,
-                api_key=args.api_key or None,
-            )
-        )
-        return
-
-    if args.action == "list_llm_models":
-        if not args.provider_type or not args.base_url:
-            _print_error("provider_type y base_url son requeridos")
-        _print_json(list_llm_models(args.provider_type, args.base_url))
-        return
-
-    if not args.file:
-        _print_error("file requerido")
-
-    if args.action == "extract":
-        _print_json({"text": extract_text(args.file)})
-        return
-
-    if args.action == "index":
-        _print_json(
-            index_document_file(
-                file_path=args.file,
-                project_id=args.project_id,
-                workspace_id=args.workspace_id,
-                asset_id=args.asset_id,
-            )
-        )
-
-
-def _print_json(payload: dict | list) -> None:
-    print(json.dumps(payload))
-
-
-def _print_error(message: str) -> None:
-    _print_json({"status": "error", "message": message})
-    raise SystemExit(1)
+    handler = dispatch.get(args.action)
+    if handler:
+        handler(args)
 
 
 if __name__ == "__main__":

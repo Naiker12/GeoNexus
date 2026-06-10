@@ -1,5 +1,6 @@
 import { useState } from "react"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { Check, Copy } from "lucide-react"
@@ -24,7 +25,7 @@ export function MarkdownContent({
       )}
     >
       <ReactMarkdown
-        remarkPlugins={[]}
+        remarkPlugins={[remarkGfm]}
         components={{
           p({ children }) {
             return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
@@ -71,6 +72,35 @@ export function MarkdownContent({
                 {children}
               </a>
             )
+          },
+          table({ children }) {
+            return (
+              <div className="overflow-x-auto my-3">
+                <table className="w-full border-collapse text-[13px]">
+                  {children}
+                </table>
+              </div>
+            )
+          },
+          thead({ children }) {
+            return <thead className="bg-muted/50">{children}</thead>
+          },
+          th({ children }) {
+            return (
+              <th className="border border-border px-3 py-1.5 text-left font-medium text-[12px]">
+                {children}
+              </th>
+            )
+          },
+          td({ children }) {
+            return (
+              <td className="border border-border px-3 py-1.5 text-[12px]">
+                {children}
+              </td>
+            )
+          },
+          tr({ children }) {
+            return <tr className="even:bg-muted/20">{children}</tr>
           },
           code({ node, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || "")

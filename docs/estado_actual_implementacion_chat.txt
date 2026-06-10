@@ -1,313 +1,462 @@
-================================================================================
-  GEONEXUS — ESTADO ACTUAL DE IMPLEMENTACION (CHAT Y UI)
-  Fecha: 2026-06-09
-================================================================================
-
-Este documento recopila todos los cambios implementados en la sesion actual
-sobre la interfaz de chat y componentes relacionados.
-
-================================================================================
-  1. LAYOUT PRINCIPAL — Scroll solo en mensajes
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-  - src/index.css
-  - src/App.tsx
-  - src/features/workspace/GeoNexusWorkspace.tsx
-  - src/components/chat/ChatPanel.tsx
-
-PROBLEMA ORIGINAL:
-  El scroll afectaba toda la pagina en vez del area de mensajes. El header
-  se perdia y el footer se movia con los mensajes.
-
-CAUSA RAICES DETECTADAS:
-  a) #root usaba height: 100% sin overflow:hidden → el body scrolleaba
-  b) Div interno del ChatPanel (flex flex-1 flex-col) sin min-h-0 →
-     min-height:auto crecia al contenido, ignorando el flex-1 asignado
-  c) Section del ChatPanel usaba flex-1 en vez de altura explicita
-
-SOLUCION FINAL (3 cambios clave):
-
-  1.1 index.css — Root con altura absoluta
-      html, body, #root { height: 100vh; overflow: hidden; }
-      → NUNCA hay scroll en la pagina. Todo overflow se maneja interno.
-
-  1.2 ChatPanel — Altura explicita como las demas paginas
-      section: h-[calc(100svh-3.5rem)]  ← mismo patron que DocumentsPage,
-      → Altura DEFINIDA via calc(), no depende de cadena flex.               DataPage, AiContainersPage
-      div interno: min-h-0 añadido ← permite respetar la altura de section
-
-  1.3 Cadena completa de alturas:
-      #root (100vh, overflow:hidden)
-        SidebarProvider (min-h-svh flex row)
-          Sidebar (h-svh) → row = 100svh
-          SidebarInset (flex-col overflow-hidden)
-            GeoNexusWorkspace (flex-1 min-h-0 overflow-hidden)
-              AppTopbar (h-14 shrink-0) ← FIJO 56px, siempre visible
-              main (flex-1 overflow-hidden flex-col)
-                ChatPanel section (h-[calc(100svh-3.5rem)] flex-col overflow-hidden)
-                  div (flex-1 min-h-0 flex-col) ← AHORA CON min-h-0
-                    top bar (shrink-0) ← FIJO
-                    messages (flex-1 overflow-y-auto min-h-0) ← UNICO SCROLL
-                    composer (shrink-0 border-t) ← FIJO ABAJO
-
-================================================================================
-  2. BLOQUES DE CODIGO — Syntax highlighting + boton copiar
-================================================================================
-
-ARCHIVO MODIFICADO:
-  - src/components/chat/MarkdownContent.tsx (reescrito completo)
-
-DEPENDENCIAS NUEVAS:
-  - react-syntax-highlighter@16.1.1
-  - @types/react-syntax-highlighter@15.5.13
-  - remark-gfm@4.0.1 (dev)
-
-QUE CAMBIO:
-  Antes: Usaba Tailwind prose para codigo. Sin bordes, sin resaltado, plano.
-  Ahora: Componentes personalizados de ReactMarkdown con:
-
-  • Bloque de codigo (CodeBlock):
-    - Cabecera con lenguaje (uppercase, font-mono) + boton Copiar
-    - Feedback "Copiado" con icono Check verde (2 segundos)
-    - Syntax highlighting con Prism + tema oneDark
-    - border, rounded-lg, overflow-hidden
-    - Fondo: var(--color-muted)
-
-  • Codigo inline:
-    - bg-muted, px-1.5, py-0.5, rounded, text-[13px]
-
-  • Listas (ul/ol):
-    - mb-2 pl-5 list-disc/list-decimal space-y-0.5
-
-  • Headings (h1-h3):
-    - font-medium, tamaños 16/14/13px con márgenes consistentes
-
-  • Enlaces:
-    - text-emerald-600, no-underline, hover:underline, target=_blank
-
-  • Streaming:
-    - Cursor parpadeante ▋ despues del contenido (after:content-['▋'])
-
-  NOTA: Se eliminaron las clases prose de Tailwind y se reemplazaron por
-  componentes personalizados con espaciado explicito (space-y-2 en el
-  contenedor, mb-2 en parrafos).
-
-================================================================================
-  3. ACTION SUGGESTIONS — Sugerencias clicables del modelo
-================================================================================
-
-ARCHIVOS NUEVOS:
-  - src/utils/parseSuggestions.ts
-  - src/components/chat/ActionSuggestions.tsx
-
-ARCHIVOS MODIFICADOS:
-  - src/components/chat/AssistantMessage.tsx
-  - src/components/chat/ChatTranscript.tsx
-  - src/components/chat/ChatPanel.tsx
-
-QUE HACE:
-  Cuando el modelo termina su respuesta con frases como:
-    "Puedo ayudarte con:"
-    "- item 1"
-    "- item 2"
-    "- item 3"
-
-  parseSuggestions.ts detecta la frase gatillo al FINAL del contenido y
-  extrae los items como sugerencias. El componente ActionSuggestions las
-  renderiza como "pills" (rounded-full, border, bg-background, hover:bg-muted).
-
-  Al hacer clic en una pill, se envia ese texto como mensaje de usuario
-  (submit). El flujo completo:
-
-    ChatPanel.submit()
-      → ChatTranscript.onSendMessage
-        → AssistantMessage.onSendMessage
-          → ActionSuggestions.onSelect
-            → submit(texto)
-
-  Solo se parsea cuando NO esta en streaming (isStreaming=false).
-
-FRASES GATILLO DETECTADAS (regex):
-  - puedo ayudarte con:
-  - te interesa?
-  - en que puedo apoyarte?
-  - por ejemplo:
-  - aqui tienes (algunas/unas) sugerencias:
-  - puedes preguntarme:
-
-REQUISITOS:
-  - Minimo 2 items de sugerencia
-  - Items < 100 caracteres
-  - Items con prefijo -, *, bullet point limpio
-
-================================================================================
-  4. BOTON ELIMINAR CONVERSACION
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-  - src/components/chat/ConversationList.tsx
-  - src/components/chat/ChatPanel.tsx
-
-ARCHIVOS RELACIONADOS (backend):
-  - src/api/chat.ts → nueva funcion deleteConversation
-  - crates/geonexus-db/src/chat_repo.rs → nueva funcion delete_conversation
-  - crates/geonexus-tauri/src/commands/chat.rs → nuevo comando delete_conversation
-  - crates/geonexus-tauri/src/main.rs → registro del comando
-
-QUE CAMBIO:
-  • Cada conversacion en el listado tiene un icono Trash2Icon que aparece
-    al hacer hover (opacity-0 → group-hover:opacity-100).
-  • Al hacer clic: se abre ConfirmDialog.
-  • Confirmacion: llama a deleteConversation(id), remueve del estado local
-    (setConversations filter), y si es la conversacion activa, resetea el
-    chat (newConversation).
-  • Backend completo con comando Tauri y funcion Rust.
-
-COMPONENTE: ConfirmDialog
-  - Reutilizable (src/components/ui/confirm-dialog.tsx)
-  - Usa Dialog de shadcn
-  - Variant destructive (boton rojo) o default
-  - Props: open, onOpenChange, title, description, confirmLabel, cancelLabel,
-    variant, onConfirm
-
-================================================================================
-  5. BOTON ELIMINAR PROVEEDOR
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-  - src/features/workspace/ai-containers/ProviderCardItem.tsx
-  - src/features/workspace/ai-containers/ConfiguredProvidersList.tsx
-  - src/features/workspace/AiContainersPage.tsx
-
-QUE CAMBIO:
-  • Cada ProviderCardItem tiene boton "Eliminar" (Trash2Icon) con texto
-    destructive, al lado de Config y Test.
-  • ConfirmDialog con confirmacion antes de eliminar.
-  • AiContainersPage.handleDeleteProvider: filtra del array de conectores.
-
-================================================================================
-  6. BOTON ELIMINAR MODELO (dentro de proveedor activo)
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-  - src/features/workspace/ai-containers/ActiveProviderPanel.tsx
-  - src/features/workspace/AiContainersPage.tsx
-
-QUE CAMBIO:
-  • Cada modelo listado en ActiveProviderPanel tiene Trash2Icon hover-visible.
-  • ConfirmDialog antes de eliminar.
-  • handleModelDelete: filtra el modelo del array de modelos.
-
-================================================================================
-  7. COMPONENTES COMPACTADOS
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-
-  ModelHeaderPopover.tsx:
-    - Boton size="xs", h-6, text-[11px]
-    - PopoverContent w-64
-    - Textos en [10px]-[11px]
-
-  MessageBubble.tsx:
-    - Avatar size-8 → size-7
-    - Padding reducido en burbujas
-    - User bubble: max-w-2xl → max-w-[75%] sm:max-w-sm
-
-  AssistantMessage.tsx:
-    - Avatar size-8 → size-7
-    - gap-3 → gap-2
-
-  ChatTranscript.tsx:
-    - gap-6 → gap-4
-    - padding responsivo (px-4 py-4 sm:px-6 sm:py-5 md:px-8)
-
-================================================================================
-  8. WEB SEARCH TOGGLE
-================================================================================
-
-ARCHIVOS MODIFICADOS:
-  - src/components/chat/ChatPanel.tsx (ToolMenu)
-  - src/components/chat/useChatSession.ts
-
-QUE CAMBIO:
-  • Item "Buscar informacion" en el menu de herramientas (boton +).
-  • Switch inline dentro del DropdownMenuItem.
-  • onSelect={(e) => e.preventDefault()} → no cierra el menu al hacer clic.
-  • Estado webSearchEnabled en useChatSession.
-  • Toast al activar (variant: success) y desactivar (variant: info).
-
-================================================================================
-  9. DEPENDENCIAS INSTALADAS
-================================================================================
-
-  Produccion:
-    react-markdown@10.1.0         ← ya instalado antes
-    react-syntax-highlighter@16.1.1  ← NUEVO
-
-  Desarrollo:
-    @types/react-syntax-highlighter@15.5.13  ← NUEVO
-    remark-gfm@4.0.1                         ← NUEVO
-
-================================================================================
-  RESUMEN DE ARCHIVOS CREADOS/MODIFICADOS
-================================================================================
-
-  NUEVOS:
-    src/components/chat/ActionSuggestions.tsx
-    src/utils/parseSuggestions.ts
-    src/components/ui/confirm-dialog.tsx  ← en sesion anterior
-
-  MODIFICADOS (frontend):
-    src/index.css                         ← root overflow:hidden
-    src/App.tsx                           ← SidebarInset overflow-hidden
-    src/features/workspace/GeoNexusWorkspace.tsx  ← flex-1 min-h-0
-    src/components/chat/ChatPanel.tsx     ← h-[calc], min-h-0, onDelete, onSendMessage
-    src/components/chat/MarkdownContent.tsx  ← reescrito con syntax highlighting
-    src/components/chat/AssistantMessage.tsx ← parseSuggestions + ActionSuggestions
-    src/components/chat/ChatTranscript.tsx ← onSendMessage prop
-    src/components/chat/ConversationList.tsx ← delete button + onDelete callback
-    src/components/chat/MessageBubble.tsx  ← compactado
-    src/components/chat/ModelHeaderPopover.tsx ← compactado
-    src/components/chat/useChatSession.ts  ← webSearchEnabled
-    src/features/workspace/AiContainersPage.tsx ← handleDeleteProvider, handleModelDelete
-    src/features/workspace/ai-containers/ProviderCardItem.tsx ← delete button
-    src/features/workspace/ai-containers/ConfiguredProvidersList.tsx ← onDelete prop
-    src/features/workspace/ai-containers/ActiveProviderPanel.tsx ← delete model button
-
-  MODIFICADOS (backend):
-    src/api/chat.ts                       ← deleteConversation
-    crates/geonexus-db/src/chat_repo.rs   ← delete_conversation
-    crates/geonexus-tauri/src/commands/chat.rs ← delete_conversation command
-    crates/geonexus-tauri/src/main.rs     ← registro delete_conversation
-
-================================================================================
-  PENDIENTE (bugs activos)
-================================================================================
-
-  1. SCROLL: A pesar de los cambios, el usuario reporta que el scroll
-     sigue sin funcionar y el header no se ve con muchas conversaciones.
-     La teoria actual es que el cambio a h-[calc(100svh-3.5rem)] + min-h-0
-     en el div interno deberia resolverlo, pero requiere prueba.
-
-  2. ActionSuggestions: requiere que el modelo genere las frases gatillo
-     en espanol para que funcione la deteccion.
-
-================================================================================
-  NOTAS TECNICAS
-================================================================================
-
-  • Todas las otras paginas del workspace (DocumentsPage, DataPage,
-    AiContainersPage) usan h-[calc(100svh-3.5rem)] overflow-auto para su
-    layout y funcionan correctamente.
-
-  • La diferencia clave entre esas paginas y ChatPanel es que ellas
-    scrollean TODO el contenido de la pagina, mientras ChatPanel necesita
-    scroll SOLO en el area de mensajes (header y footer fijos).
-
-  • El div interno del ChatPanel necesitaba min-h-0 explicitamente porque
-    en una columna flex, min-height:auto hace que el item crezca a su
-    contenido en vez de respetar el tamano asignado por flex.
-
-================================================================================
+GeoNexus — Funciones pendientes por implementar (análisis detallado)
+======================================================================
+Fecha: 2026-06-09
+
+Este documento cataloga TODO lo que falta implementar en GeoNexus,
+organizado por prioridad y módulo. Incluye bugs activos, stubs,
+placeholders, código muerto y funciones declaradas pero no implementadas.
+
+======================================================================
+1. BLOQUE E — Tool-calling loop en send_message (PRIORIDAD #1)
+======================================================================
+
+Actualmente send_message (chat.rs) envía el mensaje al LLM y devuelve la
+respuesta, pero NO ejecuta un loop de tool-calling. El LLM puede pedir
+ejecutar herramientas pero el sistema no las despacha.
+
+Funciones faltantes:
+- dispatch_tool_call(tool_name, args) integrado en send_message
+- Reconocer tool_calls en la respuesta del LLM y ejecutar las tools
+  containers-mcp (container_list, container_search, container_get)
+- Loop de hasta N iteraciones (tool_call → ejecutar → resultado al LLM
+  → siguiente turno) con límite configurable (hoy hardcoded max_iter=10)
+- trace_id por mensaje y por tool-call para trazabilidad
+- Manejo de errores de tools (timeout, permiso denegado, tool no encontrada)
+  sin romper la conversación
+- Registrar tool_calls en la tabla chat_tool_calls (migración ya existe)
+
+Impacto: Sin esto, el chat no puede ejecutar acciones reales como listar
+archivos, buscar documentos o sincronizar conectores desde la conversación.
+
+======================================================================
+2. BLOQUE F — Pruebas E2E (PRIORIDAD #2)
+======================================================================
+
+No hay pruebas end-to-end que validen el flujo completo del sistema.
+
+Faltante:
+- Flujo: conectar proveedor LLM → crear conversación → enviar mensaje
+  con RAG → ver fuentes → cambiar contexto GIS → nueva conversación
+- Flujo: indexar documento → consultar con recall semántico → ver chunks
+  citados en la respuesta
+- Flujo: tool-calling loop (cuando Bloque E esté listo)
+- Mock/fake de Tauri para pruebas headless del frontend sin la app desktop
+- Pruebas de componentes con estados de carga, error y vacío
+
+======================================================================
+3. FASE 5 — OAuth y proveedores cloud (PRIORIDAD #3)
+======================================================================
+
+Todos los proveedores cloud (OneDrive, Google Drive, SharePoint, Dropbox,
+S3) están declarados en enums y tipos pero con CERO implementación.
+Cada ruta que los recibe responde "pending_oauth_phase5" o error.
+
+3.1 OAuth OneDrive
+-------------------
+- start_connector_auth("onedrive") → generar auth_url con PKCE
+- Abrir browser del sistema desde Tauri
+- Capturar deep link geonexus://oauth/callback
+- Validar state (anti-CSRF)
+- Cambiar authorization code por token (Microsoft Graph API)
+- Guardar token en keychain/Stronghold (NO en SQLite ni localStorage)
+- Registrar metadata del conector sin secretos en connector_configs
+- Sincronizar archivos reales de OneDrive
+- Scopes: Files.ReadWrite.Selected, offline_access
+
+3.2 Google Drive
+-----------------
+- Mismo flujo OAuth con google-auth-oauthlib
+- Google Drive API para listar/descargar/subir archivos
+- Scopes mínimos
+
+3.3 SharePoint / Dropbox / S3
+-------------------------------
+- Patrón similar con SDKs respectivos
+- S3 requiere credenciales (access_key, secret_key), no OAuth
+
+3.4 container_upload real
+--------------------------
+- Hoy container_upload confirma pero siempre retorna error:
+  "reservado para Fase 5/OAuth; no se subió ningún archivo"
+- Implementar upload real a local primero, luego a cloud
+
+3.5 Comandos Tauri faltantes para Fase 5
+------------------------------------------
+- register_cloud_connector
+- start_oauth_flow
+- complete_oauth_flow
+- sync_cloud_connector
+- delete_connector
+- update_connector_config
+
+======================================================================
+4. STREAMING DE RESPUESTAS LLM
+======================================================================
+
+Todo el chat es request/response bloqueante. No hay streaming.
+
+Faltante:
+- stream_chat_response(conversation_id, message_id) como comando Tauri
+- Soporte SSE en sidecar Python para todos los proveedores
+- Frontend: actualización progresiva del mensaje assistant token a token
+- Botón de cancelar streaming (AbortController)
+- Manejar reconexión si el stream se corta
+
+Impacto: Sin streaming, el usuario espera sin feedback hasta que toda la
+respuesta está generada. Para modelos lentos es una mala experiencia.
+
+======================================================================
+5. BUGS ACTIVOS — Queries rotas e inconsistencias
+======================================================================
+
+5.1 ChromaDB collection name mismatch — CRÍTICO
+-------------------------------------------------
+- indexer.py escribe embeddings en colección "project_{id}_assets"
+- sidecar.py recall_chunks consulta colección "project_memory" (default)
+- RESULTADO: Los chunks indexados NUNCA se encuentran en el recall.
+  El RAG siempre devuelve 0 resultados.
+
+5.2 context/builder.py query column name — CRÍTICO
+--------------------------------------------------
+- builder.py:35 consulta "SELECT label, kind FROM graph_nodes"
+- La columna real en SQLite es "name", no "label"
+- RESULTADO: builder.py SIEMPRE lanza excepción y devuelve string vacío.
+  Además el except Exception: pass lo silencia completamente.
+
+5.3 context/builder.py status filter — CRÍTICO
+-------------------------------------------------
+- builder.py:21 filtra "status = 'indexed'"
+- El valor real en SQLite para AssetStatus::Ready es "ready"
+- RESULTADO: El filtro nunca encuentra assets, el contexto del proyecto
+  siempre está vacío.
+
+5.4 Anthropic model lists divergentes
+---------------------------------------
+- Python anthropic.py (hardcoded): claude-opus-4-1, claude-opus-4,
+  claude-sonnet-4, claude-haiku-3
+- Rust llm.rs (hardcoded): claude-opus-4, claude-sonnet-4, claude-haiku-3,
+  claude-3-haiku (diferentes nombres y cantidades)
+- Necesitan sincronizarse desde una fuente única
+
+5.5 MCP container_get inconsistencia
+--------------------------------------
+- Rust containers_mcp.rs pasa file_id como ID de base de datos (entero)
+- Python handlers.py _handle_get trata file_id como ruta de archivo
+  y llama guard.resolve_local_path(file_id)
+- Los dos componentes no son compatibles
+
+======================================================================
+6. PERSISTENCIA DE CONFIGURACIÓN LLM
+======================================================================
+
+Hoy la configuración de proveedores LLM se guarda solo en localStorage
+a través de ConnectorsContext. No hay persistencia en backend.
+
+Faltante:
+- Guardar configuración de proveedores (endpoint, modelo, proveedor) en
+  SQLite tabla connector_configs
+- Guardar API keys en keychain/Stronghold del sistema operativo
+- Cargar configuración persistida al iniciar la app
+- Migrar usuarios de localStorage a backend
+- No mostrar API keys completas en la UI (solo máscara ****)
+- Rotación de claves y scopes mínimos
+
+======================================================================
+7. CONECTORES — UI real conectada al backend
+======================================================================
+
+La página Conectores muestra un catálogo visual con 9 proveedores pero
+TODOS están en estado "simulado". El API connector.ts (registerLocalConnector,
+listConnectorFiles, cacheConnectorFile, syncLocalConnector) existe pero
+NINGUNA función es llamada desde los componentes.
+
+Faltante:
+- Conectar AddConnectorDialog con registerLocalConnector al hacer clic
+  en "Agregar por mi cuenta"
+- Mostrar archivos reales del conector vía listConnectorFiles
+- Botones Sync y Cache funcionales que llamen syncLocalConnector y
+  cacheConnectorFile
+- Reemplazar connectors-data.ts (mock) con datos reales del backend
+- Botón "Eliminar conector" con ConfirmDialog + delete_connector
+- Estado de conexión real (online/offline/error) desde ping al proveedor
+
+======================================================================
+8. MCP — Capa general de servidores
+======================================================================
+
+La página MCP tiene una UI muy elaborada (grid, tools viewer, consola
+interactiva) pero TODOS los datos son estáticos (mcp-data.ts). No hay
+ningún comando backend para gestión general de servidores MCP.
+
+Comandos Tauri faltantes:
+- list_mcp_servers() — Listar servidores MCP registrados
+- register_mcp_server(config) — Registrar nuevo servidor MCP
+- ping_mcp_server(server_id) — Probar conectividad
+- list_mcp_tools(server_id) — Listar tools de un servidor
+- dispatch_mcp_tool(server_id, tool_name, args) — Ejecutar tool
+- unregister_mcp_server(server_id) — Eliminar servidor
+
+Además:
+- McpRegisterDialog valida JSON localmente pero nunca llama al backend
+- McpConsole usa datos mock hardcodeados, no logs reales del sistema
+- Stream selector (mcp-router/tauri-core/sqlite-db) cambia entre arrays
+  de datos preset, no streams reales
+- Botones "Probar todos" y "Cargar config" no tienen handlers
+
+======================================================================
+9. DATOS — Lineage, asset management y store real
+======================================================================
+
+9.1 LineagePanel
+-----------------
+- Hoy es visual fijo con 5 pasos (Connector → Cache → Indexer → ChromaDB
+  → Knowledge Graph → AI)
+- Falta get_data_lineage(asset_id) comando backend dedicado
+- Conectar LineagePanel a datos reales por asset
+
+9.2 Asset CRUD faltante
+-------------------------
+- No existe create_data_asset command (solo se crean vía cache_connector_file)
+- No existe delete_data_asset command
+- No existe update_data_asset command (solo upsert completo)
+- No existe unindex_asset (eliminar del vector store y grafo)
+- DataPage no tiene botones de validar/reindexar directos
+
+9.3 Métricas y paginación
+---------------------------
+- get_data_store_metrics usa patrón N+1 (carga todos los assets en Rust
+  y cuenta, en vez de SQL aggregates)
+- list_data_assets no tiene paginación (limit/offset)
+- list_sync_events no tiene filtro por tipo de evento
+- No hay get_store_health() para ChromaDB, SQLite, cache
+
+======================================================================
+10. DOCUMENTOS — Subida real, más formatos, OCR
+======================================================================
+
+10.1 Subida de archivos
+-------------------------
+- Input de "Subir documento" existe pero onChange handler está vacío
+- "Elegir carpeta" no está conectado a registerLocalConnector
+- "Conectar OneDrive" es diálogo visual sin OAuth real
+
+10.2 Más formatos de lectura
+------------------------------
+- XLSX/XLS: en ALLOWED_EXTENSIONS pero sin reader. Cae a read_text_file
+  que produce basura binaria.
+- CSV: mismo problema, sin parsing CSV/detección de delimitadores
+- GeoJSON/JSON: sin handler especial
+- .doc (antiguo): python-docx NO lee formato OLE binario, solo .docx
+- Imágenes escaneadas: sin OCR (Tesseract u otro)
+
+10.3 Reader debilidades
+-------------------------
+- read_pdf_file: except ImportError: pass (falla silenciosa si falta pypdf)
+- read_docx_file: igual con python-docx
+- read_docx_file: pierde estructura de tablas (solo concatenación plana)
+- No hay max_file_size check en indexer.py
+
+======================================================================
+11. GRAFO — Funcionalidades pendientes
+======================================================================
+
+11.1 Comandos faltantes
+------------------------
+- get_graph_node(node_id) — Obtener detalle de un nodo individual
+- get_graph_node_connections(node_id) — Vecinos y relaciones de un nodo
+- search_graph_nodes(query) — Búsqueda textual en nodos
+- delete_graph_node(node_id) — Eliminar nodo y sus aristas
+
+11.2 UI pendiente
+------------------
+- "Buscar nodo" en GraphToolbar es decorativo (sin popup/búsqueda real)
+- "Filtros" es decorativo (sin lógica de filtrado por tipo)
+- Botones "Usar en IA" y "Ver fuente" no ejecutan acciones reales
+- Posiciones de nodos (x, y) no se persisten en backend (solo en estado React)
+- "Analizar relación", "Exportar", "Refinar" sin handlers
+
+11.3 Extracción de entidades limitada
+---------------------------------------
+- graph/extractor.py usa solo 5 conceptos hardcodeados (retiro hídrico,
+  ronda de protección, uso industrial, zonificación, drenaje)
+- Solo detecta Art./Artículo N y Zona/Sector mediante regex simples
+- No usa LLM para extracción semántica
+- Posiciones de nodos son aleatorias (random.uniform(20, 80)), sin layout
+- Solo crea nodos "documento" genéricos en rebuild_knowledge_graph
+
+======================================================================
+12. ANÁLISIS — Trazas y métricas reales
+======================================================================
+
+La página Analysis es 100% placeholder. Todos los datos son strings "0"
+o "$0.00" de analysis-data.ts. No hay ninguna llamada API.
+
+Faltante:
+- Sistema de tracing: registrar cada tool-call con trace_id, duración,
+  proveedor, modelo, tokens, costo
+- TokenChart con datos reales de consumo por hora/día
+- ModelUsagePanel con porcentajes reales de uso por modelo
+- SkillPanel con tools más usadas
+- Exportar trazas a CSV/JSON
+- Command Tauri: list_analysis_runs(project_id, filters)
+- Command Tauri: get_token_usage(project_id, timeframe)
+- Command Tauri: get_model_usage_stats(project_id)
+
+======================================================================
+13. MAPA — Motor de mapa real
+======================================================================
+
+GeoMapCanvas.tsx es una decoración CSS/SVG. No hay un motor de mapa real.
+
+Faltante:
+- Integrar MapLibre GL, Leaflet o Deck.gl como motor de mapa real
+- Soporte para múltiples motores (arquitectura multi-mapa declarada en README)
+- Toolbar con zoom, localizar, capas funcionales (hoy sin handlers)
+- Cargar capas GIS reales (GeoJSON, Shapefile, WMS, WMTS)
+- Conectar con GisToolPanel para ejecutar análisis espaciales
+- Leyenda de capas dinámica (hoy 3 tipos hardcodeados)
+
+======================================================================
+14. GIS — Tool panel y geo_utils
+======================================================================
+
+14.1 GisToolPanel
+------------------
+- Tools son datos estáticos de workspace-data.ts
+- Botones no ejecutan nada real
+- No conectado a MCP tools de QGIS u otros servidores GIS
+- No hay ejecución de buffer, distance, heatmap, clustering real
+
+14.2 ai/gis/geo_utils.py
+--------------------------
+- Archivo placeholder (5 líneas, docstring dice "placeholder")
+- Solo read_vector(path) que llama gpd.read_file() sin validación
+- No hay: reproyección (to_crs), buffer, distancia, intersección,
+  unión, simplificación, extracción de coordenadas
+- No hay soporte para Shapely operations
+- No hay exportación a GeoJSON, Shapefile, DXF
+- No usado por ningún otro módulo
+
+======================================================================
+15. CONFIGURACIÓN — Diálogos sin submit
+======================================================================
+
+Varios diálogos de configuración tienen botones sin handlers:
+- McpSettingsDialog: "Actualizar regla" sin submit
+- MapEngineDialog: "Guardar" sin submit
+- LocalPathDialog: "Confirmar" sin acción
+- ConfigurationHeader: "Recargar" y "Guardar cambios" sin onClick
+- ConnectorsSection: connectorItems es array vacío hardcodeado
+- activeSection inicializado como undefined (type mismatch)
+
+======================================================================
+16. CÓDIGO MUERTO Y MÓDULOS HUÉRFANOS
+======================================================================
+
+16.1 Rust
+----------
+- build_prompt() en chat.rs:345 — #[allow(dead_code)], nunca llamado.
+  El sistema usa build_messages() en su lugar.
+- ChunkReference struct (chat.rs:87-95) — Definido en SendMessageResponse
+  pero send_message siempre devuelve Vec vacío.
+
+16.2 Python
+------------
+- ai/llm/openai.py — 87 líneas, completo, pero router.py NO lo llama.
+  Router duplica toda la lógica OpenAI inline.
+- ai/llm/anthropic.py — 81 líneas, completo, router.py NO lo llama.
+- ai/llm/ollama.py — 52 líneas, completo, router.py NO lo llama.
+- ai/llm/lmstudio.py — 79 líneas, completo, router.py NO lo llama.
+- ai/llm/openrouter.py — 85 líneas, completo, router.py NO lo llama.
+- ai/graph/graph.py — 5 líneas, placeholder completo. add_node()
+  siempre retorna {"ok": True} sin hacer nada.
+- sidecar.py action "extract" — registrado pero nunca llamado desde Rust.
+- ChatAnalysisLoader.tsx — Componente no importado en ningún lado.
+
+16.3 TypeScript
+----------------
+- src/api/connector.ts — 4 funciones exportadas (registerLocalConnector,
+  listConnectorFiles, cacheConnectorFile, syncLocalConnector) que NUNCA
+  son llamadas desde ningún componente.
+- src/types/connector.ts — Todos los tipos definidos pero no usados.
+
+======================================================================
+17. PLACEHOLDERS Y STUBS CONOCIDOS
+======================================================================
+
+- ai/graph/graph.py:1-5 — Placeholder completo ("Knowledge graph placeholder")
+- ai/gis/geo_utils.py:1-5 — Placeholder ("GIS utilities placeholder")
+- ai/memory/embeddings.py:8-15 — get_deterministic_embedding() genera
+  vectores aleatorios deterministas vía SHA-256, NO embedding real
+- connectors-data.ts — Array de 9 conectores simulados, ninguno real
+- mcp-data.ts — 4 servidores MCP con datos estáticos
+- data-data.ts — dataAssets array vacío, defaultMetrics todo ceros
+- documents-data.ts — documents y aiFindings arrays vacíos
+- graph-data.ts — graphNodes, graphEdges, graphClusters arrays vacíos
+- analysis-data.ts — Todos los valores son strings "0" o "$0.00"
+- workspace-data.ts — gisTools y connectors estáticos
+
+======================================================================
+18. SEGURIDAD — Keychain/Stronghold
+======================================================================
+
+- API keys hoy se guardan en localStorage (inseguro)
+- No hay integración con keychain del SO ni Tauri Stronghold
+- Tokens OAuth no tienen storage seguro
+- No hay HMAC signing para MCP tool-calls
+- No hay rate limiting en comandos Tauri
+- No hay validación de scopes mínimos por proveedor
+
+======================================================================
+19. PYTHON SIDECAR — Problemas de robustez
+======================================================================
+
+- timeout embedding Ollama = 1 segundo (efectivamente siempre falla)
+- timeout embedding OpenAI = 5 segundos (muy corto para textos grandes)
+- OpenAI embedding sin batching (cada chunk = 1 request HTTP)
+- router.py no pasa api_key a ping_llm ni list_llm_models
+- Anthropic no soportado en chat_llm_provider (solo ping)
+- router.py no usa los módulos dedicados (openai.py, anthropic.py, etc.)
+- MockChromaClient no es thread-safe (JSON sin lock)
+- MockChromaCollection no implementa delete()
+
+======================================================================
+20. ORFANDADAS — Funcionalidades declaradas en README pero no iniciadas
+======================================================================
+
+Del README.md:
+- "Multi-mapa: ArcGIS JS, MapLibre GL, Leaflet y Deck.gl" → Nada implementado
+- "qgis-mcp: buffer, distance, load_layer, heatmap, cluster" → No existen
+- "memory-mcp: query_pot, store_context, recall" → Parcial (recall existe)
+- "ai-mcp: switch_llm" → No existe
+- "ui-mcp: switch_map" → No existe
+- "arcgis-mcp" → No existe
+- "Seguridad: keys en keychain, tokens HMAC, schemas fijos" → No implementado
+- "Trazabilidad: cada tool-call con trace_id" → Parcial
+- "V1.1: Heatmaps avanzados, clustering, exportación PDF/DXF" → No iniciado
+- "V1.3: Sincronización ArcGIS Online / Portal y WMS/WFS" → No iniciado
+- "V2: Flujos multi-agente" → No iniciado
+
+======================================================================
+21. FRONTEND — Problemas de TypeScript
+======================================================================
+
+- api/data.ts:128 — type: n.kind as any (cast inseguro que evade el
+  type system para GraphNodeType)
+- SettingsDialogs.tsx:29-30 — onAdd?, onEdit? con parámetro any
+- AiEmbeddingsSection.tsx:20,24 — handleAdd, handleEdit con any
+- ConfigurationDialog.tsx:53 — activeSection inicializado undefined
+  donde ConfigSectionId no admite undefined
+- edgeS REFERENCE: GraphPage.tsx declara edges state pero nunca lo usa
+
+======================================================================
+22. PRUEBAS — Cobertura insuficiente
+======================================================================
+
+- 85 tests Rust: cubren core, db repos, MCP schemas, algunos commands
+- 8 tests TypeScript: solo 2 archivos (chat.test.ts, utils.test.ts)
+- 0 tests Python
+- 0 tests E2E
+- No hay pruebas de integración frontend-backend
+- No hay pruebas de componentes con estados de carga/error
+- No hay pruebas de sidecar Python con respuestas reales de LLM

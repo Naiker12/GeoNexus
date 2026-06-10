@@ -6,6 +6,7 @@ import {
   FileUpIcon,
   FolderPlusIcon,
   GlobeIcon,
+  Loader2,
   MenuIcon,
   MessageSquarePlusIcon,
   MessageSquareTextIcon,
@@ -80,12 +81,29 @@ export function ChatPanel(_props: ChatPanelProps) {
     webSearchEnabled,
     setWebSearchEnabled,
     submit,
+    regenerate,
     loadConversation,
     newConversation,
   } = useChatSession(activeConnectorId, connectors)
 
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
+  const [composerValue, setComposerValue] = React.useState("")
+
+  const lastUserMessage = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].content
+    }
+    return ""
+  }, [messages])
+
+  const handleEditLastUserMessage = React.useCallback(() => {
+    setComposerValue(lastUserMessage)
+  }, [lastUserMessage])
+
+  const handleRegenerate = React.useCallback(() => {
+    regenerate()
+  }, [regenerate])
 
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] flex flex-col overflow-hidden">
@@ -141,7 +159,14 @@ export function ChatPanel(_props: ChatPanelProps) {
               </div>
             </div>
           ) : messages.length > 0 || pending ? (
-            <ChatTranscript messages={messages} pending={pending} onSendMessage={submit} />
+            <ChatTranscript
+              messages={messages}
+              pending={pending}
+              onSendMessage={submit}
+              webSearchEnabled={webSearchEnabled}
+              onEditLastUserMessage={handleEditLastUserMessage}
+              onRegenerateLastMessage={handleRegenerate}
+            />
           ) : (
             <EmptyChatState />
           )}
@@ -149,10 +174,12 @@ export function ChatPanel(_props: ChatPanelProps) {
 
         <ChatComposer
           key={conversationId ?? "new"}
+          value={composerValue}
+          onValueChange={setComposerValue}
           activeProvider={activeProvider}
           error={error}
           pending={pending}
-          onSubmit={submit}
+          onSubmit={(content) => { setComposerValue(""); submit(content) }}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
           webSearchEnabled={webSearchEnabled}
@@ -201,6 +228,8 @@ function EmptyChatState() {
 }
 
 function ChatComposer({
+  value,
+  onValueChange,
   activeProvider,
   error,
   pending,
@@ -210,6 +239,8 @@ function ChatComposer({
   webSearchEnabled,
   onToggleWebSearch,
 }: {
+  value: string
+  onValueChange: (value: string) => void
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
   pending: boolean
@@ -219,13 +250,11 @@ function ChatComposer({
   webSearchEnabled: boolean
   onToggleWebSearch: () => void
 }) {
-  const [value, setValue] = React.useState("")
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const clean = value.trim()
     if (!clean || pending) return
-    setValue("")
+    onValueChange("")
     onSubmit(clean)
   }
 
@@ -249,7 +278,7 @@ function ChatComposer({
               autoComplete="off"
               className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
               placeholder="Pregunta lo que quieras"
-              onChange={(event) => setValue(event.target.value)}
+              onChange={(event) => onValueChange(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault()
@@ -314,6 +343,15 @@ function ChatComposer({
             >
               <XIcon className="size-3" />
             </button>
+          </div>
+        )}
+
+        {pending && webSearchEnabled && (
+          <div className="mt-2 flex items-center gap-1.5 px-2">
+            <Loader2 className="size-3 text-blue-500 animate-spin" />
+            <span className="text-[11px] text-blue-500 font-medium">
+              Deep Research activo...
+            </span>
           </div>
         )}
 

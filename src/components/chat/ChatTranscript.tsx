@@ -3,6 +3,7 @@ import * as React from "react"
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
+import { UserActions } from "@/components/chat/MessageActions"
 import {
   ThinkingInline,
   DEFAULT_THINKING_STEPS,
@@ -14,6 +15,9 @@ type ChatTranscriptProps = {
   messages: Message[]
   pending: boolean
   onSendMessage?: (text: string) => void
+  webSearchEnabled?: boolean
+  onEditLastUserMessage?: () => void
+  onRegenerateLastMessage?: () => void
 }
 
 function useThinkingSteps(pending: boolean) {
@@ -48,9 +52,32 @@ function useThinkingSteps(pending: boolean) {
   return { steps, isComplete }
 }
 
-export function ChatTranscript({ messages, pending, onSendMessage }: ChatTranscriptProps) {
+export function ChatTranscript({
+  messages,
+  pending,
+  onSendMessage,
+  webSearchEnabled,
+  onEditLastUserMessage,
+  onRegenerateLastMessage,
+}: ChatTranscriptProps) {
   const { steps, isComplete } = useThinkingSteps(pending)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+
+  const lastAssistantIndex = React.useMemo(() => {
+    let idx = -1
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === "assistant") idx = i
+    }
+    return idx
+  }, [messages])
+
+  const lastUserIndex = React.useMemo(() => {
+    let idx = -1
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === "user") idx = i
+    }
+    return idx
+  }, [messages])
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -58,17 +85,24 @@ export function ChatTranscript({ messages, pending, onSendMessage }: ChatTranscr
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 md:px-8">
-      {messages.map((message) =>
+      {messages.map((message, index) =>
         message.role === "user" ? (
-          <MessageBubble key={message.id} role="user">
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          </MessageBubble>
+          <div key={message.id} className="flex flex-col items-end">
+            <MessageBubble role="user">
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            </MessageBubble>
+            {index === lastUserIndex && (
+              <UserActions
+                onEdit={onEditLastUserMessage}
+                onRegenerate={onRegenerateLastMessage}
+              />
+            )}
+          </div>
         ) : (
           <AssistantMessage
             key={message.id}
-            content={message.content}
+            message={message}
             isStreaming={false}
-            sources={message.sources}
             onSendMessage={onSendMessage}
           />
         )

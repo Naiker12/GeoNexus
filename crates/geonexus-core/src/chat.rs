@@ -23,6 +23,14 @@ pub struct Conversation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResearchSource {
+    pub url: String,
+    pub title: String,
+    pub snippet: Option<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
     pub conversation_id: String,
@@ -36,6 +44,8 @@ pub struct Message {
     pub tool_calls: Vec<serde_json::Value>,
     pub sources: Vec<String>,
     pub created_at: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_sources: Option<Vec<ResearchSource>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +60,8 @@ pub struct SendMessageInput {
     pub api_key: Option<String>,
     pub use_context: bool,
     pub max_context_chunks: Option<usize>,
+    #[serde(default)]
+    pub web_search: bool,
 }
 
 impl SendMessageInput {
@@ -82,6 +94,10 @@ pub struct SendMessageResponse {
     pub message: Message,
     pub chunks_used: Vec<ChunkReference>,
     pub trace_id: String,
+    #[serde(default)]
+    pub research_sources: Vec<ResearchSource>,
+    #[serde(default)]
+    pub search_query: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +126,7 @@ mod tests {
             api_key: None,
             use_context: false,
             max_context_chunks: None,
+            web_search: false,
         }
     }
 

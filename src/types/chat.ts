@@ -1,5 +1,12 @@
 export type MessageRole = "user" | "assistant" | "tool" | "system"
 
+export type ResearchSource = {
+  url: string
+  title: string
+  snippet?: string
+  status: "loading" | "done"
+}
+
 export type Conversation = {
   id: string
   project_id: string
@@ -25,6 +32,10 @@ export type Message = {
   tool_calls: unknown[]
   sources: string[]
   created_at: number
+  isSearching?: boolean
+  currentSearchQuery?: string
+  researchSources?: ResearchSource[]
+  searchElapsedSeconds?: number
 }
 
 export type RecallChunk = {
@@ -61,6 +72,7 @@ export type SendMessageInput = {
   api_key?: string | null
   use_context: boolean
   max_context_chunks?: number | null
+  web_search?: boolean
 }
 
 export type ChunkReference = {
@@ -77,4 +89,6 @@ export type SendMessageResponse = {
   message: Message
   chunks_used: ChunkReference[]
   trace_id: string
+  research_sources?: ResearchSource[]
+  search_query?: string
 }

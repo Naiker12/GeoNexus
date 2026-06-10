@@ -406,6 +406,7 @@ fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<
 
     let mut command = std::process::Command::new(&python_exe);
     command.arg(&sidecar_script).args(args).current_dir(&root_path);
+    command.env("PYTHONIOENCODING", "utf-8");
     if let Some((key, value)) = env_var {
         command.env(key, value);
     }

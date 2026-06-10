@@ -84,12 +84,13 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     let nodes = serde_json::to_string(&msg.nodes_used).unwrap_or_else(|_| "[]".into());
     let tools = serde_json::to_string(&msg.tool_calls).unwrap_or_else(|_| "[]".into());
     let sources = serde_json::to_string(&msg.sources).unwrap_or_else(|_| "[]".into());
+    let research_sources_ser = serde_json::to_string(&msg.research_sources).unwrap_or_else(|_| "[]".into());
 
     sqlx::query(
         "INSERT INTO messages
             (id, conversation_id, role, content, provider, model,
-             trace_id, chunks_used, nodes_used, tool_calls, sources_json, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&msg.id)
     .bind(&msg.conversation_id)
@@ -102,6 +103,7 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     .bind(&nodes)
     .bind(&tools)
     .bind(&sources)
+    .bind(&research_sources_ser)
     .bind(msg.created_at)
     .execute(pool)
     .await
@@ -117,7 +119,8 @@ pub async fn list_messages(
     let rows = sqlx::query(
         "SELECT id, conversation_id, role, content, provider, model,
                 trace_id, chunks_used, nodes_used, tool_calls,
-                COALESCE(sources_json, '[]') AS sources_json, created_at
+                COALESCE(sources_json, '[]') AS sources_json,
+                research_sources, created_at
          FROM messages
          WHERE conversation_id = ?
          ORDER BY created_at ASC",
@@ -175,6 +178,10 @@ fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, String> {
     let nodes_raw: Option<String> = row.get("nodes_used");
     let tools_raw: Option<String> = row.get("tool_calls");
     let sources_raw: Option<String> = row.get("sources_json");
+    let research_raw: Option<String> = row.get("research_sources");
+    let research: Vec<geonexus_core::chat::ResearchSource> =
+        serde_json::from_str(research_raw.as_deref().unwrap_or("[]"))
+            .unwrap_or_default();
 
     Ok(Message {
         id: row.get("id"),
@@ -193,6 +200,7 @@ fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, String> {
         sources: serde_json::from_str(sources_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default(),
         created_at: row.get("created_at"),
+        research_sources: if research.is_empty() { None } else { Some(research) },
     })
 }
 
@@ -247,6 +255,7 @@ mod tests {
             tool_calls: vec![],
             sources: vec![],
             created_at: 1_000_000,
+            research_sources: None,
         }
     }
 
