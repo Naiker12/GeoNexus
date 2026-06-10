@@ -13,6 +13,7 @@ pub struct AppState {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Resolver la ruta del app data dir en Tauri v2
             let app_data_dir = app

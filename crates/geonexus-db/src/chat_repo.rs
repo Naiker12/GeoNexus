@@ -86,11 +86,22 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     let sources = serde_json::to_string(&msg.sources).unwrap_or_else(|_| "[]".into());
     let research_sources_ser = serde_json::to_string(&msg.research_sources).unwrap_or_else(|_| "[]".into());
 
+    let (it, ot, tt, dur, tps, cost, cw, cup) = if let Some(ref s) = msg.stats {
+        (Some(s.input_tokens as i64), Some(s.output_tokens as i64), Some(s.total_tokens as i64),
+         Some(s.duration_ms as i64), Some(s.tokens_per_second as f64), Some(s.cost_usd),
+         Some(s.context_window as i64), Some(s.context_used_pct as f64))
+    } else {
+        (None, None, None, None, None, None, None, None)
+    };
+
     sqlx::query(
         "INSERT INTO messages
             (id, conversation_id, role, content, provider, model,
-             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, created_at,
+             input_tokens, output_tokens, total_tokens, duration_ms,
+             tokens_per_second, cost_usd, context_window, context_used_pct)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                 ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&msg.id)
     .bind(&msg.conversation_id)
@@ -105,6 +116,14 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     .bind(&sources)
     .bind(&research_sources_ser)
     .bind(msg.created_at)
+    .bind(it)
+    .bind(ot)
+    .bind(tt)
+    .bind(dur)
+    .bind(tps)
+    .bind(cost)
+    .bind(cw)
+    .bind(cup)
     .execute(pool)
     .await
     .map_err(|e| format!("Error insertando mensaje: {e}"))?;
@@ -120,7 +139,9 @@ pub async fn list_messages(
         "SELECT id, conversation_id, role, content, provider, model,
                 trace_id, chunks_used, nodes_used, tool_calls,
                 COALESCE(sources_json, '[]') AS sources_json,
-                research_sources, created_at
+                research_sources, created_at,
+                input_tokens, output_tokens, total_tokens, duration_ms,
+                tokens_per_second, cost_usd, context_window, context_used_pct
          FROM messages
          WHERE conversation_id = ?
          ORDER BY created_at ASC",
@@ -183,6 +204,18 @@ fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, String> {
         serde_json::from_str(research_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default();
 
+    let it: Option<i64> = row.get("input_tokens");
+    let stats = it.map(|_| geonexus_core::chat::MessageStats {
+        input_tokens: row.get::<Option<i64>, _>("input_tokens").unwrap_or(0) as u32,
+        output_tokens: row.get::<Option<i64>, _>("output_tokens").unwrap_or(0) as u32,
+        total_tokens: row.get::<Option<i64>, _>("total_tokens").unwrap_or(0) as u32,
+        duration_ms: row.get::<Option<i64>, _>("duration_ms").unwrap_or(0) as u64,
+        tokens_per_second: row.get::<Option<f64>, _>("tokens_per_second").unwrap_or(0.0) as f32,
+        cost_usd: row.get::<Option<f64>, _>("cost_usd").unwrap_or(0.0),
+        context_window: row.get::<Option<i64>, _>("context_window").unwrap_or(0) as u32,
+        context_used_pct: row.get::<Option<f64>, _>("context_used_pct").unwrap_or(0.0) as f32,
+    });
+
     Ok(Message {
         id: row.get("id"),
         conversation_id: row.get("conversation_id"),
@@ -201,6 +234,7 @@ fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, String> {
             .unwrap_or_default(),
         created_at: row.get("created_at"),
         research_sources: if research.is_empty() { None } else { Some(research) },
+        stats,
     })
 }
 
@@ -256,6 +290,7 @@ mod tests {
             sources: vec![],
             created_at: 1_000_000,
             research_sources: None,
+            stats: None,
         }
     }
 

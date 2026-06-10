@@ -4,7 +4,7 @@ import { listMessages, sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { Message, ResearchSource, SendMessageInput } from "@/types/chat"
+import type { Message, SendMessageInput } from "@/types/chat"
 
 const DEFAULT_PROJECT_ID = "project-default"
 const DEFAULT_TOGGLES: ContextToggle = {
@@ -65,7 +65,7 @@ export function useChatSession(
   )
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [loadingHistory, setLoadingHistory] = React.useState(false)
+  const [loadingHistory, setLoadingHistory] = React.useState(() => loadConversationId() !== null)
   const [contextToggles, setContextToggles] =
     React.useState<ContextToggle>(DEFAULT_TOGGLES)
   const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(
@@ -104,6 +104,7 @@ export function useChatSession(
       const msgs = await listMessages(id)
       setMessages(msgs)
       setConversationId(id)
+      saveConversationId(id)
     } catch (err) {
       setError('No se pudo cargar la conversación')
     } finally {
@@ -125,6 +126,7 @@ export function useChatSession(
     }
     setMessages([])
     setConversationId(null)
+    saveConversationId(null)
     setError(null)
   }, [])
 
@@ -214,7 +216,7 @@ export function useChatSession(
           created_at: Math.floor(Date.now() / 1000),
           isSearching: true,
           currentSearchQuery: clean,
-          researchSources: [],
+          research_sources: [],
           searchElapsedSeconds: 0,
         }
         setMessages((current) => [...current, placeholderAssistant])
@@ -234,6 +236,7 @@ export function useChatSession(
         const response = await sendMessage(input)
         console.log("[DEBUG] sendMessage response.research_sources:", response.research_sources)
         setConversationId(response.conversation_id)
+        saveConversationId(response.conversation_id)
 
         if (researchTimerId) {
           clearInterval(researchTimerId)
@@ -248,8 +251,9 @@ export function useChatSession(
             content: response.message.content,
             isSearching: false,
             currentSearchQuery: response.search_query ?? clean,
-            researchSources: (response.research_sources ?? []) as ResearchSource[],
+            research_sources: (response.research_sources ?? []),
             searchElapsedSeconds: elapsed,
+            stats: response.message.stats,
           })
         } else {
           setMessages((current) => [

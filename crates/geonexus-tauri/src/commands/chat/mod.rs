@@ -21,6 +21,8 @@ struct SidecarChatResult {
     text: Option<String>,
     #[serde(default, alias = "message")]
     msg: Option<serde_json::Value>,
+    #[serde(default)]
+    usage: Option<serde_json::Value>,
 }
 
 impl SidecarChatResult {

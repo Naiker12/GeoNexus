@@ -34,7 +34,7 @@ export function ThemeSettingsDialog({
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="rounded-lg p-0 sm:max-w-[38rem]">
+      <DialogContent className="rounded-lg p-0 sm:max-w-[44rem]">
         <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-start gap-3 pr-8">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -50,7 +50,7 @@ export function ThemeSettingsDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid max-h-[min(30rem,calc(100svh-8rem))] gap-2 overflow-auto p-3 [scrollbar-width:thin] sm:grid-cols-2 sm:p-4">
+        <div className="grid max-h-[min(30rem,calc(100svh-8rem))] gap-2 overflow-auto p-3 [scrollbar-width:thin] grid-cols-1 sm:grid-cols-3 sm:p-4">
           {themePresets.map((theme) => {
             const active = activeTheme === theme.id
 
@@ -60,14 +60,14 @@ export function ThemeSettingsDialog({
                 type="button"
                 aria-pressed={active}
                 className={cn(
-                  "group relative min-h-32 rounded-lg border bg-background p-2.5 text-left transition-colors hover:bg-muted",
+                  "group relative flex flex-col rounded-lg border bg-background p-2.5 text-left transition-colors hover:bg-muted",
                   active
                     ? "border-primary bg-primary/10 text-foreground"
                     : "border-border text-muted-foreground"
                 )}
                 onClick={() => onThemeChange(theme.id)}
               >
-                <span className="flex items-start gap-2.5 pr-7">
+                <span className="flex items-start gap-2 pr-7">
                   <ThemePreview theme={theme} />
                   <span className="min-w-0 flex-1 pt-0.5">
                     <span className="block text-sm font-semibold leading-5 text-foreground">
@@ -78,18 +78,18 @@ export function ThemeSettingsDialog({
                     </span>
                   </span>
                 </span>
-                <span className="mt-2 block line-clamp-2 text-xs leading-4 text-muted-foreground">
+                <span className="mt-1.5 block text-xs leading-4 text-muted-foreground">
                   {theme.description}
                 </span>
                 <span
                   className={cn(
-                    "absolute right-2 top-2 flex size-5 items-center justify-center rounded-md border",
+                    "absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-sm border",
                     active
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background text-transparent"
                   )}
                 >
-                  <CheckIcon className="size-3.5" />
+                  <CheckIcon className="size-3" />
                 </span>
               </button>
             )
@@ -109,7 +109,7 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
   return (
     <span
       className={cn(
-        "flex h-14 w-20 shrink-0 overflow-hidden rounded-md border border-border p-1.5",
+        "flex h-9 w-14 shrink-0 overflow-hidden rounded-md border border-border p-1",
         theme.swatch,
         isBright && "border-slate-200"
       )}
@@ -117,48 +117,21 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
     >
       <span
         className={cn(
-          "flex w-5 flex-col gap-1 border-r pr-1",
+          "flex w-3.5 flex-col gap-[2px] border-r pr-[2px]",
           isBright ? "border-black/10" : "border-white/20"
         )}
       >
-        <span
-          className={cn(
-            "h-1.5 rounded-sm",
-            isBright ? "bg-black/45" : "bg-white/70"
-          )}
-        />
-        <span
-          className={cn(
-            "h-1.5 rounded-sm",
-            isBright ? "bg-black/25" : "bg-white/35"
-          )}
-        />
-        <span
-          className={cn(
-            "h-1.5 rounded-sm",
-            isBright ? "bg-black/25" : "bg-white/35"
-          )}
-        />
+        <span className={cn("h-[3px] rounded-sm", isBright ? "bg-black/45" : "bg-white/70")} />
+        <span className={cn("h-[3px] rounded-sm", isBright ? "bg-black/25" : "bg-white/35")} />
+        <span className={cn("h-[3px] rounded-sm", isBright ? "bg-black/25" : "bg-white/35")} />
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1 pl-1.5">
-        <span className="flex items-center gap-1">
-          <SparklesIcon
-            className={cn("size-3", isBright ? "text-black/55" : "text-white/80")}
-          />
-          <span
-            className={cn(
-              "h-2 flex-1 rounded-sm",
-              isBright ? "bg-black/40" : "bg-white/70"
-            )}
-          />
+      <span className="flex min-w-0 flex-1 flex-col gap-[2px] pl-1">
+        <span className="flex items-center gap-[2px]">
+          <SparklesIcon className={cn("size-[9px]", isBright ? "text-black/55" : "text-white/80")} />
+          <span className={cn("h-[3px] flex-1 rounded-sm", isBright ? "bg-black/40" : "bg-white/70")} />
         </span>
-        <span
-          className={cn(
-            "mt-auto h-4 rounded-md shadow-sm",
-            isBright ? "bg-white" : "bg-white/85"
-          )}
-        >
-          <span className={cn("block h-full w-1/2 rounded-md", accentClass)} />
+        <span className={cn("mt-auto h-[10px] rounded-sm shadow-sm", isBright ? "bg-white" : "bg-white/85")}>
+          <span className={cn("block h-full w-1/2 rounded-sm", accentClass)} />
         </span>
       </span>
     </span>

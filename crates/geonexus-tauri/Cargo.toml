@@ -8,6 +8,7 @@ geonexus-core = { path = "../geonexus-core" }
 geonexus-db = { path = "../geonexus-db" }
 geonexus-mcp = { path = "../geonexus-mcp" }
 tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
 tracing = "0.1"
 uuid = { version = "1", features = ["v4"] }
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }

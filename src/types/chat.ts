@@ -19,6 +19,17 @@ export type Conversation = {
   message_count: number | null
 }
 
+export type MessageStats = {
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  duration_ms: number
+  tokens_per_second: number
+  cost_usd: number
+  context_window: number
+  context_used_pct: number
+}
+
 export type Message = {
   id: string
   conversation_id: string
@@ -34,8 +45,9 @@ export type Message = {
   created_at: number
   isSearching?: boolean
   currentSearchQuery?: string
-  researchSources?: ResearchSource[]
+  research_sources?: ResearchSource[]
   searchElapsedSeconds?: number
+  stats?: MessageStats
 }
 
 export type RecallChunk = {

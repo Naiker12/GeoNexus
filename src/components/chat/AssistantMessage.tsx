@@ -1,30 +1,33 @@
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
-import { CopyButton } from "@/components/chat/MessageActions"
+import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
+import { ThinkingInline, DEFAULT_THINKING_STEPS } from "@/components/chat/ThinkingInline"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
-import type { Message, ResearchSource } from "@/types/chat"
+import type { Message } from "@/types/chat"
 
 interface AssistantMessageProps {
   message: Message
   isStreaming?: boolean
   onSendMessage?: (text: string) => void
+  cumulativeContext?: { totalTokens: number; contextWindow: number }
 }
 
 export function AssistantMessage({
   message,
   isStreaming,
   onSendMessage,
+  cumulativeContext,
 }: AssistantMessageProps) {
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
     : parseSuggestions(message.content)
 
-  console.log("[DEBUG] AssistantMessage researchSources:", message.researchSources, "isSearching:", message.isSearching)
-  const showResearch = message.isSearching !== undefined
+  console.log("[DEBUG] AssistantMessage research_sources:", message.research_sources, "isSearching:", message.isSearching)
+  const showResearch = message.isSearching !== undefined || (message.research_sources?.length ?? 0) > 0
 
   return (
     <div className="group flex items-start gap-2 py-0.5">
@@ -32,16 +35,22 @@ export function AssistantMessage({
         <GeoNexusIcon className="size-3.5" variant="nexus" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-          GeoNexus IA
-        </span>
+        <div className="mb-0.5">
+          <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+            GeoNexus IA
+          </span>
+          <ThinkingInline
+            steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
+            isComplete={true}
+          />
+        </div>
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />
         ) : (
           <>
             {showResearch && (
               <DeepResearchPanel
-                sources={message.researchSources ?? []}
+                sources={message.research_sources ?? []}
                 isSearching={message.isSearching ?? false}
                 currentQuery={message.currentSearchQuery}
                 elapsedSeconds={message.searchElapsedSeconds}
@@ -55,7 +64,15 @@ export function AssistantMessage({
               suggestions={suggestions}
               onSelect={(s) => onSendMessage?.(s)}
             />
-            <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <div className="flex items-center gap-1 mt-1">
+              {message.stats && (
+                <TokenStatsBadge
+                  stats={message.stats}
+                  provider={message.provider ?? undefined}
+                  model={message.model ?? undefined}
+                  cumulativeContext={cumulativeContext}
+                />
+              )}
               <CopyButton content={message.content} />
             </div>
           </>

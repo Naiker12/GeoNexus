@@ -1,4 +1,6 @@
-use geonexus_core::chat::{ResearchSource, SendMessageInput, SendMessageResponse, Message, MessageRole};
+use std::time::Instant;
+
+use geonexus_core::chat::{MessageStats, ResearchSource, SendMessageInput, SendMessageResponse, Message, MessageRole};
 use geonexus_db::chat_repo;
 use serde_json::json;
 use tauri::State;
@@ -23,6 +25,7 @@ pub async fn send_message(
     // 1. Validar y obtener/aplicar conversacion
     input.validate()?;
 
+    let chat_start = Instant::now();
     let trace_id = Uuid::new_v4().to_string();
     let conversation_id = ensure_conversation(&state, &input).await?;
 
@@ -40,6 +43,7 @@ pub async fn send_message(
         sources: vec![],
         created_at: unix_now(),
         research_sources: None,
+        stats: None,
     };
 
     chat_repo::insert_message(&state.db, &user_msg).await?;
@@ -141,6 +145,7 @@ pub async fn send_message(
     let max_iter: usize = 10;
     let mut iteration: usize = 0;
     let final_content: String;
+    let mut last_sidecar: Option<super::SidecarChatResult> = None;
 
     loop {
         if iteration >= max_iter {
@@ -212,10 +217,15 @@ pub async fn send_message(
             .content()
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
+        last_sidecar = Some(sidecar);
         break;
     }
 
-    // 7. Guardar mensaje del asistente
+    // 7. Extraer stats del mensaje
+    let msg_stats = last_sidecar.as_ref()
+        .and_then(|s| extract_message_stats(s, chat_start.elapsed(), &input.model));
+
+    // 8. Guardar mensaje del asistente
     let sources: Vec<String> = recall_chunks
         .iter()
         .map(|c| c.source.clone())
@@ -239,6 +249,7 @@ pub async fn send_message(
         } else {
             Some(research_sources.clone())
         },
+        stats: msg_stats,
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
@@ -271,6 +282,78 @@ async fn ensure_conversation(
     .await?;
 
     Ok(conversation.id)
+}
+
+fn extract_message_stats(
+    result: &super::SidecarChatResult,
+    elapsed: std::time::Duration,
+    model: &str,
+) -> Option<MessageStats> {
+    let usage = result.usage.as_ref()?;
+
+    let input_tokens = usage.get("prompt_tokens")
+        .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+    let output_tokens = usage.get("completion_tokens")
+        .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+    let total_tokens = input_tokens + output_tokens;
+
+    let duration_ms = elapsed.as_millis() as u64;
+    let duration_secs = elapsed.as_secs_f32();
+    let tokens_per_second = if duration_secs > 0.0 {
+        output_tokens as f32 / duration_secs
+    } else {
+        0.0
+    };
+
+    let context_window = model_context_window(model);
+    let context_used_pct = if context_window > 0 {
+        (input_tokens as f32 / context_window as f32) * 100.0
+    } else {
+        0.0
+    };
+
+    Some(MessageStats {
+        input_tokens,
+        output_tokens,
+        total_tokens,
+        duration_ms,
+        tokens_per_second,
+        cost_usd: 0.0,
+        context_window,
+        context_used_pct,
+    })
+}
+
+fn model_context_window(model: &str) -> u32 {
+    if model.contains("gpt-4o") {
+        128_000
+    } else if model.contains("claude") {
+        200_000
+    } else if model.contains("gemini-1.5") {
+        1_000_000
+    } else if model.contains("gemini-2.0") {
+        1_000_000
+    } else if model.contains("nemotron") {
+        128_000
+    } else if model.contains("llama-3.1-70b") {
+        131_072
+    } else if model.contains("llama-3.1") || model.contains("llama3.1") {
+        131_072
+    } else if model.contains("llama-3") || model.contains("llama3") {
+        8_192
+    } else if model.contains("mistral") || model.contains("mixtral") {
+        32_768
+    } else if model.contains("deepseek") {
+        128_000
+    } else if model.contains("qwen") {
+        131_072
+    } else if model.contains("phi-3") || model.contains("phi3") {
+        128_000
+    } else if model.contains("command-r") || model.contains("command-r7") {
+        128_000
+    } else {
+        128_000
+    }
 }
 
 fn extract_search_query(user_message: &str) -> String {

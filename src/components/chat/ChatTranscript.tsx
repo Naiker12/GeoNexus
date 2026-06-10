@@ -3,13 +3,13 @@ import * as React from "react"
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
-import { UserActions } from "@/components/chat/MessageActions"
+import { CopyButton, UserActions } from "@/components/chat/MessageActions"
 import {
   ThinkingInline,
   DEFAULT_THINKING_STEPS,
 } from "@/components/chat/ThinkingInline"
 import type { ThinkingStep } from "@/components/chat/ThinkingInline"
-import type { Message } from "@/types/chat"
+import type { Message, MessageStats } from "@/types/chat"
 
 type ChatTranscriptProps = {
   messages: Message[]
@@ -79,6 +79,23 @@ export function ChatTranscript({
     return idx
   }, [messages])
 
+  const runningContext = React.useMemo(() => {
+    let total = 0
+    for (const msg of messages) {
+      if (msg.stats) {
+        total += msg.stats.input_tokens + msg.stats.output_tokens
+      }
+    }
+    return total
+  }, [messages])
+
+  const lastContextWindow = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].stats?.context_window) return messages[i].stats!.context_window
+    }
+    return 128_000
+  }, [messages])
+
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, pending])
@@ -91,12 +108,15 @@ export function ChatTranscript({
             <MessageBubble role="user">
               <p className="whitespace-pre-wrap">{message.content}</p>
             </MessageBubble>
-            {index === lastUserIndex && (
-              <UserActions
-                onEdit={onEditLastUserMessage}
-                onRegenerate={onRegenerateLastMessage}
-              />
-            )}
+            <div className="flex items-center gap-0.5 mt-1.5">
+              <CopyButton content={message.content} />
+              {index === lastUserIndex && (
+                <UserActions
+                  onEdit={onEditLastUserMessage}
+                  onRegenerate={onRegenerateLastMessage}
+                />
+              )}
+            </div>
           </div>
         ) : (
           <AssistantMessage
@@ -104,6 +124,7 @@ export function ChatTranscript({
             message={message}
             isStreaming={false}
             onSendMessage={onSendMessage}
+            cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
           />
         )
       )}

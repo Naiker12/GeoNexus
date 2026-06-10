@@ -223,7 +223,8 @@ def chat_llm_provider(
             response.raise_for_status()
             data = response.json()
             raw = data.get("message", {})
-            return _make_chat_response(provider, model, raw)
+            usage = _normalize_usage(provider, data)
+            return _make_chat_response(provider, model, raw, usage)
 
         if provider == "openrouter":
             key = api_key or os.getenv("OPENROUTER_API_KEY")
@@ -249,7 +250,8 @@ def chat_llm_provider(
             response.raise_for_status()
             data = response.json()
             raw = data.get("choices", [{}])[0].get("message", {})
-            return _make_chat_response(provider, model, raw)
+            usage = data.get("usage")
+            return _make_chat_response(provider, model, raw, usage)
 
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
             api_key = os.getenv("OPENAI_API_KEY")
@@ -266,7 +268,8 @@ def chat_llm_provider(
             response.raise_for_status()
             data = response.json()
             raw = data.get("choices", [{}])[0].get("message", {})
-            return _make_chat_response(provider, model, raw)
+            usage = data.get("usage")
+            return _make_chat_response(provider, model, raw, usage)
 
         return {
             "status": "error",
@@ -283,11 +286,25 @@ def chat_llm_provider(
         }
 
 
-def _make_chat_response(provider: str, model: str, raw: dict) -> Dict:
+def _normalize_usage(provider: str, data: dict) -> dict | None:
+    """Normaliza usage al formato OpenAI."""
+    if provider == "ollama":
+        prompt = data.get("prompt_eval_count")
+        completion = data.get("eval_count")
+        if prompt is not None or completion is not None:
+            return {
+                "prompt_tokens": prompt or 0,
+                "completion_tokens": completion or 0,
+                "total_tokens": (prompt or 0) + (completion or 0),
+            }
+    return data.get("usage")
+
+
+def _make_chat_response(provider: str, model: str, raw: dict, usage: dict | None = None) -> Dict:
     """Envuelve el mensaje crudo de la API en el envelope estandar del sidecar."""
     content = raw.get("content")
     tool_calls = raw.get("tool_calls")
-    return {
+    result: Dict = {
         "status": "ok",
         "provider_type": provider,
         "model": model,
@@ -297,3 +314,6 @@ def _make_chat_response(provider: str, model: str, raw: dict) -> Dict:
             "tool_calls": tool_calls,
         },
     }
+    if usage:
+        result["usage"] = usage
+    return result

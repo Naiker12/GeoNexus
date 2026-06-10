@@ -30,6 +30,18 @@ pub struct ResearchSource {
     pub status: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MessageStats {
+    pub input_tokens: u32,
+    pub output_tokens: u32,
+    pub total_tokens: u32,
+    pub duration_ms: u64,
+    pub tokens_per_second: f32,
+    pub cost_usd: f64,
+    pub context_window: u32,
+    pub context_used_pct: f32,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
@@ -46,6 +58,8 @@ pub struct Message {
     pub created_at: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub research_sources: Option<Vec<ResearchSource>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stats: Option<MessageStats>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

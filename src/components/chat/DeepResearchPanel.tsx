@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { openUrl } from "@tauri-apps/plugin-opener"
 import { Globe, ChevronDown, ChevronUp, ExternalLink, Loader2, Check } from "lucide-react"
 import type { ResearchSource } from "@/types/chat"
 
@@ -75,12 +76,16 @@ export function DeepResearchPanel({
           )}
 
           {sources.map((source, i) => (
-            <a
+            <button
               key={i}
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-start gap-2.5 px-3 py-2 hover:bg-muted/40 transition-colors no-underline group"
+              onClick={async () => {
+                try {
+                  await openUrl(source.url)
+                } catch (e) {
+                  console.error("[DeepResearchPanel] Error al abrir URL:", e)
+                }
+              }}
+              className="flex items-start gap-2.5 px-3 py-2 hover:bg-muted/40 transition-colors text-left w-full group"
             >
               <div className="mt-0.5 shrink-0">
                 {source.status === "loading" ? (
@@ -103,7 +108,7 @@ export function DeepResearchPanel({
                 )}
               </div>
               <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </a>
+            </button>
           ))}
 
           {sources.length === 0 && !isSearching && (

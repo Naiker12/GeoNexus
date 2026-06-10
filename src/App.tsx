@@ -20,9 +20,18 @@ const themeClassNames: ThemePreset["id"][] = [
 
 export default function App() {
   const [activeTheme, setActiveTheme] =
-    React.useState<ThemePreset["id"]>("geo-light")
+    React.useState<ThemePreset["id"]>(() => {
+      if (typeof window !== "undefined") {
+        return (localStorage.getItem("geonexus.theme") as ThemePreset["id"]) || "geo-light"
+      }
+      return "geo-light"
+    })
   const [configOpen, setConfigOpen] = React.useState(false)
   const activeRoute = useHashRoute()
+
+  React.useEffect(() => {
+    localStorage.setItem("geonexus.theme", activeTheme)
+  }, [activeTheme])
 
   React.useEffect(() => {
     document.documentElement.classList.remove(...themeClassNames)

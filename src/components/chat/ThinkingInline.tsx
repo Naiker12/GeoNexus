@@ -28,6 +28,7 @@ export interface ThinkingStep {
 interface ThinkingInlineProps {
   steps: ThinkingStep[]
   isComplete?: boolean
+  expanded?: boolean
 }
 
 function Spinner({ className }: { className?: string }) {
@@ -54,15 +55,16 @@ function buildSummary(steps: ThinkingStep[]): string {
 export function ThinkingInline({
   steps,
   isComplete = false,
+  expanded = false,
 }: ThinkingInlineProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(expanded)
 
   React.useEffect(() => {
-    if (isComplete) {
+    if (isComplete && !expanded) {
       const t = setTimeout(() => setOpen(false), 1000)
       return () => clearTimeout(t)
     }
-  }, [isComplete])
+  }, [isComplete, expanded])
 
   const summary = buildSummary(steps)
   const allDone = steps.every((s) => s.status === "done")

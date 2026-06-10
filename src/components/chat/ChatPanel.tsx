@@ -9,10 +9,11 @@ import {
   Loader2,
   MenuIcon,
   MessageSquarePlusIcon,
-  MessageSquareTextIcon,
   MicIcon,
   MonitorIcon,
   MoreHorizontalIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   PlusIcon,
   SendIcon,
   SettingsIcon,
@@ -22,7 +23,7 @@ import {
 
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { Button } from "@/components/ui/Button"
-import { ConversationList } from "@/components/chat/ConversationList"
+import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
 import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
 import { ModelSelector } from "@/components/chat/ModelSelector"
 import {
@@ -44,12 +45,6 @@ import {
   InputGroupAddon,
   InputGroupControl,
 } from "@/components/ui/input-group"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/Textarea"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
@@ -86,8 +81,20 @@ export function ChatPanel(_props: ChatPanelProps) {
     newConversation,
   } = useChatSession(activeConnectorId, connectors)
 
-  const [sheetOpen, setSheetOpen] = React.useState(false)
+  const [sidebarOpen, setSidebarOpen] = React.useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("geonexus.sidebarOpen")
+      return stored !== null ? stored === "true" : true
+    }
+    return true
+  })
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
+  }, [sidebarOpen])
+
+  const sidebarWidth = sidebarOpen ? 220 : 44
   const [composerValue, setComposerValue] = React.useState("")
 
   const lastUserMessage = React.useMemo(() => {
@@ -106,45 +113,68 @@ export function ChatPanel(_props: ChatPanelProps) {
   }, [regenerate])
 
   return (
-    <section className="relative z-10 h-[calc(100svh-3.5rem)] flex flex-col overflow-hidden">
-      {/* Conversation sheet (slide from left) */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="left" className="w-72 p-0 sm:max-w-72">
-          <SheetHeader className="border-b border-border px-4 py-3">
-            <SheetTitle>Conversaciones</SheetTitle>
-          </SheetHeader>
-          <div className="flex-1 overflow-auto px-2 pb-4">
-            <ConversationList
-              projectId={PROJECT_ID}
-              activeId={conversationId}
-              onSelect={(id) => { loadConversation(id); setSheetOpen(false) }}
-              onNew={() => { newConversation(); setSheetOpen(false) }}
-              onDelete={() => { newConversation() }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+    <section className="relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden">
+      {/* Sidebar */}
+      <div
+        className="shrink-0 flex flex-col border-r border-border bg-muted/30 transition-all duration-150 ease-in-out overflow-hidden"
+        style={{ width: sidebarWidth }}
+      >
+        {/* Sidebar header */}
+        <div className="flex items-center gap-1 border-b border-border px-2 h-10 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Colapsar sidebar" : "Expandir sidebar"}
+            className="shrink-0"
+          >
+            {sidebarOpen ? <PanelLeftCloseIcon className="size-4" /> : <PanelLeftOpenIcon className="size-4" />}
+          </Button>
+          {sidebarOpen && (
+            <>
+              <span className="text-[13px] font-semibold text-foreground ml-0.5 truncate">
+                Conversaciones
+              </span>
+              <div className="ml-auto" />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => { newConversation() }}
+                aria-label="Nueva conversacion"
+              >
+                <MessageSquarePlusIcon className="size-4" />
+              </Button>
+            </>
+          )}
+          {!sidebarOpen && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => { newConversation() }}
+              aria-label="Nueva conversacion"
+              className="shrink-0 ml-0.5"
+            >
+              <MessageSquarePlusIcon className="size-4" />
+            </Button>
+          )}
+        </div>
+
+        {/* Sidebar list */}
+        <div className="flex-1 overflow-y-auto py-1.5 px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ConversationSidebarList
+            projectId={PROJECT_ID}
+            activeId={conversationId}
+            collapsed={!sidebarOpen}
+            onSelect={(id) => { loadConversation(id) }}
+            onDelete={() => { newConversation() }}
+          />
+        </div>
+      </div>
 
       {/* Main chat area */}
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         {/* Top bar */}
         <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setSheetOpen(true)}
-            aria-label="Historial de conversaciones"
-          >
-            <MessageSquareTextIcon className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => { newConversation() }}
-            aria-label="Nueva conversacion"
-          >
-            <MessageSquarePlusIcon className="size-4" />
-          </Button>
           <div className="ml-auto">
             <ModelHeaderPopover />
           </div>
