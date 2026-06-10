@@ -1,6 +1,11 @@
 import { useState } from "react"
 import { Copy, Check, Pencil, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { MessageStats } from "@/types/chat"
 
 interface CopyButtonProps {
@@ -29,20 +34,27 @@ export function CopyButton({ content }: CopyButtonProps) {
   }
 
   return (
-    <button
-      onClick={handleCopy}
-      title={copied ? "Copiado" : "Copiar"}
-      className={cn(
-        "p-1 rounded-md transition-colors",
-        "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-        copied && "text-emerald-500"
-      )}
-    >
-      {copied
-        ? <Check className="h-3.5 w-3.5" />
-        : <Copy className="h-3.5 w-3.5" />
-      }
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={handleCopy}
+          className={cn(
+            "flex items-center justify-center rounded-md p-1 transition-colors",
+            "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+            copied && "text-emerald-500"
+          )}
+          aria-label={copied ? "Copiado" : "Copiar"}
+        >
+          {copied
+            ? <Check className={cn("h-3.5 w-3.5 transition-transform duration-150", copied && "scale-110")} />
+            : <Copy className="h-3.5 w-3.5" />
+          }
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {copied ? "Copiado" : "Copiar respuesta"}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -53,26 +65,40 @@ interface UserActionsProps {
 
 export function UserActions({ onEdit, onRegenerate }: UserActionsProps) {
   return (
-    <div className="flex items-center gap-0.5 mt-1.5">
+    <>
       {onEdit && (
-        <button
-          onClick={onEdit}
-          title="Editar mensaje"
-          className="p-1 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onEdit}
+              className="flex items-center justify-center rounded-md p-1 transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              aria-label="Editar mensaje"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Editar mensaje
+          </TooltipContent>
+        </Tooltip>
       )}
       {onRegenerate && (
-        <button
-          onClick={onRegenerate}
-          title="Regenerar respuesta"
-          className="p-1 rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onRegenerate}
+              className="flex items-center justify-center rounded-md p-1 transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              aria-label="Regenerar respuesta"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Regenerar respuesta
+          </TooltipContent>
+        </Tooltip>
       )}
-    </div>
+    </>
   )
 }
 

@@ -1,0 +1,486 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              GRAFO DE CONOCIMIENTO TERRITORIAL — ARQUITECTURA               ║
+║                    GeoNexus — Sistema de grafos completo                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Fecha:    2026-06-10
+  Archivos: 22 archivos en TypeScript, Rust, Python y SQL
+  Stack:    SQLite (almacenamiento) → Rust (API) → TypeScript (frontend)
+            Python sidecar (extracción de entidades)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              1. VISIÓN GENERAL DEL SISTEMA                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  El grafo de conocimiento territorial es el sistema que modela, almacena y
+  visualiza las relaciones entre los distintos elementos del dominio territorial:
+
+    • Normas (artículos de legislación)
+    • Documentos (archivos indexados)
+    • Capas GIS (información geoespacial)
+    • Zonas (sectores territoriales)
+    • Conceptos técnicos (retiro hídrico, zonificación, etc.)
+
+  Propósitos principales:
+    1. Visualización interactiva de la red de conocimiento
+    2. Contexto trazable para respuestas de IA (citas con evidencia)
+    3. Memoria semántica del proyecto para el chat contextual
+    4. Exploración de relaciones entre elementos territoriales
+
+  El sistema NO usa Neo4j ni ninguna base de grafos externa. Todo se almacena
+  en SQLite con dos tablas relacionales (graph_nodes, graph_edges) con claves
+  foráneas y CASCADE deletes.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              2. FLUJO DE DATOS COMPLETO                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  ┌──────────────┐     ┌──────────────────┐     ┌──────────────────┐
+  │  Documento   │────>│ Python Sidecar   │────>│  Rust Backend    │
+  │  (PDF/DOCX)  │     │  indexer.py      │     │  document.rs     │
+  └──────────────┘     │  extractor.py    │     │  data_repo.rs    │
+        │              └──────────────────┘     └────────┬─────────┘
+        v                                                 │
+  ┌──────────────┐                                       v
+  │  Frontend    │     ┌──────────────────┐     ┌──────────────────┐
+  │  GraphPage   │<────│  Tauri Commands  │<────│  SQLite DB       │
+  │  (SVG+React) │     │  list/list/      │     │  graph_nodes     │
+  └──────────────┘     │  rebuild         │     │  graph_edges     │
+                       └──────────────────┘     └──────────────────┘
+
+  FLUJO COMPLETO (indexación de documento):
+
+  1. Usuario sube documento → Rust recibe y guarda el archivo
+  2. Rust invoca Python sidecar (index_document_file)
+  3. Python extrae chunks de texto + entities del grafo
+  4. Python devuelve JSON con graph_nodes y graph_edges
+  5. Rust persiste nodos (insert_graph_nodes) y aristas (insert_graph_edges)
+  6. El asset se marca con graph_nodes > 0 en assets table
+  7. Frontend al abrir Grafo → llama listGraphNodes() + listGraphEdges()
+  8. GraphPage renderiza SVG interactivo con burbujas y líneas
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              3. ESQUEMA DE BASE DE DATOS (SQLite, 2 tablas)                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Migración: crates/geonexus-db/migrations/20260607000001_phase3.sql
+
+  ─── graph_nodes ──────────────────────────────────────────────────────────────
+
+    id           TEXT    PK          -- UUID del nodo
+    project_id   TEXT    NOT NULL    -- proyecto al que pertenece
+    workspace_id TEXT                -- workspace específico (opcional)
+    name         TEXT    NOT NULL    -- nombre visible del nodo
+    kind         TEXT    NOT NULL    -- tipo: "norma" | "documento" | "capa" | "zona" | "concepto"
+    description  TEXT    NOT NULL    -- descripción del nodo
+    evidence     TEXT    NOT NULL    -- referencia a la fuente de extracción
+    x            REAL    NOT NULL    -- posición X en el canvas (0-100%)
+    y            REAL    NOT NULL    -- posición Y en el canvas (0-100%)
+    weight       INTEGER DEFAULT 1  -- peso/tamaño del nodo (escala visual)
+    created_at   INTEGER NOT NULL
+
+    Índices: project_id, workspace_id, kind
+
+  ─── graph_edges ──────────────────────────────────────────────────────────────
+
+    id           TEXT    PK          -- UUID de la arista
+    project_id   TEXT    NOT NULL    -- proyecto
+    source       TEXT    NOT NULL    -- FK → graph_nodes(id) ON DELETE CASCADE
+    target       TEXT    NOT NULL    -- FK → graph_nodes(id) ON DELETE CASCADE
+    relation     TEXT    NOT NULL    -- tipo de relación: "aplica en", "define", etc.
+    strength     INTEGER DEFAULT 50 -- fuerza (0-100) para grosor visual
+    created_at   INTEGER NOT NULL
+
+    Índices: project_id, source, target
+
+    NOTA: El CASCADE en source/target asegura que al eliminar un nodo,
+          todas sus aristas se eliminan automáticamente.
+
+  ─── assets.graph_nodes ───────────────────────────────────────────────────────
+
+    La tabla assets tiene columna graph_nodes INTEGER DEFAULT 0 que
+    cuenta cuántos nodos del grafo están asociados a ese asset.
+    Se actualiza en update_asset_indexing_result() tras la indexación.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              4. PYTHON — EXTRACCIÓN DE ENTIDADES (sidecar)                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Archivo: ai/graph/extractor.py (126 líneas)
+  Llamado desde: ai/pipeline/indexer.py → step 4
+
+  ─── extract_graph_entities(chunks, project_id, workspace_id) ─────────────────
+
+    Recibe una lista de chunks (fragmentos de texto con page_number) y extrae:
+
+    a) NODOS "norma" — regex: (?:Art\.|Articulo|Artículo)\s*(\d+)
+        → Crea nodo "Art. {n}" con weight=2
+        → ID: "norma-art-{n}"
+
+    b) NODOS "zona" — regex: (?:Zona|Sector)\s*([A-Z][a-z]+...)
+        → Crea nodo "Zona {name}" con weight=3
+        → ID: "zona-{name-lowercase}"
+
+    c) NODOS "concepto" — diccionario hardcoded CONCEPT_DESCRIPTIONS
+        → Busca palabras clave: "retiro hidrico", "ronda de proteccion",
+          "uso industrial", "zonificacion", "drenaje"
+        → Cada concepto tiene una descripción fija en español
+        → weight=2
+
+    d) ARISTAS entre nodos que co-ocurren en el mismo chunk
+        → _cooccurring_pairs() genera todos los pares únicos ordenados
+        → _relation_for() determina el tipo según los kinds:
+            norma + zona   → "aplica en"
+            norma + concepto → "define"
+            concepto + zona  → "afecta"
+            default         → "asociado con"
+        → Todas las aristas se crean con strength=80
+
+    e) FALLBACK: si no se encontró ninguna entidad, crea un nodo "documento"
+        único en posición central (50, 50) con weight=2
+
+    NOTA: Las posiciones x/y son aleatorias (random.uniform(20, 80)) en cada
+          extracción. No hay algoritmo de force-directed layout — el frontend
+          tampoco aplica force simulation. Las posiciones se determinan en
+          el momento de extracción y son fijas hasta que se recalcula la red.
+
+  ─── ai/graph/graph.py ────────────────────────────────────────────────────────
+
+    Archivo placeholder (5 líneas). Solo tiene add_node(node_id, data).
+    Reservado para futuras operaciones del grafo (consultas, caminos, etc).
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              5. RUST — BACKEND (Tauri Commands + DB Repository)              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  ─── Tipos core (crates/geonexus-core/src/lib.rs:162-186) ────────────────────
+
+    pub struct GraphNode {
+        pub id: String,
+        pub project_id: String,
+        pub workspace_id: Option<String>,
+        pub name: String,
+        pub kind: String,         // "norma" | "documento" | "capa" | "zona" | "concepto"
+        pub description: String,
+        pub evidence: String,
+        pub x: f64,
+        pub y: f64,
+        pub weight: i64,
+        pub created_at: i64,
+    }
+
+    pub struct GraphEdge {
+        pub id: String,
+        pub project_id: String,
+        pub source: String,
+        pub target: String,
+        pub relation: String,
+        pub strength: i64,
+        pub created_at: i64,
+    }
+
+    Ambos con Serialize/Deserialize (serde) para comunicación con frontend.
+
+  ─── Tauri commands (crates/geonexus-tauri/src/commands/document.rs) ──────────
+
+    list_graph_nodes(project_id) → Vec<GraphNode>
+      - SELECT * FROM graph_nodes WHERE project_id = ?
+      - Sin filtros adicionales (trae todos los nodos del proyecto)
+
+    list_graph_edges(project_id) → Vec<GraphEdge>
+      - SELECT * FROM graph_edges WHERE project_id = ?
+      - Trae todas las aristas del proyecto
+
+    rebuild_knowledge_graph(project_id) → ()
+      1. clear_graph(project_id) — DELETE FROM graph_nodes WHERE project_id = ?
+         (edges se borran por CASCADE)
+      2. Scanner todos los assets con status=ready y chunks>0
+      3. Para cada asset, crear un nodo "documento" con posición aleatoria
+         (random_f64 entre 10 y 90, redondeado a 2 decimales)
+      4. Insertar nodos (no crea aristas en rebuild — solo nodos documento)
+
+    NOTA: rebuild_knowledge_graph NO llama al extractor Python. Solo recrea
+          nodos tipo "documento" a partir de assets indexados. La extracción
+          de entidades (normas, zonas, conceptos) solo ocurre durante la
+          indexación de un documento (index_document).
+
+  ─── DB Repository (crates/geonexus-db/src/data_repo.rs) ──────────────────────
+
+    insert_graph_nodes(nodes: &[GraphNode]) → ()
+      - INSERT OR REPLACE (upsert por id) en graph_nodes
+
+    insert_graph_edges(edges: &[GraphEdge]) → ()
+      - INSERT OR REPLACE (upsert por id) en graph_edges
+
+    list_graph_nodes(project_id) → Vec<GraphNode>
+    list_graph_edges(project_id) → Vec<GraphEdge>
+    clear_graph(project_id) → ()
+      - DELETE FROM graph_nodes (edges se borran por CASCADE)
+
+    Test: test_graph_nodes_and_edges_crud() — inserta 2 nodos + 1 edge,
+          verifica list, verifica clear.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              6. FRONTEND — VISUALIZACIÓN INTERACTIVA (GraphPage)             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Archivo: src/features/workspace/graph/GraphPage.tsx (595 líneas)
+
+  ─── Estructura de componentes ────────────────────────────────────────────────
+
+    GraphPage (container principal)
+    ├── GraphHeader        — Título, botón "Analizar con IA", "Recalcular red"
+    ├── GraphToolbar       — Buscar nodo, Filtros
+    ├── GraphCanvas        — SVG con líneas + burbujas
+    │   ├── <svg>          — edges con <line> + <animateMotion> (partículas)
+    │   └── GraphNodeBubble — burbujas arrastrables (Pointer Events)
+    ├── GraphLegend        — leyenda de colores (5 tipos)
+    └── NodeSheet          — shadcn/ui Sheet con detalle del nodo seleccionado
+        ├── NodeMetric     — peso, relaciones, confianza
+        ├── Información almacenada (description + evidence)
+        ├── Relaciones del punto (con barra de fuerza %)
+        └── Contexto para IA
+
+  ─── Interacción ──────────────────────────────────────────────────────────────
+
+    • Arrastrar nodo: PointerDown → setDraggingNodeId → PointerMove actualiza
+      posición en % (clamp 6-94 horizontal, 8-92 vertical)
+    • Tocar (click sin arrastre): abre NodeSheet con detalle del nodo
+    • Al seleccionar un nodo, las aristas conectadas se resaltan (stroke-primary/70)
+    • Partículas animadas en edges con animateMotion SVG (speed variable según
+      strength: 4.6s + (100-strength)/20)
+
+  ─── API calls ────────────────────────────────────────────────────────────────
+
+    listGraphNodes() → GraphNode[] (src/api/data.ts:120-136)
+      - Invoca comando Tauri "list_graph_nodes"
+      - Mapea BackendGraphNode (name, kind) a GraphNode (label, type)
+
+    listGraphEdges() → GraphEdge[]
+      - Invoca comando Tauri "list_graph_edges"
+      - Mapea BackendGraphEdge → GraphEdge (sin id propio, edge id es compuesto)
+
+    rebuildKnowledgeGraph() → void
+      - Invoca "rebuild_knowledge_graph"
+      - Recarga datos después de completar
+
+  ─── Colores por tipo de nodo ─────────────────────────────────────────────────
+
+    Norma     → bg-primary (azul)        → FileTextIcon
+    Documento → bg-sky-500 (celeste)     → DatabaseIcon
+    Capa GIS  → bg-emerald-500 (verde)   → Layers3Icon
+    Zona      → bg-orange-500 (naranja)  → MapPinnedIcon
+    Concepto  → bg-violet-500 (púrpura)  → SparklesIcon
+
+  ─── Visual ───────────────────────────────────────────────────────────────────
+
+    • Canvas: background grid (radial-gradient 28px spacing)
+    • Glow central: animate-pulse con color-mix(primary, transparent 84%)
+    • Burbuja: tamaño = 3.5rem + weight * 0.55rem, rounded-full con sombra
+    • Al arrastrar: scale-110, cursor-grabbing, shadow más grande
+    • Sheet: blur-xl, backdrop-blur, gradient top border primary→transparent
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              7. INTEGRACIÓN CON CHAT (Contexto para IA)                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  ─── ProjectContextPanel.tsx (src/components/chat/) ────────────────────────────
+
+    • Toggle "graph_nodes" en el panel de contexto del chat
+    • Cuando activo, envía nodos del grafo como parte del contexto al LLM
+    • Query: SELECT label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8
+    • Los nodos se muestran como chips/badges en el panel
+
+  ─── useChatSession.ts ────────────────────────────────────────────────────────
+
+    • Estado default: graph_nodes: true (activado por defecto)
+
+  ─── ContextNode type (src/types/chat.ts) ─────────────────────────────────────
+
+    interface ContextNode {
+      label: string
+      kind: string
+    }
+
+  ─── En el mensaje (Message.nodes_used) ────────────────────────────────────────
+
+    • Cada mensaje de chat puede registrar qué nodos del grafo fueron usados
+      para generar la respuesta (nodes_used: string[])
+    • Permite trazabilidad: saber qué entidades del grafo contribuyeron
+
+  ─── Flujo de contexto ────────────────────────────────────────────────────────
+
+    Chat → ProjectContextPanel (toggles) → getProjectContext(projectId)
+      → Rust query: SELECT name, kind FROM graph_nodes LIMIT 8
+      → Python context builder formatea como "Conceptos clave del proyecto"
+      → Se inyecta en el prompt del LLM junto con assets indexados
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              8. MÉTRICAS Y MONITOREO                                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  • DataAsset.graph_nodes: i64 — cuántos nodos del grafo están vinculados
+    a un asset específico (se actualiza tras indexación)
+  • DataStoreMetrics.total_graph_nodes: i64 — suma total de nodos en el
+    proyecto (visible en DataPanels como "Knowledge Graph" storage layer)
+  • AssetSheet: muestra pipeline step "Knowledge Graph" si graph_nodes > 0
+  • DataHeader: muestra métrica "Grafo" con conteo total
+  • SyncEventType.GraphLinked = "graph_linked" — evento de sync para
+    seguimiento de cuándo se enlaza un asset al grafo
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              9. INVENTARIO COMPLETO (22 archivos)                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  FRONTEND (6 archivos):
+    src/features/workspace/graph/GraphPage.tsx         595  Visualización SVG interactiva
+    src/features/workspace/graph/graph-data.ts          44  Tipos + datos mock del grafo
+    src/types/data.ts                                   28  GraphNode, BackendGraphNode, GraphEdge types
+    src/types/chat.ts                                   10  ContextNode, ProjectContext.graph_nodes
+    src/api/data.ts                                     32  listGraphNodes, listGraphEdges, rebuild
+    src/api/chat.ts                                      5  getProjectContext (incluye graph_nodes)
+
+  FRONTEND — COMPONENTES RELACIONADOS (6 archivos):
+    src/components/chat/ProjectContextPanel.tsx         30  Toggle graph_nodes en contexto IA
+    src/features/workspace/GeoNexusWorkspace.tsx         3  Ruta #grafo → GraphPage
+    src/features/workspace/workspace-data.ts             2  Nav item "Grafo"
+    src/features/workspace/data/DataPanels.tsx          10  Muestra total_graph_nodes
+    src/features/workspace/data/DataHeader.tsx           3  Métrica "Grafo"
+    src/features/workspace/data/AssetSheet.tsx           3  Pipeline step "Knowledge Graph"
+
+  RUST — CORE (1 archivo):
+    crates/geonexus-core/src/lib.rs                     26  GraphNode, GraphEdge structs + serde
+
+  RUST — DB REPOSITORY (1 archivo):
+    crates/geonexus-db/src/data_repo.rs                100  CRUD: insert_graph_nodes/edges, list, clear
+
+  RUST — TAURI COMMANDS (1 archivo):
+    crates/geonexus-tauri/src/commands/document.rs      64  list_graph_nodes, list_graph_edges, rebuild
+
+  RUST — CHAT CONTEXT (1 archivo):
+    crates/geonexus-tauri/src/commands/chat/mod.rs      32  get_project_context (query graph_nodes)
+
+  SQL MIGRATIONS (2 archivos):
+    crates/geonexus-db/migrations/20260607000001_phase3.sql  52  graph_nodes + graph_edges schemas
+    crates/geonexus-db/migrations/20260607000000_init.sql     1  assets.graph_nodes columna
+
+  PYTHON (4 archivos):
+    ai/graph/extractor.py                              126  Extracción de nodos/aristas desde chunks
+    ai/graph/graph.py                                    5  Placeholder para ops del grafo
+    ai/pipeline/indexer.py                               7  Llamada a extract_graph_entities en step 4
+    ai/context/builder.py                               10  Query graph_nodes para contexto LLM
+
+  DOCUMENTACIÓN RELACIONADA:
+    docs/plan_backend_datos_geonexus.txt              Secciones 2.6, tablas, roadmap fase 3
+    docs/chat-architecture.txt                        ProjectContext, ContextNode, nodes_used
+    docs/estado_funciones_implementadas_geonexus.txt  Fase 3: Graph entities extraction
+    README.md                                         Feature "Grafo", módulo listado
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              10. ESTADO ACTUAL Y LIMITACIONES                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  ✅ IMPLEMENTADO:
+    • Schema SQLite con graph_nodes + graph_edges + índices + CASCADE
+    • CRUD completo en Rust (insert, list, clear)
+    • Extracción de entidades por regex (normas, zonas, conceptos) en Python
+    • Aristas por co-ocurrencia en chunks con tipos semánticos
+    • Indexación automática durante pipeline de documento
+    • 3 comandos Tauri expuestos al frontend
+    • Visualización SVG interactiva con burbujas arrastrables
+    • NodeSheet con detalle, evidencia, relaciones y peso
+    • Partículas animadas en edges (animateMotion SVG)
+    • Rebuild de grafo desde assets indexados
+    • Integración con chat: ProjectContextPanel + getProjectContext
+    • Métricas en DataPanels, DataHeader, AssetSheet
+    • Fallback a nodo "documento" si no hay entidades extraídas
+
+  ❌ NO IMPLEMENTADO / LIMITACIONES:
+    • Posiciones aleatorias (no force-directed layout) — cada rebuild cambia
+      las posiciones, no hay continuity UX
+    • rebuild_knowledge_graph solo crea nodos "documento", no ejecuta el
+      extractor Python para normas/zonas/conceptos (hay que re-indexar docs)
+    • No hay búsqueda de nodos (botón "Buscar nodo" es placeholder visual)
+    • No hay filtros (botón "Filtros" es placeholder visual)
+    • No hay análisis con IA (botón "Analizar con IA" es placeholder visual)
+    • No hay persistencia de posiciones de nodos arrastrados (al recargar
+      se pierden porque no se guardan en DB)
+    • Python extractor usa solo regex — sin NLP ni embeddings semánticos
+    • Solo 5 conceptos hardcoded en CONCEPT_DESCRIPTIONS
+    • graph.py es placeholder (sin operaciones de grafo como caminos, bfs, etc)
+    • No hay trazabilidad completa de qué nodos se usaron en cada respuesta
+      (nodes_ued está definido pero no se implementó el tracking real)
+    • No hay deduplicación de nodos entre documentos (si dos docs mencionan
+      "Art. 5", se crean dos nodos separados)
+
+  PRÓXIMOS PASOS (roadmap V1.2):
+    • Force-directed layout en frontend (d3-force o simulación propia)
+    • Persistencia de posiciones arrastradas (guardar x/y en DB)
+    • NLP semántico en extractor Python (embeddings + clasificación)
+    • Búsqueda y filtros funcionales
+    • Análisis con IA de la red (centralidad, clusters, caminos)
+    • Deduplicación de nodos entre documentos
+    • Graph operations (caminos, subgrafos, bfs) en graph.py
+    • Tracking real de nodes_used en respuestas del chat
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              11. DIAGRAMA DE RELACIONES (tipos semánticos)                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+              ┌───────────┐
+              │  Norma    │
+              │ (Artículo)│
+              └─────┬─────┘
+                    │
+          ┌─────────┼─────────┐
+          │ "aplica  │ "define"│
+          │  en"    │         │
+          v         v         │
+     ┌────────┐ ┌────────┐   │
+     │ Zona   │ │Concepto│<──┘
+     │(Sector)│ │técnico │
+     └────────┘ └────────┘
+          ^
+          │ "afecta"
+          │
+     ┌────────┐
+     │Concepto│
+     └────────┘
+
+    Relaciones definidas en _relation_for():
+      norma + zona     → "aplica en"
+      norma + concepto → "define"
+      concepto + zona  → "afecta"
+      default          → "asociado con"
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              12. COMANDOS ÚTILES (desarrollo)                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  Reconstruir grafo desde frontend:
+    Botón "Recalcular red" en GraphHeader → rebuildKnowledgeGraph()
+
+  Ver datos directo en SQLite:
+    sqlite3 data/geonexus.db "
+      SELECT g.name, g.kind, g.weight, COUNT(e.id) as edges
+      FROM graph_nodes g
+      LEFT JOIN graph_edges e ON e.source = g.id OR e.target = g.id
+      GROUP BY g.id ORDER BY edges DESC;
+    "
+
+  Ver assets con nodos de grafo:
+    sqlite3 data/geonexus.db "
+      SELECT name, kind, graph_nodes FROM assets WHERE graph_nodes > 0;
+    "

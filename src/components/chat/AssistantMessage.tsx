@@ -35,15 +35,25 @@ export function AssistantMessage({
         <GeoNexusIcon className="size-3.5" variant="nexus" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="mb-0.5">
-          <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-            GeoNexus IA
-          </span>
-          <ThinkingInline
-            steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
-            isComplete={true}
-          />
+        <div className="flex items-center justify-between mb-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+              GeoNexus IA
+            </span>
+            {message.stats && !showResearch && (
+              <TokenStatsBadge
+                stats={message.stats}
+                provider={message.provider ?? undefined}
+                model={message.model ?? undefined}
+                cumulativeContext={cumulativeContext}
+              />
+            )}
+          </div>
         </div>
+        <ThinkingInline
+          steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
+          isComplete={true}
+        />
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />
         ) : (
@@ -64,19 +74,19 @@ export function AssistantMessage({
               suggestions={suggestions}
               onSelect={(s) => onSendMessage?.(s)}
             />
-            <div className="flex items-center gap-1 mt-1">
-              {message.stats && (
-                <TokenStatsBadge
-                  stats={message.stats}
-                  provider={message.provider ?? undefined}
-                  model={message.model ?? undefined}
-                  cumulativeContext={cumulativeContext}
-                />
-              )}
-              <CopyButton content={message.content} />
-            </div>
           </>
         )}
+        <div className="flex items-center gap-1 pt-0.5">
+          {message.stats && showResearch && (
+            <TokenStatsBadge
+              stats={message.stats}
+              provider={message.provider ?? undefined}
+              model={message.model ?? undefined}
+              cumulativeContext={cumulativeContext}
+            />
+          )}
+          <CopyButton content={message.content} />
+        </div>
       </div>
     </div>
   )

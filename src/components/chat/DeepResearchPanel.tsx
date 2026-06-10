@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react"
 import { openUrl } from "@tauri-apps/plugin-opener"
-import { Globe, ChevronDown, ChevronUp, ExternalLink, Loader2, Check } from "lucide-react"
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Check, CheckCircle2 } from "lucide-react"
 import type { ResearchSource } from "@/types/chat"
+
+type TauriWindow = Window & { __TAURI__?: Record<string, unknown> }
+
+function isTauri(): boolean {
+  return !!(window as TauriWindow).__TAURI__
+}
+
+function safeOpenUrl(e: React.MouseEvent<HTMLAnchorElement>, url: string): void {
+  if (isTauri()) {
+    e.preventDefault()
+    openUrl(url).catch(e => console.error("[DeepResearchPanel] Error al abrir URL:", e))
+  }
+}
 
 interface Props {
   sources: ResearchSource[]
@@ -36,24 +49,33 @@ export function DeepResearchPanel({
     <div className="my-2 rounded-lg border border-border overflow-hidden text-sm bg-muted/20">
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left"
       >
         {isSearching ? (
-          <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0" />
+          <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />
         ) : (
-          <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
         )}
-        <span className={cn(
-          "flex-1 text-[12px] font-medium",
-          isSearching ? "text-blue-500" : "text-muted-foreground"
-        )}>
-          {isSearching
-            ? "Deep Research · buscando..."
-            : `Deep Research · ${doneSources.length} fuente${doneSources.length !== 1 ? "s" : ""} consultada${doneSources.length !== 1 ? "s" : ""}`
-          }
+        <span className="flex-1 min-w-0">
+          <span className={cn(
+            "text-sm font-semibold",
+            isSearching ? "text-blue-500" : "text-foreground"
+          )}>
+            Deep Research
+          </span>
+          <span className="text-xs text-muted-foreground mx-1">·</span>
+          <span className={cn(
+            "text-xs",
+            isSearching ? "text-blue-400" : "text-emerald-600 dark:text-emerald-400 font-medium"
+          )}>
+            {isSearching
+              ? "buscando..."
+              : `${doneSources.length} fuente${doneSources.length !== 1 ? "s" : ""} consultada${doneSources.length !== 1 ? "s" : ""}`
+            }
+          </span>
         </span>
-        {elapsedSeconds && elapsedSeconds > 0 && (
-          <span className="text-[11px] text-muted-foreground mr-1">
+        {elapsedSeconds != null && elapsedSeconds > 0 && (
+          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
             {elapsedSeconds.toFixed(1)}s
           </span>
         )}
@@ -76,39 +98,37 @@ export function DeepResearchPanel({
           )}
 
           {sources.map((source, i) => (
-            <button
+            <a
               key={i}
-              onClick={async () => {
-                try {
-                  await openUrl(source.url)
-                } catch (e) {
-                  console.error("[DeepResearchPanel] Error al abrir URL:", e)
-                }
-              }}
-              className="flex items-start gap-2.5 px-3 py-2 hover:bg-muted/40 transition-colors text-left w-full group"
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => safeOpenUrl(e, source.url)}
+              className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-accent/50 transition-colors text-left w-full group
+                         border border-transparent hover:border-border/60 rounded-none"
             >
               <div className="mt-0.5 shrink-0">
                 {source.status === "loading" ? (
-                  <Loader2 className="h-3 w-3 text-blue-400 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />
                 ) : (
-                  <Check className="h-3 w-3 text-emerald-500" />
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-emerald-600 line-clamp-1">
+                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 truncate">
                   {getDomain(source.url)}
                 </p>
-                <p className="text-[12px] text-foreground/80 line-clamp-1 group-hover:text-foreground">
+                <p className="text-sm font-semibold text-foreground leading-snug mt-0.5 line-clamp-2">
                   {source.title}
                 </p>
                 {source.snippet && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                     {source.snippet}
                   </p>
                 )}
               </div>
-              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
+              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </a>
           ))}
 
           {sources.length === 0 && !isSearching && (

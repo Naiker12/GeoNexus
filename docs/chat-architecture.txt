@@ -9,21 +9,33 @@
 ║                              1. TIPOS COMPARTIDOS                          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-Archivo: src/types/chat.ts
+Archivo: src/types/chat.ts  (106 líneas)
 
 MessageRole        = "user" | "assistant" | "tool" | "system"
 ResearchSource     = { url, title, snippet?, status: "loading"|"done" }
 Conversation       = { id, project_id, workspace_id?, title?, provider, model,
                        created_at, updated_at, message_count? }
+MessageStats       = { input_tokens, output_tokens, total_tokens, duration_ms,
+                       tokens_per_second, cost_usd, context_window,
+                       context_used_pct }           ← NO documentado antes
 Message            = { id, conversation_id, role, content, provider?, model?,
                        trace_id, chunks_used, nodes_used, tool_calls, sources,
                        created_at, isSearching?, currentSearchQuery?,
-                       researchSources?, searchElapsedSeconds? }
+                       research_sources?, searchElapsedSeconds?, stats? }
+  NOTA: research_sources es snake_case. El frontend usa snake_case directamente.
 SendMessageInput   = { project_id, workspace_id?, conversation_id?, content,
                        provider, model, endpoint, api_key?, use_context,
                        max_context_chunks?, web_search? }
 SendMessageResponse= { conversation_id, message: Message, chunks_used, trace_id,
                        research_sources?, search_query? }
+
+Tipos adicionales no documentados antes:
+  RecallChunk       = { text, source, asset_id, score }
+  ContextAsset      = { id, name, kind, source, location, chunks }
+  ContextNode       = { id, name, kind, description, evidence }
+  ProjectContext    = { assets: ContextAsset[], graph_nodes: ContextNode[] }
+  ChunkReference    = { chunk_id, asset_id, asset_name, chunk_index,
+                        relevance_score, text_preview }
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -33,10 +45,11 @@ SendMessageResponse= { conversation_id, message: Message, chunks_used, trace_id,
 RUTA: src/components/chat/
 
 ────────────────────────────────────────────────────────────────────────────────
-2a. ChatPanel.tsx          (472 lines) — ORQUESTADOR PRINCIPAL
+2a. ChatPanel.tsx          (508 lines) — ORQUESTADOR PRINCIPAL
 ────────────────────────────────────────────────────────────────────────────────
   Props:  { models?: AiConnector[] }
-  Estado: sheetOpen, contextPanelOpen, composerValue (string)
+  Estado: sidebarOpen (no sheetOpen), contextPanelOpen, composerValue (string),
+          sidebarRefreshKey (se incrementa al cambiar conversationId)
   Llama:  useChatSession(activeConnectorId, connectors)
           → activeProvider, conversationId, error, messages, pending,
             loadingHistory, contextToggles, setContextToggles,
@@ -48,7 +61,8 @@ RUTA: src/components/chat/
   handleRegenerate:           regenerate()
 
   Renderiza:
-    ├── <Sheet>        — lista de conversaciones (ConversationList)
+    ├── <div class="shrink-0"> — sidebar de conversaciones (ConversationSidebarList)
+    │     (NO <Sheet>, NO ConversationList — ese es otro componente legacy)
     ├── <ChatTranscript>  — lista de mensajes
     │    Props: messages, pending, onSendMessage, webSearchEnabled,
     │           onEditLastUserMessage, onRegenerateLastMessage
@@ -56,6 +70,7 @@ RUTA: src/components/chat/
     │    Props: value, onValueChange, activeProvider, error, pending,
     │           onSubmit, onToggleContext, contextActive,
     │           webSearchEnabled, onToggleWebSearch
+    ├── <ModelHeaderPopover> — estado del modelo activo en topbar
     └── <ProjectContextPanel> — panel lateral de contexto
 
   ChatComposer (inline, function interna):
@@ -63,6 +78,8 @@ RUTA: src/components/chat/
     ─ Botón "Usar contexto GIS" (activa/desactiva)
     ─ Switch de búsqueda web en ToolMenu
     ─ Muestra error si existe
+    ─ ToolMenu extra: "Razonamiento GIS (MCP)", "Ejecutar buffer",
+      "Exportar análisis", "Controlar este PC (LOCAL)"
 
   EmptyChatState (inline):
     ─ Estado vacío con icono y texto de bienvenida
@@ -72,7 +89,7 @@ RUTA: src/components/chat/
       switch búsqueda web, más herramientas
 
 ────────────────────────────────────────────────────────────────────────────────
-2b. ChatTranscript.tsx     (125 lines) — LISTA DE MENSAJES
+2b. ChatTranscript.tsx     (146 lines) — LISTA DE MENSAJES
 ────────────────────────────────────────────────────────────────────────────────
   Props:  { messages, pending, onSendMessage?, webSearchEnabled?,
             onEditLastUserMessage?, onRegenerateLastMessage? }
@@ -84,24 +101,28 @@ RUTA: src/components/chat/
 
   lastAssistantIndex: índice del último assistant en messages[]
   lastUserIndex:      índice del último user en messages[]
+  runningContext / lastContextWindow: useMemo que calcula contexto acumulado
 
   Renderiza:
     ─ messages.map():
       ├── user:      <MessageBubble role="user">
+      │                ├── <CopyButton> (siempre, no solo hover)
       │                └── <UserActions> (solo el último)
       │                    ├── Editar (onEditLastUserMessage)
       │                    └── Regenerar (onRegenerateLastMessage)
       └── assistant: <AssistantMessage message={...} isStreaming={false}
-                                         onSendMessage={...} />
+                       onSendMessage={...}
+                       cumulativeContext={ totalTokens, contextWindow } />
 
     ─ pending ? <ThinkingInline steps={steps} isComplete={isComplete} />
     ─ <div ref={messagesEndRef}> (auto-scroll)
 
 ────────────────────────────────────────────────────────────────────────────────
-2c. AssistantMessage.tsx   (66 lines) — MENSAJE DEL ASISTENTE (moderno)
+2c. AssistantMessage.tsx   (83 lines) — MENSAJE DEL ASISTENTE (moderno)
 ────────────────────────────────────────────────────────────────────────────────
   Props:  { message: Message, isStreaming?: boolean,
-            onSendMessage?: (text: string) => void }
+            onSendMessage?: (text: string) => void,
+            cumulativeContext?: { totalTokens: number; contextWindow: number } }
 
   Comportamiento:
     ─ parseSuggestions(content) → { mainContent, suggestions }
@@ -111,11 +132,15 @@ RUTA: src/components/chat/
     ├── Avatar: GeoNexusIcon
     ├── "GeoNexus IA" (label)
     ├── Si streaming y content vacío: <TypingDots />
+    ├── Siempre: <ThinkingInline> con los 4 pasos en status "done"
+    │     (incluso cuando la respuesta ya se completó, además del que
+    │      se muestra en ChatTranscript durante pending)
     ├── Si showResearch: <DeepResearchPanel>
     ├── <MarkdownContent content={mainContent} isStreaming={isStreaming} />
     ├── Si message.sources.length > 0: <SearchSourcesBlock>
     ├── <ActionSuggestions suggestions={suggestions} onSelect={...} />
-    └── <CopyButton> (opacity-0 group-hover:opacity-100)
+    ├── Si message.stats existe: <TokenStatsBadge> con stats del modelo
+    └── <CopyButton> (siempre visible, sin opacidad condicional)
 
 ────────────────────────────────────────────────────────────────────────────────
 2d. MessageBubble.tsx      (142 lines) — BURBUJA DE MENSAJE
@@ -130,7 +155,7 @@ RUTA: src/components/chat/
     ─ No usada actualmente para el chat principal
 
 ────────────────────────────────────────────────────────────────────────────────
-2e. MessageActions.tsx     (64 lines) — BOTONES DE ACCIÓN
+2e. MessageActions.tsx     (235 lines) — BOTONES DE ACCIÓN + TOKEN STATS
 ────────────────────────────────────────────────────────────────────────────────
   CopyButton:
     Props:  { content: string }
@@ -141,8 +166,22 @@ RUTA: src/components/chat/
     ─ Editar (Pencil): pre-filla el composer con el último user message
     ─ Regenerar (RefreshCw): borra el último par user+assistant y re-envía
 
+  TokenStatsBadge (NO documentado antes, ~120 líneas):
+    Props:  { stats: MessageStats, provider?, model?,
+              cumulativeContext?: { totalTokens, contextWindow } }
+    ─ SVG ring de progreso con el porcentaje de contexto usado
+    ─ Popover detallado al hacer clic con:
+        ├── Input tokens / Output tokens
+        ├── Tiempo de generación (duration_ms)
+        ├── Velocidad (tokens/segundo)
+        ├── Costo estimado (USD)
+        ├── Ventana de contexto (context_window)
+        └── Barra de progreso de contexto acumulado
+    ─ Formateo con locale "es-CO"
+    ─ Helpers internos: Row (fila del popover), SectionLabel, Divider
+
 ────────────────────────────────────────────────────────────────────────────────
-2f. DeepResearchPanel.tsx  (122 lines) — PANEL DE URLs DE BÚSQUEDA
+2f. DeepResearchPanel.tsx  (127 lines) — PANEL DE URLs DE BÚSQUEDA
 ────────────────────────────────────────────────────────────────────────────────
   Props:  { sources: ResearchSource[], isSearching: boolean,
             currentQuery?, elapsedSeconds? }
@@ -152,6 +191,8 @@ RUTA: src/components/chat/
     ─ Cuando isSearching=true: setOpen(true)
     ─ doneSources = sources.filter(s => s.status === "done")
     ─ getDomain(url): extrae hostname
+    ─ Usa openUrl de @tauri-apps/plugin-opener para abrir URLs
+    ─ Define su propia función cn() inline (no la de @/lib/utils)
 
   Renderiza:
     ├── Header colapsable:
@@ -184,9 +225,9 @@ RUTA: src/components/chat/
   ─ CodeBlock: botón copiar + resaltado con Prism (oneDark/oneLight)
 
 ────────────────────────────────────────────────────────────────────────────────
-2i. ThinkingInline.tsx     (166 lines) — PASOS DE RAZONAMIENTO
+2i. ThinkingInline.tsx     (168 lines) — PASOS DE RAZONAMIENTO
 ────────────────────────────────────────────────────────────────────────────────
-  Props:  { steps: ThinkingStep[], isComplete?: boolean }
+  Props:  { steps: ThinkingStep[], isComplete?: boolean, expanded?: boolean }
   DEFAULT_THINKING_STEPS:
     ─ Analizando mensaje (Sparkles)
     ─ Buscando documentos relevantes (FileSearch)
@@ -195,28 +236,42 @@ RUTA: src/components/chat/
 
   Comportamiento:
     ─ Collapsible: muestra summary de pasos activos/done
-    ─ Spinner mientras procesa, check verde al completar
+    ─ Spinner mientras procesa (custom con border-top-color: #10b981), check verde al completar
     ─ Auto-colapsa 1s después de completar
     ─ Cada paso con icono: check (done), spinner (active), icono (pending)
+    ─ expanded?: controla si empieza expandido
+    ─ buildSummary(): función interna que construye resumen de pasos activos/completados
 
 ────────────────────────────────────────────────────────────────────────────────
 2j. Otros componentes:
 ────────────────────────────────────────────────────────────────────────────────
-  ActionSuggestions.tsx    — Chips de sugerencias clickeables
-  TypingDots.tsx           — Puntos animados (carga inicial)
-  ChatAnalysisLoader.tsx   — Loader de análisis con barra de progreso
-  ThinkingCard.tsx         — Versión card de los pasos (con ProgressBar)
-  ConversationList.tsx     — Sidebar de conversaciones (list/delete)
-  ModelHeaderPopover.tsx   — Popover de estado del modelo activo
-  ModelSelector.tsx        — Selector de modelos con búsqueda
-  ProjectContextPanel.tsx  — Panel de contexto GIS (RAG, assets, graph)
+  ActionSuggestions.tsx      — Chips de sugerencias clickeables
+  TypingDots.tsx             — Puntos animados (carga inicial)
+  ChatAnalysisLoader.tsx     (95 lines) Loader de análisis con barra de progreso
+                               ─ 4 pasos que avanzan cada 1800ms
+                               ─ Barra de progreso animada
+  ThinkingCard.tsx           (159 lines) Versión card alternativa de los pasos
+                               ─ Usa Collapsible + Progress (shadcn/ui)
+                               ─ DEFAULT_THINKING_STEPS idéntico a ThinkingInline
+                               ─ Auto-colapsa 800ms después de completar
+  ConversationList.tsx       (106 lines) Sidebar de conversaciones (list/delete + "Nueva")
+                               ─ Usado en el Sheet lateral
+                               ─ Props: projectId, activeId, onSelect, onNew, onDelete
+  ConversationSidebarList.tsx (134 lines) Versión compacta para sidebar fijo
+                               ─ Props: projectId, activeId, collapsed, onSelect, onDelete
+                               ─ Modo collapsed: solo iconos mini (30x30px)
+                               ─ Modo expandido: similar a ConversationList sin "Nueva"
+                               ─ relativeTime(): "ahora", "hace Xm", "hace Xh", "ayer", día sem.
+  ModelHeaderPopover.tsx     — Popover de estado del modelo activo
+  ModelSelector.tsx          — Selector de modelos con búsqueda
+  ProjectContextPanel.tsx    — Panel de contexto GIS (RAG, assets, graph)
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                      3. HOOK — useChatSession.ts                           ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-RUTA: src/components/chat/useChatSession.ts  (334 lines)
+RUTA: src/components/chat/useChatSession.ts  (338 lines)
 
 STATE INTERNO:
   messages: Message[]           = []
@@ -232,8 +287,18 @@ PERSISTENCIA:
   localStorage("geonexus.activeConversationId") — ID de conversación activa
   localStorage("geonexus.webSearchEnabled")     — Estado de búsqueda web
 
+VARIABLES MÓDULO:
+  let researchTimerId — fuera del hook (ámbito módulo), usada x el timer de 500ms
+                        → se limpia en finally y en newConversation
+
+FUNCIÓN INTERNA:
+  updateAssistantMessage(id, updates) — merge parcial de updates en un assistant
+    message existente por id. Usado para actualizar el placeholder de búsqueda
+    cuando llega la respuesta.
+
 COMPORTAMIENTO DE submit(content):
   1. Validar: !pending, content.trim(), activeProvider
+     ─ Si no hay activeProvider: toast "Sin proveedor" y return
   2. Optimistic user message:
      id="local-{Date.now()}", role="user", content=clean
   3. Construir SendMessageInput con contextToggles y webSearch
@@ -249,17 +314,22 @@ COMPORTAMIENTO DE submit(content):
   6. Éxito:
      ─ Si webSearch: updateAssistantMessage(placeholderId, {
          isSearching:false, researchSources:response.research_sources,
-         content:response.message.content, ...})
+         content:response.message.content, stats:response.message.stats, ...})
      ─ Si no webSearch: agregar response.message a messages[]
+     ─ Toast "GeoNexus ha completado el análisis" (éxito)
   7. Error:
      ─ Filtrar mensajes optimistas
      ─ Mostrar toast error
-  8. finally: setPending(false)
+  8. finally: setPending(false), clearInterval(researchTimerId)
 
 COMPORTAMIENTO DE regenerate():
   1. Buscar el último user message en messages[]
   2. setMessages: eliminar desde ese user message hasta el final
   3. submit(lastUserContent) — re-envía el mensaje
+
+COMPORTAMIENTO DE newConversation():
+  ─ setMessages([]), setConversationId(null), clearInterval(researchTimerId)
+  ─ Limpia localStorage activeConversationId
 
 RETURN:
   { activeProvider, conversationId, error, messages, pending,
@@ -271,6 +341,10 @@ RETURN:
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                        4. API LAYER — src/api/chat.ts                       ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
+RUTA: src/api/chat.ts  (51 líneas)
+
+Cada función valida que el input no esté vacío (lanza Error si no).
 
 sendMessage(input: SendMessageInput)
     → invoke("send_message", { input })
@@ -305,17 +379,19 @@ Todas usan: import { invoke } from "@tauri-apps/api/core"
 RUTA: crates/geonexus-tauri/src/commands/chat/
 
 ────────────────────────────────────────────────────────────────────────────────
-5a. mod.rs           (216 lines) — RAÍZ DEL MÓDULO CHAT
+5a. mod.rs           (218 lines) — RAÍZ DEL MÓDULO CHAT
 ────────────────────────────────────────────────────────────────────────────────
   Submódulos: pub mod send_message; pub mod context; pub mod tools;
               pub use send_message::send_message;
 
   Tipos:
     SidecarChatResult = { status: String, text: Option<String>,
-                          msg: Option<serde_json::Value> }
+                          msg: Option<serde_json::Value>,
+                          usage: Option<serde_json::Value> }  ← NO documentado
       - content():     extrae texto de msg.content o text
       - tool_calls():  extrae tool_calls array de msg
       - error_message(): mensaje de error si status != "ok"
+      - usage:         stats de tokens devueltos por el sidecar
 
     RecallChunk  = { text, source, asset_id, score: f32 }
     RecallInput  = { project_id, query, top_k, collection }
@@ -334,7 +410,7 @@ RUTA: crates/geonexus-tauri/src/commands/chat/
     get_project_context(project_id, state)          → SQL directo
 
 ────────────────────────────────────────────────────────────────────────────────
-5b. send_message.rs   (308 lines) — CORAZÓN DEL CHAT
+5b. send_message.rs   (391 lines) — CORAZÓN DEL CHAT
 ────────────────────────────────────────────────────────────────────────────────
   #[tauri::command] send_message(state, input) → SendMessageResponse
 
@@ -368,17 +444,22 @@ RUTA: crates/geonexus-tauri/src/commands/chat/
    10. Tool-calling loop (máx 10 iteraciones):
        ─ run_sidecar(["--action","chat_llm","--provider_type",...,
            "--messages",messages_json,"--tools",tools_json])
-       ─ Parsear SidecarChatResult
+       ─ Parsear SidecarChatResult (incluye usage: stats de tokens)
        ─ Si tiene tool_calls:
            push assistant(tool_calls) + tool(result)
            execute_tool_call(tc)
            continue
        ─ Si no: extraer final_content, break
-   11. Guardar assistant Message:
+   11. Extraer MessageStats del sidecar response:
+       ─ extract_message_stats(SidecarChatResult) → Option<MessageStats>
+       ─ Campos: input_tokens, output_tokens, total_tokens, duration_ms,
+         tokens_per_second, cost_usd, context_window, context_used_pct
+   12. Guardar assistant Message:
        ─ sources = recall_chunks[].source
        ─ research_sources = si hay resultados de búsqueda
+       ─ stats = extracted_stats
        ─ chat_repo::insert_message
-   12. Return SendMessageResponse {
+   13. Return SendMessageResponse {
          conversation_id, message, chunks_used: vec![], trace_id,
          research_sources, search_query
        }
@@ -387,9 +468,20 @@ RUTA: crates/geonexus-tauri/src/commands/chat/
     ensure_conversation() — devuelve conversation_id existente o crea nueva
     extract_search_query() — limpia query:
       ─ Si <60 chars: devuelve tal cual
-      ─ Si >=60: quita prefijos (dime, cuéntame, qué es, cómo, etc.)
+      ─ Si >=60: quita prefijos (dime, cuéntame, explícame, qué es, cómo, etc.)
       ─ Trunca a 80 chars
       ─ Capitaliza primera letra
+    extract_message_stats() — NO documentado antes:
+      ─ Extrae input_tokens, output_tokens, total_tokens del usage
+      ─ Calcula duration_ms si hay timestamp
+      ─ Calcula tokens_per_second = total/duration
+      ─ Calcula cost_usd según modelo aprox.
+      ─ Obtiene context_window de model_context_window()
+      ─ Calcula context_used_pct
+    model_context_window() — NO documentado antes:
+      ─ Tabla hardcodeada de contextos por modelo:
+        gpt-4o: 128K, claude-*-4-*: 200K, gemini-*: 1M,
+        llama-*: 128K, mistral-*: 32K, deepseek-*: 64K, default: 128K
 
 ────────────────────────────────────────────────────────────────────────────────
 5c. context.rs        (100 lines) — CONSTRUCTOR DE MENSAJES
@@ -402,7 +494,10 @@ RUTA: crates/geonexus-tauri/src/commands/chat/
   Orden:
     1. System: "Eres GeoNexus IA, un asistente GIS..."
     2. System: project_context (si existe)
-    3. System: web_context (si existe, "Información obtenida de internet:" )
+    3. System: web_context (si existe, "Resultados de busqueda web (usa esta
+       informacion actualizada si es relevante)")
+       ─ NOTA: el texto real difiere del previamente documentado
+         ("Información obtenida de internet:")
     4. System: rag_context (si existe)
     5. History messages (role mapping: User→"user", Assistant→"assistant",
        Tool→"tool", System→"system")
@@ -468,22 +563,34 @@ RUTA: crates/geonexus-tauri/src/commands/llm.rs  (531 lines)
     ─ OpenAI-compat:   GET /v1/models (LM Studio, etc.)
     ─ OpenRouter:      GET https://openrouter.ai/api/v1/models
     ─ OpenAI:          GET https://api.openai.com/v1/models
-    ─ Anthropic:       Lista hardcodeada (Claude Opus/Sonnet/Haiku)
+    ─ Anthropic:       Lista hardcodeada (claude-opus-4-6, claude-sonnet-4-6,
+                       claude-haiku-4-5-20251001)
 
-  is_non_chat_model(): filtra embedding, whisper, tts, dall-e, moderation
+  is_non_chat_model(): filtra embedding, whisper, tts, dall-e, moderation,
+                        babbage, davinci-0, curie
   model_id_to_display_name(): mapea IDs a nombres legibles
+
+  TESTS: ~74 líneas de tests unitarios al final del archivo (NO documentados)
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                  7. CORE TYPES — Rust (geonexus-core)                       ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-RUTA: crates/geonexus-core/src/chat.rs  (153 lines)
+RUTA: crates/geonexus-core/src/chat.rs  (167 lines)
 
-MessageRole (enum)        → User | Assistant | Tool | System
+MessageRole (enum)    → User | Assistant | Tool | System
   #[serde(rename_all = "snake_case")] → "user", "assistant", "tool", "system"
 
 ResearchSource (struct)   → url, title, snippet: Option<String>, status: String
+
+MessageStats (struct) — NO documentado antes:
+  input_tokens: Option<i64>, output_tokens: Option<i64>,
+  total_tokens: Option<i64>, duration_ms: Option<i64>,
+  tokens_per_second: Option<f64>, cost_usd: Option<f64>,
+  context_window: Option<i64>, context_used_pct: Option<f64>
+  ─ Se serializa/deserializa con snake_case
+  ─ Todos los campos son Option porque pueden no estar disponibles
 
 Message (struct):
   id, conversation_id, role: MessageRole, content,
@@ -491,12 +598,13 @@ Message (struct):
   chunks_used: Vec<String>, nodes_used: Vec<String>,
   tool_calls: Vec<serde_json::Value>, sources: Vec<String>, created_at: i64,
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  research_sources: Option<Vec<ResearchSource>>
+  research_sources: Option<Vec<ResearchSource>>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  stats: Option<MessageStats>
 
 NOTA: No tiene #[serde(rename_all)], los campos se serializan en snake_case.
-  → Frontend Message type tiene researchSources (camelCase).
-  → Esto NO es problema en el flujo normal porque el frontend usa
-    response.research_sources (snake_case) del SendMessageResponse top-level.
+  → El frontend también usa snake_case (research_sources, stats).
+  → Ya no hay bug de camelCase vs snake_case — el tipo frontend se actualizó.
 
 SendMessageInput (struct):
   project_id, workspace_id: Option<String>, conversation_id: Option<String>,
@@ -505,7 +613,7 @@ SendMessageInput (struct):
   #[serde(default)] web_search: bool
 
   validate(): project_id, content, provider, model requeridos.
-              content ≤ 32,000 chars.
+              content ≤ 32,000 chars.  (checked con content.len())
 
 SendMessageResponse (struct):
   conversation_id, message: Message, chunks_used: Vec<ChunkReference>,
@@ -517,12 +625,14 @@ ChunkReference (struct):
   chunk_id, asset_id, asset_name, chunk_index: usize,
   relevance_score: f32, text_preview
 
+TESTS: ~40 líneas de tests unitarios al final del archivo (NO documentados)
+
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                   8. DATABASE — chat_repo.rs                                ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-RUTA: crates/geonexus-db/src/chat_repo.rs
+RUTA: crates/geonexus-db/src/chat_repo.rs  (435 lines)
 
 create_conversation(db, project_id, workspace_id, provider, model)
   INSERT INTO conversations ...
@@ -536,15 +646,19 @@ list_conversations(db, project_id)
 insert_message(db, msg: &Message)
   INSERT INTO messages (id, conversation_id, role, content, provider, model,
     trace_id, chunks_used, nodes_used, tool_calls, sources_json,
-    research_sources, created_at)
+    research_sources, created_at,
+    input_tokens, output_tokens, total_tokens, duration_ms,
+    tokens_per_second, cost_usd, context_window, context_used_pct)
   -- chunks_used, nodes_used, tool_calls → JSON string
   -- sources_json → JSON string
   -- research_sources → JSON string | NULL
+  -- stats columns: se insertan desde msg.stats (Option<MessageStats>)
   -- UPDATE conversations SET updated_at = ? WHERE id = ?
   → Result<(), String>
 
 list_messages(db, conversation_id)
-  SELECT m.*, m.sources_json AS sources
+  SELECT m.*, m.sources_json AS sources,
+    COALESCE(sources_json, '[]')  -- seguridad NULL
   FROM messages m WHERE conversation_id=? ORDER BY created_at ASC
   → Vec<Message> (via row_to_message)
 
@@ -553,6 +667,9 @@ row_to_message(row):
   ─ chunks_used, nodes_used, tool_calls, sources: JSON string → vec
   ─ research_sources: JSON string → Option<Vec<ResearchSource>>
     (None si vacío)
+  ─ stats: MessageStats desde columnas individuales
+    (input_tokens, output_tokens, total_tokens, duration_ms, ...)
+    → Option<i64> / Option<f64> según columna
 
 delete_conversation(db, id):
   DELETE FROM messages WHERE conversation_id=?
@@ -563,6 +680,8 @@ update_conversation_title(db, id, title):
 
 update_conversation_timestamp(db, id):
   UPDATE conversations SET updated_at=? WHERE id=?
+
+TESTS: ~173 líneas de tests unitarios al final del archivo (NO documentados)
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -611,6 +730,16 @@ RUTA: crates/geonexus-db/migrations/
 
 20260609000005_web_search.sql (1 line)
   ─ ALTER messages ADD research_sources TEXT
+
+20260610000006_message_stats.sql (8 lines) — NO documentado antes
+  ─ ALTER messages ADD COLUMN input_tokens INTEGER DEFAULT NULL
+  ─ ALTER messages ADD COLUMN output_tokens INTEGER DEFAULT NULL
+  ─ ALTER messages ADD COLUMN total_tokens INTEGER DEFAULT NULL
+  ─ ALTER messages ADD COLUMN duration_ms INTEGER DEFAULT NULL
+  ─ ALTER messages ADD COLUMN tokens_per_second REAL DEFAULT NULL
+  ─ ALTER messages ADD COLUMN cost_usd REAL DEFAULT NULL
+  ─ ALTER messages ADD COLUMN context_window INTEGER DEFAULT NULL
+  ─ ALTER messages ADD COLUMN context_used_pct REAL DEFAULT NULL
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -710,36 +839,42 @@ RUST: send_message()
        │   ├── extract_search_query(input.content) → query limpia
        │   ├── run_sidecar("search_web") → Vec<ResearchSource>
        │   └── formatear contexto web "[Fuente 1]..."
-       │
-       ├── Tool definitions (read_file, search_code, list_dir, glob)
-       │
-       ├── build_messages(history + contextos + msg actual)
-       │
-       ├── LOOP tool-calling (máx 10):
-       │   ├── run_sidecar("chat_llm", messages, tools)
-       │   ├── ¿Tool calls? → execute_tool_call → push tool result → CONTINUE
-       │   └── No tool calls → final_content → BREAK
-       │
-       ├── Insertar assistant message en DB (con sources, research_sources)
-       │
-       └── Return SendMessageResponse {
-             conversation_id, message, research_sources, search_query
-           }
+        │
+        ├── Tool definitions (read_file, search_code, list_dir, glob)
+        │
+        ├── build_messages(history + contextos + msg actual)
+        │
+        ├── LOOP tool-calling (máx 10):
+        │   ├── run_sidecar("chat_llm", messages, tools)
+        │   ├── ¿Tool calls? → execute_tool_call → push tool result → CONTINUE
+        │   └── No tool calls → final_content → BREAK
+        │
+        ├── Extraer MessageStats del usage del sidecar
+        │   ├── extract_message_stats(sidecar_result) → Option<MessageStats>
+        │   └── model_context_window(model) → context_window según modelo
+        │
+        ├── Insertar assistant message en DB (con sources, research_sources, stats)
+        │
+        └── Return SendMessageResponse {
+              conversation_id, message, research_sources, search_query
+            }
        │
        ▼ (Taura invoke response)
 Frontend: useChatSession.handleResponse()
-       │
-       ├── Si webSearch:
-       │   └── updateAssistantMessage(placeholderId, {
-       │         isSearching:false,
-       │         researchSources: response.research_sources,
-       │         content: response.message.content,
-       │         currentSearchQuery: response.search_query,
-       │         searchElapsedSeconds: elapsed
-       │       })
-       │
-       └── Si no webSearch:
-           └── messages.push(response.message)
+        │
+        ├── Si webSearch:
+        │   └── updateAssistantMessage(placeholderId, {
+        │         isSearching:false,
+        │         researchSources: response.research_sources,
+        │         content: response.message.content,
+        │         currentSearchQuery: response.search_query,
+        │         searchElapsedSeconds: elapsed,
+        │         stats: response.message.stats        ← NO documentado
+        │       })
+        │
+        └── Si no webSearch:
+            └── messages.push(response.message)
+              └── (response.message.stats disponible en MessageStats)
        │
        ▼
 ChatTranscript renderiza:
@@ -758,7 +893,7 @@ ChatTranscript renderiza:
 
 1. Message Actions (Copy/Edit/Regenerate):
    ─ src/components/chat/MessageActions.tsx (NUEVO)
-     CopyButton: copia al portapapeles, en assistant messages (hover)
+     CopyButton: copia al portapapeles, en assistant messages
      UserActions: Editar + Regenerar, en el último user message
    ─ src/components/chat/AssistantMessage.tsx
      Refactorizado: ahora recibe message prop en vez de props sueltas
@@ -777,10 +912,31 @@ ChatTranscript renderiza:
    ─ Ya no se auto-colapsa al terminar (eliminado setOpen(false))
    ─ Siempre empieza abierto (useState(true))
 
-3. Bugfix: ddgs instalado en ai/.venv/
+3. TokenStatsBadge + MessageStats (SISTEMA NUEVO):
+   ─ src/components/chat/MessageActions.tsx — TokenStatsBadge (~120 líneas)
+   ─ crates/geonexus-core/src/chat.rs — MessageStats struct (8 campos)
+   ─ crates/geonexus-tauri/src/commands/chat/send_message.rs
+     — extract_message_stats(), model_context_window()
+   ─ crates/geonexus-db/src/chat_repo.rs — stats columns en insert/read
+   ─ crates/geonexus-db/migrations/20260610000006_message_stats.sql
+     — 8 columnas nuevas en messages
+
+4. ThinkingInline en AssistantMessage:
+   ─ Ahora siempre se renderiza en mensajes completados (modo "done")
+   ─ ThinkingCard.tsx existe como variante alternativa con ProgressBar
+
+5. ConversationSidebarList.tsx (NUEVO):
+   ─ Sidebar compacta con modo collapsed/expandido
+   ─ ConversationList.tsx sigue existiendo como variante legacy
+
+6. Bugfix: ddgs instalado en ai/.venv/
    ─ El Rust usaba ai/.venv/Scripts/python.exe que no tenía el paquete ddgs
    ─ La búsqueda web devolvía 0 resultados aunque python global sí funcionara
    ─ Ahora pip install ddgs en ese venv
+
+7. Bugfix: research_sources ahora es snake_case en frontend types
+   ─ Antes: researchSources (camelCase) → desincronizado con Rust
+   ─ Ahora: research_sources (snake_case) → coincide con serialización Rust
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -788,16 +944,10 @@ ChatTranscript renderiza:
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 SERDE: El Rust Message struct NO tiene #[serde(rename_all = "camelCase")].
-  Los campos se serializan en snake_case. El frontend SendMessageResponse
-  también usa snake_case (research_sources), pero el frontend Message type
-  usa researchSources (camelCase). Esto funciona porque:
-  ─ Para web search: el hook usa response.research_sources (top-level)
-    y lo mapea explícitamente a researchSources en el placeholder.
-  ─ Para mensajes históricos (listMessages): el Message de Rust se serializa
-    como research_sources pero el frontend espera researchSources.
-    Si se carga historial, message.researchSources será undefined.
-    → Esto es un bug conocido pero no crítico (los mensajes históricos
-      con web search no muestran el panel de fuentes).
+  Los campos se serializan en snake_case. El frontend Message type ahora
+  también usa snake_case (research_sources, stats, etc.), por lo que NO
+  hay desincronización — el bug previo de camelCase vs snake_case está
+  corregido tanto en frontend types como en API layer.
 
 PYTHON VENV: El Rust busca Python en este orden:
   1. ai/.venv/Scripts/python.exe
@@ -817,6 +967,17 @@ DEPENDENCIAS PYTHON DEL CHAT:
 TOOL-CALLING LOOP: El LLM puede llamar herramientas (read_file, search_code,
   list_directory, glob_files) hasta 10 veces en una sola interacción. Cada
   iteración ejecuta el sidecar Python con chat_llm.
+  ─ El sidecar devuelve usage (input_tokens, output_tokens) en cada turno.
+  ─ extract_message_stats() consolida el usage del último turno (el del
+    mensaje final) como las stats oficiales del assistant message.
+
+MESSAGE STATS: Sistema de seguimiento de rendimiento
+  ─ Flujo: sidecar → usage → extract_message_stats → Message struct → DB
+  ─ Se persisten 8 columnas en messages (input_tokens, output_tokens,
+    total_tokens, duration_ms, tokens_per_second, cost_usd,
+    context_window, context_used_pct)
+  ─ model_context_window() mapea modelos conocidos a su ventana de contexto
+  ─ cost_usd se calcula aprox. según modelo (no hay API real de costos)
 
 ESTADOS POSIBLES DEL CHAT:
   ─ Normal: messages.length > 0, !pending
@@ -828,10 +989,133 @@ ESTADOS POSIBLES DEL CHAT:
 
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║              14. INVENTARIO COMPLETO DE ARCHIVOS (35)                       ║
+║              15. MEJORAS UI APLICADAS (2026-06-10)                         ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
-FRONTEND (19 archivos):
+NOTA: Se analizó un plan de mejoras visuales contra el código real.
+      Varias afirmaciones del plan eran incorrectas; solo se aplicaron
+      mejoras reales. A continuación el análisis y cambios aplicados.
+
+────────────────────────────────────────────────────────────────────────────────
+15a. DeepResearchPanel.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+PLAN DECÍA: "Links no abren — solo el ícono ExternalLink es clickeable"
+REALIDAD:   ❌ FALSO — la fila entera es un <button> con onClick que llama
+            a openUrl() (línea 79-87 del original). El ExternalLink es solo
+            un indicador visual hover. El área de toque siempre fue la tarjeta
+            completa. NO HUBO BUG QUE CORREGIR.
+
+CAMBIO REAL APLICADO:
+  ─ Header mejorado: CheckCircle2 verde cuando completado (antes Globe genérico)
+  ─ "Deep Research" en semibold + separador · + estado con color distinto
+    (buscando→azul, completado→esmeralda)
+  ─ elapsedSeconds con clase tabular-nums para ancho fijo de dígitos
+  ─ Tarjetas de fuente: padding 2→2.5, hover bg-accent/50 (vs bg-muted/40),
+    borde sutil hover:border-border/60, texto semibold+leading-snug
+  ─ ExternalLink más grande (h-3→h-3.5) y sin hover opacity (ya en 0→100)
+
+NO SE APLICÓ:
+  ✗ "Wrapper con shadow-sm" — ya tiene border, no necesita más sombra
+  ✗ "ExternalLink siempre visible" — se deja en hover para no recargar visual
+
+FIX POST-REVISIÓN (v1→v2): safeOpenUrl() para desarrollo navegador
+  ─ Problema v1: safeOpenUrl() async con window.open() en catch/no-Tauri.
+    El popup blocker del navegador bloqueaba window.open() por perder el
+    contexto de gesto del usuario (llamada dentro de async después de await).
+  ─ Solución v2: safeOpenUrl() síncrona, NO async. Solo intercepta en Tauri
+    (e.preventDefault() + openUrl()). En browser no hace nada, deja que el
+    <a href={url} target="_blank" rel="noopener noreferrer"> nativo abra la URL.
+  ─ Cambio estructural: source row pasó de <button onClick> a <a href target=_blank>
+    → navegador abre sin restricciones de popup blocker
+    → Tauri: onClick intercepta con e.preventDefault() + openUrl() nativo
+
+────────────────────────────────────────────────────────────────────────────────
+15b. ThinkingInline.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+PLAN DECÍA: "Falta borde izquierdo de acento, se ve genérico, summary truncado"
+REALIDAD:   ⚠️ PARCIAL — ya tenía border-l border-border (línea 103 orig.),
+            pero era delgado y del color default. El summary sí se truncaba
+            a 380px con "..." — aspecto descuidado.
+
+CAMBIO REAL APLICADO:
+  ─ Borde izquierdo: absolute w-0.5 rounded-full bg-emerald-500/50 sobre
+    bg-muted/30 (vs border-l genérico)
+  ─ buildSummary() ahora acepta elapsed seconds y muestra:
+      activo → "Buscando documentos relevantes · 2.3s"
+      completo → "Razonamiento completado · 4.1s"
+      parcial → "3 de 4 pasos completados"
+  ─ elapsed tracking: useRef(Date.now) al montar, intervalo 200ms durante
+    active, se congela al isComplete=true
+  ─ Steps en font-mono text-[11px] (vs text-[13px] sans-serif)
+  ─ Icono header: Sparkles esmeralda cuando done (vs CheckCircle2)
+  ─ Sin truncate en el summary — ahora fluye naturalmente
+  ─ Separador NOTA: no se añadió separador en ThinkingInline; se maneja
+    visualmente con el borde izquierdo + bg-muted/30 que aíslan el bloque
+
+────────────────────────────────────────────────────────────────────────────────
+15c. MessageActions.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+PLAN DECÍA: "Botones pequeños, planos, sin tooltip, sin feedback visual"
+REALIDAD:   ⚠️ PARCIAL — ya tenían title nativo con tooltips de texto,
+            y CopyButton ya cambiaba a Check por 2s. Faltaba el contenedor
+            pill unificado, Tooltip de shadcn/ui, y animación scale.
+
+CAMBIO REAL APLICADO:
+  ─ CopyButton ahora envuelto en pill: <div> con bg-muted/70 border shadow-sm
+  ─ Tooltip de shadcn/ui (TooltipTrigger + TooltipContent) con side="top"
+  ─ Copy animación: check con scale-110 + transition-transform duration-150
+  ─ Botones unified: h-7 w-7 con rounded-md, hover:bg-accent, focus ring
+  ─ UserActions también en pill: mismo contenedor visual que CopyButton
+  ─ Separador visual entre botones (mx-0.5) en lugar de espacio simple
+
+NO SE APLICÓ:
+  ✗ "Pill separada para UserActions vs CopyButton" — se dejaron en pills
+    independientes para mantener la separación lógica (assistant vs user)
+
+────────────────────────────────────────────────────────────────────────────────
+15d. AssistantMessage.tsx
+────────────────────────────────────────────────────────────────────────────────
+
+PLAN DECÍA: "TokenStatsBadge abajo se ve perdido, falta separador"
+REALIDAD:   ✅ VÁLIDO — TokenStatsBadge estaba al final junto a CopyButton,
+            sin conexión visual con el header del mensaje.
+
+CAMBIO REAL APLICADO:
+  ─ TokenStatsBadge movido al header: junto al label "GeoNexus IA",
+    alineado a la derecha con flex justify-between
+  ─ Lógica condicional: si hay showResearch (DeepResearchPanel visible),
+    TokenStatsBadge se queda abajo (no compite con el panel de búsqueda)
+  ─ Si NO hay showResearch, TokenStatsBadge aparece arriba en el header
+    (respuestas normales sin búsqueda web)
+
+────────────────────────────────────────────────────────────────────────────────
+15e. Hover en botones (corrección post-revisión)
+────────────────────────────────────────────────────────────────────────────────
+
+PROBLEMA:  Los botones de copiar, editar y regenerar estaban siempre visibles
+           debajo de cada mensaje. El usuario reportó que deberían aparecer
+           solo al hacer hover (pasar el mouse), como es estándar en UIs de chat.
+
+CAMBIO APLICADO (versión final solicitada por usuario):
+  ─ Los iconos están siempre visibles (sin hover para mostrar/ocultar)
+  ─ Están FUERA de la burbuja, debajo con pt-0.5 de separación mínima
+  ─ No hay hover que los oculte — siempre a la vista
+  ─ MessageActions.tsx:
+      • CopyButton: sin pill contenedor, solo <button> directo con Tooltip
+      • UserActions: envuelto en <>, sin pill, botones directos
+      • Botones: p-1 rounded-md, hover:bg-muted/60 (solo hover de feedback)
+  ─ ChatTranscript.tsx (user messages): botones debajo del bubble, siempre vis
+  ─ AssistantMessage.tsx: botones debajo del contenido, siempre visibles
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║              16. INVENTARIO COMPLETO DE ARCHIVOS (37)                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+FRONTEND (20 archivos):
   src/components/chat/ChatPanel.tsx
   src/components/chat/ChatTranscript.tsx
   src/components/chat/AssistantMessage.tsx
@@ -842,6 +1126,7 @@ FRONTEND (19 archivos):
   src/components/chat/DeepResearchPanel.tsx
   src/components/chat/ActionSuggestions.tsx
   src/components/chat/ConversationList.tsx
+  src/components/chat/ConversationSidebarList.tsx     ← NO documentado antes
   src/components/chat/ModelHeaderPopover.tsx
   src/components/chat/ModelSelector.tsx
   src/components/chat/TypingDots.tsx
@@ -868,13 +1153,14 @@ RUST — CORE TYPES (1):
 RUST — DATABASE (1):
   crates/geonexus-db/src/chat_repo.rs
 
-SQL MIGRATIONS (6):
+SQL MIGRATIONS (7):                                                   ← 7 (era 6)
   crates/geonexus-db/migrations/20260607000000_init.sql
   crates/geonexus-db/migrations/20260607000001_phase3.sql
   crates/geonexus-db/migrations/20260607000002_phase4_containers_mcp.sql
   crates/geonexus-db/migrations/20260608000003_conversations.sql
   crates/geonexus-db/migrations/20260609000004_chat_sources_tool_log.sql
   crates/geonexus-db/migrations/20260609000005_web_search.sql
+  crates/geonexus-db/migrations/20260610000006_message_stats.sql     ← NO documentada
 
 PYTHON (2):
   ai/sidecar.py

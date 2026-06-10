@@ -104,11 +104,11 @@ export function ChatTranscript({
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 md:px-8">
       {messages.map((message, index) =>
         message.role === "user" ? (
-          <div key={message.id} className="flex flex-col items-end">
+          <div key={message.id} className="group flex flex-col items-end">
             <MessageBubble role="user">
               <p className="whitespace-pre-wrap">{message.content}</p>
             </MessageBubble>
-            <div className="flex items-center gap-0.5 mt-1.5">
+            <div className="flex items-center gap-0.5 pt-0.5">
               <CopyButton content={message.content} />
               {index === lastUserIndex && (
                 <UserActions
