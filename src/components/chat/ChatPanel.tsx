@@ -89,10 +89,15 @@ export function ChatPanel(_props: ChatPanelProps) {
     return true
   })
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
+  const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
 
   React.useEffect(() => {
     localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
   }, [sidebarOpen])
+
+  React.useEffect(() => {
+    setSidebarRefreshKey((k) => k + 1)
+  }, [conversationId])
 
   const sidebarWidth = sidebarOpen ? 220 : 44
   const [composerValue, setComposerValue] = React.useState("")
@@ -162,6 +167,7 @@ export function ChatPanel(_props: ChatPanelProps) {
         {/* Sidebar list */}
         <div className="flex-1 overflow-y-auto py-1.5 px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <ConversationSidebarList
+            key={sidebarRefreshKey}
             projectId={PROJECT_ID}
             activeId={conversationId}
             collapsed={!sidebarOpen}
