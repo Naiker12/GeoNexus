@@ -13,7 +13,12 @@ import type {
 import { defaultMetrics } from "@/features/workspace/data/data-data"
 import { invoke } from "@tauri-apps/api/core"
 
-const DEFAULT_PROJECT_ID = "project-default"
+export const DEFAULT_PROJECT_ID = "project-default"
+
+/** Detecta si estamos dentro del runtime Tauri o en navegador (v2) */
+export function isTauriAvailable(): boolean {
+  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
+}
 
 async function invokeOrFallback<T>(
   command: string,
@@ -42,12 +47,12 @@ export function listDataAssets(
   projectId = DEFAULT_PROJECT_ID
 ): Promise<DataAsset[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("list_data_assets", { project_id: projectId }, [])
+  return invokeOrFallback("list_data_assets", { projectId: projectId }, [])
 }
 
 export function getDataAsset(assetId: string): Promise<DataAsset | null> {
   if (!assetId.trim()) throw new Error("asset_id requerido")
-  return invokeOrFallback("get_data_asset", { asset_id: assetId }, null)
+  return invokeOrFallback("get_data_asset", { assetId: assetId }, null)
 }
 
 export function getDataStoreMetrics(
@@ -56,7 +61,7 @@ export function getDataStoreMetrics(
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invokeOrFallback(
     "get_data_store_metrics",
-    { project_id: projectId },
+    { projectId: projectId },
     defaultMetrics
   )
 }
@@ -66,7 +71,7 @@ export function getSyncEvents(
   limit = 50
 ): Promise<SyncEvent[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_sync_events", { project_id: projectId, limit }, [])
+  return invokeOrFallback("get_sync_events", { projectId: projectId, limit }, [])
 }
 
 export function validateDataAsset(assetId: string): Promise<AssetValidation> {
@@ -84,17 +89,17 @@ export function validateDataAsset(assetId: string): Promise<AssetValidation> {
     issues: ["Tauri no disponible — validación solo en app nativa"],
   }
 
-  return invokeOrFallback("validate_data_asset", { asset_id: assetId }, fallback)
+  return invokeOrFallback("validate_data_asset", { assetId: assetId }, fallback)
 }
 
 export function indexDocument(documentId: string): Promise<number> {
   if (!documentId.trim()) throw new Error("document_id requerido")
-  return invokeRequired<number>("index_document", { document_id: documentId })
+  return invokeRequired<number>("index_document", { documentId: documentId })
 }
 
 export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]> {
   if (!documentId.trim()) throw new Error("document_id requerido")
-  return invokeOrFallback<DocumentChunk[]>("list_document_chunks", { document_id: documentId }, [])
+  return invokeOrFallback<DocumentChunk[]>("list_document_chunks", { documentId: documentId }, [])
 }
 
 const fallbackNodes: GraphNode[] = [
@@ -119,7 +124,7 @@ const fallbackEdges: GraphEdge[] = [
 ]
 
 export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<GraphNode[]> {
-  const nodes = await invokeOrFallback<BackendGraphNode[] | null>("list_graph_nodes", { project_id: projectId }, null)
+  const nodes = await invokeOrFallback<BackendGraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
   if (nodes) {
     return nodes.map(n => ({
       id: n.id,
@@ -139,7 +144,7 @@ export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<Gr
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
-  const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { project_id: projectId }, null)
+  const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
   if (edges) {
     return edges.map(e => ({
       source: e.source,
@@ -152,9 +157,13 @@ export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<Gr
 }
 
 export async function rebuildKnowledgeGraph(projectId = DEFAULT_PROJECT_ID): Promise<void> {
-  await invokeOrFallback("rebuild_knowledge_graph", { project_id: projectId }, undefined)
+  await invokeOrFallback("rebuild_knowledge_graph", { projectId: projectId }, undefined)
 }
 
 export async function updateNodePosition(nodeId: string, x: number, y: number): Promise<void> {
   await invokeOrFallback("update_node_position", { nodeId, x, y }, undefined)
+}
+
+export async function seedDemoData(): Promise<void> {
+  await invokeRequired("seed_demo_data", {})
 }

@@ -1,7 +1,11 @@
+import { useState } from "react"
 import {
   BrainCircuitIcon,
+  CheckIcon,
+  ExternalLinkIcon,
   FileSearchIcon,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/Button"
 import {
@@ -26,10 +30,35 @@ type AssetSheetProps = {
   asset?: DataAsset
   open: boolean
   onOpenChange: (open: boolean) => void
+  onRefresh: () => void
 }
 
-export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
+export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetProps) {
+  const [attached, setAttached] = useState(false)
+
   if (!asset) return <Sheet open={open} onOpenChange={onOpenChange} />
+
+  const a = asset
+
+  function handleVerFuente() {
+    if (a.location.startsWith("http://") || a.location.startsWith("https://")) {
+      window.open(a.location, "_blank")
+    } else {
+      toast.success(`Ruta local: ${a.location}`, {
+        description: "La apertura local requiere integración con el explorador de archivos.",
+      })
+    }
+  }
+
+  function handleUsarEnIA() {
+    setAttached((prev) => !prev)
+    if (!attached) {
+      toast.success("Asset adjuntado al contexto de la próxima consulta")
+    } else {
+      toast.success("Asset removido del contexto")
+    }
+    onRefresh()
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -86,13 +115,17 @@ export function AssetSheet({ asset, open, onOpenChange }: AssetSheetProps) {
 
         <SheetFooter className="border-t border-border bg-card/95 p-3">
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleVerFuente}>
               <FileSearchIcon className="size-4" />
               Ver fuente
             </Button>
-            <Button size="sm">
-              <BrainCircuitIcon className="size-4" />
-              Usar en IA
+            <Button size="sm" onClick={handleUsarEnIA}>
+              {attached ? (
+                <CheckIcon className="size-4" />
+              ) : (
+                <BrainCircuitIcon className="size-4" />
+              )}
+              {attached ? "En contexto ✓" : "Usar en IA"}
             </Button>
           </div>
         </SheetFooter>

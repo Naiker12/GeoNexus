@@ -1,11 +1,14 @@
+import { useState } from "react"
 import {
   GitBranchIcon,
   HardDriveIcon,
+  Loader2Icon,
   RefreshCwIcon,
   WorkflowIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { cn } from "@/lib/utils"
 import { EventStatusBadge, Metric } from "@/features/workspace/data/DataUi"
 import {
   formatBytes,
@@ -74,7 +77,23 @@ export function StoresPanel({ metrics }: { metrics: DataStoreMetrics }) {
   )
 }
 
-export function SyncPanel({ events }: { events: SyncEvent[] }) {
+export function SyncPanel({
+  events,
+  isLoading,
+  onRefresh,
+}: {
+  events: SyncEvent[]
+  isLoading: boolean
+  onRefresh: () => Promise<void> | void
+}) {
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await onRefresh()
+    setRefreshing(false)
+  }
+
   return (
     <section className="rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -82,27 +101,53 @@ export function SyncPanel({ events }: { events: SyncEvent[] }) {
           <WorkflowIcon className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Sync y eventos</h2>
         </div>
-        <Button variant="ghost" size="icon-xs" aria-label="Actualizar eventos">
-          <RefreshCwIcon className="size-3.5" />
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Actualizar eventos"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCwIcon className={cn("size-3.5", refreshing && "animate-spin")} />
         </Button>
       </div>
       <div className="grid gap-2">
-        {events.map((event) => (
-          <SyncEventRow key={event.id} event={event} />
-        ))}
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-md border border-border bg-background/75 p-2.5"
+            >
+              <div className="h-4 w-28 animate-pulse rounded bg-muted/60" />
+              <div className="mt-2 h-3 w-48 animate-pulse rounded bg-muted/60" />
+              <div className="mt-2 h-3 w-20 animate-pulse rounded bg-muted/60" />
+            </div>
+          ))
+        ) : events.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-6 text-center">
+            <WorkflowIcon className="size-8 text-muted-foreground/50" />
+            <p className="text-sm font-medium">Sin eventos de sincronización</p>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Los eventos aparecen cuando se conecta o actualiza una fuente de
+              datos.
+            </p>
+          </div>
+        ) : (
+          events.map((event) => <SyncEventRow key={event.id} event={event} />)
+        )}
       </div>
     </section>
   )
 }
 
-export function LineagePanel() {
+export function LineagePanel({ metrics }: { metrics: DataStoreMetrics }) {
   const steps = [
-    "Conector",
-    "Cache",
-    "Indexador",
-    "ChromaDB",
-    "Knowledge Graph",
-    "GeoNexus IA",
+    { name: "Conector", active: metrics.total_assets > 0 },
+    { name: "Cache", active: (metrics.cache_size_bytes ?? 0) > 0 },
+    { name: "Indexador", active: metrics.total_chunks > 0 },
+    { name: "ChromaDB", active: metrics.total_embeddings > 0 },
+    { name: "Knowledge Graph", active: metrics.total_graph_nodes > 0 },
+    { name: "GeoNexus IA", active: true },
   ]
 
   return (
@@ -114,13 +159,25 @@ export function LineagePanel() {
       <div className="grid gap-2 md:grid-cols-6">
         {steps.map((step, index) => (
           <div
-            key={step}
-            className="rounded-md border border-border bg-background/75 px-2.5 py-2"
+            key={step.name}
+            className={cn(
+              "rounded-md border px-2.5 py-2",
+              step.active
+                ? "border-primary/30 bg-primary/5"
+                : "border-border bg-background/75"
+            )}
           >
             <p className="text-[0.68rem] text-muted-foreground">
               Paso {index + 1}
             </p>
-            <p className="mt-0.5 truncate text-sm font-medium">{step}</p>
+            <p
+              className={cn(
+                "mt-0.5 truncate text-sm font-medium",
+                step.active ? "text-primary" : "text-muted-foreground/60"
+              )}
+            >
+              {step.name}
+            </p>
           </div>
         ))}
       </div>

@@ -61,11 +61,11 @@ export function useChatSession(
   const { toast } = useToast()
   const [messages, setMessages] = React.useState<Message[]>([])
   const [conversationId, setConversationId] = React.useState<string | null>(
-    () => loadConversationId()
+    null
   )
   const [pending, setPending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [loadingHistory, setLoadingHistory] = React.useState(() => loadConversationId() !== null)
+  const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [contextToggles, setContextToggles] =
     React.useState<ContextToggle>(DEFAULT_TOGGLES)
   const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(
@@ -75,6 +75,10 @@ export function useChatSession(
   React.useEffect(() => {
     saveConversationId(conversationId)
   }, [conversationId])
+
+  React.useEffect(() => {
+    saveConversationId(null)
+  }, [])
 
   React.useEffect(() => {
     saveWebSearchEnabled(webSearchEnabled)
@@ -112,12 +116,7 @@ export function useChatSession(
     }
   }, [])
 
-  React.useEffect(() => {
-    const saved = loadConversationId()
-    if (saved) {
-      loadConversation(saved)
-    }
-  }, [])
+
 
   const newConversation = React.useCallback(() => {
     if (researchTimerId) {

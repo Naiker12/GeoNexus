@@ -151,6 +151,167 @@ impl DataRepository {
         Ok(())
     }
 
+    /// Inserta datos de demostración para ver la UI con contenido real.
+    pub async fn seed_demo_data(&self) -> Result<(), String> {
+        let now = Self::unix_now();
+        let pid = "project-default";
+
+        // 3 activos de demostración
+        let demo_assets = vec![
+            DataAsset {
+                id: "asset-pot-2024".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                name: "Plan de Ordenamiento Territorial 2024".into(),
+                kind: AssetKind::Document,
+                source: "local".into(),
+                location: "/data/pot-2024.pdf".into(),
+                agent_id: None,
+                connector_id: Some("connector-demo".into()),
+                status: AssetStatus::Ready,
+                size_bytes: Some(2_450_000),
+                chunks: 24,
+                embeddings: 24,
+                graph_nodes: 3,
+                cache_state: CacheState::Cached,
+                trace_id: Some("trace-pot".into()),
+                created_at: now - 86400,
+                updated_at: now - 3600,
+            },
+            DataAsset {
+                id: "asset-ley-388".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                name: "Ley 388 de 1997".into(),
+                kind: AssetKind::Document,
+                source: "local".into(),
+                location: "/data/ley-388.pdf".into(),
+                agent_id: None,
+                connector_id: Some("connector-demo".into()),
+                status: AssetStatus::Ready,
+                size_bytes: Some(890_000),
+                chunks: 12,
+                embeddings: 12,
+                graph_nodes: 2,
+                cache_state: CacheState::Cached,
+                trace_id: Some("trace-ley388".into()),
+                created_at: now - 172800,
+                updated_at: now - 7200,
+            },
+            DataAsset {
+                id: "asset-estratificacion".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                name: "Estratificación por manzanas 2025".into(),
+                kind: AssetKind::Layer,
+                source: "local".into(),
+                location: "/data/estratificacion.geojson".into(),
+                agent_id: None,
+                connector_id: Some("connector-demo".into()),
+                status: AssetStatus::Pending,
+                size_bytes: Some(320_000),
+                chunks: 0,
+                embeddings: 0,
+                graph_nodes: 1,
+                cache_state: CacheState::None,
+                trace_id: None,
+                created_at: now - 300,
+                updated_at: now - 300,
+            },
+        ];
+
+        for asset in &demo_assets {
+            self.upsert_data_asset(asset).await?;
+        }
+
+        // Eventos de sincronización de demostración
+        let demo_events = vec![
+            SyncEvent {
+                id: "evt-discover-1".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                connector_id: Some("connector-demo".into()),
+                asset_id: None,
+                agent_id: None,
+                event_type: SyncEventType::Discovered,
+                detail: Some("12 archivos descubiertos en carpeta POT 2024".into()),
+                trace_id: Some("trace-pot".into()),
+                created_at: now - 86400,
+            },
+            SyncEvent {
+                id: "evt-index-1".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                connector_id: Some("connector-demo".into()),
+                asset_id: Some("asset-pot-2024".into()),
+                agent_id: Some("agent-indexer".into()),
+                event_type: SyncEventType::Indexed,
+                detail: Some("Indexado: Plan de Ordenamiento Territorial 2024 — 24 chunks".into()),
+                trace_id: Some("trace-pot".into()),
+                created_at: now - 3600,
+            },
+            SyncEvent {
+                id: "evt-embed-1".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                connector_id: Some("connector-demo".into()),
+                asset_id: Some("asset-pot-2024".into()),
+                agent_id: Some("agent-embedder".into()),
+                event_type: SyncEventType::Embedded,
+                detail: Some("24 embeddings generados para POT 2024".into()),
+                trace_id: Some("trace-pot".into()),
+                created_at: now - 3500,
+            },
+            SyncEvent {
+                id: "evt-graph-1".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                connector_id: Some("connector-demo".into()),
+                asset_id: Some("asset-pot-2024".into()),
+                agent_id: Some("agent-graph".into()),
+                event_type: SyncEventType::GraphLinked,
+                detail: Some("3 nodos enlazados al grafo de conocimiento".into()),
+                trace_id: Some("trace-pot".into()),
+                created_at: now - 3400,
+            },
+            SyncEvent {
+                id: "evt-error-1".into(),
+                project_id: pid.into(),
+                workspace_id: Some("workspace-main".into()),
+                connector_id: None,
+                asset_id: Some("asset-estratificacion".into()),
+                agent_id: None,
+                event_type: SyncEventType::Error,
+                detail: Some("Formato no soportado para indexación automática".into()),
+                trace_id: Some("trace-error".into()),
+                created_at: now - 300,
+            },
+        ];
+
+        for event in &demo_events {
+            sqlx::query(
+                "INSERT INTO sync_events (id, project_id, workspace_id, connector_id, asset_id, agent_id, event_type, detail, trace_id, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(id) DO NOTHING"
+            )
+            .bind(&event.id)
+            .bind(&event.project_id)
+            .bind(&event.workspace_id)
+            .bind(&event.connector_id)
+            .bind(&event.asset_id)
+            .bind(&event.agent_id)
+            .bind(to_str(&event.event_type))
+            .bind(&event.detail)
+            .bind(&event.trace_id)
+            .bind(event.created_at)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error insertando evento demo: {e}"))?;
+        }
+
+        Ok(())
+    }
+
     fn unix_now() -> i64 {
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -197,32 +358,90 @@ impl DataRepository {
     }
 
     /// Obtiene métricas agregadas para el proyecto.
+    /// Consulta las tablas reales (document_chunks, graph_nodes) en vez de solo
+    /// los contadores de la tabla assets, para reflejar datos aunque no haya assets.
     pub async fn get_data_store_metrics(&self, project_id: &str) -> Result<DataStoreMetrics, String> {
         if project_id.trim().is_empty() {
             return Err("project_id requerido".into());
         }
 
-        let assets = self.list_data_assets(project_id).await?;
+        let pool = &self.pool;
+
+        // Assets — conteo directo con filtro por estado
+        let total_assets: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM assets WHERE project_id = ?"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        let assets_ready: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM assets WHERE project_id = ? AND status = 'ready'"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        let assets_error: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM assets WHERE project_id = ? AND status = 'error'"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        // Chunks reales en document_chunks (JOIN con assets por project_id)
+        let total_chunks: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM document_chunks
+             WHERE asset_id IN (SELECT id FROM assets WHERE project_id = ?)"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        // Embeddings — se usa SUM de la columna contador de assets
+        // (no hay tabla de embeddings independiente)
+        let total_embeddings: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(embeddings), 0) FROM assets WHERE project_id = ?"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        // Nodos del grafo — consulta directa a graph_nodes
+        let total_graph_nodes: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_nodes WHERE project_id = ?"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        // Cache — suma de size_bytes de assets
+        let cache_size_bytes: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(size_bytes), 0) FROM assets WHERE project_id = ?"
+        )
+            .bind(project_id)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0);
+
+        let assets_pending = total_assets - assets_ready - assets_error;
 
         Ok(DataStoreMetrics {
             project_id: project_id.to_string(),
-            total_assets: assets.len() as i64,
-            assets_ready: assets
-                .iter()
-                .filter(|a| a.status == AssetStatus::Ready)
-                .count() as i64,
-            assets_pending: assets
-                .iter()
-                .filter(|a| a.status == AssetStatus::Pending || a.status == AssetStatus::Indexing)
-                .count() as i64,
-            assets_error: assets
-                .iter()
-                .filter(|a| a.status == AssetStatus::Error)
-                .count() as i64,
-            total_chunks: assets.iter().map(|a| a.chunks).sum(),
-            total_embeddings: assets.iter().map(|a| a.embeddings).sum(),
-            total_graph_nodes: assets.iter().map(|a| a.graph_nodes).sum(),
-            cache_size_bytes: assets.iter().filter_map(|a| a.size_bytes).sum(),
+            total_assets,
+            assets_ready,
+            assets_pending,
+            assets_error,
+            total_chunks,
+            total_embeddings,
+            total_graph_nodes,
+            cache_size_bytes,
         })
     }
 

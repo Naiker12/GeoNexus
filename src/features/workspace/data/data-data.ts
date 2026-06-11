@@ -45,10 +45,16 @@ export function formatBytes(bytes: number | null): string {
   return `${size.toFixed(1)} ${units[i]}`
 }
 
+/** Si el timestamp está en milisegundos (> 1e12), pasa a segundos */
+function toSeconds(ts: number): number {
+  return ts > 1e12 ? Math.floor(ts / 1000) : ts
+}
+
 export function formatRelativeTime(epochSecs: number): string {
   if (!epochSecs) return "-"
+  const secs = toSeconds(epochSecs)
   const now = Math.floor(Date.now() / 1000)
-  const diff = now - epochSecs
+  const diff = now - secs
   if (diff < 60) return "Ahora"
   if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`

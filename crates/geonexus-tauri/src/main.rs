@@ -41,6 +41,7 @@ fn main() {
             commands::data::get_data_store_metrics,
             commands::data::get_sync_events,
             commands::data::validate_data_asset,
+            commands::data::seed_demo_data,
             // Fase 2
             commands::connector::register_local_connector,
             commands::connector::list_connector_files,

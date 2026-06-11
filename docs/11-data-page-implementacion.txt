@@ -1,0 +1,178 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   DATA PAGE — ESTADO DE IMPLEMENTACIÓN                         ║
+║   Página "Centro de datos": componentes, API, bugs            ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   1. ESTRUCTURA (DataPage.tsx)
+      ✅ Layout responsive con 2 columnas en xl
+      ✅ Error handling: Promise.allSettled + banner de error con Reintentar
+      ✅ loadData callback reutilizable para refresh
+      ✅ isLoading state propagado a hijos
+      ✅ Filtro memoizado con useMemo
+      ✅ Detección de runtime Tauri v2 (isTauriAvailable → window.__TAURI_INTERNALS__)
+      ✅ Banner ámbar si no hay runtime Tauri
+      ✅ Pasa DEFAULT_PROJECT_ID a todas las APIs
+
+   2. DataHeader.tsx
+      ✅ Título "Centro de datos" con subtítulo
+      ✅ 5 métricas con skeleton mientras isLoading
+      ✅ Botón "Reindexar" con Dialog confirmación + loading state
+      ✅ Botón "Validar datos" con Dialog resultados por store
+      ✅ 7 nodos de grafo visibles aunque no haya assets (fix backend)
+
+   3. AssetCatalog.tsx
+      ✅ Search con debounce 200ms
+      ✅ Loading skeleton (5 filas animadas)
+      ✅ Empty state: "Sin assets indexados" con icono DB
+      ✅ Empty search results: "Sin resultados para X"
+      ✅ Sort selector: Nombre, Chunks, Estado, Reciente
+      ✅ Paginación 20 items con Anterior/Siguiente
+      ✅ Contador "X–Y de Z assets"
+
+   4. AssetSheet.tsx
+      ✅ Sheet slide-over con detalle completo del asset
+      ✅ Botón "Ver fuente": abre URL o muestra ruta local
+      ✅ Botón "Usar en IA": toggle attach/detach con toast
+      ✅ onRefresh callback global
+
+   5. DataPanels.tsx
+      ✅ StoresPanel: 4 stores con valores dinámicos
+      ✅ SyncPanel: refresh funcional con spinner
+      ✅ Empty state "Sin eventos de sincronización"
+      ✅ Skeleton loading (3 filas)
+      ✅ LineagePanel coloreado según metrics reales
+      ✅ Timestamps con formatRelativeTime defensivo
+
+   6. DataUi.tsx
+      ✅ Metric, Info, AssetStatusBadge, EventStatusBadge
+      ✅ Soporte dark theme (.geo-dark, .graphite, .midnight)
+
+   7. data-data.ts
+      ✅ formatRelativeTime con defensa contra milisegundos
+      ✅ Fallbacks vacíos para assets, metrics, events
+
+   8. DATA FLOW
+      ✅ Error handling con Promise.allSettled
+      ✅ onRefresh callback para recarga manual
+      ✅ Tauri v2 detection con window.__TAURI_INTERNALS__
+      ✅ Parametros camelCase desde JS (Tauri v2 convierte a snake_case en Rust)
+      ✅ isTauriAvailable() chequea runtime antes de llamar APIs
+
+   9. BUGS RESUELTOS
+      B1  ✅ Reindexar/Validar/Sync refresh/Ver fuente/Usar en IA
+      B2  ✅ Skeletons Header, Catalog (5 rows), SyncPanel (3 items)
+      B3  ✅ Error handling Promise.allSettled + banner + Reintentar
+      B4  ✅ Empty states: Catalog vacío, sin resultados, SyncPanel
+      B5  ✅ Paginación 20 items en Catalog
+      B6  ✅ Debounce 200ms en search
+      B7  ✅ Memoize filtro + sort
+      B8  ✅ Tauri detection: __TAURI_INTERNALS__ (v2)
+      B9  ✅ LineagePanel coloreado con metrics
+      B10 ✅ DataPage pasa project_id directo
+      B11 ✅ PARAM NAMING: snake_case→camelCase en data.ts (project_id→projectId, etc)
+      B12 ✅ METRICS QUERY: get_data_store_metrics consulta tablas reales (graph_nodes, document_chunks)
+      B13 ✅ CONNECTOR: connector.ts usaba window.__TAURI__ (v1, inexistente en v2) → import invoke
+      B14 ✅ CONNECTOR PARAMS: snake_case→camelCase en connector.ts
+      B15 ✅ CHAT: auto-load de última conversación eliminado, arranca nuevo y vacío
+
+   10. PENDIENTE
+        DataHealthBadge en header (medium)
+        URL state para query/selectedAsset (low)
+        RecentIndexingLog componente (low)
+        Scrolling infinito SyncPanel (low)
+        AddConnectorDialog + pick_folder (medium - requiere tauri-plugin-dialog)
+
+   11. ARCHIVOS MODIFICADOS
+        Frontend:
+          DataPage.tsx — error handling, isLoading, loadData, tauriOk, banner
+          DataHeader.tsx — skeletons, dialogs, onRefresh
+          AssetCatalog.tsx — debounce, skeleton, empty states, sort, pagination
+          AssetSheet.tsx — Ver fuente, Usar en IA, onRefresh
+          DataPanels.tsx — Sync refresh, empty state, skeleton, Lineage colors
+          data-data.ts — timestamp defensive fix, formatRelativeTime
+          src/api/data.ts — camelCase params, isTauriAvailable(), DEFAULT_PROJECT_ID
+          src/api/connector.ts — Tauri v2 invoke import, camelCase params
+          src/components/chat/useChatSession.ts — sin auto-load, arranca vacío
+
+        Backend (Rust):
+
+          CRATES/CORE — Modelos y lógica de dominio
+          crates/geonexus-core/src/lib.rs
+            DataAsset, DataStoreMetrics, SyncEvent, GraphNode, GraphEdge,
+            AssetStatus, CacheState — structs compartidos frontend/backend
+
+          CRATES/DB — Repositorios SQLite
+          crates/geonexus-db/src/lib.rs
+            Punto de entrada, re-exporta DataRepository
+          crates/geonexus-db/src/data_repo.rs
+            seed_if_empty (workspace + graph_nodes seed), list_data_assets,
+            get_data_asset, get_data_store_metrics (consulta directa a tablas
+            reales), get_sync_events, validate_data_asset, index_document
+          crates/geonexus-db/src/connector_repo.rs
+            CRUD de conectores locales/cloud
+          crates/geonexus-db/src/analysis_repo.rs
+            Métricas de uso, tokens, modelos, costos, queries top
+          crates/geonexus-db/src/chat_repo.rs
+            Conversaciones, mensajes, recall de chunks
+
+          CRATES/TAURI — Capa IPC (commands expuestos al frontend)
+          crates/geonexus-tauri/src/main.rs
+            setup DB, register handlers, generate_handler![]
+          crates/geonexus-tauri/src/commands/mod.rs
+            Re-exporta todos los módulos de commands
+          crates/geonexus-tauri/src/commands/data.rs
+            list_data_assets, get_data_asset, get_data_store_metrics,
+            get_sync_events, validate_data_asset
+          crates/geonexus-tauri/src/commands/document.rs
+            index_document, list_document_chunks, list_graph_nodes,
+            list_graph_edges, rebuild_knowledge_graph, update_node_position
+          crates/geonexus-tauri/src/commands/connector.rs
+            register_local_connector, list_connector_files,
+            cache_connector_file, sync_local_connector
+          crates/geonexus-tauri/src/commands/analysis.rs
+            get_analysis_metrics, get_token_timeline, get_model_usage,
+            list_analysis_runs, get_skill_usage, export_analysis_traces,
+            get_cost_by_timeframe, get_top_queries
+          crates/geonexus-tauri/src/commands/llm.rs
+            ping_llm_provider, list_llm_models, send_llm_message
+          crates/geonexus-tauri/src/commands/chat/
+            send_message, delete_conversation, list_conversations,
+            list_messages, recall_chunks, get_project_context
+          crates/geonexus-tauri/src/commands/containers_mcp.rs
+            init_containers_mcp, dispatch_container_tool
+
+          MIGRATIONS — Schema SQL
+          crates/geonexus-db/migrations/20260607000000_init.sql
+            Tablas: workspaces, assets, connector_configs, connector_files,
+            sync_events
+          crates/geonexus-db/migrations/20260607000001_phase3.sql
+            Tablas: document_chunks, graph_nodes, graph_edges
+          crates/geonexus-db/migrations/20260607000002_phase4_containers_mcp.sql
+            Tabla: container_mcp_calls
+          crates/geonexus-db/migrations/20260608000003_conversations.sql
+            Tablas: conversations, messages
+          crates/geonexus-db/migrations/20260609000004_chat_sources_tool_log.sql
+            ALTER + chat_tool_calls
+          crates/geonexus-db/migrations/20260609000005_web_search.sql
+            ALTER para web search en messages
+          crates/geonexus-db/migrations/20260610000006_message_stats.sql
+            ALTER para stats en messages
+          crates/geonexus-db/migrations/20260610000007_analysis_sessions.sql
+            Tabla: analysis_sessions
+
+   12. SEED DEMO DATA — Botón en empty state
+        ✅ Rust command seed_demo_data en data_repo.rs
+        ✅ Registrado en generate_handler como commands::data::seed_demo_data
+        ✅ Crea 3 assets demo (2 ready, 1 pending) + 5 sync_events
+        ✅ Frontend: seedDemoData() en src/api/data.ts
+        ✅ Botón "Cargar datos de demostración" en AssetCatalog empty state
+        ✅ Toast "Datos de demostración cargados" + refresh automático
+        ✅ Toast "Centro de datos vacío" si no hay assets al cargar
+
+   13. CHAT — COMPORTAMIENTO ACTUAL
+        ✅ Default route: #chat (no cambia)
+        ✅ Arranca nuevo y vacío (conversationId = null al montar)
+        ✅ localStorage "geonexus.activeConversationId" se limpia al montar
+        ✅ No carga ninguna conversación previa automáticamente
+        ✅ Al enviar primer mensaje, se crea nueva conversación
+        ⚠ La persistencia de sidebarOpen en ChatPanel sigue activa (intencional)

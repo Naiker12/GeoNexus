@@ -58,3 +58,10 @@ pub async fn validate_data_asset(
     }
     state.repo.validate_data_asset(&asset_id).await
 }
+
+#[tauri::command]
+pub async fn seed_demo_data(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.repo.seed_demo_data().await
+}
