@@ -98,8 +98,8 @@ impl DataRepository {
             ];
             for (id, name, kind, description, evidence, x, y, weight) in &nodes {
                 sqlx::query(
-                    "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at, source_event, event_id, icon, is_ephemeral)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                      ON CONFLICT(id) DO NOTHING"
                 )
                 .bind(id)
@@ -113,6 +113,10 @@ impl DataRepository {
                 .bind(y)
                 .bind(weight)
                 .bind(now)
+                .bind("")
+                .bind("")
+                .bind("")
+                .bind(false)
                 .execute(&self.pool)
                 .await
                 .map_err(|e| format!("Error sembrando nodo {id}: {e}"))?;
@@ -164,7 +168,7 @@ impl DataRepository {
                 workspace_id: Some("workspace-main".into()),
                 name: "Plan de Ordenamiento Territorial 2024".into(),
                 kind: AssetKind::Document,
-                source: "local".into(),
+                source: "demo".into(),
                 location: "/data/pot-2024.pdf".into(),
                 agent_id: None,
                 connector_id: Some("connector-demo".into()),
@@ -184,7 +188,7 @@ impl DataRepository {
                 workspace_id: Some("workspace-main".into()),
                 name: "Ley 388 de 1997".into(),
                 kind: AssetKind::Document,
-                source: "local".into(),
+                source: "demo".into(),
                 location: "/data/ley-388.pdf".into(),
                 agent_id: None,
                 connector_id: Some("connector-demo".into()),
@@ -204,7 +208,7 @@ impl DataRepository {
                 workspace_id: Some("workspace-main".into()),
                 name: "Estratificación por manzanas 2025".into(),
                 kind: AssetKind::Layer,
-                source: "local".into(),
+                source: "demo".into(),
                 location: "/data/estratificacion.geojson".into(),
                 agent_id: None,
                 connector_id: Some("connector-demo".into()),
@@ -668,14 +672,18 @@ impl DataRepository {
     pub async fn insert_graph_nodes(&self, nodes: &[GraphNode]) -> Result<(), String> {
         for node in nodes {
             sqlx::query(
-                "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at, source_event, event_id, icon, is_ephemeral)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  ON CONFLICT(id) DO UPDATE SET
-                    name        = excluded.name,
-                    kind        = excluded.kind,
-                    description = excluded.description,
-                    evidence    = excluded.evidence,
-                    weight      = MAX(graph_nodes.weight, excluded.weight)"
+                    name         = excluded.name,
+                    kind         = excluded.kind,
+                    description  = excluded.description,
+                    evidence     = excluded.evidence,
+                    weight       = MAX(graph_nodes.weight, excluded.weight),
+                    source_event = excluded.source_event,
+                    event_id     = excluded.event_id,
+                    icon         = excluded.icon,
+                    is_ephemeral = excluded.is_ephemeral"
             )
             .bind(&node.id)
             .bind(&node.project_id)
@@ -688,6 +696,10 @@ impl DataRepository {
             .bind(node.y)
             .bind(node.weight)
             .bind(node.created_at)
+            .bind(&node.source_event)
+            .bind(&node.event_id)
+            .bind(&node.icon)
+            .bind(node.is_ephemeral)
             .execute(&self.pool)
             .await
             .map_err(|e| format!("Error insertando nodo de grafo: {e}"))?;
@@ -864,6 +876,10 @@ fn row_to_node(row: &sqlx::sqlite::SqliteRow) -> Result<GraphNode, String> {
         y: row.get("y"),
         weight: row.get("weight"),
         created_at: row.get("created_at"),
+        source_event: row.get("source_event"),
+        event_id: row.get("event_id"),
+        icon: row.get("icon"),
+        is_ephemeral: row.get::<i64, _>("is_ephemeral") != 0,
     })
 }
 
@@ -974,6 +990,10 @@ mod tests {
                 y: 10.0,
                 weight: 1,
                 created_at: 100,
+                source_event: "".into(),
+                event_id: "".into(),
+                icon: "".into(),
+                is_ephemeral: false,
             },
             GraphNode {
                 id: "n2".into(),
@@ -987,6 +1007,10 @@ mod tests {
                 y: 20.0,
                 weight: 2,
                 created_at: 100,
+                source_event: "".into(),
+                event_id: "".into(),
+                icon: "".into(),
+                is_ephemeral: false,
             },
         ];
         repo.insert_graph_nodes(&nodes).await.unwrap();

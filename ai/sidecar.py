@@ -97,9 +97,19 @@ def _index(args) -> None:
     _print(index_document_file(file_path=args.file, project_id=args.project_id, workspace_id=args.workspace_id, asset_id=args.asset_id))
 
 
+def _extract_shapefile(args) -> None:
+    from extractors.shapefile_extractor import shapefile_to_text_chunks
+    _print(shapefile_to_text_chunks(args.file))
+
+
+def _extract_keywords(args) -> None:
+    from recall.keyword_extractor import extract_keywords
+    _print(extract_keywords(args.query, max_keywords=args.top_k))
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="GeoNexus AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -131,6 +141,8 @@ def main() -> None:
         "extract_chat_entities": _extract_chat_entities,
         "extract_graph_entities": _extract_graph_entities,
         "index": _index,
+        "extract_shapefile": _extract_shapefile,
+        "extract_keywords": _extract_keywords,
     }
 
     handler = dispatch.get(args.action)

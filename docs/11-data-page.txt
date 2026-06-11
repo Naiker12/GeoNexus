@@ -1,0 +1,115 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   DATA PAGE — ESTADO ACTUAL                                     ║
+║   Página "Centro de datos": componentes, API, bugs             ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   1. ESTRUCTURA (DataPage.tsx)
+      ✅ Layout responsive con 2 columnas en xl
+      ✅ Error handling: Promise.allSettled + banner de error con Reintentar
+      ✅ loadData callback reutilizable para refresh
+      ✅ isLoading state propagado a hijos
+      ✅ Filtro memoizado con useMemo
+      ✅ Detección de runtime Tauri v2 (isTauriAvailable → window.__TAURI_INTERNALS__)
+      ✅ Banner ámbar si no hay runtime Tauri
+      ✅ Pasa DEFAULT_PROJECT_ID a todas las APIs
+
+   2. DataHeader.tsx
+      ✅ Título "Centro de datos" con subtítulo
+      ✅ 5 métricas con skeleton mientras isLoading
+      ✅ Botón "Reindexar" con Dialog confirmación + loading state
+      ✅ Botón "Validar datos" con Dialog resultados por store
+      ✅ 7 nodos de grafo visibles aunque no haya assets (fix backend)
+
+   3. AssetCatalog.tsx
+      ✅ Search con debounce 200ms
+      ✅ Loading skeleton (5 filas animadas)
+      ✅ Empty state: "Sin assets indexados" con icono DB
+      ✅ Empty search results: "Sin resultados para X"
+      ✅ Sort selector: Nombre, Chunks, Estado, Reciente
+      ✅ Paginación 20 items con Anterior/Siguiente
+      ✅ Contador "X–Y de Z assets"
+
+   4. AssetSheet.tsx
+      ✅ Sheet slide-over con detalle completo del asset
+      ✅ Botón "Ver fuente": abre URL o muestra ruta local
+      ✅ Botón "Usar en IA": toggle attach/detach con toast
+      ✅ onRefresh callback global
+
+   5. DataPanels.tsx
+      ✅ StoresPanel: 4 stores con valores dinámicos
+      ✅ SyncPanel: refresh funcional con spinner
+      ✅ Empty state "Sin eventos de sincronización"
+      ✅ Skeleton loading (3 filas)
+      ✅ LineagePanel coloreado según metrics reales
+      ✅ Timestamps con formatRelativeTime defensivo
+
+   6. DataUi.tsx
+      ✅ Metric, Info, AssetStatusBadge, EventStatusBadge
+      ✅ Soporte dark theme (.geo-dark, .graphite, .midnight)
+
+   7. data-data.ts
+      ✅ formatRelativeTime con defensa contra milisegundos
+      ✅ Fallbacks vacíos para assets, metrics, events
+
+   8. DATA FLOW
+      ✅ Error handling con Promise.allSettled
+      ✅ onRefresh callback para recarga manual
+      ✅ Tauri v2 detection con window.__TAURI_INTERNALS__
+      ✅ Parametros camelCase desde JS (Tauri v2 convierte a snake_case en Rust)
+      ✅ isTauriAvailable() chequea runtime antes de llamar APIs
+
+   9. BUGS RESUELTOS
+      B1  ✅ Reindexar/Validar/Sync refresh/Ver fuente/Usar en IA
+      B2  ✅ Skeletons Header, Catalog (5 rows), SyncPanel (3 items)
+      B3  ✅ Error handling Promise.allSettled + banner + Reintentar
+      B4  ✅ Empty states: Catalog vacío, sin resultados, SyncPanel
+      B5  ✅ Paginación 20 items en Catalog
+      B6  ✅ Debounce 200ms en search
+      B7  ✅ Memoize filtro + sort
+      B8  ✅ Tauri detection: __TAURI_INTERNALS__ (v2)
+      B9  ✅ LineagePanel coloreado con metrics
+      B10 ✅ DataPage pasa project_id directo
+      B11 ✅ PARAM NAMING: snake_case→camelCase en data.ts (project_id→projectId, etc)
+      B12 ✅ METRICS QUERY: get_data_store_metrics consulta tablas reales (graph_nodes, document_chunks)
+      B13 ✅ CONNECTOR: connector.ts usaba window.__TAURI__ (v1, inexistente en v2) → import invoke
+      B14 ✅ CONNECTOR PARAMS: snake_case→camelCase en connector.ts
+      B15 ✅ CHAT: auto-load de última conversación eliminado, arranca nuevo y vacío
+
+   10. PENDIENTE
+         DataHealthBadge en header (medium)
+         URL state para query/selectedAsset (low)
+         RecentIndexingLog componente (low)
+         Scrolling infinito SyncPanel (low)
+
+   11. ARCHIVOS
+         Frontend:
+           DataPage.tsx — error handling, isLoading, loadData, tauriOk, banner
+           DataHeader.tsx — skeletons, dialogs, onRefresh
+           AssetCatalog.tsx — debounce, skeleton, empty states, sort, pagination
+           AssetSheet.tsx — Ver fuente, Usar en IA, onRefresh
+           DataPanels.tsx — Sync refresh, empty state, skeleton, Lineage colors
+           data-data.ts — timestamp defensive fix, formatRelativeTime
+           src/api/data.ts — camelCase params, isTauriAvailable(), DEFAULT_PROJECT_ID
+           src/api/connector.ts — Tauri v2 invoke import, camelCase params
+           src/components/chat/useChatSession.ts — sin auto-load, arranca vacío
+
+         Backend (Rust):
+           commands/data.rs — list, get, metrics, sync_events, validate, seed/clear demo
+           commands/document.rs — index_document, list_chunks, list_nodes/edges, rebuild_graph
+           commands/connector.rs — register_local, cache_file, sync_local
+           commands/oauth.rs — exchange_oauth_code, get_user_info, save/get token (stronghold fallback)
+           commands/filesystem.rs — open_folder_picker, open_file_picker, read_file_base64, validate_folder_path
+
+   12. SEED DEMO DATA
+         ✅ Rust command seed_demo_data + clear_demo_data
+         ✅ Frontend: seedDemoData() + "Cargar datos demo" en empty state
+         ✅ source="demo" en assets (fix: antes era "local")
+         ✅ hasDemoData detecta por source="demo" o connector_id="connector-demo"
+         ✅ clear_demo_data elimina en orden correcto (chunks → graph → assets → connectors)
+
+   13. CHAT — COMPORTAMIENTO ACTUAL
+         ✅ Default route: #chat
+         ✅ Arranca nuevo y vacío (conversationId = null al montar)
+         ✅ localStorage "geonexus.activeConversationId" se limpia al montar
+         ✅ No carga ninguna conversación previa automáticamente
+         ✅ Al enviar primer mensaje, se crea nueva conversación

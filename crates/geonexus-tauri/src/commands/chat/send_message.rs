@@ -4,6 +4,7 @@ use geonexus_core::chat::{
     Message, MessageRole, ResearchSource, SendMessageInput, SendMessageResponse,
 };
 use geonexus_core::reasoning::QueryIntent;
+use geonexus_core::{GraphUpdatePayload, GraphEdge};
 use geonexus_db::chat_repo;
 use serde_json::json;
 use tauri::State;
@@ -18,6 +19,7 @@ use super::tools::{execute_tool_call, get_tool_definitions};
 use super::validator::validate_response;
 use super::{run_sidecar_json, unix_now, AppState, ContextNode};
 use crate::commands::llm::run_sidecar;
+use crate::commands::graph_events::emit_graph_update;
 
 #[derive(Debug, serde::Deserialize)]
 struct RecallChunk {
@@ -356,8 +358,11 @@ pub async fn send_message(
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
 
-    // === Extract entities from chat into graph nodes ===
+    // === Extract entities from chat into graph nodes + emit graph:updated ===
     let chat_text = format!("{}\n\n{}", input.content, final_content);
+    let mut extracted_nodes: Vec<geonexus_core::GraphNode> = Vec::new();
+    let mut extracted_edges: Vec<GraphEdge> = Vec::new();
+
     if let Ok(extracted) = run_sidecar_json::<serde_json::Value>(&[
         "--action",
         "extract_chat_entities",
@@ -370,9 +375,8 @@ pub async fn send_message(
     ]) {
         let now = unix_now();
         if let Some(nodes) = extracted["nodes"].as_array() {
-            let graph_nodes: Vec<geonexus_core::GraphNode> = nodes
-                .iter()
-                .map(|n| geonexus_core::GraphNode {
+            for n in nodes {
+                let gn = geonexus_core::GraphNode {
                     id: n["id"].as_str().unwrap_or("").into(),
                     project_id: input.project_id.clone(),
                     workspace_id: input.workspace_id.clone(),
@@ -384,16 +388,20 @@ pub async fn send_message(
                     y: n["y"].as_f64().unwrap_or(50.0),
                     weight: n["weight"].as_i64().unwrap_or(1),
                     created_at: now,
-                })
-                .collect();
-            if !graph_nodes.is_empty() {
-                let _ = state.repo.insert_graph_nodes(&graph_nodes).await;
+                    source_event: "chat".into(),
+                    event_id: conversation_id.clone(),
+                    icon: "".into(),
+                    is_ephemeral: true,
+                };
+                extracted_nodes.push(gn.clone());
+            }
+            if !extracted_nodes.is_empty() {
+                let _ = state.repo.insert_graph_nodes(&extracted_nodes).await;
             }
         }
         if let Some(edges) = extracted["edges"].as_array() {
-            let graph_edges: Vec<geonexus_core::GraphEdge> = edges
-                .iter()
-                .map(|e| geonexus_core::GraphEdge {
+            for e in edges {
+                let ge = GraphEdge {
                     id: e["id"].as_str().unwrap_or("").into(),
                     project_id: input.project_id.clone(),
                     source: e["source"].as_str().unwrap_or("").into(),
@@ -401,11 +409,70 @@ pub async fn send_message(
                     relation: e["relation"].as_str().unwrap_or("asociado con").into(),
                     strength: e["strength"].as_i64().unwrap_or(50),
                     created_at: now,
-                })
-                .collect();
-            if !graph_edges.is_empty() {
-                let _ = state.repo.insert_graph_edges(&graph_edges).await;
+                };
+                extracted_edges.push(ge);
             }
+            if !extracted_edges.is_empty() {
+                let _ = state.repo.insert_graph_edges(&extracted_edges).await;
+            }
+        }
+
+        // Emit graph:updated event (only if extraction succeeded)
+        if let Some(ref handle) = state.app_handle {
+            let now_ts = now;
+
+            // Create web_search nodes from research_sources
+            let mut web_nodes: Vec<geonexus_core::GraphNode> = Vec::new();
+            let mut web_edges: Vec<GraphEdge> = Vec::new();
+            for src in &research_sources {
+                let url_id = format!("web-{}", src.url.replace(|c: char| !c.is_alphanumeric(), "-"));
+                web_nodes.push(geonexus_core::GraphNode {
+                    id: url_id.clone(),
+                    project_id: input.project_id.clone(),
+                    workspace_id: input.workspace_id.clone(),
+                    name: src.title.clone(),
+                    kind: "web_search".into(),
+                    description: src.snippet.clone().unwrap_or_default(),
+                    evidence: src.url.clone(),
+                    x: 50.0,
+                    y: 50.0,
+                    weight: 1,
+                    created_at: now_ts,
+                    source_event: "chat".into(),
+                    event_id: conversation_id.clone(),
+                    icon: "".into(),
+                    is_ephemeral: true,
+                });
+                if let Some(first_node) = extracted_nodes.first() {
+                    web_edges.push(GraphEdge {
+                        id: Uuid::new_v4().to_string(),
+                        project_id: input.project_id.clone(),
+                        source: first_node.id.clone(),
+                        target: url_id.clone(),
+                        relation: "busqueda web".into(),
+                        strength: 60,
+                        created_at: now_ts,
+                    });
+                }
+            }
+
+            let mut all_edges = extracted_edges.clone();
+            all_edges.extend(web_edges);
+
+            let all_nodes: Vec<geonexus_core::GraphNode> = extracted_nodes
+                .iter()
+                .chain(web_nodes.iter())
+                .cloned()
+                .collect();
+
+            let payload = GraphUpdatePayload {
+                source_event: "chat".into(),
+                event_id: conversation_id.clone(),
+                nodes: all_nodes,
+                edges: all_edges,
+                timestamp: now_ts,
+            };
+            emit_graph_update(handle, payload);
         }
     }
 

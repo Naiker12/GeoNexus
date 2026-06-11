@@ -15,6 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { SearchingIndicator, type SearchStep } from "@/components/chat/SearchingIndicator"
 
 export type StepStatus = "done" | "active" | "pending"
 
@@ -29,6 +30,7 @@ interface ThinkingInlineProps {
   steps: ThinkingStep[]
   isComplete?: boolean
   expanded?: boolean
+  searchSteps?: SearchStep[]
 }
 
 function Spinner({ className }: { className?: string }) {
@@ -44,7 +46,7 @@ function Spinner({ className }: { className?: string }) {
   )
 }
 
-function buildSummary(steps: ThinkingStep[], elapsed?: number): string {
+export function buildSummary(steps: ThinkingStep[], elapsed?: number): string {
   const active = steps.find((s) => s.status === "active")
   if (active) return active.label + (elapsed != null ? ` · ${elapsed.toFixed(1)}s` : "")
   const doneCount = steps.filter((s) => s.status === "done").length
@@ -56,6 +58,7 @@ export function ThinkingInline({
   steps,
   isComplete = false,
   expanded = false,
+  searchSteps,
 }: ThinkingInlineProps) {
   const [open, setOpen] = React.useState(expanded)
   const startRef = React.useRef(Date.now())
@@ -148,6 +151,9 @@ export function ThinkingInline({
             </div>
           ))}
         </div>
+        {searchSteps && searchSteps.length > 0 && (
+          <SearchingIndicator steps={searchSteps} />
+        )}
       </CollapsibleContent>
     </Collapsible>
   )

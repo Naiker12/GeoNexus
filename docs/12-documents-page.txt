@@ -1,0 +1,95 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   DOCUMENTS PAGE — ESTADO ACTUAL                                ║
+║   Página "Documentos": componentes, APIs, bugs                 ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   1. ESTRUCTURA (DocumentsPage.tsx)
+      Layout responsive, 4 secciones: Header, SourceStrip, Table, OneDriveDialog
+      Ruta: #documentos → GeoNexusWorkspace.tsx → DocumentsPage
+      Archivos:
+        src/features/workspace/documents/DocumentsPage.tsx (~640 líneas)
+        src/features/workspace/documents/documents-data.ts
+        src/features/workspace/documents/DocumentAssetIcon.tsx
+        src/features/workspace/documents/useDocuments.ts — hook separado con lógica
+
+   2. DocumentHeader
+      ✅ Título "Documentos y fuentes de conocimiento" con subtítulo
+      ✅ 3 métricas dinámicas: Archivos, Chunks IA, Fuentes activas (desde backend)
+      ✅ Botón "Limpiar demo" (solo si hasDemoData=true)
+      ✅ Botón recargar (RefreshCwIcon)
+      ❌ Se quitaron los 3 botones duplicados (Subir, Elegir carpeta, Conectar OneDrive)
+         — SourceStrip ya tiene esas acciones
+
+   3. SourceStrip
+      ✅ 4 fuentes conectables en grid responsive (2x2 → 4xl)
+      ✅ OneDrive → oneDriveOpen (abre OneDriveDialog)
+      ✅ Carpeta Windows → open_folder_picker nativo (Tauri plugin)
+      ✅ Subir archivos → input file con onChange real
+      ✅ URL / SharePoint → alert (pendiente)
+
+   4. DocumentTable
+      ✅ Lista de assets desde listDataAssets()
+      ✅ Search con debounce
+      ✅ Sort: nombre / updated
+      ✅ Loading skeleton (filas animadas)
+      ✅ Empty state: "No hay documentos registrados."
+      ✅ Error con toast (no alert)
+      ✅ Status badges: Listo, Indexando, Pendiente, Error
+
+   5. OneDriveDialog
+      ✅ Simplificado: botón único "Continuar con Microsoft"
+      ✅ Abre navegador vía openUrl() con PKCE OAuth
+      ✅ Sin formulario (cuenta, carpeta, tipos, frecuencia eliminados)
+      ✅ No marca "Conectado" hasta que callback OAuth real (actualmente solo abre navegador)
+      ✅ Toast feedback: éxito/error al abrir navegador
+
+   6. Backend conectado
+      ✅ register_local_connector (Carpeta Windows)
+      ✅ sync_local_connector (escanea carpeta, crea assets)
+      ✅ cache_connector_file (subir archivo)
+      ✅ index_document (pipeline: extract → chunk → embed → grafo)
+      ✅ listDataAssets — camelCase fix
+      ✅ open_folder_picker (tauri-plugin-dialog)
+      ✅ open_url (tauri-plugin-opener con permission opener:allow-open-url)
+
+   7. Capacidades Tauri
+      ✅ dialog:default (file picker nativo)
+      ✅ opener:default (abrir navegador OAuth)
+      ✅ stronghold (feature-gated, token storage)
+
+   8. BUGS RESUELTOS
+      B1  ✅ Botón "Subir documento" — handler real
+      B2  ✅ Botón "Elegir carpeta" — file picker nativo
+      B3  ✅ SourceStrip — botones funcionales
+      B4  ✅ OneDriveDialog — backend parcial (navegador OAuth)
+      B5  ✅ "Fuentes activas" desde backend
+      B6  ✅ Error con alert → toast
+      B7  ✅ Skeleton loading en tabla
+      B8  ✅ Debounce/search/sort/paginación
+      B9  ⚠ Demo data: fixed source="demo" (era "local")
+      B10 ⚠ clear_demo_data: fixed orden (chunks → graph → assets)
+      B11 ✅ hasDemoData detecta también por connector_id="connector-demo"
+
+   9. PENDIENTE
+      P1 🔴 OAuth callback real (servidor HTTP local en :1421 para capturar code)
+      P2 🔴 Intercambio del code por token vía exchange_oauth_code
+      P3 🔴 Persistencia del token en stronghold/keychain
+      P4 🟡 Sincronización periódica OneDrive (watch)
+      P5 🟡 Agregar URL / SharePoint dialog
+      P6 🟢 Descargar documento desde la tabla
+
+   10. ARCHIVOS
+         Frontend:
+           DocumentsPage.tsx — página completa (~640 líneas)
+           documents-data.ts — fuentes estáticas, constantes
+           DocumentAssetIcon.tsx — iconos por tipo/source
+           useDocuments.ts — hook: fetch, upload, chooseFolder, index, clearDemo
+
+         Backend:
+           commands/connector.rs — register, sync, cache connector
+           commands/document.rs — index_document, rebuild graph
+           commands/data.rs — list_data_assets, clear_demo_data
+           commands/filesystem.rs — open_folder_picker
+           commands/oauth.rs — exchange_oauth_code, save/get token
+           data_repo.rs — seed_demo_data, upsert, queries
+           connector_repo.rs — CRUD conectores

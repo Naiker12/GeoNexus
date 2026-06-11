@@ -15,6 +15,7 @@ import { McpRouterSection } from "@/features/workspace/configuration/sections/Mc
 import { MemorySection } from "@/features/workspace/configuration/sections/MemorySection"
 import { TelegramIntegrationPanel } from "@/features/workspace/configuration/sections/TelegramIntegrationPanel"
 import { CommandsSection } from "@/features/workspace/configuration/sections/CommandsSection"
+import { AgentsSection } from "@/features/workspace/configuration/sections/AgentsSection"
 
 type ConfigurationDialogProps = {
   open: boolean
@@ -32,6 +33,7 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   telegram: TelegramIntegrationPanel,
   "gis-tools": GisToolsPanel,
   commands: CommandsSection,
+  agents: AgentsSection,
 }
 
 export function ConfigurationDialog({
@@ -59,7 +61,13 @@ export function ConfigurationDialog({
           </div>
         </div>
 
-        <ConfigurationFooter onCancel={() => onOpenChange(false)} />
+        <ConfigurationFooter
+          onCancel={() => onOpenChange(false)}
+          onSave={async () => {
+            // Placeholder: persistir configuracion via Tauri command
+            await new Promise((r) => setTimeout(r, 300))
+          }}
+        />
       </DialogContent>
     </Dialog>
   )

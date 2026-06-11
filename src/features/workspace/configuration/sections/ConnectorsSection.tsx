@@ -1,11 +1,18 @@
-const connectorItems: {
-  name: string
-  role: string
-  endpoint: string
-  status: string
-}[] = []
+import * as React from "react"
+import { listConnectorConfigs } from "@/api/connector"
+import type { ConnectorConfig } from "@/types/connector"
 
 export function ConnectorsSection() {
+  const [configs, setConfigs] = React.useState<ConnectorConfig[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    listConnectorConfigs().then((list) => {
+      setConfigs(list)
+      setLoading(false)
+    })
+  }, [])
+
   return (
     <div className="grid gap-4">
       <div>
@@ -18,16 +25,33 @@ export function ConnectorsSection() {
       </div>
 
       <div className="grid gap-2">
-        {connectorItems.length ? (
-          connectorItems.map((item) => (
+        {loading ? (
+          <div className="rounded-lg border border-border bg-card/70 px-3 py-8 text-center text-sm text-muted-foreground">
+            Cargando conectores...
+          </div>
+        ) : configs.length > 0 ? (
+          configs.map((cfg) => (
             <article
-              key={item.name}
+              key={cfg.id}
               className="rounded-lg border border-border bg-card/70 px-3 py-2.5"
             >
-              <p className="truncate text-sm font-medium">{item.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {item.role} - {item.endpoint} - {item.status}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="truncate text-sm font-medium">{cfg.display_name}</p>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    cfg.is_active
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {cfg.is_active ? "Activo" : "Inactivo"}
+                </span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <span>Tipo: {cfg.provider}</span>
+                {cfg.root_path && <span className="truncate">Ruta: {cfg.root_path}</span>}
+                {cfg.base_url && <span className="truncate">URL: {cfg.base_url}</span>}
+              </div>
             </article>
           ))
         ) : (

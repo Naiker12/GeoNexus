@@ -7,6 +7,7 @@ import {
   MessageSquareIcon,
   ServerIcon,
   SlidersHorizontalIcon,
+  SparklesIcon,
   TerminalIcon,
   WrenchIcon,
 } from "lucide-react"
@@ -85,6 +86,12 @@ export const configGroups: ConfigGroup[] = [
   {
     label: "SISTEMA",
     sections: [
+      {
+        id: "agents",
+        label: "Agentes",
+        icon: SparklesIcon,
+        indicator: null,
+      },
       {
         id: "commands",
         label: "Comandos",

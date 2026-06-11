@@ -1,0 +1,135 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   CONECTORES Y CONFIGURACIÓN — ESTADO ACTUAL                   ║
+║   Módulos: connectors/, configuration/                        ║
+╚══════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════╗
+║   1. CONNECTORS (src/features/workspace/connectors/)           ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   1.1 QUÉ PARTES USA
+       connector-types.ts    → Tipos: ConnectorProvider, ConnectorProviderId (9 ids)
+       connectors-data.ts    → 9 proveedores estáticos con metadatos completos
+       ConnectorsPage.tsx    → Página principal con header, métricas, grid de cards
+       ConnectorCard.tsx     → Card individual con logo, badges, formatos, botón
+       ConnectorSetupDialog.tsx → Diálogo de setup con flujo real (local/cloud)
+       AddConnectorDialog.tsx   → Catálogo con búsqueda para agregar conectores
+       ConnectorLogo.tsx     → Carga SVG desde CDN + fallback Lucide
+       ConnectorInfoPanel.tsx → Panel reutilizable de items con check
+       InfoRow.tsx           → Fila label/valor simple
+       AddCustomConnectorDialog.tsx → Formulario con nombre, tipo, path, auth, formato
+
+   1.2 CÓMO SE CONECTA (ESTADO ACTUAL)
+       ✅ Conectores locales → registerLocalConnector (Rust) con folder picker nativo
+       ✅ Conectores cloud (OneDrive, Google Drive) → OAuth: openUrl() + PKCE
+       ✅ ConnectorSetupDialog separa: local (folder picker) vs cloud (botón OAuth)
+       ✅ Configuración persistida: project_id, workspace_id, root_path, file_filter
+       ✅ Toast de éxito/error con loading spinner
+       ✅ tokens guardados vía save_oauth_token (stronghold fallback a file)
+       ⚠ OAuth necesita servidor HTTP local para capturar callback (pendiente)
+
+   1.3 LO QUE FALTA
+       🔴 OAuth callback server (capturar code del redirect)
+       🔴 exchange_oauth_code real desde el frontend
+       🔴 Integración con MCP servers reales
+       🔴 Keychain stronghold para tokens (feature-gated, falta cfg enable)
+       🔴 Pipeline de indexación automática post-conexión
+       🔴 Botón "Sincronizar beta" sin handler
+       🟡 connector-data.ts hardcodea URLs CDN (thesvg) que pueden fallar offline
+       🟡 connectorItems en ConnectorsSection.tsx es array vacío
+       🟡 No hay list_connector_configs Rust command expuesto
+
+   1.4 BACKEND RELACIONADO (Rust Tauri commands)
+       commands/connector.rs  → register_local_connector, sync_local_connector,
+                                cache_connector_file
+       commands/oauth.rs      → exchange_oauth_code, get_user_info, save/get token
+       commands/filesystem.rs → open_folder_picker, validate_folder_path
+       connector_repo.rs      → CRUD connector_configs en SQLite
+
+╔══════════════════════════════════════════════════════════════════╗
+║   2. CONFIGURATION (src/features/workspace/configuration/)     ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   2.1 QUÉ PARTES USA
+       configuration-types.ts    → ConfigSectionId (10), ConfigSection, ConfigGroup
+       configuration-data.ts     → 5 grupos de navegación con 10 secciones
+       ConfigurationDialog.tsx   → Dialog principal con sidebar + content routing
+       ConfigurationSidebar.tsx  → Nav lateral con indicadores verde/amarillo
+       ConfigurationHeader.tsx   → Header "Configuración"
+       ConfigurationFooter.tsx   → Footer "Cancelar" / "Guardar y aplicar"
+       settings-types.ts        → SettingsDialog type union (11 variantes)
+       settings-data.ts         → SettingsSection[], localPaths[], maintenanceTasks[]
+       settings-ui.tsx          → SettingGroup, Field, CheckRow, CompactCheckRow, SideMetric
+
+       Secciones (10):
+         AiEmbeddingsSection.tsx  → Modelos IA, embeddings, ProviderCatalog + Setup
+         ConnectorsSection.tsx    → LISTA VACÍA (connectorItems = [])
+         GisToolsPanel.tsx        → MCP tools toggle por categoría
+         LocalPathsSection.tsx    → Rutas locales con diálogo de cambio
+         MaintenanceSection.tsx   → Tareas de mantenimiento (solo display)
+         MapEnginesSection.tsx    → MapSettingsPanel + SettingsDialogs
+         McpRouterSection.tsx     → Servidores MCP registrados + McpRegisterDialog
+         MemorySection.tsx        → ChromaDB, chunk size, colecciones, flags
+         TelegramIntegrationPanel.tsx → Bot token, test real contra API Telegram
+         CommandsSection.tsx      → Lista de /comandos y atajos
+
+   2.2 CÓMO SE CONECTA (ESTADO ACTUAL)
+       ✅ ConfigurationFooter.onSave: prop con loading/error/success toast
+       ✅ onSave usa el nuevo sistema de loading toast persistente
+       ⚠ onSave es placeholder (setTimeout 300ms) — no hay save_settings real
+       ✅ AiEmbeddingsSection guarda en localStorage
+       ✅ TelegramIntegrationPanel funcional con localStorage
+       ⚠ ConnectorsSection → connectorItems = [] (no list_connector_configs)
+
+   2.3 LO QUE FALTA
+       🔴 save_settings Rust command (no existe)
+       🔴 ConnectorsSection → conectar a list_connector_configs
+       🔴 Persistencia real a SQLite (no localStorage)
+       🔴 File picker real desde LocalPathDialog
+       🔴 McpSettingsDialog inputs vinculados
+       🔴 ModelSettingsDialog + keychain stronghold
+       🔴 MapEngineDialog persiste configuración
+       🔴 MaintenanceSection comandos ejecutables
+       🔴 ConfirmSettingsDialog sin backend
+
+╔══════════════════════════════════════════════════════════════════╗
+║   3. DEPENDENCIAS Y RELACIONES ENTRE MÓDULOS                   ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   3.1 MÓDULOS COMPARTIDOS
+       workspace/ai-containers/ → ProviderCatalogDialog, ProviderSetupDialog
+       workspace/mcp/           → mcp-data.ts, McpServerCard, McpRegisterDialog
+       contexts/ConnectorsContext → useConnectors (AiEmbeddingsSection)
+       api/llm.ts               → pingLlmProvider
+       api/connector.ts         → registerLocalConnector, syncLocalConnector
+       api/data.ts              → listDataAssets, indexDocument
+       config/oauth.ts          → PKCE helpers, auth URL builder, Google/OneDrive config
+
+   3.2 FLUJO ESPERADO vs REALIDAD
+       Conector local:
+         UI → open_folder_picker → registerLocalConnector → syncLocalConnector
+         ✅ REAL: implementado
+       Conector cloud:
+         UI → openUrl() (navegador) → [callback] → exchange_oauth_code → save token
+         ⚠ PARCIAL: abre navegador, falta callback server + exchange
+       Config:
+         UI → save_settings (Rust) → SQLite settings + keychain
+         ❌ NO: solo localStorage, no hay comando Rust
+       Indexación:
+         cache_connector_file → index_document → ChromaDB + grafo
+         ✅ REAL: comandos existen, frontend los llama
+
+╔══════════════════════════════════════════════════════════════════╗
+║   4. PRIORIDADES PARA IMPLEMENTACIÓN                           ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  P1 🔴 Servidor HTTP local para callback OAuth (:1421)
+  P2 🔴 save_settings Rust command
+  P3 🔴 list_connector_configs Rust command + ConnectorsSection
+  P4 🟡 Implementar exchange_oauth_code real
+  P5 🟡 Token storage en stronghold (feature on)
+  P6 🟡 Botón "Sincronizar" en ConnectorsPage
+  P7 🟡 LocalPathDialog con file picker nativo
+  P8 🟢 MCP settings con allowlist real
+  P9 🟢 MaintenanceSection comandos funcionales
+  P10 🟢 Persistir config de modelos/embeddings a SQLite

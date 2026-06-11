@@ -337,3 +337,22 @@
     font: inherit;
   }
 }
+
+@keyframes graph-node-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-graph-node-in {
+  animation: graph-node-in 0.5s ease-out both;
+}

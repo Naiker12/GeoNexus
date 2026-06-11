@@ -5,3 +5,7 @@ pub mod document;
 pub mod containers_mcp;
 pub mod llm;
 pub mod chat;
+pub mod oauth;
+pub mod filesystem;
+pub mod agent;
+pub mod graph_events;

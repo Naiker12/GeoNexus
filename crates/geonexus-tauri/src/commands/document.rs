@@ -2,7 +2,8 @@ use tauri::State;
 use uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::AppState;
-use geonexus_core::{AssetStatus, DocumentChunk, GraphNode, GraphEdge, SyncEventType};
+use geonexus_core::{AssetStatus, DocumentChunk, GraphNode, GraphEdge, GraphUpdatePayload, SyncEventType};
+use crate::commands::graph_events::emit_graph_update;
 
 fn unix_now() -> i64 {
     SystemTime::now()
@@ -203,6 +204,10 @@ pub async fn index_document(
             y: n.y,
             weight: n.weight,
             created_at: now,
+            source_event: "upload".into(),
+            event_id: asset.connector_id.clone().unwrap_or_default(),
+            icon: "".into(),
+            is_ephemeral: false,
         })
         .collect();
 
@@ -257,6 +262,18 @@ pub async fn index_document(
         Some(&trace_id),
     )
     .await;
+
+    // Emitir evento graph:updated
+    if let Some(ref handle) = state.app_handle {
+        let payload = GraphUpdatePayload {
+            source_event: "upload".into(),
+            event_id: asset.id.clone(),
+            nodes: nodes_to_insert.clone(),
+            edges: edges_to_insert.clone(),
+            timestamp: now,
+        };
+        emit_graph_update(handle, payload);
+    }
 
     Ok(chunks_to_insert.len() as i64)
 }
@@ -366,6 +383,10 @@ pub async fn rebuild_knowledge_graph(
             y: round_val(random_f64(10.0, 90.0)),
             weight: 2,
             created_at: now,
+            source_event: "".into(),
+            event_id: "".into(),
+            icon: "".into(),
+            is_ephemeral: false,
         });
 
         // Convertir chunks a JSON para el sidecar
@@ -411,6 +432,10 @@ pub async fn rebuild_knowledge_graph(
                                 y: n["y"].as_f64().unwrap_or(50.0),
                                 weight: n["weight"].as_i64().unwrap_or(1),
                                 created_at: now,
+                                source_event: "upload".into(),
+                                event_id: asset.id.clone(),
+                                icon: "".into(),
+                                is_ephemeral: false,
                             });
                         }
                     }

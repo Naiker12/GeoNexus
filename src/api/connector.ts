@@ -54,3 +54,7 @@ export function syncLocalConnector(connectorId: string): Promise<SyncReport> {
   if (!connectorId.trim()) throw new Error("connector_id requerido")
   return invokeRequired("sync_local_connector", { connectorId: connectorId })
 }
+
+export function listConnectorConfigs(projectId?: string): Promise<ConnectorConfig[]> {
+  return invokeOrFallback("list_connector_configs", { projectId: projectId ?? "" }, [])
+}

@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
+use tauri::{Manager, AppHandle};
 use geonexus_db::DataRepository;
 
 pub mod commands;
@@ -9,11 +9,24 @@ pub struct AppState {
     pub db: sqlx::SqlitePool,
     pub repo: DataRepository,
     pub db_path: String,
+    pub app_handle: Option<AppHandle>,
 }
 
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init());
+
+    #[cfg(feature = "dialog")]
+    {
+        builder = builder.plugin(tauri_plugin_dialog::init());
+    }
+
+    #[cfg(feature = "stronghold")]
+    {
+        builder = builder.plugin(tauri_plugin_stronghold::init());
+    }
+
+    builder
         .setup(|app| {
             // Resolver la ruta del app data dir en Tauri v2
             let app_data_dir = app
@@ -31,7 +44,14 @@ fn main() {
             let db_path_str = db_path.to_string_lossy().to_string();
 
             // Gestionar el estado global unificado de la aplicación
-            app.manage(AppState { db, repo, db_path: db_path_str });
+            let app_handle = app.handle().clone();
+            app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle) });
+
+            // Sembrar agentes por defecto si es primera ejecución
+            let _ = tauri::async_runtime::block_on(
+                geonexus_db::agent_repo::seed_default_agents(&db)
+            );
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -47,6 +67,8 @@ fn main() {
             commands::connector::list_connector_files,
             commands::connector::cache_connector_file,
             commands::connector::sync_local_connector,
+            commands::connector::upload_asset_file,
+            commands::connector::list_connector_configs,
             // Fase 3
             commands::document::index_document,
             commands::document::list_document_chunks,
@@ -76,7 +98,26 @@ fn main() {
             commands::chat::list_conversations,
             commands::chat::list_messages,
             commands::chat::recall_chunks,
-            commands::chat::get_project_context
+            commands::chat::get_project_context,
+            // OAuth
+            commands::oauth::exchange_oauth_code,
+            commands::oauth::get_oauth_user_info,
+            commands::oauth::save_oauth_token,
+            commands::oauth::get_oauth_token,
+            // Filesystem
+            commands::filesystem::open_folder_picker,
+            commands::filesystem::open_file_picker,
+            commands::filesystem::read_file_base64,
+            commands::filesystem::validate_folder_path,
+            commands::filesystem::list_directory,
+            // Demo data
+            commands::data::clear_demo_data,
+            // Agents
+            commands::agent::list_agents,
+            commands::agent::toggle_agent,
+            // Graph Events
+            commands::graph_events::clear_ephemeral_nodes,
+            commands::graph_events::get_recent_graph_events,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

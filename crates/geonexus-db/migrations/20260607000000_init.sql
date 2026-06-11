@@ -96,3 +96,17 @@ CREATE INDEX IF NOT EXISTS idx_sync_events_project ON sync_events(project_id);
 CREATE INDEX IF NOT EXISTS idx_sync_events_asset   ON sync_events(asset_id);
 CREATE INDEX IF NOT EXISTS idx_sync_events_agent   ON sync_events(agent_id);
 CREATE INDEX IF NOT EXISTS idx_sync_events_trace   ON sync_events(trace_id);
+
+CREATE TABLE IF NOT EXISTS agents (
+    id             TEXT    PRIMARY KEY NOT NULL,
+    project_id     TEXT    NOT NULL,
+    name           TEXT    NOT NULL,
+    kind           TEXT    NOT NULL DEFAULT 'agent',
+    description    TEXT,
+    is_active      INTEGER NOT NULL DEFAULT 1,
+    config         TEXT    NOT NULL DEFAULT '{}',
+    model          TEXT,
+    provider       TEXT,
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
+);

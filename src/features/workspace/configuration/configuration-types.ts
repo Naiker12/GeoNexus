@@ -11,6 +11,7 @@ export type ConfigSectionId =
   | "gis-tools"
   | "commands"
   | "maintenance"
+  | "agents"
 
 export type ConfigSection = {
   id: ConfigSectionId

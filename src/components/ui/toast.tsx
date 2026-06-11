@@ -8,26 +8,31 @@ type ToastInput = {
   title: string
   description?: string
   variant?: ToastVariant
+  /** Keep toast visible until dismissed (for loading states) */
+  persistent?: boolean
+  /** Sonner toast id for later dismissal */
+  id?: string | number
 }
 
 export function useToast() {
   return {
     toast: (input: ToastInput) => {
-      const { title, description, variant = "info" } = input
+      const { title, description, variant = "info", persistent, id } = input
+      const opts = { description, duration: persistent ? Infinity : undefined, id }
       switch (variant) {
         case "success":
-          sonnerToast.success(title, { description })
-          break
+          return sonnerToast.success(title, opts)
         case "error":
-          sonnerToast.error(title, { description })
-          break
+          return sonnerToast.error(title, opts)
         case "warning":
-          sonnerToast.warning(title, { description })
-          break
+          return sonnerToast.warning(title, opts)
         default:
-          sonnerToast.info(title, { description })
+          return sonnerToast.info(title, opts)
       }
     },
-    dismiss: (id: string | number) => sonnerToast.dismiss(id),
+    loading: (title: string, description?: string) => {
+      return sonnerToast.loading(title, { description })
+    },
+    dismiss: (id?: string | number) => sonnerToast.dismiss(id),
   }
 }

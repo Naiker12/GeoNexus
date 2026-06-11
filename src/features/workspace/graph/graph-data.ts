@@ -1,22 +1,6 @@
-export type GraphNodeType = "norma" | "documento" | "capa" | "zona" | "concepto"
+import type { GraphNodeType, GraphNode, GraphEdge, GraphUpdatePayload, BackendGraphNode, BackendGraphEdge } from "@/types/data"
 
-export type GraphNode = {
-  id: string
-  label: string
-  type: GraphNodeType
-  description: string
-  evidence: string
-  x: number
-  y: number
-  weight: number
-}
-
-export type GraphEdge = {
-  source: string
-  target: string
-  relation: string
-  strength: number
-}
+export type { GraphNodeType, GraphNode, GraphEdge, GraphUpdatePayload, BackendGraphNode, BackendGraphEdge }
 
 export type GraphCluster = {
   name: string

@@ -5,6 +5,7 @@ pub mod chat;
 pub mod connector;
 pub mod local_connector;
 pub mod reasoning;
+pub mod agent;
 
 // ─── Enums de estado ─────────────────────────────────────────────────────────
 
@@ -158,6 +159,16 @@ pub struct DocumentChunk {
     pub created_at: i64,
 }
 
+/// Payload para el evento graph:updated que se emite via Tauri
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphUpdatePayload {
+    pub source_event: String,   // "chat" | "upload" | "sync" | "rag"
+    pub event_id: String,       // conversation_id, sync_event_id, etc.
+    pub nodes: Vec<GraphNode>,
+    pub edges: Vec<GraphEdge>,
+    pub timestamp: i64,
+}
+
 /// Nodo en el grafo de conocimiento.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNode {
@@ -165,13 +176,22 @@ pub struct GraphNode {
     pub project_id: String,
     pub workspace_id: Option<String>,
     pub name: String,
-    pub kind: String, // "norma" | "documento" | "capa" | "zona" | "concepto"
+    pub kind: String, // "norma" | "documento" | "capa" | "zona" | "concepto" | "chat_turn" | "web_search" | "upload" | "connector" | "rag_recall"
     pub description: String,
     pub evidence: String,
     pub x: f64,
     pub y: f64,
     pub weight: i64,
     pub created_at: i64,
+    // Nuevos campos Grafo Vivo (con defaults para compatibilidad)
+    #[serde(default)]
+    pub source_event: String,
+    #[serde(default)]
+    pub event_id: String,
+    #[serde(default)]
+    pub icon: String,
+    #[serde(default)]
+    pub is_ephemeral: bool,
 }
 
 /// Relación/Arista en el grafo de conocimiento.
@@ -398,12 +418,18 @@ mod tests {
             y: 20.0,
             weight: 3,
             created_at: 1700000000,
+            source_event: "chat".into(),
+            event_id: "conv-1".into(),
+            icon: "".into(),
+            is_ephemeral: false,
         };
         let json = serde_json::to_string(&n).unwrap();
         let de: GraphNode = serde_json::from_str(&json).unwrap();
         assert_eq!(de.id, n.id);
         assert_eq!(de.name, n.name);
         assert_eq!(de.x, 10.0);
+        assert_eq!(de.source_event, "chat");
+        assert_eq!(de.is_ephemeral, false);
     }
 
     #[test]

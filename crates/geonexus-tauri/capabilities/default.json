@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "Permisos base para la ventana principal de GeoNexus.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "opener:default"
+  ]
 }

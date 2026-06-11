@@ -30,6 +30,8 @@ export type MessageStats = {
   context_used_pct: number
 }
 
+import type { SearchStep } from "@/components/chat/SearchingIndicator"
+
 export type Message = {
   id: string
   conversation_id: string
@@ -47,6 +49,7 @@ export type Message = {
   currentSearchQuery?: string
   research_sources?: ResearchSource[]
   searchElapsedSeconds?: number
+  searchSteps?: SearchStep[]
   stats?: MessageStats
 }
 

@@ -1,5 +1,6 @@
 import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
+import { ConnectCard } from "@/components/chat/ConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
@@ -7,6 +8,7 @@ import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { ThinkingInline, DEFAULT_THINKING_STEPS } from "@/components/chat/ThinkingInline"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
+import { parseContent, type ConnectCardData } from "@/utils/parseContent"
 import type { Message } from "@/types/chat"
 
 interface AssistantMessageProps {
@@ -26,6 +28,8 @@ export function AssistantMessage({
     ? { mainContent: message.content, suggestions: [] as string[] }
     : parseSuggestions(message.content)
 
+  const segments = parseContent(mainContent)
+
   const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
   return (
@@ -42,6 +46,7 @@ export function AssistantMessage({
         <ThinkingInline
           steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
           isComplete={true}
+          searchSteps={message.searchSteps}
         />
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />
@@ -55,7 +60,17 @@ export function AssistantMessage({
                 elapsedSeconds={message.searchElapsedSeconds}
               />
             )}
-            <MarkdownContent content={mainContent} isStreaming={isStreaming} />
+            {segments.map((seg, i) =>
+              seg.kind === "connect_card" ? (
+                <ConnectCard
+                  key={`card-${i}`}
+                  connectorId={(seg.value as ConnectCardData).connectorId}
+                  reason={(seg.value as ConnectCardData).reason}
+                />
+              ) : (
+                <MarkdownContent key={`text-${i}`} content={seg.value as string} isStreaming={isStreaming && i === segments.length - 1} />
+              )
+            )}
             {message.sources && message.sources.length > 0 && (
               <SearchSourcesBlock sources={message.sources} />
             )}

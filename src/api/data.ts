@@ -103,13 +103,13 @@ export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]>
 }
 
 const fallbackNodes: GraphNode[] = [
-  { id: "node-norma-1", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 45 - Usos del suelo", type: "norma" as GraphNodeType, description: "Clasificación de usos del suelo: residencial, comercial, industrial. Artículo 45 del POT.", evidence: "POT Municipal 2024", x: 10, y: 10, weight: 3, created_at: 0 },
-  { id: "node-norma-2", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 78 - Alturas máximas", type: "norma" as GraphNodeType, description: "Alturas máximas permitidas por zona: Z1=3 pisos, Z2=5 pisos, Z3=8 pisos.", evidence: "POT Municipal 2024", x: 30, y: 15, weight: 2, created_at: 0 },
-  { id: "node-zona-1", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Residencial Z1", type: "zona" as GraphNodeType, description: "Zona de baja densidad: máximo 3 pisos, uso residencial exclusivo.", evidence: "POT Municipal 2024", x: 15, y: 30, weight: 2, created_at: 0 },
-  { id: "node-zona-2", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Comercial Z2", type: "zona" as GraphNodeType, description: "Zona mixta comercial-residencial: máximo 5 pisos.", evidence: "POT Municipal 2024", x: 35, y: 35, weight: 2, created_at: 0 },
-  { id: "node-concepto-1", project_id: "project-default", workspace_id: "workspace-main", label: "Suelo urbano", type: "concepto" as GraphNodeType, description: "Suelo dentro del perímetro urbano con servicios públicos domiciliarios.", evidence: "Ley 388 de 1997", x: 50, y: 20, weight: 1, created_at: 0 },
-  { id: "node-concepto-2", project_id: "project-default", workspace_id: "workspace-main", label: "Cesión urbanística", type: "concepto" as GraphNodeType, description: "Porcentaje de suelo que debe cederse al municipio para espacio público.", evidence: "POT Municipal 2024", x: 55, y: 40, weight: 1, created_at: 0 },
-  { id: "node-capa-1", project_id: "project-default", workspace_id: "workspace-main", label: "Capa de estratificación", type: "capa" as GraphNodeType, description: "Estratificación socioeconómica por manzanas catastrales.", evidence: "DANE - Estratificación", x: 70, y: 25, weight: 1, created_at: 0 },
+  { id: "node-norma-1", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 45 - Usos del suelo", type: "norma" as GraphNodeType, description: "Clasificación de usos del suelo: residencial, comercial, industrial. Artículo 45 del POT.", evidence: "POT Municipal 2024", x: 10, y: 10, weight: 3, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-norma-2", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 78 - Alturas máximas", type: "norma" as GraphNodeType, description: "Alturas máximas permitidas por zona: Z1=3 pisos, Z2=5 pisos, Z3=8 pisos.", evidence: "POT Municipal 2024", x: 30, y: 15, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-zona-1", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Residencial Z1", type: "zona" as GraphNodeType, description: "Zona de baja densidad: máximo 3 pisos, uso residencial exclusivo.", evidence: "POT Municipal 2024", x: 15, y: 30, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-zona-2", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Comercial Z2", type: "zona" as GraphNodeType, description: "Zona mixta comercial-residencial: máximo 5 pisos.", evidence: "POT Municipal 2024", x: 35, y: 35, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-concepto-1", project_id: "project-default", workspace_id: "workspace-main", label: "Suelo urbano", type: "concepto" as GraphNodeType, description: "Suelo dentro del perímetro urbano con servicios públicos domiciliarios.", evidence: "Ley 388 de 1997", x: 50, y: 20, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-concepto-2", project_id: "project-default", workspace_id: "workspace-main", label: "Cesión urbanística", type: "concepto" as GraphNodeType, description: "Porcentaje de suelo que debe cederse al municipio para espacio público.", evidence: "POT Municipal 2024", x: 55, y: 40, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
+  { id: "node-capa-1", project_id: "project-default", workspace_id: "workspace-main", label: "Capa de estratificación", type: "capa" as GraphNodeType, description: "Estratificación socioeconómica por manzanas catastrales.", evidence: "DANE - Estratificación", x: 70, y: 25, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
 ]
 
 const fallbackEdges: GraphEdge[] = [
@@ -137,10 +137,14 @@ export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<Gr
       x: n.x,
       y: n.y,
       weight: n.weight,
-      created_at: n.created_at
+      created_at: n.created_at,
+      source_event: n.source_event ?? "",
+      event_id: n.event_id ?? "",
+      icon: n.icon ?? "",
+      is_ephemeral: n.is_ephemeral ?? false,
     }))
   }
-  return fallbackNodes
+  return []
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
@@ -153,7 +157,7 @@ export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<Gr
       strength: e.strength
     }))
   }
-  return fallbackEdges
+  return []
 }
 
 export async function rebuildKnowledgeGraph(projectId = DEFAULT_PROJECT_ID): Promise<void> {
@@ -162,6 +166,18 @@ export async function rebuildKnowledgeGraph(projectId = DEFAULT_PROJECT_ID): Pro
 
 export async function updateNodePosition(nodeId: string, x: number, y: number): Promise<void> {
   await invokeOrFallback("update_node_position", { nodeId, x, y }, undefined)
+}
+
+export async function clearEphemeralNodes(projectId = DEFAULT_PROJECT_ID): Promise<number> {
+  return await invokeOrFallback("clear_ephemeral_nodes", { projectId }, 0)
+}
+
+export async function getRecentGraphEvents(
+  projectId = DEFAULT_PROJECT_ID,
+  sourceEvent?: string,
+  limit?: number,
+): Promise<BackendGraphNode[]> {
+  return await invokeOrFallback("get_recent_graph_events", { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null }, [])
 }
 
 export async function seedDemoData(): Promise<void> {

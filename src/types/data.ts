@@ -91,7 +91,7 @@ export interface DocumentChunk {
   created_at: number
 }
 
-export type GraphNodeType = "norma" | "documento" | "capa" | "zona" | "concepto"
+export type GraphNodeType = "norma" | "documento" | "capa" | "zona" | "concepto" | "chat_turn" | "web_search" | "upload" | "connector" | "rag_recall"
 
 export interface BackendGraphNode {
   id: string
@@ -105,6 +105,10 @@ export interface BackendGraphNode {
   y: number
   weight: number
   created_at: number
+  source_event: string
+  event_id: string
+  icon: string
+  is_ephemeral: boolean
 }
 
 export interface GraphNode {
@@ -119,6 +123,18 @@ export interface GraphNode {
   y: number
   weight: number
   created_at: number
+  source_event: string
+  event_id: string
+  icon: string
+  is_ephemeral: boolean
+}
+
+export interface GraphUpdatePayload {
+  source_event: "chat" | "upload" | "sync" | "rag"
+  event_id: string
+  nodes: BackendGraphNode[]
+  edges: BackendGraphEdge[]
+  timestamp: number
 }
 
 export interface BackendGraphEdge {

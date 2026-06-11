@@ -2,7 +2,8 @@ use tauri::State;
 use uuid::Uuid;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::AppState;
-use geonexus_core::{DataAsset, AssetKind, AssetStatus, CacheState};
+use geonexus_core::{DataAsset, AssetKind, AssetStatus, CacheState, GraphNode, GraphUpdatePayload};
+use crate::commands::graph_events::emit_graph_update;
 use geonexus_core::connector::{
     ConnectorConfig, ConnectorFile, ConnectorProvider,
     RegisterLocalConnectorInput, SyncReport,
@@ -78,6 +79,21 @@ pub async fn list_connector_files(
         .map_err(|e| {
             tracing::error!(connector_id = %connector_id, error = %e, "list_connector_files falló");
             "Error al listar archivos del conector".to_string()
+        })
+}
+
+/// Lista todas las configuraciones de conectores activos del proyecto.
+#[tauri::command]
+pub async fn list_connector_configs(
+    project_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<ConnectorConfig>, String> {
+    let pid = project_id.unwrap_or_default();
+    connector_repo::list_connector_configs(&state.db, &pid)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "list_connector_configs falló");
+            "Error al listar configuraciones de conectores".to_string()
         })
 }
 
@@ -183,6 +199,114 @@ pub async fn cache_connector_file(
     })
 }
 
+/// Sube un archivo al sistema: lo guarda en disco, crea el ConnectorFile
+/// y el DataAsset, y retorna el ID del activo.
+#[tauri::command]
+pub async fn upload_asset_file(
+    project_id: String,
+    workspace_id: Option<String>,
+    connector_id: String,
+    file_name: String,
+    bytes: Vec<u8>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    if project_id.trim().is_empty() || connector_id.trim().is_empty() || file_name.trim().is_empty() {
+        return Err("project_id, connector_id y file_name requeridos".into());
+    }
+
+    // Asegurar que el conector existe — si no, crear uno automático
+    let configs = connector_repo::list_connector_configs(&state.db, &project_id)
+        .await
+        .map_err(|_| "Error al leer conectores".to_string())?;
+    if !configs.iter().any(|c| c.id == connector_id) {
+        let now = unix_now();
+        let cfg = ConnectorConfig {
+            id: connector_id.clone(),
+            project_id: project_id.clone(),
+            workspace_id: workspace_id.clone(),
+            provider: ConnectorProvider::Local,
+            display_name: "Subida directa".into(),
+            root_path: None,
+            qgis_project_path: None,
+            base_url: None,
+            client_id: None,
+            tenant_id: None,
+            sync_folders: vec![],
+            file_filter: vec![],
+            max_file_mb: 500,
+            is_active: true,
+            last_synced: None,
+            created_at: now,
+            updated_at: now,
+        };
+        connector_repo::insert_connector_config(&state.db, &cfg)
+            .await
+            .map_err(|e| format!("Error al crear conector: {e}"))?;
+    }
+
+    let upload_dir = std::path::Path::new(&state.db_path)
+        .parent()
+        .unwrap_or(std::path::Path::new("."))
+        .join("uploads")
+        .join(&connector_id);
+
+    std::fs::create_dir_all(&upload_dir).map_err(|e| format!("Error al crear directorio: {e}"))?;
+
+    let file_path = upload_dir.join(&file_name);
+    std::fs::write(&file_path, &bytes).map_err(|e| format!("Error al escribir archivo: {e}"))?;
+    let file_path_str = file_path.to_string_lossy().to_string();
+
+    let asset_id = Uuid::new_v4().to_string();
+    let now = unix_now();
+    let trace_id = Uuid::new_v4().to_string();
+
+    // Crear ConnectorFile
+    let conn_file = ConnectorFile {
+        id: asset_id.clone(),
+        connector_id: connector_id.clone(),
+        name: file_name.clone(),
+        path: file_path_str.clone(),
+        local_path: Some(file_path_str.clone()),
+        size_bytes: Some(bytes.len() as i64),
+        mime_type: None,
+        modified_remote: None,
+        modified_local: Some(now),
+        sync_status: geonexus_core::connector::FileSyncStatus::Synced,
+        etag: None,
+        created_at: now,
+    };
+    connector_repo::upsert_connector_file(&state.db, &conn_file)
+        .await
+        .map_err(|e| format!("Error al guardar connector_file: {e}"))?;
+
+    let asset_kind = map_extension_to_kind(&file_name);
+
+    // Crear DataAsset (Pending, sin indexar aún)
+    let asset = DataAsset {
+        id: asset_id.clone(),
+        project_id,
+        workspace_id,
+        name: file_name,
+        kind: asset_kind,
+        source: "local".into(),
+        location: file_path_str,
+        agent_id: None,
+        connector_id: Some(connector_id),
+        status: AssetStatus::Pending,
+        size_bytes: Some(bytes.len() as i64),
+        chunks: 0,
+        embeddings: 0,
+        graph_nodes: 0,
+        cache_state: CacheState::Cached,
+        trace_id: Some(trace_id),
+        created_at: now,
+        updated_at: now,
+    };
+    state.repo.upsert_data_asset(&asset).await?;
+
+    Ok(asset_id)
+}
+
 fn map_extension_to_kind(name: &str) -> AssetKind {
     let ext = std::path::Path::new(name)
         .extension()
@@ -263,6 +387,36 @@ pub async fn sync_local_connector(
         Some(&trace_id),
     )
     .await;
+
+    // Emitir evento graph:updated para sincronización
+    if let Some(ref handle) = state.app_handle {
+        let now_ts = unix_now();
+        let conn_node = GraphNode {
+            id: format!("sync-{}", connector_id),
+            project_id: cfg.project_id.clone(),
+            workspace_id: cfg.workspace_id.clone(),
+            name: format!("Sincronización: {}", cfg.display_name),
+            kind: "connector".into(),
+            description: format!("{} archivos sincronizados desde {}", descubiertos_count, cfg.display_name),
+            evidence: format!("Connector ID: {}", connector_id),
+            x: 50.0,
+            y: 50.0,
+            weight: 1,
+            created_at: now_ts,
+            source_event: "sync".into(),
+            event_id: trace_id.clone(),
+            icon: "".into(),
+            is_ephemeral: false,
+        };
+        let payload = GraphUpdatePayload {
+            source_event: "sync".into(),
+            event_id: trace_id,
+            nodes: vec![conn_node],
+            edges: vec![],
+            timestamp: now_ts,
+        };
+        emit_graph_update(handle, payload);
+    }
 
     Ok(SyncReport {
         connector_id,

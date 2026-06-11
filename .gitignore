@@ -7,8 +7,12 @@ dist/
 
 # Environment and secrets
 .env
+.env.local
+.env.production
 .env.*
 !.env.example
+*.credentials.json
+secrets/
 *.pem
 *.key
 *.p12
