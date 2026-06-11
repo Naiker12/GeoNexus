@@ -1,0 +1,36 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS: PLAN REDISEÑO vs CÓDIGO ACTUAL                    ║
+║   Configuración: lo que el plan pedía vs lo que existe         ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  1. TEMAS (ThemeSettingsDialog)
+     Plan: "Apariencia" futura, claro/oscuro, acento, densidad
+     Real: ✅ 8 themes con preview (Geo Dark/Light, Emerald, etc.)
+     ❌ Densidad UI no implementada
+
+  2. USUARIO / PERMISOS
+     Plan: multi-usuario como fase futura
+     Real: ❌ No existe nada
+
+  3. BUGS IDENTIFICADOS
+     B1 × pegado: No es bug real — es DialogClose de shadcn/ui
+     B2 Agregar modelo no guarda: ✅ Confirmado, 2 diálogos
+       paralelos sin comunicación
+     B3 Embeddings sin select: ✅ Confirmado, texto muerto
+     B4 Footer sin modelo activo: ✅ Confirmado, hardcoded
+
+  4. CÓDIGO DUPLICADO
+     ModelSettingsDialog (config) vs ProviderSetupDialog
+       (ai-containers): el segundo YA tiene lo que pide el plan
+       (test conexión, combo modelos, iconos, Tauri backend)
+
+  5. PRIORIDAD ALTA PENDIENTE
+     Integrar ProviderSetupDialog en Config (~45 min)
+     Select embeddings real (~30 min)
+     Footer reactivo con hook (~15 min)
+     Fix × superpuesto (~5 min)
+
+  6. BUENAS PRÁCTICAS
+     ✅ Componentes pequeños, tipos fuertes, cn(), estados
+     ⚠ Deuda: 2 sistemas paralelos, sin persistencia real,
+       footer hardcodeado, sin tests, sin constantes compartidas

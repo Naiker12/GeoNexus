@@ -1,0 +1,39 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   CHAT — BÚSQUEDA WEB / DEEP RESEARCH                          ║
+║   Función implementada: toggle web_search en chat              ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  FLUJO: toggle "Buscar información" en ChatPanel →
+    webSearchEnabled (localStorage) → submit() con
+    web_search:true → Rust send_message llama sidecar
+    --action search_web --query "..." --max_results 5
+
+  Python (ai/web_search.py, 201L):
+    4 proveedores: duckduckgo (default, sin API key),
+      google (GOOGLE_API_KEY + CX_ID),
+      bing (BING_API_KEY),
+      serpapi (SERPAPI_API_KEY)
+    Formato respuesta: [{url, title, snippet, status:"done"}]
+    Fallback automático a DuckDuckGo si otro falla
+
+  Rust: Si web_search=true en input, llama sidecar, formatea
+    contexto "[Fuente 1] title - url: snippet" en system prompt,
+    guarda research_sources en Message y SendMessageResponse
+
+  SQLite: ALTER TABLE messages ADD COLUMN research_sources TEXT
+    (migración 20260609000005_web_search.sql)
+
+  Frontend: DeepResearchPanel.tsx — panel colapsable con
+    fuentes, spinner mientras busca, auto-abre/cierra,
+    enlaces externos con @tauri-apps/plugin-opener
+
+  Archivos: ai/web_search.py (nuevo), sidecar.py (acción
+    search_web), useChatSession.ts (timer 500ms, estados),
+    AssistantMessage.tsx (integra DeepResearchPanel)
+
+  SQL: research_sources TEXT en messages, serializado como
+    JSON array. Se usa COALESCE para compatibilidad NULL.
+
+  Timer frontend: 500ms de intervalo, cambia query según
+    elapsed (<2s original, <4s "análisis resultados", ≥4s
+    "generando respuesta"). Auto-colapsa al terminar.

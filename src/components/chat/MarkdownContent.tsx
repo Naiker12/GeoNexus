@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import {
   looksLikeAsciiChart,
   parseAsciiChart,
+  looksLikeMatplotlibChart,
+  parseMatplotlibChart,
   BarChartBlock,
   LineChartBlock,
   PieChartBlock,
@@ -221,6 +223,19 @@ function CodeBlock({
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // clipboard not available
+    }
+  }
+
+  if (looksLikeMatplotlibChart(code)) {
+    const parsed = parseMatplotlibChart(code)
+    if (parsed.type === "pie" && parsed.entries.length > 0) {
+      return <PieChartBlock title={parsed.title} entries={parsed.entries} />
+    }
+    if (parsed.type === "bar" && parsed.entries.length > 0) {
+      return <BarChartBlock title={parsed.title} entries={parsed.entries} />
+    }
+    if (parsed.type === "line" && parsed.series.length > 0) {
+      return <LineChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
     }
   }
 

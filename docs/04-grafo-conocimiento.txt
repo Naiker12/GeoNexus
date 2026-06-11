@@ -1,0 +1,42 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   GRAFO DE CONOCIMIENTO TERRITORIAL                            ║
+║   24 archivos: TS, Rust, Python, SQL                           ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Stack: SQLite (graph_nodes + graph_edges) → Rust API →
+    Frontend SVG interactivo. Sin Neo4j — todo en SQLite.
+
+  DB: graph_nodes (id, name, kind, x, y, weight, evidence) con
+    kinds: norma, documento, capa, zona, concepto
+    graph_edges (source, target, relation, strength) con CASCADE
+
+  Python extractor (ai/graph/extractor.py): regex para Art. N,
+    Zona/Sector, 5 conceptos hardcodeados + co-ocurrencia en
+    chunks → aristas semánticas (aplica_en, define, afecta)
+    Fallback: nodo "documento" si no hay entidades
+
+  chat_extractor.py: extrae desde texto del chat (no chunks),
+    15 topics CHAT_TOPIC_MAP (POT, licencia, quebrada, etc.)
+    Aristas con strength=60 (vs 80 de docs)
+
+  layout.py: posiciona por tipo (normas arriba, zonas izq, etc.)
+
+  Rust: 4 comandos Tauri (list_graph_nodes, list_graph_edges,
+    rebuild_knowledge_graph, update_node_position)
+    CRUD en data_repo.rs con INSERT OR REPLACE
+
+  Frontend: GraphPage.tsx (595L) — SVG con burbujas arrastrables,
+    partículas animateMotion, NodeSheet con detalle/evidencia,
+    leyenda 5 colores, grid background con glow
+
+  Chat integración: ProjectContextPanel toggle, nodos en prompt,
+    extracción automática tras cada mensaje
+
+  Limitaciones: sin búsqueda de nodos (placeholder visual),
+    sin filtros funcionales, sin análisis con IA de la red,
+    extractor solo regex sin NLP, sin deduplicación de nodos
+    entre documentos, sin force-directed layout completo
+
+  Próximos pasos: búsqueda y filtros funcionales, NLP
+    semántico, deduplicación, operaciones de grafo (caminos,
+    BFS), tracking real de nodes_used en respuestas chat

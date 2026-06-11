@@ -60,6 +60,15 @@ fn main() {
             commands::llm::ping_llm_provider,
             commands::llm::list_llm_models,
             commands::llm::send_llm_message,
+            // Analisis
+            commands::analysis::get_analysis_metrics,
+            commands::analysis::get_token_timeline,
+            commands::analysis::get_model_usage,
+            commands::analysis::list_analysis_runs,
+            commands::analysis::get_skill_usage,
+            commands::analysis::export_analysis_traces,
+            commands::analysis::get_cost_by_timeframe,
+            commands::analysis::get_top_queries,
             // Fase 7
             commands::chat::send_message::send_message,
             commands::chat::delete_conversation,

@@ -77,6 +77,21 @@ def _extract(args) -> None:
     _print({"text": extract_text(args.file)})
 
 
+def _extract_chat_entities(args) -> None:
+    from graph.chat_extractor import extract_chat_entities
+    _print(extract_chat_entities(
+        text=args.query,
+        project_id=args.project_id,
+        workspace_id=args.workspace_id,
+    ))
+
+
+def _extract_graph_entities(args) -> None:
+    from graph.extractor import extract_graph_entities
+    chunks = json.loads(args.chunks_json) if args.chunks_json else []
+    _print(extract_graph_entities(chunks, args.project_id, args.workspace_id))
+
+
 def _index(args) -> None:
     from pipeline.indexer import index_document_file
     _print(index_document_file(file_path=args.file, project_id=args.project_id, workspace_id=args.workspace_id, asset_id=args.asset_id))
@@ -84,7 +99,7 @@ def _index(args) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="GeoNexus AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -96,6 +111,7 @@ def main() -> None:
     p.add_argument("--messages", default="")
     p.add_argument("--tools", default="")
     p.add_argument("--api_key", default="")
+    p.add_argument("--chunks_json", default="")
     p.add_argument("--query", default="")
     p.add_argument("--top_k", type=int, default=4)
     p.add_argument("--collection", default="project_memory")
@@ -112,6 +128,8 @@ def main() -> None:
         "list_llm_models": _list_models,
         "search_web": _search_web,
         "extract": _extract,
+        "extract_chat_entities": _extract_chat_entities,
+        "extract_graph_entities": _extract_graph_entities,
         "index": _index,
     }
 

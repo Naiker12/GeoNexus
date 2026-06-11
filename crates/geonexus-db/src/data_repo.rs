@@ -456,9 +456,7 @@ impl DataRepository {
                     kind        = excluded.kind,
                     description = excluded.description,
                     evidence    = excluded.evidence,
-                    x           = excluded.x,
-                    y           = excluded.y,
-                    weight      = excluded.weight"
+                    weight      = MAX(graph_nodes.weight, excluded.weight)"
             )
             .bind(&node.id)
             .bind(&node.project_id)
@@ -539,6 +537,18 @@ impl DataRepository {
             .execute(&self.pool)
             .await
             .map_err(|e| format!("Error vaciando grafo de proyecto: {e}"))?;
+        Ok(())
+    }
+
+    /// Actualiza la posicion de un nodo en el canvas (arrastre del usuario).
+    pub async fn update_node_position(&self, node_id: &str, x: f64, y: f64) -> Result<(), String> {
+        sqlx::query("UPDATE graph_nodes SET x = ?, y = ? WHERE id = ?")
+            .bind(x)
+            .bind(y)
+            .bind(node_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error actualizando posicion de nodo: {e}"))?;
         Ok(())
     }
 }

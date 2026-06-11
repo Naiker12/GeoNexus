@@ -26,26 +26,27 @@ CONCEPT_DESCRIPTIONS = {
     "riesgo de inundacion": "Probabilidad de dano por desbordamiento de cuerpos de agua en un area.",
 }
 
+from .layout import node_position_by_kind
+
+
 KIND_SEED_POSITIONS = {
-    "norma":     {"x_range": (15, 45), "y_range": (10, 90)},
-    "zona":      {"x_range": (55, 85), "y_range": (10, 90)},
-    "concepto":  {"x_range": (30, 70), "y_range": (30, 70)},
-    "documento": {"x_range": (10, 90), "y_range": (10, 90)},
-    "capa":      {"x_range": (10, 90), "y_range": (10, 90)},
+    "norma":     {"x_range": (15, 45), "y_range": (10, 35)},
+    "zona":      {"x_range": (10, 35), "y_range": (30, 70)},
+    "concepto":  {"x_range": (65, 90), "y_range": (30, 70)},
+    "documento": {"x_range": (20, 80), "y_range": (65, 90)},
+    "capa":      {"x_range": (40, 60), "y_range": (40, 60)},
 }
 
 
 def _seed_position(kind: str) -> tuple[float, float]:
     """Genera posiciones iniciales agrupadas por tipo para mejor layout inicial."""
-    ranges = KIND_SEED_POSITIONS.get(kind, {"x_range": (20, 80), "y_range": (20, 80)})
-    return (
-        round(random.uniform(*ranges["x_range"]), 2),
-        round(random.uniform(*ranges["y_range"]), 2),
-    )
+    return node_position_by_kind(kind, KIND_SEED_POSITIONS)
 
 
 def extract_graph_entities(chunks: List[Dict], project_id: str, workspace_id: str) -> Dict:
     """Extrae nodos y relaciones simples desde texto real indexado."""
+    from .layout import reset_counters as _reset
+    _reset()
     nodes: dict[str, Dict] = {}
     edges: list[Dict] = []
 

@@ -310,33 +310,137 @@ pub async fn rebuild_knowledge_graph(
     // 1. Limpiar el grafo actual
     state.repo.clear_graph(&project_id).await?;
 
-    // 2. Escanear documentos indexados y construir nodos/aristas dinámicos
+    // 2. Localizar el sidecar de Python
+    let project_root = std::env::current_dir().unwrap_or_default();
+    let root_path = if project_root.ends_with("geonexus-tauri") {
+        project_root.parent().unwrap_or(&project_root).to_path_buf()
+    } else {
+        project_root
+    };
+
+    let mut python_exe = "python".to_string();
+    let candidates = vec![
+        root_path.join("ai").join(".venv").join("Scripts").join("python.exe"),
+        root_path.join(".venv").join("Scripts").join("python.exe"),
+        root_path.join("ai").join(".venv").join("bin").join("python"),
+        root_path.join(".venv").join("bin").join("python"),
+    ];
+    for c in candidates {
+        if c.exists() {
+            python_exe = c.to_string_lossy().to_string();
+            break;
+        }
+    }
+
+    let sidecar_script = root_path.join("ai").join("sidecar.py");
+    if !sidecar_script.exists() {
+        return Err("No se encontró el script sidecar.py".into());
+    }
+
+    // 3. Escanear documentos indexados y re-extraer entidades
     let assets = state.repo.list_data_assets(&project_id).await?;
     let now = unix_now();
+    let mut all_nodes: Vec<GraphNode> = vec![];
+    let mut all_edges: Vec<GraphEdge> = vec![];
+
     for asset in assets {
-        if asset.status == AssetStatus::Ready && asset.chunks > 0 {
-            let chunks = state.repo.list_document_chunks(&asset.id).await?;
-            if !chunks.is_empty() {
-                let doc_node_id = format!("doc-{}", asset.id);
-                let doc_node = GraphNode {
-                    id: doc_node_id,
-                    project_id: project_id.clone(),
-                    workspace_id: asset.workspace_id.clone(),
-                    name: asset.name.clone(),
-                    kind: "documento".into(),
-                    description: format!("Documento '{}' indexado en el grafo de conocimiento.", asset.name),
-                    evidence: format!("Asset ID: {}", asset.id),
-                    x: round_val(random_f64(10.0, 90.0)),
-                    y: round_val(random_f64(10.0, 90.0)),
-                    weight: 2,
-                    created_at: now,
-                };
-                let _ = state.repo.insert_graph_nodes(&[doc_node]).await;
+        if asset.status != AssetStatus::Ready || asset.chunks <= 0 {
+            continue;
+        }
+        let chunks = state.repo.list_document_chunks(&asset.id).await?;
+        if chunks.is_empty() {
+            continue;
+        }
+
+        // Nodo documento para este asset
+        let doc_node_id = format!("doc-{}", asset.id);
+        all_nodes.push(GraphNode {
+            id: doc_node_id.clone(),
+            project_id: project_id.clone(),
+            workspace_id: asset.workspace_id.clone(),
+            name: asset.name.clone(),
+            kind: "documento".into(),
+            description: format!("Documento '{}' indexado en el grafo de conocimiento.", asset.name),
+            evidence: format!("Asset ID: {}", asset.id),
+            x: round_val(random_f64(10.0, 90.0)),
+            y: round_val(random_f64(10.0, 90.0)),
+            weight: 2,
+            created_at: now,
+        });
+
+        // Convertir chunks a JSON para el sidecar
+        let chunks_json: Vec<serde_json::Value> = chunks
+            .iter()
+            .map(|c| {
+                serde_json::json!({
+                    "content": c.content,
+                    "page_number": c.page_number,
+                })
+            })
+            .collect();
+        let chunks_str = serde_json::to_string(&chunks_json)
+            .map_err(|e| format!("Error serializando chunks: {e}"))?;
+
+        let mut cmd = std::process::Command::new(&python_exe);
+        cmd.arg(&sidecar_script)
+            .arg("--action")
+            .arg("extract_graph_entities")
+            .arg("--chunks_json")
+            .arg(&chunks_str)
+            .arg("--project_id")
+            .arg(&project_id)
+            .arg("--workspace_id")
+            .arg(asset.workspace_id.as_deref().unwrap_or("workspace-main"))
+            .current_dir(&root_path);
+
+        if let Ok(output) = cmd.output() {
+            if output.status.success() {
+                let stdout_str = String::from_utf8_lossy(&output.stdout);
+                if let Ok(extracted) = serde_json::from_str::<serde_json::Value>(&stdout_str) {
+                    if let Some(nodes) = extracted["nodes"].as_array() {
+                        for n in nodes {
+                            all_nodes.push(GraphNode {
+                                id: n["id"].as_str().unwrap_or("").into(),
+                                project_id: project_id.clone(),
+                                workspace_id: asset.workspace_id.clone(),
+                                name: n["name"].as_str().unwrap_or("").into(),
+                                kind: n["kind"].as_str().unwrap_or("concepto").into(),
+                                description: n["description"].as_str().unwrap_or("").into(),
+                                evidence: n["evidence"].as_str().unwrap_or("").into(),
+                                x: n["x"].as_f64().unwrap_or(50.0),
+                                y: n["y"].as_f64().unwrap_or(50.0),
+                                weight: n["weight"].as_i64().unwrap_or(1),
+                                created_at: now,
+                            });
+                        }
+                    }
+                    if let Some(edges) = extracted["edges"].as_array() {
+                        for e in edges {
+                            all_edges.push(GraphEdge {
+                                id: e["id"].as_str().unwrap_or("").into(),
+                                project_id: project_id.clone(),
+                                source: e["source"].as_str().unwrap_or("").into(),
+                                target: e["target"].as_str().unwrap_or("").into(),
+                                relation: e["relation"].as_str().unwrap_or("asociado con").into(),
+                                strength: e["strength"].as_i64().unwrap_or(50),
+                                created_at: now,
+                            });
+                        }
+                    }
+                }
             }
         }
     }
 
-    // 3. Si no hay documentos indexados, sembrar datos por defecto
+    // 4. Insertar todos los nodos y aristas
+    if !all_nodes.is_empty() {
+        state.repo.insert_graph_nodes(&all_nodes).await?;
+    }
+    if !all_edges.is_empty() {
+        state.repo.insert_graph_edges(&all_edges).await?;
+    }
+
+    // 5. Si no hay nada, sembrar datos por defecto
     state.repo.seed_if_empty().await?;
 
     Ok(())

@@ -1,0 +1,40 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   ESTADO DE IMPLEMENTACIÓN POR FASES (Junio 2026)             ║
+║   8 de 9 fases completas en beta                              ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Fase 1 — Inventario y metadata local ✅
+    CRUD assets, metrics, sync_events. Frontend DataPage conectado.
+    Pendiente: get_data_lineage, reindex_asset command
+
+  Fase 2 — Conector local y cache ✅
+    register_local_connector, cache/sync con allowlist. 10 tests.
+    Pendiente: UI Conectores al backend real
+
+  Fase 3 — Indexación documental y vectorial ✅
+    Pipeline: extract → chunk → embed → ChromaDB → grafo.
+    Pendiente: ChromaDB real en prod, citas por chunk
+
+  Fase 4 — Containers-MCP ✅
+    5 tools container (list, get, search, sync, upload). 8 tests.
+    Pendiente: cloud providers
+
+  Fase 5 — OAuth OneDrive ❌
+    Nada implementado. Flujo completo pendiente
+
+  Fase 6 — Proveedor LLM base ✅
+    5 providers (Ollama, LM Studio, OpenAI, OpenRouter, Anthropic)
+    Ping + chat vía sidecar. AiContainersPage funcional
+
+  Fase 7 — Chat real con memoria ✅
+    Conversation/Message types, SQLite CRUD, send_message pipeline
+    Frontend: historial persistido, tool loop
+
+  Fase 8 — Auto-detect modelos ✅
+    list_llm_models nativo Rust. 11 tests. ProviderSetupDialog
+
+  Fase 9 — RAG + contexto GIS ✅
+    recall_chunks, sources en mensajes, ProjectContextPanel
+
+  Global: 27+ comandos Tauri, 12 tablas SQLite, 85+ tests Rust,
+    8 tests TS, sidecar Python con 8 acciones

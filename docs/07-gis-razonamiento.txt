@@ -1,0 +1,39 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   RAZONAMIENTO GIS — Pipeline completo                         ║
+║   Sistema de inteligencia territorial                          ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Pipeline multicapa: Frontend → Rust (send_message) →
+    Python sidecar → LLM con tool-calling loop + RAG + grafo
+
+  5 capas:
+    1. Frontend: ChatPanel + GisToolPanel (5 tools hardcodeadas)
+    2. Rust: send_message.rs (391L) orquesta RAG, contexto,
+       web search, tool loop (4 tools de código)
+    3. Python sidecar: 8 acciones, router LLM con 5 proveedores
+    4. SQLite + ChromaDB: graph_nodes, assets, messages, vectores
+    5. MCP GIS: qgis-mcp (5 tools, localhost:7021, definido pero
+       NO conectado al tool-calling loop)
+
+  Flujo típico: usuario pregunta → RAG recall → project context
+    → LLM con tool loop → respuesta con fuentes + stats
+
+  GisToolPanel: 5 herramientas UI (buffer, distancia, heatmap,
+    clustering, consultar POT) — botones sin handler real
+
+  Estado actual:
+    ✅ Chat completo con tool loop, RAG, web search, 5 LLM
+    ✅ Pipeline indexación documentos + extracción grafo
+    ✅ Visualización grafo force-directed
+    🔄 GIS Tools en UI pero sin conectar al LLM
+    🔄 qgis-mcp definido pero sin dispatch real
+    ❌ Sin ejecución GIS desde LLM (buffer, heatmap, etc.)
+    ❌ Sin NLP semántico en extractor Python
+
+  MCP servidores definidos (qgis-mcp, memory-mcp, arcgis-mcp,
+    supabase-mcp) en mcp-data.ts pero sin conexión activa.
+    McpConsole simula terminal con datos estáticos.
+
+  geo_utils.py: placeholder (5L), solo gpd.read_file().
+    Sin reproyección, buffer, intersección, clustering real.
+    No usado por ningún otro módulo.

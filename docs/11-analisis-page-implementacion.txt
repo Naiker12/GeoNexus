@@ -1,0 +1,77 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS PAGE — IMPLEMENTACIÓN COMPLETA                      ║
+║   Estado actual de la página de análisis y sus componentes     ║
+╚══════════════════════════════════════════════════════════════════╝
+
+   1. ESTRUCTURA DE LA PÁGINA (AnalysisPage.tsx)
+      - Layout: header + metrics + (chart + cost + runs | side panels)
+      - Timeframe state elevado para compartir entre componentes
+      - Scroll dentro de section: h-[calc(100svh-3.5rem)] overflow-auto
+      - Max-width: 110rem, grid responsive con xl breakpoint
+
+   2. AnalysisHeader
+      ✅ Título dinámico con timeframe y fecha
+      ✅ Gradiente decorativo superior
+      ✅ Botón Exportar con menú desplegable
+      ✅ Portal para dropdown (document.body, position: fixed)
+      ✅ Export CSV / JSON (traces data via Tauri command)
+      ✅ Export PNG / PDF (captura visual con html-to-image + jsPDF)
+      ✅ Loading spinner en botón + toast.loading durante export
+      ✅ Click outside handler con refs (btnRef + dropdownRef)
+
+   3. AnalysisMetrics (cards superiores)
+      ✅ 4 métricas: Trazas guardadas, Tokens consumidos, 
+        Categorías únicas, Cobertura semanal
+      ✅ Datos desde hook useAnalysisMetrics
+
+   4. TokenChart (gráfico de consumo)
+      ✅ Área chart con gradient fill
+      ✅ SVG render con preserveAspectRatio="none"
+      ✅ HTML labels eje Y con -translate-y-full alineados con grid lines
+      ✅ Tooltip hover con input/output tokens y hora
+      ✅ Barras input/output con altura mínima 2px y opacidad 0.3 si 0
+      ✅ Timeframe selector (hoy/7d/30d)
+      ✅ Grid lines en #f0ece4
+
+   5. CostSummaryBar
+      ✅ Barra #f5f0e8 con 3 columnas: costo hoy / costo 7d / promedio
+      ✅ Formato monospace escalonado
+
+   6. AnalysisRunsTable
+      ✅ Tabla de trazas recientes con scroll
+      ✅ Badge duración con color (verde <5s, amarillo 5-15s, rojo >15s)
+      ✅ Tool_calls con WrenchIcon
+      ✅ Estado vacío con InfoIcon
+
+   7. AnalysisSidePanels (panel lateral)
+      ✅ TopQueriesPanel: top 5 queries por tokens con badge runs
+      ✅ SkillPanel: info de skills con estados
+      ✅ ModelUsagePanel: diálogo con input/output bars + ratio
+      ✅ StatePanel: info general
+
+   8. ESTADOS CUBIERTOS
+      ✅ Loading: skeleton pulse en chart, spinner en botón export
+      ✅ Empty: "Sin consumo registrado" en chart
+      ✅ Error: toast.error en export, "Error al cargar" en metrics
+      ✅ Success: toast.success en export
+
+   9. DATA FLOW
+      Backend (Rust/Tauri):
+        - get_analysis_metrics → AnalysisMetrics
+        - get_token_consumption → TokenChart
+        - get_daily_analysis_runs → AnalysisRunsTable
+        - get_cost_by_timeframe → CostSummaryBar
+        - get_top_queries → TopQueriesPanel
+        - exportAnalysisTraces → export CSV/JSON
+
+   10. PENDIENTE / MEJORAS FUTURAS
+       - PDF con texto real en vez de imagen embebida
+       - Filtros en tabla de trazas (fecha, modelo, skill)
+       - Paginación en AnalysisRunsTable si hay muchas trazas
+       - Export selectivo (solo chart, solo tabla)
+       - Responsive para móviles
+       - Tests
+
+   11. DEPENDENCIAS NUEVAS
+       - html-to-image@1.11.13 (captura DOM a imagen)
+       - jspdf@4.2.1 (generación PDF)

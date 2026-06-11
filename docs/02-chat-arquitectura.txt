@@ -1,0 +1,37 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   CHAT IA — ARQUITECTURA COMPLETA                              ║
+║   Frontend → Tauri → Python → SQLite                           ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  FLUJO: ChatPanel → useChatSession.submit() → api/chat.ts →
+    invoke("send_message") → Rust send_message() → Python sidecar
+    → LLM provider → respuesta con stats, fuentes, trazabilidad
+
+  Frontend (src/components/chat/):
+    ChatPanel.tsx (508L) — orquestador: sidebar, transcript,
+      composer, contexto, modelo
+    ChatTranscript.tsx — lista de mensajes + thinking steps
+    AssistantMessage.tsx — markdown + fuentes + stats + research
+    MessageBubble.tsx — burbujas user/assistant
+    MessageActions.tsx — copiar, editar, regenerar, TokenStatsBadge
+    DeepResearchPanel.tsx — fuentes web colapsable
+    ThinkingInline.tsx — pasos de razonamiento animados
+    useChatSession.ts (338L) — estado, submit, regenerate, persist
+
+  Rust pipeline (send_message.rs, 391L):
+    Validar → crear conversación → guardar user msg →
+    RAG recall (sidecar) → project context (SQLite) →
+    web search opcional (sidecar) → build_messages →
+    tool-calling loop (max 10 iter, 4 tools: read_file,
+    search_code, list_directory, glob_files) →
+    extraer MessageStats → guardar assistant msg → responder
+
+  DB: conversations + messages + chat_tool_calls tables
+  Tipos: Message, Conversation, SendMessageInput/Response,
+    MessageStats, ResearchSource, ContextNode, RecallChunk
+
+  4 tools en tool loop: read_file, search_code, list_dir, glob
+  Sin streaming (request/response blocking)
+
+  Tests: 14 tests en chat commands, 8 en chat_repo, ~40 en core
+    chat.rs. Sin tests E2E ni de componentes frontend.

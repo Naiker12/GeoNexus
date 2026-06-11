@@ -1,0 +1,41 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   PROVEEDORES LLM — Configuración                             ║
+║   5 proveedores implementados en Python sidecar                ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  router.py detecta automáticamente según provider_type:
+    ollama, openai, openrouter, anthropic, lmstudio, custom
+
+  Ollama (local, gratuito)
+    Endpoint: http://localhost:11434
+    Sin API key. Modelos auto-detectados vía /api/tags
+
+  LM Studio (local, gratuito)
+    Endpoint: http://localhost:1234/v1
+    Sin API key. Modelo = el cargado en LM Studio
+
+  OpenAI (cloud, pago)
+    Endpoint: https://api.openai.com/v1
+    API key: OPENAI_API_KEY (env var)
+    Modelos: gpt-4o, gpt-3.5-turbo, etc.
+
+  OpenRouter (cloud, gateway multi-modelo)
+    Endpoint: https://openrouter.ai/api/v1
+    API key: OPENROUTER_API_KEY (env var)
+    Modelos: gpt-4, mistral, claude, llama, etc.
+
+  Anthropic (cloud, pago)
+    Endpoint: https://api.anthropic.com
+    API key: ANTHROPIC_API_KEY (env var)
+    Modelos: claude-opus-4, claude-sonnet-4, claude-haiku-3
+
+  Rust auto-detect (list_llm_models): Ollama + OpenAI-compat
+    via HTTP GET /api/tags o /v1/models. Anthropic hardcodeado.
+    11 tests unitarios. ProviderSetupDialog con auto-detect.
+
+  Frontend: AiContainersPage permite probar conexión + latencia.
+    Config en localStorage (pendiente: Stronghold/keychain)
+
+  Archivos Python: router.py (319L), ollama/openai/anthropic/
+    lmstudio/openrouter.py. Nota: router.py NO llama a los
+    módulos dedicados — duplica lógica inline.

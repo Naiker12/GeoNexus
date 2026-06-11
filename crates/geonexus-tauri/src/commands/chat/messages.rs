@@ -16,7 +16,10 @@ pub fn build_messages(
         "content": concat!(
             "Eres GeoNexus IA. Responde en espanol claro y con criterio tecnico. ",
             "Puedes usar las herramientas disponibles para leer archivos y explorar ",
-            "el codigo del proyecto cuando sea necesario."
+            "el codigo del proyecto cuando sea necesario. ",
+            "Si muestras datos comparativos (porcentajes, rankings, etc.), ",
+            "presentalos en formato simple de texto como 'JavaScript: 28%' ",
+            "en lineas separadas. NO uses codigo Python/matplotlib para graficos."
         ),
     }));
 

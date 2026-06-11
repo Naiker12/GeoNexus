@@ -1,0 +1,39 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   BACKEND — DATOS, CONECTORES Y MEMORIA                        ║
+║   Plan de implementación V2 beta                               ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Objetivo: Conectar páginas Datos, Documentos, Conectores,
+    MCP y Grafo al backend real, compartiendo misma DB.
+
+  Fase 1 ✅ — Inventario y metadata local
+    list_data_assets, get_data_asset, get_data_store_metrics,
+    get_sync_events, validate_data_asset. Tabla assets con
+    status, chunks, embeddings, graph_nodes, cache_state, etc.
+    Pendiente: get_data_lineage dedicado, paginación
+
+  Fase 2 ✅ — Conector local y cache
+    register_local_connector, list_connector_files,
+    cache_connector_file, sync_local_connector con allowlist.
+    10 tests. Pendiente: UI conectada, cache cifrado
+
+  Fase 3 ✅ — Indexación documental y vectorial
+    Pipeline: extract_text → chunk → embed → ChromaDB →
+    extract_graph_entities. ChromaDB + MockChromaDB fallback.
+    Pendiente: más formatos (XLSX, CSV, GeoJSON), OCR
+
+  Fase 4 ✅ — Containers-MCP
+    5 tools: container_list, get, search, sync, upload.
+    Audit trail en container_mcp_calls. 8 tests.
+    container_upload reservado para Fase 5
+
+  Fase 5 ❌ — OAuth OneDrive (pendiente)
+    Flujo completo: auth_url → browser → callback → token
+    → keychain/Stronghold. Scopes mínimos + PKCE
+
+  Buenas prácticas: 1 componente/archivo, mock separado de UI,
+    validación en Rust, no panic, no loggear secrets
+
+  Pendientes globales: Fase 5 OAuth, UI Conectores al backend,
+    streaming de respuestas LLM, tests E2E, keychain/Stronghold
+    para API keys, tool-calling loop con MCP tools GIS

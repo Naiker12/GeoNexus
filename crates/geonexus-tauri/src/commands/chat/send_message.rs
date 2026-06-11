@@ -337,7 +337,7 @@ pub async fn send_message(
         id: Uuid::new_v4().to_string(),
         conversation_id: conversation_id.clone(),
         role: MessageRole::Assistant,
-        content: final_content,
+        content: final_content.clone(),
         provider: Some(input.provider),
         model: Some(response_model),
         trace_id: trace_id.clone(),
@@ -355,6 +355,59 @@ pub async fn send_message(
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
+
+    // === Extract entities from chat into graph nodes ===
+    let chat_text = format!("{}\n\n{}", input.content, final_content);
+    if let Ok(extracted) = run_sidecar_json::<serde_json::Value>(&[
+        "--action",
+        "extract_chat_entities",
+        "--query",
+        &chat_text,
+        "--project_id",
+        &input.project_id,
+        "--workspace_id",
+        input.workspace_id.as_deref().unwrap_or("workspace-default"),
+    ]) {
+        let now = unix_now();
+        if let Some(nodes) = extracted["nodes"].as_array() {
+            let graph_nodes: Vec<geonexus_core::GraphNode> = nodes
+                .iter()
+                .map(|n| geonexus_core::GraphNode {
+                    id: n["id"].as_str().unwrap_or("").into(),
+                    project_id: input.project_id.clone(),
+                    workspace_id: input.workspace_id.clone(),
+                    name: n["name"].as_str().unwrap_or("").into(),
+                    kind: n["kind"].as_str().unwrap_or("concepto").into(),
+                    description: n["description"].as_str().unwrap_or("").into(),
+                    evidence: n["evidence"].as_str().unwrap_or("chat").into(),
+                    x: n["x"].as_f64().unwrap_or(50.0),
+                    y: n["y"].as_f64().unwrap_or(50.0),
+                    weight: n["weight"].as_i64().unwrap_or(1),
+                    created_at: now,
+                })
+                .collect();
+            if !graph_nodes.is_empty() {
+                let _ = state.repo.insert_graph_nodes(&graph_nodes).await;
+            }
+        }
+        if let Some(edges) = extracted["edges"].as_array() {
+            let graph_edges: Vec<geonexus_core::GraphEdge> = edges
+                .iter()
+                .map(|e| geonexus_core::GraphEdge {
+                    id: e["id"].as_str().unwrap_or("").into(),
+                    project_id: input.project_id.clone(),
+                    source: e["source"].as_str().unwrap_or("").into(),
+                    target: e["target"].as_str().unwrap_or("").into(),
+                    relation: e["relation"].as_str().unwrap_or("asociado con").into(),
+                    strength: e["strength"].as_i64().unwrap_or(50),
+                    created_at: now,
+                })
+                .collect();
+            if !graph_edges.is_empty() {
+                let _ = state.repo.insert_graph_edges(&graph_edges).await;
+            }
+        }
+    }
 
     Ok(SendMessageResponse {
         conversation_id,

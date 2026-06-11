@@ -1,0 +1,37 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   PÁGINA DE ANÁLISIS — Backend + Frontend conectados          ║
+║   7 componentes, 6 queries, 6 comandos Tauri                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Backend (analysis_repo.rs, 290L): 6 queries públicas
+    get_analysis_metrics → 4 cards (tokens_hoy, consultas_ia,
+      costo_estimado, trazas_guardadas) — 1 solo query
+    get_token_timeline → consumo por hora/día según timeframe
+    get_model_usage → tokens + requests por modelo (input/output)
+    list_analysis_runs → últimas 50 con título, modelo, duración
+    get_skill_usage → tools más usadas + success_rate
+    export_traces_csv/json → hasta 500 registros
+
+  Commands (analysis.rs, 110L): 6 wrappers Tauri registrados
+    en main.rs + commands/mod.rs. Usan datos de messages,
+    conversations, chat_tool_calls — sin migraciones nuevas
+
+  Frontend:
+    AnalysisMetrics — 4 cards con skeletons + error inline
+    TokenChart — SVG line + barras input/output, hover tooltip,
+      selector Hoy/7d/30d
+    AnalysisRunsTable — paginación 10/page, click → Dialog detalle
+      con modelo, tokens, duración, trace_id, tool_calls
+    AnalysisSidePanels — ModelUsagePanel clickeable con diálogo
+      detalle + tooltip; SkillPanel con semáforo (≥90 verde);
+      TokensBarChart input/output 7d con tooltip
+    AnalysisHeader — Export dropdown CSV/JSON con descarga real
+    useAnalysis.ts — 5 hooks con loading/error/data
+
+  Eliminado: analysis-data.ts (mock reemplazado por datos reales)
+
+  Sin migraciones nuevas — datos ya existen desde send_message
+    (messages.input_tokens, output_tokens, total_tokens, etc.)
+
+  Pendiente: filtro por rango de fechas custom (solo
+    Hoy/7d/30d), tabla analysis_sessions existe pero sin usar

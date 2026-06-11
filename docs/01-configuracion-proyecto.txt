@@ -1,0 +1,41 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   CONFIGURACIÓN DEL PROYECTO                                   ║
+║   Estructura, stack y archivos de GeoNexus                     ║
+╚══════════════════════════════════════════════════════════════════╝
+
+  Frontend: React 18 + TypeScript + Vite + TailwindCSS v4
+            shadcn/ui (Radix), Lucide icons, d3-force, sonner
+  Desktop:  Tauri 2 + Rust (4 crates)
+  AI:       Python sidecar (LLM router, ChromaDB, RAG, web search)
+  DB:       SQLite (sqlx) + ChromaDB (vectores)
+
+  4 Rust crates:
+    geonexus-core   → Tipos compartidos (Message, GraphNode, etc.)
+    geonexus-db     → SQLite repos + migraciones (12 tablas)
+    geonexus-mcp    → MCP tool schemas
+    geonexus-tauri  → 27+ comandos Tauri, UI shell
+
+  Python sidecar (ai/): 8 acciones CLI (chat_llm, recall_chunks,
+    search_web, ping_llm, list_llm_models, index, extract,
+    build_project_context). 5 proveedores LLM + ChromaDB.
+
+  SQLite migraciones: 8 archivos (init → assets, workspaces,
+    connectors, document_chunks, graph_nodes/edges, conversations,
+    messages, chat_tool_calls, analysis_sessions, message_stats)
+
+  27+ comandos Tauri: datos, conectores, documentos, grafo,
+    containers-mcp, LLM, chat, análisis
+
+  Frontend features: Chat (7 componentes), Grafo (GraphPage 595L),
+    Análisis (7 componentes), Datos, Documentos, Conectores, MCP,
+    AI Containers, Herramientas GIS, Tema (8 themes)
+
+  Scripts: test_llm_providers.ps1, pnpm dev/build/test
+
+  Stack total: ~48 archivos de config, ~85 tests Rust, ~8 TS tests
+
+  Rutas clave: src/components/ (chat + ui), src/features/
+    (workspace/graph, workspace/mcp, tools, theme, ai),
+    src/api/ (chat, data, connector, llm, analysis),
+    src/types/ (chat, data, llm, analysis, connector),
+    src/hooks/, src/lib/utils.ts, src/contexts/
