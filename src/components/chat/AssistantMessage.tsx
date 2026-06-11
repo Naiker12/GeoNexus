@@ -26,8 +26,7 @@ export function AssistantMessage({
     ? { mainContent: message.content, suggestions: [] as string[] }
     : parseSuggestions(message.content)
 
-  console.log("[DEBUG] AssistantMessage research_sources:", message.research_sources, "isSearching:", message.isSearching)
-  const showResearch = message.isSearching !== undefined || (message.research_sources?.length ?? 0) > 0
+  const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
   return (
     <div className="group flex items-start gap-2 py-0.5">
@@ -35,21 +34,11 @@ export function AssistantMessage({
         <GeoNexusIcon className="size-3.5" variant="nexus" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex items-center justify-between mb-0.5">
-          <div className="flex items-center gap-2">
+          <div className="mb-0.5">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
               GeoNexus IA
             </span>
-            {message.stats && !showResearch && (
-              <TokenStatsBadge
-                stats={message.stats}
-                provider={message.provider ?? undefined}
-                model={message.model ?? undefined}
-                cumulativeContext={cumulativeContext}
-              />
-            )}
           </div>
-        </div>
         <ThinkingInline
           steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
           isComplete={true}
@@ -77,7 +66,7 @@ export function AssistantMessage({
           </>
         )}
         <div className="flex items-center gap-1 pt-0.5">
-          {message.stats && showResearch && (
+          {message.stats && (
             <TokenStatsBadge
               stats={message.stats}
               provider={message.provider ?? undefined}

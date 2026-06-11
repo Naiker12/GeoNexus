@@ -52,6 +52,7 @@ fn main() {
             commands::document::list_graph_nodes,
             commands::document::list_graph_edges,
             commands::document::rebuild_knowledge_graph,
+            commands::document::update_node_position,
             // Fase 4
             commands::containers_mcp::init_containers_mcp,
             commands::containers_mcp::dispatch_container_tool,

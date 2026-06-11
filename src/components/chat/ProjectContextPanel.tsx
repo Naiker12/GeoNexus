@@ -84,8 +84,8 @@ export function ProjectContextPanel({
           }
         />
         <ToggleSection
-          label="Nodos del grafo"
-          description="Conceptos y relaciones del proyecto"
+          label="Conocimiento territorial"
+          description="Entidades y relaciones del proyecto"
           icon={<GitBranchIcon className="size-4" />}
           checked={toggles.graph_nodes}
           onCheckedChange={(v) =>
@@ -100,7 +100,9 @@ export function ProjectContextPanel({
             <Loader2Icon className="size-5 animate-spin" />
           </div>
         ) : error ? (
-          <p className="text-xs text-destructive">{error}</p>
+          <p className="text-xs text-destructive/80">
+            Error al cargar nodos — revisa la conexión
+          </p>
         ) : data ? (
           <div className="space-y-3">
             {toggles.indexed_assets && data.assets.length > 0 && (
@@ -122,7 +124,7 @@ export function ProjectContextPanel({
             {toggles.graph_nodes && data.graph_nodes.length > 0 && (
               <div>
                 <p className="mb-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Nodos del grafo ({data.graph_nodes.length})
+                  Conocimiento territorial ({data.graph_nodes.length})
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {data.graph_nodes.map((n) => (

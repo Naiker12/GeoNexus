@@ -8,14 +8,19 @@ use tauri::State;
 use crate::commands::llm::run_sidecar;
 use crate::AppState;
 
-pub mod send_message;
+pub mod classifier;
 pub mod context;
+pub mod messages;
+pub mod search;
+pub mod send_message;
+pub mod stats;
 pub mod tools;
+pub mod validator;
 
 pub use send_message::send_message;
 
 #[derive(Debug, Deserialize)]
-struct SidecarChatResult {
+pub struct SidecarChatResult {
     status: String,
     #[serde(default)]
     text: Option<String>,
@@ -23,6 +28,8 @@ struct SidecarChatResult {
     msg: Option<serde_json::Value>,
     #[serde(default)]
     usage: Option<serde_json::Value>,
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 impl SidecarChatResult {
@@ -95,7 +102,7 @@ pub struct ContextNode {
     pub kind: String,
 }
 
-fn run_sidecar_json<T: serde::de::DeserializeOwned>(args: &[&str]) -> Result<T, String> {
+pub fn run_sidecar_json<T: serde::de::DeserializeOwned>(args: &[&str]) -> Result<T, String> {
     let output = run_sidecar(args)?;
     serde_json::from_str(&output)
         .map_err(|e| format!("Error deserializando respuesta del sidecar: {e}. Output: {output}"))
@@ -205,7 +212,7 @@ pub async fn get_project_context(
     .map_err(|e| format!("Error consultando assets indexados: {e}"))?;
 
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
-        "SELECT label, kind FROM graph_nodes
+        "SELECT name AS label, kind FROM graph_nodes
          WHERE project_id = ?
          LIMIT 8"
     )

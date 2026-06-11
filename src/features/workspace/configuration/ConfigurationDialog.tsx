@@ -7,11 +7,14 @@ import { ConfigurationSidebar } from "@/features/workspace/configuration/Configu
 import type { ConfigSectionId } from "@/features/workspace/configuration/configuration-types"
 import { AiEmbeddingsSection } from "@/features/workspace/configuration/sections/AiEmbeddingsSection"
 import { ConnectorsSection } from "@/features/workspace/configuration/sections/ConnectorsSection"
+import { GisToolsPanel } from "@/features/workspace/configuration/sections/GisToolsPanel"
 import { LocalPathsSection } from "@/features/workspace/configuration/sections/LocalPathsSection"
 import { MaintenanceSection } from "@/features/workspace/configuration/sections/MaintenanceSection"
 import { MapEnginesSection } from "@/features/workspace/configuration/sections/MapEnginesSection"
 import { McpRouterSection } from "@/features/workspace/configuration/sections/McpRouterSection"
 import { MemorySection } from "@/features/workspace/configuration/sections/MemorySection"
+import { TelegramIntegrationPanel } from "@/features/workspace/configuration/sections/TelegramIntegrationPanel"
+import { CommandsSection } from "@/features/workspace/configuration/sections/CommandsSection"
 
 type ConfigurationDialogProps = {
   open: boolean
@@ -26,6 +29,9 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   memory: MemorySection,
   "local-paths": LocalPathsSection,
   maintenance: MaintenanceSection,
+  telegram: TelegramIntegrationPanel,
+  "gis-tools": GisToolsPanel,
+  commands: CommandsSection,
 }
 
 export function ConfigurationDialog({

@@ -1,0 +1,539 @@
+================================================================================
+  GEONEXUS — CONFIGURACIÓN COMPLETA DEL PROYECTO
+  Generado: 2026-06-10
+================================================================================
+
+ÍNDICE:
+  1. ESTRUCTURA GENERAL DEL PROYECTO
+  2. RUST (BACKEND)
+     2.1 Workspace Cargo.toml
+     2.2 geonexus-core/Cargo.toml
+     2.3 geonexus-db/Cargo.toml
+     2.4 geonexus-mcp/Cargo.toml
+     2.5 geonexus-tauri/Cargo.toml
+  3. FRONTEND (TYPESCRIPT/REACT)
+     3.1 package.json
+     3.2 tsconfig.json
+     3.3 vite.config.ts
+     3.4 tailwind.config.cjs & postcss.config.cjs
+     3.5 components.json (shadcn/ui)
+     3.6 index.html
+  4. TAURI (DESKTOP SHELL)
+     4.1 tauri.conf.json (root)
+     4.2 tauri.conf.json (crate)
+     4.3 Capabilities
+  5. PYTHON (AI SIDECAR)
+     5.1 requirements.txt
+     5.2 Estructura ai/
+  6. BASE DE DATOS (SQLITE)
+     6.1 Migraciones SQL (8 archivos)
+     6.2 geonexus-db/src/
+  7. GIT
+     7.1 .gitignore
+  8. DOCUMENTACIÓN (docs/)
+  9. MCP SERVERS
+     9.1 containers-mcp/
+     9.2 mcp-servers/README.md
+  10. SCRIPTS
+     10.1 test_llm_providers.ps1
+  11. INVENTARIO COMPLETO DE ARCHIVOS
+
+================================================================================
+1. ESTRUCTURA GENERAL DEL PROYECTO
+================================================================================
+
+D:\GeoNexus\
+├── .git/
+├── .gitignore
+├── ai/                          ← Python sidecar (LLM, RAG, GIS, graph)
+├── Cargo.lock
+├── Cargo.toml                   ← Rust workspace root
+├── chroma_db/                   ← Mock ChromaDB data
+├── components.json              ← shadcn/ui config
+├── crates/                      ← Rust crates
+│   ├── geonexus-core/           ←   Tipos compartidos (core library)
+│   ├── geonexus-db/             ←   SQLite + repositorios
+│   ├── geonexus-mcp/            ←   MCP router
+│   └── geonexus-tauri/          ←   Tauri desktop shell
+├── dist/                        ← Frontend build output
+├── docs/                        ← Documentación técnica
+├── index.html                   ← Entry point HTML
+├── mcp-servers/
+│   └── containers-mcp/          ← Container MCP JSON-RPC server
+├── node_modules/
+├── package.json                 ← Frontend package config
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── postcss.config.cjs
+├── public/
+├── README.md
+├── src/                         ← Frontend React/TypeScript
+│   ├── api/                     ←   API calls (chat, data, connector, llm)
+│   ├── components/              ←   UI components
+│   │   ├── brand/
+│   │   ├── chat/                ←     ChatPanel, AssistantMessage, useChatSession...
+│   │   ├── layers/
+│   │   ├── layout/
+│   │   ├── map/
+│   │   └── ui/                  ←     shadcn/ui primitives
+│   ├── contexts/
+│   ├── features/
+│   │   ├── ai/
+│   │   ├── map/
+│   │   ├── theme/
+│   │   ├── tools/
+│   │   └── workspace/           ←     GraphPage (grafo conocimiento)
+│   ├── hooks/
+│   ├── lib/
+│   ├── types/                   ←   TypeScript types
+│   ├── utils/
+│   ├── App.tsx
+│   ├── index.css
+│   └── main.tsx
+├── tailwind.config.cjs
+├── target/                      ← Rust build output
+├── tauri.conf.json              ← Symlink to crate config
+├── test_llm_providers.ps1       ← Script de testing
+├── tsconfig.json
+└── vite.config.ts
+
+================================================================================
+2. RUST (BACKEND)
+================================================================================
+
+2.1 Workspace Root: Cargo.toml
+────────────────────────────────────────────────────────────────────────────────
+
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+    • 4 crates: geonexus-core, geonexus-db, geonexus-mcp, geonexus-tauri
+
+
+2.2 Core Library: crates/geonexus-core/Cargo.toml
+────────────────────────────────────────────────────────────────────────────────
+
+[package]
+name = "geonexus-core"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+  Módulos:
+    ├── lib.rs          → AssetKind, AssetStatus, GraphNode, GraphEdge, DataAsset...
+    ├── allowlist.rs    → File extension whitelist
+    ├── chat.rs         → Message, Conversation, SendMessageInput/Response, Stats
+    ├── connector.rs    → Connector types
+    ├── local_connector.rs → Local file connector logic
+    └── reasoning.rs    → QueryIntent, ValidationResult, AnalysisSession (NUEVO)
+
+
+2.3 Database: crates/geonexus-db/Cargo.toml
+────────────────────────────────────────────────────────────────────────────────
+
+[package]
+name = "geonexus-db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+geonexus-core = { path = "../geonexus-core" }
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+  Módulos:
+    ├── lib.rs          → Re-exports
+    ├── data_repo.rs    → DataRepository (main): CRUD assets, chunks, nodes, edges
+    ├── chat_repo.rs    → Conversations & messages CRUD
+    └── connector_repo.rs → Connector config & file sync
+
+  Migraciones SQL: (8 archivos, ver sección 6)
+
+
+2.4 MCP Router: crates/geonexus-mcp/Cargo.toml
+────────────────────────────────────────────────────────────────────────────────
+
+[package]
+name = "geonexus-mcp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+  Módulos:
+    └── lib.rs          → MCP tool schema, dispatch logic
+
+
+2.5 Tauri Desktop Shell: crates/geonexus-tauri/Cargo.toml
+────────────────────────────────────────────────────────────────────────────────
+
+[package]
+name = "geonexus-tauri"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+geonexus-core      = { path = "../geonexus-core" }
+geonexus-db        = { path = "../geonexus-db" }
+geonexus-mcp       = { path = "../geonexus-mcp" }
+tauri              = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tracing            = "0.1"
+uuid               = { version = "1", features = ["v4"] }
+sqlx               = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros"] }
+serde              = { version = "1", features = ["derive"] }
+serde_json         = "1"
+reqwest            = { version = "0.12", features = ["json"] }
+
+  Comandos Tauri registrados (main.rs):
+    Fase 1 - Data:
+      list_data_assets, get_data_asset, get_data_store_metrics,
+      get_sync_events, validate_data_asset
+
+    Fase 2 - Conectores:
+      register_local_connector, list_connector_files,
+      cache_connector_file, sync_local_connector
+
+    Fase 3 - Documentos & Grafo:
+      index_document, list_document_chunks, list_graph_nodes,
+      list_graph_edges, rebuild_knowledge_graph, update_node_position
+
+    Fase 4 - Containers MCP:
+      init_containers_mcp, dispatch_container_tool
+
+    Fase 6 - LLM:
+      ping_llm_provider, list_llm_models, send_llm_message
+
+    Fase 7 - Chat:
+      send_message, delete_conversation, list_conversations,
+      list_messages, recall_chunks, get_project_context
+
+  Módulos de chat (src/commands/chat/):
+    ├── mod.rs          → SidecarChatResult, ContextNode, ContextAsset,
+    │                     get_project_context, recall_chunks, etc.
+    ├── send_message.rs → Pipeline completo (tool-calling loop, RAG,
+    │                     web search, classifier, validator, memoria)
+    ├── context.rs      → build_messages(), build_graph_context()
+    ├── tools.rs        → 4 tools: read_file, search_code, list_dir, glob
+    ├── classifier.rs   → Intent Classifier (6 categorías, keywords)
+    └── validator.rs    → Valida respuesta contra grafo (artículos, capas)
+
+
+================================================================================
+3. FRONTEND (TYPESCRIPT/REACT)
+================================================================================
+
+3.1 package.json
+────────────────────────────────────────────────────────────────────────────────
+
+Nombre: geonexus-frontend
+Package manager: pnpm@11.1.1
+Scripts:
+  dev           → vite
+  build         → vite build
+  preview       → vite preview
+  test          → vitest run
+  test:watch    → vitest
+  tauri:dev     → cd crates/geonexus-tauri && pnpm exec tauri dev
+  tauri:build   → cd crates/geonexus-tauri && pnpm exec tauri build
+
+Dependencias principales:
+  React 18, react-dom, react-markdown
+  @tauri-apps/api v2.11, @tauri-apps/plugin-opener v2.5
+  d3-force (grafo), lucide-react (iconos)
+  radix-ui + cmdk (componentes UI)
+  sonner (notificaciones), class-variance-authority
+  tailwind-merge, clsx, tw-animate-css
+  @fontsource-variable/geist
+
+Dev dependencies:
+  TypeScript 5.4, Vite 5, vitest 2.1
+  TailwindCSS v4.3, PostCSS, Autoprefixer
+  @vitejs/plugin-react
+  @tauri-apps/cli v2.11
+
+
+3.2 tsconfig.json
+────────────────────────────────────────────────────────────────────────────────
+
+{
+  "target": "ES2020",
+  "lib": ["DOM", "ES2021"],
+  "strict": true,
+  "module": "ESNext",
+  "moduleResolution": "Node",
+  "jsx": "react-jsx",
+  "baseUrl": "./",
+  "paths": { "@/*": ["src/*"] }
+}
+
+
+3.3 vite.config.ts
+────────────────────────────────────────────────────────────────────────────────
+
+Plugins: @vitejs/plugin-react
+Alias: @ -> src/
+Test: vitest con globals, environment node
+
+
+3.4 tailwind.config.cjs & postcss.config.cjs
+────────────────────────────────────────────────────────────────────────────────
+
+Tailwind: content ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+          plugins [@tailwindcss/typography]
+PostCSS:  plugins [@tailwindcss/postcss, autoprefixer]
+
+
+3.5 components.json (shadcn/ui)
+────────────────────────────────────────────────────────────────────────────────
+
+Style: radix-nova
+CSS: src/index.css (CSS variables)
+Base color: neutral
+Icon library: lucide
+Aliases: @/components, @/ui, @/lib, @/hooks
+
+
+3.6 index.html
+────────────────────────────────────────────────────────────────────────────────
+
+Lang: es
+Title: GeoNexus
+Entry: /src/main.tsx
+
+
+================================================================================
+4. TAURI (DESKTOP SHELL)
+================================================================================
+
+4.1 tauri.conf.json (root → symlink al archivo real)
+4.2 tauri.conf.json (crates/geonexus-tauri/tauri.conf.json)
+────────────────────────────────────────────────────────────────────────────────
+
+{
+  productName: "GeoNexus"
+  version: "0.1.0"
+  identifier: "com.geonexus.desktop"
+
+  build:
+    beforeDevCommand: pnpm run dev
+    devUrl: http://localhost:5173
+    beforeBuildCommand: pnpm run build
+    frontendDist: ../../dist
+
+  app:
+    withGlobalTauri: true
+    windows: [{ title: "GeoNexus", width: 1440, height: 900,
+                minWidth: 1024, minHeight: 720 }]
+    security: { csp: null }
+
+  bundle:
+    active: true, targets: all
+    icon: icons/icon.ico
+}
+
+4.3 Capabilities (crates/geonexus-tauri/capabilities/default.json)
+────────────────────────────────────────────────────────────────────────────────
+
+Permisos base: ["core:default"]
+Ventana: main
+(Se pueden añadir más permisos de plugins aquí)
+
+
+================================================================================
+5. PYTHON (AI SIDECAR)
+================================================================================
+
+5.1 requirements.txt
+────────────────────────────────────────────────────────────────────────────────
+
+openai>=1.0.0
+requests>=2.31.0
+chromadb>=0.4.0
+numpy
+pandas
+geopandas
+shapely
+python-dotenv
+fastapi
+uvicorn
+pypdf>=4.0.0
+python-docx>=1.0.0
+ddgs>=9.0.0
+
+5.2 Estructura ai/
+────────────────────────────────────────────────────────────────────────────────
+
+ai/
+├── sidecar.py                ← CLI dispatcher principal (8 acciones)
+│   Acciones: index, extract, chat_llm, ping_llm, recall_chunks,
+│             build_project_context, search_web, list_llm_models
+├── web_search.py             ← 4 proveedores de búsqueda web
+├── requirements.txt
+├── README.md
+├── geonexus_ai/
+│   ├── __init__.py
+│   ├── context/
+│   │   └── builder.py        ← Construye contexto de proyecto
+│   ├── docs/
+│   │   ├── reader.py         ← Lee documentos
+│   │   └── chunker.py        ← Chunking de documentos
+│   ├── gis/
+│   │   └── geo_utils.py      ← Utilidades GIS (placeholder)
+│   ├── graph/
+│   │   ├── extractor.py      ← Extrae nodos/aristas del grafo
+│   │   └── graph.py          ← Lógica de grafo (placeholder)
+│   ├── llm/
+│   │   ├── router.py         ← Router de proveedores LLM
+│   │   ├── ollama.py
+│   │   ├── openai.py
+│   │   ├── openrouter.py
+│   │   ├── anthropic.py
+│   │   └── lmstudio.py
+│   └── memory/
+│       ├── chroma.py         ← Cliente ChromaDB
+│       └── embeddings.py     ← Embeddings
+└── pipeline/
+    └── indexer.py            ← Pipeline de indexación
+
+
+================================================================================
+6. BASE DE DATOS (SQLITE)
+================================================================================
+
+6.1 Migraciones SQL (8 archivos en crates/geonexus-db/migrations/)
+────────────────────────────────────────────────────────────────────────────────
+
+#   Archivo                        Tablas creadas
+──  ─────────────────────────────  ──────────────────────────────────────
+01  20260607000000_init.sql        workspaces, assets, connector_configs,
+                                   connector_files, sync_events
+
+02  20260607000001_phase3.sql      document_chunks, graph_nodes,
+                                   graph_edges
+
+03  20260607000002_phase4_containers_mcp.sql  container_mcp_calls
+
+04  20260608000003_conversations.sql          conversations, messages
+
+05  20260609000004_chat_sources_tool_log.sql  +sources_json col,
+                                   chat_tool_calls
+
+06  20260609000005_web_search.sql             +research_sources col
+
+07  20260610000006_message_stats.sql          +input_tokens, output_tokens,
+                                   total_tokens, duration_ms,
+                                   tokens_per_second, cost_usd,
+                                   context_window, context_used_pct
+
+08  20260610000007_analysis_sessions.sql      analysis_sessions (NUEVO)
+
+6.2 geonexus-db/src/ módulos:
+────────────────────────────────────────────────────────────────────────────────
+
+├── lib.rs             → Re-exporta DataRepository + módulos
+├── data_repo.rs       → 722 líneas: CRUD completo assets, chunks,
+│                        nodos, aristas, migraciones, seed data
+├── chat_repo.rs       → CRUD conversaciones y mensajes
+└── connector_repo.rs  → CRUD conectores y archivos sincronizados
+
+
+================================================================================
+7. GIT
+================================================================================
+
+7.1 .gitignore
+────────────────────────────────────────────────────────────────────────────────
+
+Ignora:
+  node_modules/, dist/, .vite/
+  .env, .env.*, *.pem, *.key, *.p12, *.pfx
+  *.log, logs/, npm-debug.log*, pnpm-debug.log*
+  target/, crates/**/target/, src-tauri/target/
+  ai/.venv/, .venv/, venv/, __pycache__/, *.py[cod]
+  .pytest_cache/, .mypy_cache/, .ruff_cache/
+  *.db, *.sqlite, *.sqlite3, *.db-wal, *.db-shm
+  chroma/, ai/chroma/, ai/.chroma/, ai/data/, local-data/
+  .DS_Store, Thumbs.db, Desktop.ini, .idea/, .vscode/
+  tmp/, temp/, *.tmp, *.temp
+
+
+================================================================================
+8. DOCUMENTACIÓN (docs/)
+================================================================================
+
+Archivo                                    Líneas  Descripción
+────────────────────────────────────────── ─────── ──────────────────────────
+setup_todos_proveedores_llm.md               266   Guía configuración LLMs
+chat-architecture.txt                       ~1400  Arquitectura completa chat
+estado_actual_implementacion_chat.txt        462    Features pendientes/bugs
+estado_funciones_implementadas_geonexus.txt  53     Estado por fase (8/9)
+funcion_busqueda_web_deep_research.txt       110    Web search / Deep Research
+grafo-arquitectura.txt                       486    Arq. grafo conocimiento
+plan_backend_datos_geonexus.txt              446    Plan backend datos
+razonamiento-gis.txt                         413    Pipeline razonamiento GIS
+configuracion-completa.txt                   ← ESTE DOCUMENTO
+
+
+================================================================================
+9. MCP SERVERS
+================================================================================
+
+9.1 containers-mcp/ (mcp-servers/containers-mcp/)
+────────────────────────────────────────────────────────────────────────────────
+
+Servidor JSON-RPC para operaciones de contenedores.
+5 tools: container_list, container_get, container_search,
+         container_sync, container_upload
+
+Archivos: server.py, handlers.py, tools.py, permissions.py, README.md
+
+
+================================================================================
+10. SCRIPTS
+================================================================================
+
+10.1 test_llm_providers.ps1
+────────────────────────────────────────────────────────────────────────────────
+
+Test script para proveedores LLM (141 líneas).
+Soporta: Ollama, LM Studio, OpenRouter, OpenAI, Anthropic.
+Parámetros: -Provider, -Model
+
+
+================================================================================
+11. INVENTARIO COMPLETO DE ARCHIVOS
+================================================================================
+
+Categoría              Cant.  Archivos
+────────────────────── ─────  ──────────────────────────────────────────────────
+JSON (config)            11   package.json, tsconfig.json, tauri.conf.json (x2),
+                              components.json, capabilities/*.json, gen/schemas/*.json
+TOML                      5   Cargo.toml (workspace + 4 crates)
+YAML                      2   pnpm-workspace.yaml, pnpm-lock.yaml
+Build/Config (JS/TS)      4   vite.config.ts, postcss.config.cjs,
+                              tailwind.config.cjs, index.html
+Build (Rust)              1   crates/geonexus-tauri/build.rs
+SQL Migraciones           8   8 archivos .sql en migrations/
+Python deps               1   ai/requirements.txt
+Scripts                   1   test_llm_providers.ps1
+Git                       1   .gitignore
+Documentación Markdown    4   README.md (root + ai + mcp + docs/)
+Documentación TXT         9   docs/*.txt
+Mock/Test Data            1   chroma_db/*.json
+
+TOTAL: ~48 archivos de configuración/documentación
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

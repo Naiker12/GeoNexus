@@ -3,10 +3,13 @@ import type { LucideIcon } from "lucide-react"
 export type ConfigSectionId =
   | "ai-embeddings"
   | "mcp-router"
+  | "telegram"
   | "map-engines"
   | "connectors"
   | "memory"
   | "local-paths"
+  | "gis-tools"
+  | "commands"
   | "maintenance"
 
 export type ConfigSection = {

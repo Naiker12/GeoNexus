@@ -7,7 +7,6 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
-import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 
 export type ConfiguredModel = {
   provider: string
@@ -19,10 +18,14 @@ export type ConfiguredModel = {
 
 export function AiModelsTable({
   models,
-  onDialogChange,
+  onAddClick,
+  onDelete,
+  onToggleStatus,
 }: {
   models: ConfiguredModel[]
-  onDialogChange: (dialog: SettingsDialog) => void
+  onAddClick: () => void
+  onDelete: (name: string) => void
+  onToggleStatus: (name: string) => void
 }) {
   return (
     <div className="overflow-hidden rounded-md border border-border bg-card/70">
@@ -33,11 +36,7 @@ export function AiModelsTable({
             Aquí se podrá ver, editar, desactivar o eliminar cada proveedor.
           </p>
         </div>
-        <Button
-          size="sm"
-          className="h-7"
-          onClick={() => onDialogChange({ type: "add-model" })}
-        >
+        <Button size="sm" className="h-7" onClick={onAddClick}>
           <BrainCircuitIcon className="size-4" />
           Agregar modelo
         </Button>
@@ -63,18 +62,8 @@ export function AiModelsTable({
                 {item.key}
               </span>
               <RowActions
-                onView={() =>
-                  onDialogChange({ type: "view-key", name: item.provider })
-                }
-                onEdit={() =>
-                  onDialogChange({ type: "edit-model", name: item.provider })
-                }
-                onDisable={() =>
-                  onDialogChange({ type: "disable-model", name: item.provider })
-                }
-                onDelete={() =>
-                  onDialogChange({ type: "delete-model", name: item.provider })
-                }
+                onDisable={() => onToggleStatus(item.provider)}
+                onDelete={() => onDelete(item.provider)}
               />
             </article>
           ))
@@ -89,38 +78,18 @@ export function AiModelsTable({
 }
 
 function RowActions({
-  onView,
-  onEdit,
   onDisable,
   onDelete,
 }: {
-  onView: () => void
-  onEdit: () => void
   onDisable: () => void
   onDelete: () => void
 }) {
   return (
     <div className="flex justify-end gap-1">
-      <Button variant="ghost" size="icon-xs" aria-label="Ver clave" onClick={onView}>
-        <EyeIcon className="size-3.5" />
-      </Button>
-      <Button variant="ghost" size="icon-xs" aria-label="Editar" onClick={onEdit}>
-        <PencilIcon className="size-3.5" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label="Desactivar"
-        onClick={onDisable}
-      >
+      <Button variant="ghost" size="icon-xs" aria-label="Desactivar" onClick={onDisable}>
         <XCircleIcon className="size-3.5" />
       </Button>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        aria-label="Eliminar"
-        onClick={onDelete}
-      >
+      <Button variant="ghost" size="icon-xs" aria-label="Eliminar" onClick={onDelete}>
         <Trash2Icon className="size-3.5" />
       </Button>
     </div>

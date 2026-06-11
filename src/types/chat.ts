@@ -103,4 +103,6 @@ export type SendMessageResponse = {
   trace_id: string
   research_sources?: ResearchSource[]
   search_query?: string
+  validation_warnings?: string[]
+  intent?: string
 }

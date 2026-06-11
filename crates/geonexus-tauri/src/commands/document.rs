@@ -336,6 +336,30 @@ pub async fn rebuild_knowledge_graph(
         }
     }
 
+    // 3. Si no hay documentos indexados, sembrar datos por defecto
+    state.repo.seed_if_empty().await?;
+
+    Ok(())
+}
+
+/// Actualiza la posición de un nodo en el canvas (persistencia al arrastrar).
+#[tauri::command]
+pub async fn update_node_position(
+    node_id: String,
+    x: f64,
+    y: f64,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if node_id.trim().is_empty() {
+        return Err("node_id requerido".into());
+    }
+    sqlx::query("UPDATE graph_nodes SET x = ?1, y = ?2 WHERE id = ?3")
+        .bind(x)
+        .bind(y)
+        .bind(&node_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| format!("Error actualizando posición del nodo: {e}"))?;
     Ok(())
 }
 

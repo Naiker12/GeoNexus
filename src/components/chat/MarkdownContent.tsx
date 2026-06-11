@@ -1,21 +1,71 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { Check, Copy } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import {
+  looksLikeAsciiChart,
+  parseAsciiChart,
+  BarChartBlock,
+  LineChartBlock,
+  PieChartBlock,
+  AreaChartBlock,
+  RadarChartBlock,
+} from "./charts"
 
 interface MarkdownContentProps {
   content: string
   isStreaming?: boolean
 }
 
+type Segment =
+  | { type: "md"; text: string }
+  | { type: "chart"; code: string }
+
+function splitContent(content: string): Segment[] {
+  const segments: Segment[] = []
+  const blocks = content.split(/\n\n+/)
+  const chartBlock: string[] = []
+
+  function flushChart() {
+    if (chartBlock.length > 0) {
+      const code = chartBlock.join("\n\n")
+      if (looksLikeAsciiChart(code)) {
+        segments.push({ type: "chart", code })
+      } else {
+        segments.push({ type: "md", text: code })
+      }
+      chartBlock.length = 0
+    }
+  }
+
+  for (const block of blocks) {
+    const looksLike = looksLikeAsciiChart(block)
+    const prevLooksLike = chartBlock.length > 0
+
+    if (looksLike) {
+      chartBlock.push(block)
+    } else if (prevLooksLike) {
+      flushChart()
+      segments.push({ type: "md", text: block })
+    } else {
+      segments.push({ type: "md", text: block })
+    }
+  }
+  flushChart()
+
+  return segments
+}
+
 export function MarkdownContent({
   content,
   isStreaming,
 }: MarkdownContentProps) {
+  const segments = useMemo(() => splitContent(content), [content])
+
   return (
     <div
       className={cn(
@@ -24,108 +74,135 @@ export function MarkdownContent({
           "after:content-['▋'] after:ml-0.5 after:animate-pulse after:text-emerald-500"
       )}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          p({ children }) {
-            return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
-          },
-          strong({ children }) {
-            return (
-              <strong className="font-medium text-foreground">
-                {children}
-              </strong>
-            )
-          },
-          ul({ children }) {
-            return <ul className="mb-2 pl-5 list-disc space-y-0.5">{children}</ul>
-          },
-          ol({ children }) {
-            return (
-              <ol className="mb-2 pl-5 list-decimal space-y-0.5">{children}</ol>
-            )
-          },
-          li({ children }) {
-            return <li className="leading-relaxed">{children}</li>
-          },
-          h1({ children }) {
-            return (
-              <h1 className="text-base font-medium mt-4 mb-2">{children}</h1>
-            )
-          },
-          h2({ children }) {
-            return (
-              <h2 className="text-sm font-medium mt-3 mb-1.5">{children}</h2>
-            )
-          },
-          h3({ children }) {
-            return <h3 className="text-sm font-medium mt-2 mb-1">{children}</h3>
-          },
-          a({ href, children }) {
-            return (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 no-underline hover:underline dark:text-emerald-400"
-              >
-                {children}
-              </a>
-            )
-          },
-          table({ children }) {
-            return (
-              <div className="overflow-x-auto my-3">
-                <table className="w-full border-collapse text-[13px]">
-                  {children}
-                </table>
-              </div>
-            )
-          },
-          thead({ children }) {
-            return <thead className="bg-muted/50">{children}</thead>
-          },
-          th({ children }) {
-            return (
-              <th className="border border-border px-3 py-1.5 text-left font-medium text-[12px]">
-                {children}
-              </th>
-            )
-          },
-          td({ children }) {
-            return (
-              <td className="border border-border px-3 py-1.5 text-[12px]">
-                {children}
-              </td>
-            )
-          },
-          tr({ children }) {
-            return <tr className="even:bg-muted/20">{children}</tr>
-          },
-          code({ node, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || "")
-            const language = match?.[1] ?? ""
-            const codeString = String(children).replace(/\n$/, "")
+      {segments.map((seg, i) =>
+        seg.type === "chart" ? (
+          <ChartFromText key={i} code={seg.code} />
+        ) : (
+          <ReactMarkdown
+            key={i}
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p({ children }) {
+                return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+              },
+              strong({ children }) {
+                return (
+                  <strong className="font-medium text-foreground">
+                    {children}
+                  </strong>
+                )
+              },
+              ul({ children }) {
+                return <ul className="mb-2 pl-5 list-disc space-y-0.5">{children}</ul>
+              },
+              ol({ children }) {
+                return (
+                  <ol className="mb-2 pl-5 list-decimal space-y-0.5">{children}</ol>
+                )
+              },
+              li({ children }) {
+                return <li className="leading-relaxed">{children}</li>
+              },
+              h1({ children }) {
+                return (
+                  <h1 className="text-base font-medium mt-4 mb-2">{children}</h1>
+                )
+              },
+              h2({ children }) {
+                return (
+                  <h2 className="text-sm font-medium mt-3 mb-1.5">{children}</h2>
+                )
+              },
+              h3({ children }) {
+                return <h3 className="text-sm font-medium mt-2 mb-1">{children}</h3>
+              },
+              a({ href, children }) {
+                return (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-600 no-underline hover:underline dark:text-emerald-400"
+                  >
+                    {children}
+                  </a>
+                )
+              },
+              table({ children }) {
+                return (
+                  <div className="overflow-x-auto my-3">
+                    <table className="w-full border-collapse text-[13px]">
+                      {children}
+                    </table>
+                  </div>
+                )
+              },
+              thead({ children }) {
+                return <thead className="bg-muted/50">{children}</thead>
+              },
+              th({ children }) {
+                return (
+                  <th className="border border-border px-3 py-1.5 text-left font-medium text-[12px]">
+                    {children}
+                  </th>
+                )
+              },
+              td({ children }) {
+                return (
+                  <td className="border border-border px-3 py-1.5 text-[12px]">
+                    {children}
+                  </td>
+                )
+              },
+              tr({ children }) {
+                return <tr className="even:bg-muted/20">{children}</tr>
+              },
+              code({ node, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "")
+                const language = match?.[1] ?? ""
+                const codeString = String(children).replace(/\n$/, "")
 
-            if (!match) {
-              return (
-                <code
-                  className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-normal text-foreground"
-                  {...props}
-                >
-                  {children}
-                </code>
-              )
-            }
+                if (!match) {
+                  return (
+                    <code
+                      className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-normal text-foreground"
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  )
+                }
 
-            return <CodeBlock language={language} code={codeString} />
-          },
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+                return <CodeBlock language={language} code={codeString} />
+              },
+            }}
+          >
+            {seg.text}
+          </ReactMarkdown>
+        )
+      )}
     </div>
   )
+}
+
+function ChartFromText({ code }: { code: string }) {
+  const parsed = parseAsciiChart(code)
+  if (parsed.type === "area" && parsed.series.length > 0) {
+    return <AreaChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
+  }
+  if (parsed.type === "radar" && parsed.entries.length > 0) {
+    return <RadarChartBlock title={parsed.title} entries={parsed.entries} />
+  }
+  if (parsed.type === "line" && parsed.series.length > 0) {
+    return <LineChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
+  }
+  if (parsed.type === "pie" && parsed.entries.length > 0) {
+    return <PieChartBlock title={parsed.title} entries={parsed.entries} />
+  }
+  if (parsed.entries.length > 0) {
+    return <BarChartBlock title={parsed.title} entries={parsed.entries} />
+  }
+  return null
 }
 
 function CodeBlock({
@@ -144,6 +221,25 @@ function CodeBlock({
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // clipboard not available
+    }
+  }
+
+  if (looksLikeAsciiChart(code)) {
+    const parsed = parseAsciiChart(code)
+    if (parsed.type === "area" && parsed.series.length > 0) {
+      return <AreaChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
+    }
+    if (parsed.type === "radar" && parsed.entries.length > 0) {
+      return <RadarChartBlock title={parsed.title} entries={parsed.entries} />
+    }
+    if (parsed.type === "line" && parsed.series.length > 0) {
+      return <LineChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
+    }
+    if (parsed.type === "pie" && parsed.entries.length > 0) {
+      return <PieChartBlock title={parsed.title} entries={parsed.entries} />
+    }
+    if (parsed.entries.length > 0) {
+      return <BarChartBlock title={parsed.title} entries={parsed.entries} />
     }
   }
 
@@ -190,3 +286,5 @@ function CodeBlock({
     </div>
   )
 }
+
+

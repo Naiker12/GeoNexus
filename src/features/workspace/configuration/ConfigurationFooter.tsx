@@ -6,11 +6,8 @@ type ConfigurationFooterProps = {
 
 export function ConfigurationFooter({ onCancel }: ConfigurationFooterProps) {
   return (
-    <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-border px-5 py-3">
-      <p className="hidden truncate text-xs text-muted-foreground sm:block">
-        GeoNexus - Tauri 2.x - Rust core - sin modelo activo
-      </p>
-      <div className="flex items-center gap-2 sm:ml-auto">
+    <footer className="flex shrink-0 items-center justify-end gap-4 border-t border-border px-5 py-3">
+      <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" type="button" onClick={onCancel}>
           Cancelar
         </Button>

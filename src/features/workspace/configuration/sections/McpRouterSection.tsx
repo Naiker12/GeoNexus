@@ -1,28 +1,56 @@
 import * as React from "react"
 
-import { McpRulesTable } from "@/features/workspace/configuration/McpRulesTable"
-import { SettingsDialogs } from "@/features/workspace/configuration/SettingsDialogs"
-import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
+import { Button } from "@/components/ui/Button"
+import { McpRegisterDialog } from "@/features/workspace/mcp/McpRegisterDialog"
+import { McpServerCard } from "@/features/workspace/mcp/McpServerCard"
+import { mcpServers } from "@/features/workspace/mcp/mcp-data"
+import { cn } from "@/lib/utils"
 
 export function McpRouterSection() {
-  const [dialog, setDialog] = React.useState<SettingsDialog>(null)
+  const [selectedServerId, setSelectedServerId] = React.useState<string | null>(null)
+  const [registerOpen, setRegisterOpen] = React.useState(false)
+
+  const onlineCount = mcpServers.filter((s) => s.status === "online").length
 
   return (
-    <>
-      <div className="grid gap-4">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-primary">
-            MCP Router
-          </h3>
-          <p className="mt-1 text-xs leading-4 text-muted-foreground">
-            Servidores y reglas activas del router Rust.
-          </p>
-        </div>
-
-        <McpRulesTable onDialogChange={setDialog} />
+    <div className="grid gap-4">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-primary">
+          MCP Router
+        </h3>
+        <p className="mt-1 text-xs leading-4 text-muted-foreground">
+          {mcpServers.length} servidores registrados · {onlineCount} online
+        </p>
       </div>
 
-      <SettingsDialogs dialog={dialog} onOpenChange={setDialog} />
-    </>
+      <div className="grid gap-3 md:grid-cols-2">
+        {mcpServers.map((server) => (
+          <McpServerCard
+            key={server.id}
+            server={server}
+            isActive={server.id === selectedServerId}
+            onSelect={() =>
+              setSelectedServerId((prev) =>
+                prev === server.id ? null : server.id
+              )
+            }
+            onPing={() => console.log("Ping", server.id)}
+            onEdit={() => console.log("Edit", server.id)}
+          />
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setRegisterOpen(true)}
+        >
+          Agregar servidor
+        </Button>
+      </div>
+
+      <McpRegisterDialog open={registerOpen} onOpenChange={setRegisterOpen} />
+    </div>
   )
 }

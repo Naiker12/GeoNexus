@@ -112,6 +112,10 @@ pub struct SendMessageResponse {
     pub research_sources: Vec<ResearchSource>,
     #[serde(default)]
     pub search_query: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub validation_warnings: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

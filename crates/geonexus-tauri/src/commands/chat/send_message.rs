@@ -1,14 +1,22 @@
 use std::time::Instant;
 
-use geonexus_core::chat::{MessageStats, ResearchSource, SendMessageInput, SendMessageResponse, Message, MessageRole};
+use geonexus_core::chat::{
+    Message, MessageRole, ResearchSource, SendMessageInput, SendMessageResponse,
+};
+use geonexus_core::reasoning::QueryIntent;
 use geonexus_db::chat_repo;
 use serde_json::json;
 use tauri::State;
 use uuid::Uuid;
 
-use super::context::build_messages;
+use super::classifier::classify_intent;
+use super::context::{build_graph_context, ContextEdge};
+use super::messages::build_messages;
+use super::search::extract_search_query;
+use super::stats::extract_message_stats;
 use super::tools::{execute_tool_call, get_tool_definitions};
-use super::{run_sidecar_json, unix_now, AppState};
+use super::validator::validate_response;
+use super::{run_sidecar_json, unix_now, AppState, ContextNode};
 use crate::commands::llm::run_sidecar;
 
 #[derive(Debug, serde::Deserialize)]
@@ -17,12 +25,18 @@ struct RecallChunk {
     source: String,
 }
 
+#[derive(Debug, sqlx::FromRow)]
+struct EdgeRow {
+    source_label: String,
+    target_label: String,
+    relation: String,
+}
+
 #[tauri::command]
 pub async fn send_message(
     state: State<'_, AppState>,
     input: SendMessageInput,
 ) -> Result<SendMessageResponse, String> {
-    // 1. Validar y obtener/aplicar conversacion
     input.validate()?;
 
     let chat_start = Instant::now();
@@ -53,7 +67,42 @@ pub async fn send_message(
         let _ = chat_repo::update_conversation_title(&state.db, &conversation_id, &title).await;
     }
 
-    // 2. RAG context
+    // === Intent Classification ===
+    let intent = classify_intent(&input.content);
+    let intent_label = intent.label().to_string();
+
+    // === Graph nodes + edges for enhanced context ===
+    let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
+        "SELECT name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
+    )
+    .bind(&input.project_id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
+
+    let graph_edges: Vec<ContextEdge> = sqlx::query_as::<_, EdgeRow>(
+        "SELECT sn.name AS source_label, tn.name AS target_label, e.relation
+         FROM graph_edges e
+         JOIN graph_nodes sn ON e.source = sn.id
+         JOIN graph_nodes tn ON e.target = tn.id
+         WHERE e.project_id = ?
+         LIMIT 20",
+    )
+    .bind(&input.project_id)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default()
+    .into_iter()
+    .map(|r| ContextEdge {
+        source_label: r.source_label,
+        target_label: r.target_label,
+        relation: r.relation,
+    })
+    .collect();
+
+    let graph_context = build_graph_context(&graph_nodes, &graph_edges, &intent);
+
+    // === RAG context ===
     let recall_chunks: Vec<RecallChunk> = run_sidecar_json(&[
         "--action",
         "recall_chunks",
@@ -92,7 +141,15 @@ pub async fn send_message(
     .and_then(|v| v["context"].as_str().map(String::from))
     .unwrap_or_default();
 
-    // 3. Web search
+    let all_project_context = if graph_context.is_empty() {
+        project_context.clone()
+    } else if project_context.is_empty() {
+        graph_context.clone()
+    } else {
+        format!("{}\n\n{}", project_context, graph_context)
+    };
+
+    // === Web search ===
     let search_query = extract_search_query(&input.content);
     let research_sources: Vec<ResearchSource> = if input.web_search {
         let result = run_sidecar_json::<Vec<ResearchSource>>(&[
@@ -132,25 +189,23 @@ pub async fn send_message(
         lines.join("\n")
     };
 
-    // 4. Tool definitions
+    // === Tool definitions ===
     let tools = get_tool_definitions();
     let tools_json = serde_json::to_string(&tools)
         .map_err(|e| format!("Error serializando tools: {e}"))?;
 
-    // 5. Build messages array
+    // === Build messages array ===
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
-    let mut messages = build_messages(&history, &project_context, &web_context, &rag_context, &input.content);
+    let mut messages =
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &input.content);
 
-    // 6. Tool-calling loop
-    let max_iter: usize = 10;
+    // === Tool-calling loop ===
+    const MAX_ITER: usize = 10;
     let mut iteration: usize = 0;
-    let final_content: String;
-    let mut last_sidecar: Option<super::SidecarChatResult> = None;
-
-    loop {
-        if iteration >= max_iter {
+    let (final_content, last_sidecar) = loop {
+        if iteration >= MAX_ITER {
             return Err(
-                "El LLM excedio el maximo de llamadas a herramientas (10)".into(),
+                "El modelo excedio el maximo de llamadas a herramientas (10)".into(),
             );
         }
 
@@ -177,7 +232,7 @@ pub async fn send_message(
         }
 
         let output = run_sidecar(
-            &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>()
+            &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
         )?;
 
         let sidecar: super::SidecarChatResult = serde_json::from_str(&output)
@@ -213,23 +268,70 @@ pub async fn send_message(
             continue;
         }
 
-        final_content = sidecar
+        let content = sidecar
             .content()
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
-        last_sidecar = Some(sidecar);
-        break;
+
+        break (content, Some(sidecar));
+    };
+
+    let response_model = last_sidecar
+        .as_ref()
+        .and_then(|s| s.model.as_deref())
+        .filter(|m| !m.is_empty())
+        .map(String::from)
+        .unwrap_or_else(|| input.model.clone());
+
+    // === Response Validation ===
+    let validation = validate_response(&final_content, &graph_nodes, &[]);
+    let validation_warnings: Vec<String> = if validation.passed {
+        vec![]
+    } else {
+        validation.warnings
+    };
+
+    // === Episodic Memory (save analysis session for non-general intents) ===
+    if intent != QueryIntent::ConsultaGeneral {
+        let session_id = Uuid::new_v4().to_string();
+        let tool_names: Vec<String> = messages
+            .iter()
+            .filter(|m| m["role"] == "tool")
+            .map(|m| m["content"].as_str().unwrap_or("").to_string())
+            .collect();
+        let _ = sqlx::query(
+            "INSERT INTO analysis_sessions (id, project_id, workspace_id, title, objective, intent, datasets_used, nodes_consulted, tools_executed, key_findings, deliverables, conversation_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&session_id)
+        .bind(&input.project_id)
+        .bind(&input.workspace_id)
+        .bind(&intent_label)
+        .bind(&input.content)
+        .bind(&intent_label)
+        .bind("[]")
+        .bind(
+            &serde_json::to_string(
+                &graph_nodes.iter().map(|n| &n.label).collect::<Vec<&String>>(),
+            )
+            .unwrap_or_default(),
+        )
+        .bind(&serde_json::to_string(&tool_names).unwrap_or_default())
+        .bind(&final_content)
+        .bind::<Option<String>>(None)
+        .bind(&conversation_id)
+        .bind(unix_now())
+        .execute(&state.db)
+        .await;
     }
 
-    // 7. Extraer stats del mensaje
-    let msg_stats = last_sidecar.as_ref()
-        .and_then(|s| extract_message_stats(s, chat_start.elapsed(), &input.model));
+    // === Stats ===
+    let msg_stats = last_sidecar
+        .as_ref()
+        .and_then(|s| extract_message_stats(s, chat_start.elapsed(), &response_model));
 
-    // 8. Guardar mensaje del asistente
-    let sources: Vec<String> = recall_chunks
-        .iter()
-        .map(|c| c.source.clone())
-        .collect();
+    // === Save assistant message ===
+    let sources: Vec<String> = recall_chunks.iter().map(|c| c.source.clone()).collect();
 
     let assistant_msg = Message {
         id: Uuid::new_v4().to_string(),
@@ -237,7 +339,7 @@ pub async fn send_message(
         role: MessageRole::Assistant,
         content: final_content,
         provider: Some(input.provider),
-        model: Some(input.model),
+        model: Some(response_model),
         trace_id: trace_id.clone(),
         chunks_used: vec![],
         nodes_used: vec![],
@@ -261,6 +363,8 @@ pub async fn send_message(
         trace_id,
         research_sources,
         search_query,
+        validation_warnings,
+        intent: Some(intent_label),
     })
 }
 
@@ -268,7 +372,11 @@ async fn ensure_conversation(
     state: &State<'_, AppState>,
     input: &SendMessageInput,
 ) -> Result<String, String> {
-    if let Some(id) = input.conversation_id.as_ref().filter(|id| !id.trim().is_empty()) {
+    if let Some(id) = input
+        .conversation_id
+        .as_ref()
+        .filter(|id| !id.trim().is_empty())
+    {
         return Ok(id.clone());
     }
 
@@ -282,110 +390,4 @@ async fn ensure_conversation(
     .await?;
 
     Ok(conversation.id)
-}
-
-fn extract_message_stats(
-    result: &super::SidecarChatResult,
-    elapsed: std::time::Duration,
-    model: &str,
-) -> Option<MessageStats> {
-    let usage = result.usage.as_ref()?;
-
-    let input_tokens = usage.get("prompt_tokens")
-        .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-    let output_tokens = usage.get("completion_tokens")
-        .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-    let total_tokens = input_tokens + output_tokens;
-
-    let duration_ms = elapsed.as_millis() as u64;
-    let duration_secs = elapsed.as_secs_f32();
-    let tokens_per_second = if duration_secs > 0.0 {
-        output_tokens as f32 / duration_secs
-    } else {
-        0.0
-    };
-
-    let context_window = model_context_window(model);
-    let context_used_pct = if context_window > 0 {
-        (input_tokens as f32 / context_window as f32) * 100.0
-    } else {
-        0.0
-    };
-
-    Some(MessageStats {
-        input_tokens,
-        output_tokens,
-        total_tokens,
-        duration_ms,
-        tokens_per_second,
-        cost_usd: 0.0,
-        context_window,
-        context_used_pct,
-    })
-}
-
-fn model_context_window(model: &str) -> u32 {
-    if model.contains("gpt-4o") {
-        128_000
-    } else if model.contains("claude") {
-        200_000
-    } else if model.contains("gemini-1.5") {
-        1_000_000
-    } else if model.contains("gemini-2.0") {
-        1_000_000
-    } else if model.contains("nemotron") {
-        128_000
-    } else if model.contains("llama-3.1-70b") {
-        131_072
-    } else if model.contains("llama-3.1") || model.contains("llama3.1") {
-        131_072
-    } else if model.contains("llama-3") || model.contains("llama3") {
-        8_192
-    } else if model.contains("mistral") || model.contains("mixtral") {
-        32_768
-    } else if model.contains("deepseek") {
-        128_000
-    } else if model.contains("qwen") {
-        131_072
-    } else if model.contains("phi-3") || model.contains("phi3") {
-        128_000
-    } else if model.contains("command-r") || model.contains("command-r7") {
-        128_000
-    } else {
-        128_000
-    }
-}
-
-fn extract_search_query(user_message: &str) -> String {
-    let msg = user_message.trim();
-    if msg.len() < 60 {
-        return msg.to_string();
-    }
-    let filler_prefixes = [
-        "dime ", "cuéntame ", "explícame ", "qué es ", "qué son ",
-        "cómo ", "cuál es ", "dame información sobre ",
-        "busca información sobre ", "necesito saber ",
-        "puedes decirme ", "me puedes explicar ",
-    ];
-    let mut clean = msg.to_lowercase();
-    for prefix in &filler_prefixes {
-        if clean.starts_with(prefix) {
-            clean = clean[prefix.len()..].to_string();
-            break;
-        }
-    }
-    let query = if clean.len() > 80 {
-        let cut = &clean[..80];
-        match cut.rfind(' ') {
-            Some(pos) => clean[..pos].to_string(),
-            None => cut.to_string(),
-        }
-    } else {
-        clean
-    };
-    let mut chars = query.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(c) => c.to_uppercase().to_string() + chars.as_str(),
-    }
 }

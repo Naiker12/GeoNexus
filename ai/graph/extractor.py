@@ -9,7 +9,39 @@ CONCEPT_DESCRIPTIONS = {
     "uso industrial": "Clasificacion de actividades industriales en ordenamiento territorial.",
     "zonificacion": "Division territorial que asigna usos, densidades y obligaciones.",
     "drenaje": "Sistema de escurrimiento pluvial y control de inundaciones.",
+    "uso residencial": "Clasificacion de suelo destinado a vivienda y habitacion.",
+    "uso comercial": "Clasificacion de suelo para actividades comerciales y servicios.",
+    "area de cesion": "Terreno que debe entregarse al municipio para equipamiento o espacio publico.",
+    "indice de construccion": "Relacion entre el area construida y el area del lote.",
+    "indice de ocupacion": "Porcentaje del lote que puede ser ocupado por construccion en primer piso.",
+    "altura maxima": "Numero maximo de pisos o metros permitidos en una edificacion.",
+    "antejardin": "Franja de terreno entre el paramento de construccion y el lindero frontal.",
+    "servidumbre": "Derecho de paso o restriccion de uso sobre un predio para utilidad publica.",
+    "plan parcial": "Instrumento de planeacion que desarrolla y complementa las normas urbanisticas.",
+    "unidad de actuacion": "Area geografica que se planifica y ejecuta de forma conjunta.",
+    "espacio publico": "Conjunto de bienes de uso publico destinados a circulacion, recreacion y encuentro.",
+    "equipamiento colectivo": "Instalaciones y edificios destinados a servicios educativos, de salud y culturales.",
+    "patrimonio arquitectonico": "Edificaciones y conjuntos con valor historico, artistico o cultural protegidos.",
+    "amenaza sismica": "Nivel de peligro por movimientos teluricos en una zona determinada.",
+    "riesgo de inundacion": "Probabilidad de dano por desbordamiento de cuerpos de agua en un area.",
 }
+
+KIND_SEED_POSITIONS = {
+    "norma":     {"x_range": (15, 45), "y_range": (10, 90)},
+    "zona":      {"x_range": (55, 85), "y_range": (10, 90)},
+    "concepto":  {"x_range": (30, 70), "y_range": (30, 70)},
+    "documento": {"x_range": (10, 90), "y_range": (10, 90)},
+    "capa":      {"x_range": (10, 90), "y_range": (10, 90)},
+}
+
+
+def _seed_position(kind: str) -> tuple[float, float]:
+    """Genera posiciones iniciales agrupadas por tipo para mejor layout inicial."""
+    ranges = KIND_SEED_POSITIONS.get(kind, {"x_range": (20, 80), "y_range": (20, 80)})
+    return (
+        round(random.uniform(*ranges["x_range"]), 2),
+        round(random.uniform(*ranges["y_range"]), 2),
+    )
 
 
 def extract_graph_entities(chunks: List[Dict], project_id: str, workspace_id: str) -> Dict:
@@ -34,8 +66,8 @@ def extract_graph_entities(chunks: List[Dict], project_id: str, workspace_id: st
                     "kind": "norma",
                     "description": f"Articulo {article} detectado en el texto.",
                     "evidence": evidence_ref,
-                    "x": round(random.uniform(20, 80), 2),
-                    "y": round(random.uniform(20, 80), 2),
+                    "x": _seed_position("norma")[0],
+                    "y": _seed_position("norma")[1],
                     "weight": 2,
                 }
             chunk_nodes.append(node_id)
@@ -52,8 +84,8 @@ def extract_graph_entities(chunks: List[Dict], project_id: str, workspace_id: st
                     "kind": "zona",
                     "description": f"Zona o sector territorial detectado: {zone_name}.",
                     "evidence": evidence_ref,
-                    "x": round(random.uniform(20, 80), 2),
-                    "y": round(random.uniform(20, 80), 2),
+                    "x": _seed_position("zona")[0],
+                    "y": _seed_position("zona")[1],
                     "weight": 3,
                 }
             chunk_nodes.append(node_id)
@@ -70,8 +102,8 @@ def extract_graph_entities(chunks: List[Dict], project_id: str, workspace_id: st
                         "kind": "concepto",
                         "description": description,
                         "evidence": evidence_ref,
-                        "x": round(random.uniform(20, 80), 2),
-                        "y": round(random.uniform(20, 80), 2),
+                        "x": _seed_position("concepto")[0],
+                        "y": _seed_position("concepto")[1],
                         "weight": 2,
                     }
                 chunk_nodes.append(node_id)

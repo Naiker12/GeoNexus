@@ -4,7 +4,10 @@ import {
   FolderCogIcon,
   LayersIcon,
   MapIcon,
+  MessageSquareIcon,
   ServerIcon,
+  SlidersHorizontalIcon,
+  TerminalIcon,
   WrenchIcon,
 } from "lucide-react"
 
@@ -29,6 +32,17 @@ export const configGroups: ConfigGroup[] = [
     ],
   },
   {
+    label: "INTEGRACIONES",
+    sections: [
+      {
+        id: "telegram",
+        label: "Telegram",
+        icon: MessageSquareIcon,
+        indicator: null,
+      },
+    ],
+  },
+  {
     label: "GEOESPACIAL",
     sections: [
       {
@@ -41,6 +55,12 @@ export const configGroups: ConfigGroup[] = [
         id: "connectors",
         label: "Conectores",
         icon: LayersIcon,
+        indicator: null,
+      },
+      {
+        id: "gis-tools",
+        label: "Herramientas GIS",
+        icon: SlidersHorizontalIcon,
         indicator: null,
       },
     ],
@@ -65,6 +85,12 @@ export const configGroups: ConfigGroup[] = [
   {
     label: "SISTEMA",
     sections: [
+      {
+        id: "commands",
+        label: "Comandos",
+        icon: TerminalIcon,
+        indicator: null,
+      },
       {
         id: "maintenance",
         label: "Mantenimiento",

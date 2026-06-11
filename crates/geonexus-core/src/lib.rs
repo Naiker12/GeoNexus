@@ -4,6 +4,7 @@ pub mod allowlist;
 pub mod chat;
 pub mod connector;
 pub mod local_connector;
+pub mod reasoning;
 
 // ─── Enums de estado ─────────────────────────────────────────────────────────
 
