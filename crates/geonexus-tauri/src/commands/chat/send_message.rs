@@ -105,17 +105,27 @@ pub async fn send_message(
     let graph_context = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
     // === RAG context ===
-    let recall_chunks: Vec<RecallChunk> = run_sidecar_json(&[
-        "--action",
-        "recall_chunks",
-        "--query",
-        &input.content,
-        "--project_id",
-        &input.project_id,
-        "--top_k",
-        "4",
-    ])
-    .unwrap_or_default();
+    let mentioned_asset_ids_str = if input.mentioned_asset_ids.is_empty() && input.mentioned_connector_ids.is_empty() {
+        String::new()
+    } else {
+        let all: Vec<&str> = input.mentioned_asset_ids.iter().map(String::as_str)
+            .chain(input.mentioned_connector_ids.iter().map(String::as_str))
+            .collect();
+        all.join(",")
+    };
+    let recall_chunks: Vec<RecallChunk> = {
+        let mut args = vec![
+            "--action", "recall_chunks",
+            "--query", &input.content,
+            "--project_id", &input.project_id,
+            "--top_k", "4",
+        ];
+        if !mentioned_asset_ids_str.is_empty() {
+            args.push("--asset_ids");
+            args.push(&mentioned_asset_ids_str);
+        }
+        run_sidecar_json(&args).unwrap_or_default()
+    };
 
     let rag_context = if recall_chunks.is_empty() {
         String::new()
@@ -143,12 +153,76 @@ pub async fn send_message(
     .and_then(|v| v["context"].as_str().map(String::from))
     .unwrap_or_default();
 
-    let all_project_context = if graph_context.is_empty() {
-        project_context.clone()
-    } else if project_context.is_empty() {
-        graph_context.clone()
-    } else {
-        format!("{}\n\n{}", project_context, graph_context)
+    // === Mention context (sources the user explicitly attached via @) ===
+    let mention_context = {
+        let mut parts: Vec<String> = Vec::new();
+
+        if !input.mentioned_connector_ids.is_empty() {
+            for cid in &input.mentioned_connector_ids {
+                let name: Option<String> = sqlx::query_scalar(
+                    "SELECT display_name FROM connector_configs WHERE id = ? AND project_id = ?"
+                )
+                .bind(cid)
+                .bind(&input.project_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+                if let Some(n) = name {
+                    parts.push(format!(
+                        "[CONTEXTO ADJUNTO: Conector \"{}\" — usar sus documentos como fuente prioritaria]",
+                        n
+                    ));
+                }
+            }
+        }
+
+        if !input.mentioned_asset_ids.is_empty() {
+            for aid in &input.mentioned_asset_ids {
+                let name: Option<String> = sqlx::query_scalar(
+                    "SELECT name FROM assets WHERE id = ? AND project_id = ?"
+                )
+                .bind(aid)
+                .bind(&input.project_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+                if let Some(n) = name {
+                    parts.push(format!(
+                        "[CONTEXTO ADJUNTO: Documento \"{}\" — buscar información en este documento primero]",
+                        n
+                    ));
+                }
+            }
+        }
+
+        if !input.mentioned_node_ids.is_empty() {
+            for nid in &input.mentioned_node_ids {
+                let name: Option<String> = sqlx::query_scalar(
+                    "SELECT name FROM graph_nodes WHERE id = ? AND project_id = ?"
+                )
+                .bind(nid)
+                .bind(&input.project_id)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+                if let Some(n) = name {
+                    parts.push(format!(
+                        "[CONTEXTO ADJUNTO: Nodo del grafo \"{}\" — incluir su evidencia y conexiones]",
+                        n
+                    ));
+                }
+            }
+        }
+
+        if parts.is_empty() { String::new() } else { parts.join("\n") }
+    };
+
+    let all_project_context = {
+        let mut parts: Vec<String> = Vec::new();
+        if !project_context.is_empty() { parts.push(project_context.clone()); }
+        if !graph_context.is_empty() { parts.push(graph_context.clone()); }
+        if !mention_context.is_empty() { parts.push(mention_context.clone()); }
+        parts.join("\n\n")
     };
 
     // === Web search ===

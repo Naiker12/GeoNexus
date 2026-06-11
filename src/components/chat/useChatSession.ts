@@ -146,7 +146,7 @@ export function useChatSession(
   }, [])
 
   const submit = React.useCallback(
-    async (content: string) => {
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[] }) => {
       const clean = content.trim()
       if (!clean || pending) return
       if (!activeProvider) {
@@ -191,6 +191,9 @@ export function useChatSession(
         use_context: useContext,
         max_context_chunks: useContext ? 4 : 0,
         web_search: webSearchEnabled || undefined,
+        mentioned_asset_ids: mentions?.assetIds.length ? mentions.assetIds : undefined,
+        mentioned_connector_ids: mentions?.connectorIds.length ? mentions.connectorIds : undefined,
+        mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
       }
 
       // When web search is active, create a placeholder assistant message

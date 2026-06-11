@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import type {
   Conversation,
+  MentionableSourcesResponse,
   Message,
   ProjectContext,
   RecallChunk,
@@ -48,4 +49,12 @@ export function recallChunks(
   return invoke("recall_chunks", {
     input: { project_id: projectId, query, top_k: topK },
   })
+}
+
+export function getMentionableSources(
+  projectId: string,
+  query?: string
+): Promise<MentionableSourcesResponse> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invoke("get_mentionable_sources", { projectId, query })
 }

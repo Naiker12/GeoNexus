@@ -1,26 +1,30 @@
 import * as React from "react"
 import {
   AudioLinesIcon,
-  BrainCircuitIcon,
-  DatabaseIcon,
-  FileUpIcon,
-  FolderPlusIcon,
+  CloudIcon,
+  CpuIcon,
+  DownloadIcon,
+  FileSearchIcon,
+  FileTextIcon,
+  FolderIcon,
+  GitForkIcon,
   GlobeIcon,
+  HexagonIcon,
   Loader2,
   MenuIcon,
   MicIcon,
-  MonitorIcon,
-  MoreHorizontalIcon,
   PlusIcon,
+  SearchIcon,
   SendIcon,
-  SettingsIcon,
+  Share2Icon,
   SparklesIcon,
   XIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 import { ModelSelector } from "@/components/chat/ModelSelector"
-import { MentionPicker, type MentionItem } from "@/components/chat/MentionPicker"
+import { CommandPalette } from "@/components/chat/CommandPalette"
+import { MentionPicker } from "@/components/chat/MentionPicker"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,7 +45,11 @@ import {
   InputGroupControl,
 } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/Textarea"
-import { cn } from "@/lib/utils"
+import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
+import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
+import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
+import { getMentionableSources } from "@/api/chat"
+import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand } from "@/types/chat"
 
 export type ChatComposerProps = {
   value: string
@@ -49,18 +57,23 @@ export type ChatComposerProps = {
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
   pending: boolean
-  onSubmit: (content: string) => void
+  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[] }) => void
   onToggleContext: () => void
   contextActive: boolean
   webSearchEnabled: boolean
   onToggleWebSearch: () => void
-  onMentionSelect?: (item: MentionItem) => void
+  onMentionSelect?: (source: MentionSource) => void
+  onNewChat?: () => void
+  onClearChat?: () => void
+  onExportChat?: () => void
+  onReindex?: () => void
 }
 
-type MentionToken = {
+type Chip = {
   id: string
-  type: "connector" | "collection" | "document"
+  kind: MentionSource["kind"]
   label: string
+  color: string
 }
 
 export function ChatComposer({
@@ -75,58 +88,198 @@ export function ChatComposer({
   webSearchEnabled,
   onToggleWebSearch,
   onMentionSelect,
+  onNewChat,
+  onClearChat,
+  onExportChat,
+  onReindex,
 }: ChatComposerProps) {
+  // Slash command state
+  const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
+  const slashContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  // Mention state
   const [showMentionPicker, setShowMentionPicker] = React.useState(false)
   const [mentionQuery, setMentionQuery] = React.useState("")
-  const [mentionTokens, setMentionTokens] = React.useState<MentionToken[]>([])
+  const [chips, setChips] = React.useState<Chip[]>([])
+  const mentionContainerRef = React.useRef<HTMLDivElement | null>(null)
+
+  // Hidden file input for attach-file
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Mention sources — fetched from real DB via get_mentionable_sources
+  const [rawSources, setRawSources] = React.useState<MentionableSourcesResponse | null>(null)
+
+  const refreshSources = React.useCallback(() => {
+    getMentionableSources("project-default")
+      .then(setRawSources)
+      .catch(() => setRawSources(null))
+  }, [])
+
+  React.useEffect(() => {
+    refreshSources()
+  }, [refreshSources])
+
+  const mentionSources: MentionSource[] = React.useMemo(() => {
+    if (!rawSources) return []
+    const result: MentionSource[] = []
+
+    for (const c of rawSources.connectors) {
+      result.push({
+        id: c.id,
+        kind: "connector",
+        label: c.label,
+        sublabel: c.sublabel,
+        icon: c.icon,
+        color: c.color,
+        status: c.status,
+        contextPayload: { type: "connector", id: c.id },
+      })
+    }
+    for (const a of rawSources.assets) {
+      result.push({
+        id: a.id,
+        kind: "asset",
+        label: a.label,
+        sublabel: a.sublabel,
+        icon: a.icon,
+        color: a.color,
+        contextPayload: { type: "asset", id: a.id },
+      })
+    }
+    for (const n of rawSources.graph_nodes) {
+      result.push({
+        id: n.id,
+        kind: "graph_node",
+        label: n.label,
+        sublabel: n.sublabel,
+        icon: n.icon,
+        color: n.color,
+        contextPayload: { type: "graph_node", id: n.id },
+      })
+    }
+
+    return result
+  }, [rawSources])
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const clean = value.trim()
     if (!clean || pending) return
 
+    const assetIds: string[] = []
+    const connectorIds: string[] = []
+    const nodeIds: string[] = []
+
     let finalContent = clean
-    for (const token of mentionTokens) {
+    for (const chip of chips) {
       finalContent = finalContent.replace(
-        `@${token.label}`,
-        `@[${token.label}](connector:${token.id})`
+        `@${chip.label}`,
+        `@[${chip.label}](${chip.kind}:${chip.id})`
       )
+      if (chip.kind === "asset") assetIds.push(chip.id)
+      else if (chip.kind === "connector") connectorIds.push(chip.id)
+      else if (chip.kind === "graph_node") nodeIds.push(chip.id)
     }
 
     onValueChange("")
-    setMentionTokens([])
-    onSubmit(finalContent)
+    setChips([])
+    setShowMentionPicker(false)
+    setSlashQuery(null)
+    onSubmit(finalContent, { assetIds, connectorIds, nodeIds })
   }
 
   const handleComposerChange = (newValue: string) => {
     onValueChange(newValue)
 
-    const cursorMatch = newValue.match(/@(\w*)$/)
-    if (cursorMatch) {
-      setMentionQuery(cursorMatch[1])
+    // Detect @mention trigger
+    const atMatch = newValue.match(/@(\w*)$/)
+    if (atMatch) {
+      setMentionQuery(atMatch[1])
       setShowMentionPicker(true)
+      setSlashQuery(null)
     } else {
       setShowMentionPicker(false)
     }
+
+    // Detect /slash trigger (at start or after space)
+    const slashMatch = newValue.match(/(?:^|\s)\/(\w*)$/)
+    if (slashMatch) {
+      setSlashQuery(slashMatch[1])
+      setShowMentionPicker(false)
+    } else {
+      setSlashQuery(null)
+    }
   }
 
-  const handleMentionSelect = (item: MentionItem) => {
-    setMentionTokens((prev) => [
-      ...prev.filter((t) => t.id !== item.id),
-      { id: item.id, type: item.type, label: item.label },
+  const handleMentionSelect = (source: MentionSource) => {
+    setChips((prev) => [
+      ...prev.filter((c) => c.id !== source.id),
+      { id: source.id, kind: source.kind, label: source.label, color: source.color },
     ])
     setShowMentionPicker(false)
 
-    const newValue = value.replace(/@\w*$/, `@${item.label} `)
+    const newValue = value.replace(/@\w*$/, `@${source.label} `)
     onValueChange(newValue)
-    onMentionSelect?.(item)
+    onMentionSelect?.(source)
+  }
+
+  const removeChip = (id: string) => {
+    setChips((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  const handleSlashSelect = (cmd: SlashCommand) => {
+    setSlashQuery(null)
+    const newValue = value.replace(/(?:^|\s)\/\w*$/, "")
+    onValueChange(newValue)
+
+    switch (cmd.id) {
+      case "use-graph":
+        onToggleContext()
+        break
+      case "mode-research":
+        if (!webSearchEnabled) onToggleWebSearch()
+        break
+      case "mode-fast":
+        if (webSearchEnabled) onToggleWebSearch()
+        break
+      case "attach-file":
+        fileInputRef.current?.click()
+        break
+      case "attach-asset":
+        // For now, just trigger context panel or file picker fallback
+        fileInputRef.current?.click()
+        break
+      case "new-chat":
+        onNewChat?.()
+        break
+      case "clear-chat":
+        onClearChat?.()
+        break
+      case "export-chat":
+        onExportChat?.()
+        break
+      case "reindex":
+        onReindex?.()
+        break
+    }
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showMentionPicker) {
+    const popupOpen = showMentionPicker || slashQuery !== null
+
+    if (popupOpen) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === "Escape") {
+        event.preventDefault()
+        const target = mentionContainerRef.current ?? slashContainerRef.current
+        target?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: event.key, bubbles: true })
+        )
+      }
       if (event.key === "Escape") {
         setShowMentionPicker(false)
-        event.preventDefault()
+        setSlashQuery(null)
+        const newValue = value.replace(/(?:^|\s)[/@]\w*$/, "")
+        if (newValue !== value) onValueChange(newValue)
       }
       return
     }
@@ -135,6 +288,19 @@ export function ChatComposer({
       event.preventDefault()
       event.currentTarget.form?.requestSubmit()
     }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files
+    if (!fileList || fileList.length === 0) return
+    const files = Array.from(fileList)
+    for (const f of files) {
+      setChips((prev) => [
+        ...prev,
+        { id: `file-${Date.now()}-${f.name}`, kind: "asset" as const, label: f.name, color: "#8B5CF6" },
+      ])
+    }
+    e.target.value = ""
   }
 
   return (
@@ -148,49 +314,77 @@ export function ChatComposer({
             <ToolMenu
               webSearchEnabled={webSearchEnabled}
               onToggleWebSearch={onToggleWebSearch}
+              connectors={rawSources?.connectors ?? []}
+              refreshSources={refreshSources}
+              onAttachFiles={() => fileInputRef.current?.click()}
             />
           </InputGroupAddon>
           <InputGroupControl className="relative flex items-center">
             <div className="relative w-full">
-              {mentionTokens.length > 0 && (
+              {/* Chip bar */}
+              {chips.length > 0 && (
                 <div className="mb-1 flex flex-wrap gap-1">
-                  {mentionTokens.map((token) => (
-                    <span
-                      key={token.id}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-primary"
-                    >
-                      @{token.label}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMentionTokens((prev) =>
-                            prev.filter((t) => t.id !== token.id)
-                          )
-                        }
-                        className="hover:text-destructive"
+                  {chips.map((chip) => {
+                    const Icon = chip.kind === "graph_node" ? GitForkIcon : chip.kind === "asset" ? FileTextIcon : CloudIcon
+                    return (
+                      <span
+                        key={chip.id}
+                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.6rem] font-medium"
+                        style={{
+                          backgroundColor: `${chip.color}18`,
+                          border: `1px solid ${chip.color}44`,
+                          color: chip.color,
+                        }}
                       >
-                        <XIcon className="size-2.5" />
-                      </button>
-                    </span>
-                  ))}
+                        <Icon className="size-2.5" />
+                        @{chip.label}
+                        <button
+                          type="button"
+                          onClick={() => removeChip(chip.id)}
+                          className="hover:opacity-70"
+                        >
+                          <XIcon className="size-2.5" />
+                        </button>
+                      </span>
+                    )
+                  })}
                 </div>
               )}
+
+              {/* Command Palette (/ popup) */}
+              {slashQuery !== null && (
+                <CommandPalette
+                  query={slashQuery}
+                  onSelect={handleSlashSelect}
+                  onClose={() => {
+                    setSlashQuery(null)
+                    const newValue = value.replace(/(?:^|\s)\/\w*$/, "")
+                    if (newValue !== value) onValueChange(newValue)
+                  }}
+                  containerRef={slashContainerRef}
+                />
+              )}
+
+              {/* Mention Picker (@ popup) */}
+              {showMentionPicker && (
+                <MentionPicker
+                  query={mentionQuery}
+                  sources={mentionSources}
+                  onSelect={handleMentionSelect}
+                  onClose={() => setShowMentionPicker(false)}
+                  containerRef={mentionContainerRef}
+                />
+              )}
+
               <Textarea
                 rows={1}
                 value={value}
                 autoComplete="off"
                 className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
-                placeholder="Pregunta lo que quieras (usa @ para mencionar conectores)"
+                placeholder="Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"
                 onChange={(event) => handleComposerChange(event.target.value)}
                 onKeyDown={handleKeyDown}
               />
-              {showMentionPicker && (
-                <MentionPicker
-                  query={mentionQuery}
-                  onSelect={handleMentionSelect}
-                  onClose={() => setShowMentionPicker(false)}
-                />
-              )}
             </div>
           </InputGroupControl>
           <InputGroupAddon className="items-center">
@@ -222,6 +416,15 @@ export function ChatComposer({
             </Button>
           </InputGroupAddon>
         </InputGroup>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFileChange}
+        />
 
         <div className="mt-2 flex flex-wrap gap-1.5 px-2">
           <Button
@@ -274,12 +477,28 @@ export function ChatComposer({
 function ToolMenu({
   webSearchEnabled,
   onToggleWebSearch,
+  connectors,
+  refreshSources,
+  onAttachFiles,
 }: {
   webSearchEnabled: boolean
   onToggleWebSearch: () => void
+  connectors: MentionableSourceItem[]
+  refreshSources: () => void
+  onAttachFiles: () => void
 }) {
+  const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
+  const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
+
   return (
-    <DropdownMenu>
+    <>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (!open) {
+          setExpandedConnector(null)
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -295,24 +514,52 @@ function ToolMenu({
         align="start"
         side="top"
         sideOffset={10}
-        className="w-72 rounded-xl p-2"
+        className="w-80 rounded-xl p-2"
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>Proyecto</DropdownMenuLabel>
           <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <FolderPlusIcon className="size-3.5 text-muted-foreground" />
+            <SparklesIcon className="size-3.5 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">Agregar proyecto</span>
           </DropdownMenuItem>
           <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <SettingsIcon className="size-3.5 text-muted-foreground" />
+            <MenuIcon className="size-3.5 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">Configurar proyecto</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuLabel>Entrada</DropdownMenuLabel>
-          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <FileUpIcon className="size-3.5 text-muted-foreground" />
+          <DropdownMenuLabel>Archivos y datos</DropdownMenuLabel>
+          <DropdownMenuItem
+            className="min-h-8 gap-2 px-2.5 py-1.5"
+            onSelect={() => {
+              setConnectingConnector({
+                id: "new-local",
+                kind: "connector",
+                label: "Carpeta local",
+                sublabel: "Nuevo conector",
+                icon: "Folder",
+                color: "#F59E0B",
+                status: "disconnected",
+                last_synced: null,
+                asset_count: null,
+                provider: "local",
+              })
+            }}
+          >
+            <FolderIcon className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">
+              Carpeta local
+            </span>
+            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
+              LOCAL
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="min-h-8 gap-2 px-2.5 py-1.5"
+            onSelect={onAttachFiles}
+          >
+            <PlusIcon className="size-3.5 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">
               Agregar fotos y archivos
             </span>
@@ -320,19 +567,47 @@ function ToolMenu({
               PDF/DXF
             </DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <MonitorIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">Controlar este PC</span>
-            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
-              LOCAL
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
+          {connectors.map((c) => (
+            <React.Fragment key={c.id}>
+              <DropdownMenuItem
+                className="min-h-8 gap-2 px-2.5 py-1.5"
+                onSelect={(e) => {
+                  if (c.status === "connected" || c.status === "error") {
+                    e.preventDefault()
+                    setExpandedConnector(
+                      expandedConnector === c.id ? null : c.id
+                    )
+                  } else if (c.status === "disconnected") {
+                    setConnectingConnector(c)
+                  }
+                }}
+              >
+                <CpuIcon className="size-3.5 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                {c.status && <ConnectorStatusBadge status={c.status} />}
+              </DropdownMenuItem>
+              {expandedConnector === c.id && (
+                <ConnectorMiniPanel
+                  connector={c}
+                  onClose={() => setExpandedConnector(null)}
+                  onSync={
+                    c.status === "connected"
+                      ? () => {
+                          // TODO: trigger sync
+                          setExpandedConnector(null)
+                        }
+                      : undefined
+                  }
+                />
+              )}
+            </React.Fragment>
+          ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Herramientas GIS</DropdownMenuLabel>
           <DropdownMenuItem className="gap-3 px-3 py-2">
-            <BrainCircuitIcon className="size-4" />
+            <SearchIcon className="size-4" />
             Razonamiento GIS
             <DropdownMenuShortcut>MCP</DropdownMenuShortcut>
           </DropdownMenuItem>
@@ -353,24 +628,45 @@ function ToolMenu({
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
-              <MoreHorizontalIcon className="size-4" />
+              <PlusIcon className="size-4" />
               Mas
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-56 rounded-xl p-2">
-              <DropdownMenuItem>Consultar norma POT</DropdownMenuItem>
-              <DropdownMenuItem>Ejecutar buffer</DropdownMenuItem>
-              <DropdownMenuItem>Exportar analisis</DropdownMenuItem>
+              <DropdownMenuItem>
+                <FileSearchIcon className="size-3.5 mr-2" />
+                Consultar norma POT
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <HexagonIcon className="size-3.5 mr-2" />
+                Ejecutar buffer
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Share2Icon className="size-3.5 mr-2" />
+                Exportar analisis
+              </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem className="gap-3 px-3 py-2">
-            <DatabaseIcon className="size-4" />
+            <DownloadIcon className="size-4" />
             Proyectos
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+    {connectingConnector && (
+      <ConnectorConnectionDialog
+        connector={connectingConnector}
+        open={!!connectingConnector}
+        onOpenChange={() => setConnectingConnector(null)}
+        onConnected={() => {
+          setConnectingConnector(null)
+          refreshSources()
+        }}
+      />
+    )}
+    </>
   )
 }

@@ -178,7 +178,14 @@ export function ChatPanel(_props: ChatPanelProps) {
           activeProvider={activeProvider}
           error={error}
           pending={pending}
-          onSubmit={(content) => { setComposerValue(""); submit(content) }}
+          onSubmit={(content, mentions) => {
+            setComposerValue("")
+            if (mentions && (mentions.assetIds.length > 0 || mentions.connectorIds.length > 0 || mentions.nodeIds.length > 0)) {
+              submit(content, mentions)
+            } else {
+              submit(content)
+            }
+          }}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
           webSearchEnabled={webSearchEnabled}
@@ -192,6 +199,21 @@ export function ChatPanel(_props: ChatPanelProps) {
                 : "El asistente solo usará información local del proyecto",
               variant: next ? "success" : "info",
             })
+          }}
+          onNewChat={() => { setComposerValue(""); newConversation() }}
+          onClearChat={() => { setComposerValue(""); newConversation() }}
+          onExportChat={() => {
+            const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
+            const blob = new Blob([text], { type: "text/markdown" })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `geonexus-chat-${conversationId ?? "new"}.md`
+            a.click()
+            URL.revokeObjectURL(url)
+          }}
+          onReindex={() => {
+            toast({ title: "Reindexando...", description: "Reindexación del catálogo de assets iniciada", variant: "info" })
           }}
         />
       </div>

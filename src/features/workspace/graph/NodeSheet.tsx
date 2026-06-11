@@ -100,7 +100,7 @@ export function NodeSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[min(94vw,28rem)] gap-0 border-border bg-card/95 p-0 text-card-foreground shadow-[0_18px_70px_rgba(15,23,42,0.22)] backdrop-blur-xl sm:max-w-[28rem]">
+      <SheetContent className="w-[min(96vw,40rem)] gap-0 border-border bg-card/95 p-0 text-card-foreground shadow-[0_18px_70px_rgba(15,23,42,0.22)] backdrop-blur-xl sm:max-w-[40rem]">
         <div className="h-0.5 bg-[linear-gradient(90deg,var(--primary),transparent)]" />
         <SheetHeader className="border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-start gap-3 pr-8">

@@ -88,6 +88,66 @@ export type SendMessageInput = {
   use_context: boolean
   max_context_chunks?: number | null
   web_search?: boolean
+  mentioned_asset_ids?: string[]
+  mentioned_connector_ids?: string[]
+  mentioned_node_ids?: string[]
+}
+
+// ── Mentionable Sources (from Rust get_mentionable_sources) ──
+
+export type ConnectorStatus = "connected" | "disconnected" | "error" | "syncing" | "mcp"
+
+export interface MentionableSourceItem {
+  id: string
+  kind: string
+  label: string
+  sublabel: string
+  icon: string
+  color: string
+  status: ConnectorStatus
+  last_synced: number | null
+  asset_count: number | null
+  provider: string | null
+}
+
+export interface MentionableSourcesResponse {
+  connectors: MentionableSourceItem[]
+  assets: MentionableSourceItem[]
+  graph_nodes: MentionableSourceItem[]
+}
+
+// ── Slash Commands ──
+
+export type SlashCommandGroup = "Contexto" | "Chat" | "Modo" | "Sistema"
+
+export type SlashCommandAction = () => void
+
+export interface SlashCommand {
+  id: string
+  group: SlashCommandGroup
+  label: string
+  description: string
+  icon: string
+  shortcut: string | null
+  action: SlashCommandAction
+}
+
+// ── Mention Sources ──
+
+export type MentionKind = "connector" | "asset" | "graph_node"
+
+export interface MentionSource {
+  id: string
+  kind: MentionKind
+  label: string
+  sublabel?: string
+  icon: string
+  color: string
+  status?: ConnectorStatus
+  contextPayload: {
+    type: MentionKind
+    id: string
+  }
 }
 
 export type ChunkReference = {

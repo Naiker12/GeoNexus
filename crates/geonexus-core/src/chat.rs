@@ -76,6 +76,12 @@ pub struct SendMessageInput {
     pub max_context_chunks: Option<usize>,
     #[serde(default)]
     pub web_search: bool,
+    #[serde(default)]
+    pub mentioned_asset_ids: Vec<String>,
+    #[serde(default)]
+    pub mentioned_connector_ids: Vec<String>,
+    #[serde(default)]
+    pub mentioned_node_ids: Vec<String>,
 }
 
 impl SendMessageInput {
@@ -145,6 +151,9 @@ mod tests {
             use_context: false,
             max_context_chunks: None,
             web_search: false,
+            mentioned_asset_ids: vec![],
+            mentioned_connector_ids: vec![],
+            mentioned_node_ids: vec![],
         }
     }
 
