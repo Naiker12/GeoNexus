@@ -47,6 +47,7 @@ export function AssistantMessage({
           steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
           isComplete={true}
           searchSteps={message.searchSteps}
+          knowledgeSteps={message.knowledgeSteps}
         />
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />

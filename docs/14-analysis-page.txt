@@ -1,0 +1,602 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║   ANALYSIS PAGE — ANÁLISE COMPLETA                                           ║
+║   Página "Análisis": componentes, API, tipos, fluxo de dados, eventos        ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+  SUMÁRIO
+  ───────
+  1.  ESTRUTURA (AnalysisPage.tsx)
+  2.  AnalysisHeader.tsx (exportação)
+  3.  AnalysisMetrics.tsx (4 cards)
+  4.  TokenChart.tsx (gráfico SVG)
+  5.  CostSummaryBar.tsx (custos)
+  6.  AnalysisRunsTable.tsx (tabela de trazas)
+  7.  AnalysisSidePanels.tsx (painéis laterais)
+  8.  useAnalysis.ts (hooks)
+  9.  TYPES (src/types/analysis.ts)
+  10. API LAYER (src/api/analysis.ts)
+  11. DATA FLOW
+  12. ROUTER INTEGRATION
+  13. EVENTOS (como funcionam)
+  14. ESTADOS (loading, empty, error)
+  15. PENDENTE / MELHORIAS
+  16. ARQUIVOS (frontend + backend Rust)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  1. ESTRUTURA (AnalysisPage.tsx)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Layout: section responsiva h-[calc(100svh-3.5rem)] com overflow auto
+          Container max-w-[110rem] com grid gap-3
+
+  State local:
+    ✅ timeframe: Timeframe = "hoy" (controla TokenChart + header)
+    ✅ Passado para AnalysisHeader e TokenChart via props
+
+  Layout grid (xl: 2 colunas):
+    Coluna principal: TokenChart + CostSummaryBar + AnalysisRunsTable
+    Aside (26rem):    AnalysisSidePanels (ModelUsage, Skill, TopQueries, TokensBarChart)
+
+  Componentes filhos (todos importados do próprio diretório):
+    AnalysisHeader, AnalysisMetrics, TokenChart, CostSummaryBar,
+    AnalysisRunsTable, AnalysisSidePanels
+
+  NÃO tem:
+    ❌ isLoading global (cada hook tem seu próprio loading)
+    ❌ Error boundary global (cada componente trata erro internamente)
+    ❌ Tauri detection (não precisa — dados vêm de SQLite sempre)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  2. AnalysisHeader.tsx — Exportar relatórios
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Props: timeframe (Timeframe)
+
+  Título: "Análisis · {timeframe_label}, {data}"
+    ✅ "Hoy, 12 jun" / "Últimos 7 días, 12 jun" etc.
+
+  Ícone: BarChart3Icon em bg-primary
+
+  Botão "Exportar":
+    ✅ Dropdown flutuante com createPortal (posicionado via getBoundingClientRect)
+    ✅ 4 opções: CSV, JSON, PNG, PDF
+    ✅ Click outside fecha o dropdown (addEventListener click)
+    ✅ Loading state com Loader2Icon + "Exportando .{format}..."
+
+  Export CSV / JSON:
+    ✅ Chama exportAnalysisTraces("project-default", format)
+    ✅ Cria Blob + ObjectURL + <a> download
+    ✅ Toast loading → success/error
+    ✅ Nome: geonexus-trazas-{date}.csv / .json
+
+  Export PNG / PDF:
+    ✅ Usa html-to-image (toPng) no conteúdo da página
+    ✅ PNG: download direto da dataUrl
+    ✅ PDF: jsPDF landscape A4, addImage, blob → download
+    ✅ Toast loading em cascata (png → pdf)
+
+  Timestamps: TIMEFRAME_LABELS (hoy→"Hoy", 7d→"Últimos 7 días", 30d→"Últimos 30 días")
+  Data: formatDate() → locale es-CO
+
+═══════════════════════════════════════════════════════════════════════════════════
+  3. AnalysisMetrics.tsx — 4 cards de métricas
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Hook: useAnalysisMetrics()
+
+  Layout: grid md:grid-cols-2 xl:grid-cols-4
+
+  Loading:
+    ✅ 4 skeleton cards (animate-pulse)
+    ✅ Estrutura: label bar + value bar + detail bar
+
+  Error:
+    ✅ Exibe cards com valores "—" e detail "Error al cargar"
+    ✅ Não quebra a página (graceful degradation)
+
+  Cards (quando data OK):
+    1. Tokens hoy      → formatTokens(data.tokens_hoy)
+                        → detail: "Tokens totales del día"
+    2. Consultas IA    → String(data.consultas_ia)
+                        → detail: "Respuestas del asistente hoy"
+    3. Costo estimado  → formatCost(data.costo_estimado)
+                        → detail: "Costo acumulado del día"
+    4. Trazas guardadas → String(data.trazas_guardadas)
+                        → detail: "Tool-calls registrados hoy"
+
+  Formatadores:
+    formatTokens: new Intl.NumberFormat("es-CO")
+    formatCost:   < $0.01 → 4 decimais, < $1 → 2 decimais, >= $1 → 2 decimais
+
+═══════════════════════════════════════════════════════════════════════════════════
+  4. TokenChart.tsx — Gráfico de consumo (SVG)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Props: timeframe, onTimeframeChange
+
+  Hook: useTokenTimeline("project-default", timeframe)
+
+  Timeframe selector:
+    ✅ 3 botões: Hoy / 7 días / 30 días
+    ✅ Ativo: bg-primary text-primary-foreground
+    ✅ Inativo: bg-primary/10
+
+  Loading:
+    ✅ placeholder 56px animate-pulse
+
+  Empty state:
+    ✅ SVG hidden → "Sin consumo registrado"
+    ✅ Barras inferiores escondidas
+
+  SVG (área chart superior, h-52):
+    ✅ Área fill gradient (primary com opacidade 0.28 → 0)
+    ✅ Linha polyline com stroke primary
+    ✅ Y labels: valores calculados (maxTokens * {1, 0.75, 0.5, 0.25, 0})
+    ✅ Grid lines horizontais
+    ✅ Hover tooltip: mostra hora, input, output, total
+    ✅ preserveAspectRatio="none" (preenche todo o espaço)
+
+  Barras inferiores:
+    ✅ grid-template-columns: repeat(items.length, 1fr)
+    ✅ Cada bucket: barra vertical input (primary/40) + output (primary)
+    ✅ Tooltip no hover (onMouseEnter/Move/Leave)
+    ✅ Labels hora truncadas
+
+  Legenda:
+    ✅ Input (primary/40) + Output (primary)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  5. CostSummaryBar.tsx — Resumo de custos
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Hook: useCostByTimeframe()
+
+  Layout: bg-[#f5f0e8] (tom quente), 3 colunas separadas por divisor
+
+  Loading: skeleton 56px animate-pulse
+
+  Empty: return null (se !data)
+
+  Colunas:
+    1. Costo hoy        → formatCost(data.cost_hoy)
+    2. Costo 7d          → formatCost(data.cost_7d)
+    3. Promedio/consulta → formatCost(data.avg_per_query)
+
+  formatCost: progressivo (≥0.01 → 3 dec, ≥0.001 → 4 dec, else → 6 dec)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  6. AnalysisRunsTable.tsx — Tabela de trazas
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Hook: useAnalysisRuns()
+
+  Layout: section com border, header "Trazas recientes" + ActivityIcon
+
+  Loading:
+    ✅ 5 skeleton rows (animate-pulse)
+    ✅ Cada row: título + subtítulo (larguras diferentes)
+
+  Error:
+    ✅ Exibe "Error al cargar trazas" centralizado
+
+  Empty:
+    ✅ "Sin trazas registradas"
+
+  Paginação:
+    ✅ PAGE_SIZE = 10
+    ✅ Botões Anterior/Siguiente com disabled
+    ✅ "Página {page + 1} de {totalPages}"
+
+  Cada row (button, click → abre detalhe):
+    ✅ Col1: título truncado + relativeTime(created_at)
+    ✅ Col2: modelo (truncado)
+    ✅ Col3: trace_id (últimos 8 chars) + CopyIcon (stopPropagation)
+    ✅ Col4: tokens formatados (toLocaleString)
+    ✅ Col5: duração com badge colorido:
+        - < 5s: verde (emerald)
+        - < 15s: amarelo (yellow)
+        - >= 15s: vermelho (red)
+      + tool_calls com WrenchIcon (se > 0)
+
+  TraceDetailDialog (modal ao clicar na row):
+    ✅ Grid 2 colunas: label + value
+    ✅ Mostra: Modelo, Tokens, Duração, Tool calls, Trace ID (com copy), Criado em
+    ✅ Botões: "Copiar ID" (message id), "Ir al chat" (conversation_id)
+
+  Helpers:
+    relativeTime(ts): "hace unos segundos" / "hace X min" / "hace Xh" / "ayer" / "hace X días"
+    formatDuration(ms): "X.Xs" ou "Xms"
+    copyTraceId(id): navigator.clipboard.writeText + toast
+
+═══════════════════════════════════════════════════════════════════════════════════
+  7. AnalysisSidePanels.tsx — Painéis laterais
+═══════════════════════════════════════════════════════════════════════════════════
+
+  7.1 ModelUsagePanel:
+    ✅ Hook: useModelUsage()
+    ✅ Título: "Uso por modelo" + GaugeIcon
+    ✅ Loading: 3 skeletons (barra label + barra progress)
+    ✅ Empty: "Sin uso registrado"
+    ✅ Cada modelo: nome + provider, percentual, progress bar colorida
+        - Cores: MODEL_COLORS (8 cores cíclicas)
+        - Tooltip: input, output, avg tokens/solicitud
+        - onClick → ModelDetailDialog
+    ✅ ModelDetailDialog:
+        - Grid: Proveedor, Tokens totales, Input, Output, Solicitudes, Promedio
+        - Ratio bar: input (primary/40) + output (primary)
+        - Botão "Copiar modelo"
+
+  7.2 SkillPanel:
+    ✅ Hook: useSkillUsage()
+    ✅ Título: "Skills usadas" + BrainCircuitIcon
+    ✅ Loading: 2 skeletons
+    ✅ Empty: info text "Tool_calls aparecem aqui automaticamente"
+    ✅ Cada skill: tool_name + calls + success_rate com semáforo:
+        - >= 90%: verde (emerald)
+        - >= 70%: amarelo (yellow)
+        - < 70%: vermelho (red)
+    ✅ toolLabel(): mapeia snake_case → español legible
+        - read_file → "Leer archivo"
+        - search_code → "Buscar en código"
+        - list_directory → "Listar directorio"
+        - glob_files → "Buscar archivos"
+    ✅ Tooltip: tool_name + success_rate
+
+  7.3 TopQueriesPanel:
+    ✅ Hook: useTopQueries(limit=5)
+    ✅ Título: "Consultas top" + MessageSquareTextIcon
+    ✅ Loading: 3 skeletons
+    ✅ Empty: "Sin consultas registradas"
+    ✅ Cada query: title (truncado 32 chars) + runs count + barra tokens
+        - Barra proporcional ao maxTokens
+        - Runs badge: bg-primary/10
+
+  7.4 TokensBarChart:
+    ✅ Hook: useTokenTimeline("project-default", "7d") (fixo 7d)
+    ✅ Título: "Tokens por día (7d)" + BarChart3Icon
+    ✅ Loading: 5 skeletons
+    ✅ Empty: "Sin datos de tokens"
+    ✅ Cada dia: label + input bar (primary/40) + output bar (primary)
+        - Tooltip: hora, input, output, total
+
+═══════════════════════════════════════════════════════════════════════════════════
+  8. useAnalysis.ts — Hooks personalizados
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Padrão: useAsync<T>(fetcher, deps) → { data: T | null, loading, error, reload }
+    ✅ useState para data/loading/error
+    ✅ useEffect no mount (chama load)
+    ✅ useCallback com deps (recria load quando dependências mudam)
+    ✅ try/catch com mensagem de erro
+
+  7 hooks públicos:
+    useAnalysisMetrics()     → getAnalysisMetrics
+    useTokenTimeline(tf)     → getTokenTimeline
+    useModelUsage()          → getModelUsage
+    useAnalysisRuns()        → listAnalysisRuns
+    useSkillUsage()          → getSkillUsage
+    useCostByTimeframe()     → getCostByTimeframe
+    useTopQueries(limit)     → getTopQueries
+
+  projectId padrão: "project-default" (hardcoded em todos os hooks)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  9. TYPES (src/types/analysis.ts)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Timeframe:    "hoy" | "7d" | "30d"  (union type)
+
+  AnalysisMetrics:
+    tokens_hoy: number       → Total de tokens consumidos hoje
+    consultas_ia: number     → Quantidade de consultas ao assistente hoje
+    costo_estimado: number   → Custo monetário estimado (USD)
+    trazas_guardadas: number → Tool-calls registradas hoje
+
+  TokenBucket:
+    hora: string             → Rótulo da hora/dia (ex: "10:00", "12 jun")
+    input_tokens: number     → Tokens de entrada
+    output_tokens: number    → Tokens de saída
+    total_tokens: number     → Soma input + output
+
+  ModelUsage:
+    model: string            → Nome do modelo (ex: "gpt-4o")
+    provider: string         → Provedor (ex: "openai")
+    tokens: number           → Total de tokens
+    requests: number         → Quantidade de requisições
+    input_tokens: number     → Tokens de entrada
+    output_tokens: number    → Tokens de saída
+
+  AnalysisRun:
+    id: string               → ID único da execução
+    conversation_id: string  → ID da conversação
+    title: string            → Título/descrição
+    model: string            → Modelo usado
+    tokens: number           → Total de tokens
+    duration_ms: number      → Duração em milissegundos
+    trace_id: string | null  → ID de rastreamento (opcional)
+    tool_calls: number       → Quantidade de tool calls
+    created_at: number       → Timestamp (epoch seconds)
+
+  SkillUsage:
+    tool_name: string        → Nome da ferramenta (ex: "read_file")
+    calls: number            → Quantidade de chamadas
+    success_rate: number     → Taxa de sucesso (0-100)
+
+  CostSummary:
+    cost_hoy: number         → Custo do dia atual (USD)
+    cost_7d: number          → Custo dos últimos 7 dias (USD)
+    cost_total: number       → Custo total (USD)
+    avg_per_query: number    → Custo médio por consulta (USD)
+
+  TopQuery:
+    title: string            → Texto da consulta
+    runs: number             → Quantidade de execuções
+    tokens: number           → Total de tokens usados
+
+═══════════════════════════════════════════════════════════════════════════════════
+  10. API LAYER (src/api/analysis.ts)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  DEFAULT_PROJECT_ID = "project-default"
+
+  Todas as funções usam invoke<T>() diretamente (SEM fallback — dados vêm de SQLite local)
+
+  Funções:
+
+    getAnalysisMetrics(projectId): Promise<AnalysisMetrics>
+      ✅ command: "get_analysis_metrics"
+      ✅ params: { projectId }
+      ✅ Retorna 4 métricas do dia (1 query SQL)
+
+    getTokenTimeline(projectId, timeframe): Promise<TokenBucket[]>
+      ✅ command: "get_token_timeline"
+      ✅ params: { projectId, timeframe }
+      ✅ Retorna buckets de consumo por hora/dia
+
+    getModelUsage(projectId): Promise<ModelUsage[]>
+      ✅ command: "get_model_usage"
+      ✅ params: { projectId }
+      ✅ Retorna tokens + requests por modelo
+
+    listAnalysisRuns(projectId): Promise<AnalysisRun[]>
+      ✅ command: "list_analysis_runs"
+      ✅ params: { projectId }
+      ✅ Retorna últimas 50 execuções
+
+    getSkillUsage(projectId): Promise<SkillUsage[]>
+      ✅ command: "get_skill_usage"
+      ✅ params: { projectId }
+      ✅ Retorna tools mais usadas + taxa de sucesso
+
+    getCostByTimeframe(projectId): Promise<CostSummary>
+      ✅ command: "get_cost_by_timeframe"
+      ✅ params: { projectId }
+      ✅ Retorna custos (hoy, 7d, total, avg)
+
+    getTopQueries(projectId, limit): Promise<TopQuery[]>
+      ✅ command: "get_top_queries"
+      ✅ params: { projectId, limit }
+      ✅ Retorna top N consultas por tokens
+
+    exportAnalysisTraces(projectId, format): Promise<string>
+      ✅ command: "export_analysis_traces"
+      ✅ params: { projectId, format }
+      ✅ Retorna conteúdo CSV ou JSON (string)
+      ✅ Até 500 registros exportados
+
+  Param naming:
+    ✅ camelCase no JS (projectId, timeframe)
+    ✅ Tauri v2 converte para snake_case no Rust
+
+═══════════════════════════════════════════════════════════════════════════════════
+  11. DATA FLOW
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Ciclo completo:
+
+    1. AnalysisPage monta → cada hook dispara useEffect individualmente
+    2. Cada hook chama sua API correspondente via invoke Tauri
+    3. Backend Rust (analysis_repo.rs) consulta tabelas SQLite:
+        - messages (input_tokens, output_tokens, total_tokens, model)
+        - conversations (title, created_at)
+        - chat_tool_calls (tool_name, success)
+    4. Dados retornam → cada componente renderiza com data/loading/error
+    5. Usuário interage:
+        - Muda timeframe → TokenChart recarrega
+        - Clica em modelo → ModelDetailDialog
+        - Clica em traza → TraceDetailDialog
+        - Exporta → CSV/JSON via API ou PNG/PDF via html-to-image
+
+  Origem dos dados:
+    ✅ messages.input_tokens, output_tokens, total_tokens (já existem desde send_message)
+    ✅ conversations (para title, created_at)
+    ✅ chat_tool_calls (para tool_name, success_rate)
+    ❌ NENHUMA migração nova necessária
+
+  Dados em tempo real:
+    ❌ NÃO há eventos Tauri para análise (dados são consultados via invoke)
+    ❌ NÃO há subscribe/websocket
+    ❌ Refresh manual não existe (recarregar página recria hooks)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  12. ROUTER INTEGRATION
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Onde AnalysisPage é montada:
+    src/features/workspace/GeoNexusWorkspace.tsx:56
+      <AnalysisPage /> (renderizado condicionalmente por rota interna)
+
+  A workspace alterna entre:
+    - ChatView       (rota padrão: #chat)
+    - DataPage       (rota: #data)
+    - AnalysisPage   (rota: #analysis)
+    - DocumentsPage
+    - GraphPage
+    - MapPage
+    - SettingsPage
+
+  AnalysisPage NÃO tem:
+    ❌ Rota URL state para timeframe (não persiste na URL)
+    ❌ Navegação interna (sem sub-rotas)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  13. EVENTOS (como funcionam)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  A página de Análise NÃO usa eventos em tempo real.
+  Diferente da DataPage (que tem SyncEvents via backend) ou do GraphPage
+  (que escuta eventos Tauri graph:updated), a AnalysisPage funciona
+  exclusivamente por consulta (polling no mount):
+
+  Fluxo de eventos no ecossistema:
+    ┌──────────────────────────────────────────────────┐
+    │  send_message (chat)                             │
+    │    → cria messages (input_tokens, output_tokens)  │
+    │    → cria chat_tool_calls (tool_name, success)    │
+    │    → atualiza conversations (title, timestamps)   │
+    └──────────┬───────────────────────────────────────┘
+               │
+               ▼
+    ┌──────────────────────────────────────────────────┐
+    │  AnalysisPage monta                              │
+    │    → 7 hooks disparam 7 consultas SQL            │
+    │    → Dados já estão em SQLite desde send_message │
+    │    → Sem eventos adicionais necessários          │
+    └──────────────────────────────────────────────────┘
+
+  Dados consultados:
+    get_analysis_metrics → COUNT/SUM de messages hoje
+    get_token_timeline   → GROUP BY hora/dia em messages
+    get_model_usage      → GROUP BY model em messages
+    list_analysis_runs   → SELECT com JOIN conversations
+    get_skill_usage      → GROUP BY tool_name em chat_tool_calls
+    get_cost_by_timeframe → SUM(cost) em messages
+    get_top_queries      → GROUP BY title em conversations
+
+  IMPORTANTE:
+    ✅ Os eventos (mensagens, tool calls) são criados pelo sistema de chat
+    ✅ A análise apenas CONSULTA esses dados já existentes
+    ✅ Não há pipeline de eventos específico para análise
+    ✅ Os dados são "frioz" (cold data) — consultados sob demanda
+
+═══════════════════════════════════════════════════════════════════════════════════
+  14. ESTADOS (loading, empty, error)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  ┌──────────────────┬───────────┬──────────────────┬─────────────────────┐
+  │ Componente       │ Loading   │ Empty            │ Error               │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ AnalysisMetrics  │ 4 cards   │ "0" (data null)  │ "—" + error detail  │
+  │                  │ skeleton  │                  │                     │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ TokenChart       │ h-56 skel │ "Sin consumo     │ N/A (invoke sem    │
+  │                  │           │ registrado"      │ fallback, mas erro │
+  │                  │           │                  │ silencia)           │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ CostSummaryBar   │ h-14 skel │ return null      │ return null         │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ AnalysisRunsTable│ 5 rows    │ "Sin trazas      │ "Error al cargar   │
+  │                  │ skeleton  │ registradas"     │ trazas"             │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ ModelUsagePanel  │ 3 skel    │ "Sin uso         │ N/A                 │
+  │                  │           │ registrado"      │                     │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ SkillPanel       │ 2 skel    │ info text        │ N/A                 │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ TopQueriesPanel  │ 3 skel    │ "Sin consultas   │ N/A                 │
+  │                  │           │ registradas"     │                     │
+  ├──────────────────┼───────────┼──────────────────┼─────────────────────┤
+  │ TokensBarChart   │ 5 skel    │ "Sin datos de    │ N/A                 │
+  │                  │           │ tokens"          │                     │
+  └──────────────────┴───────────┴──────────────────┴─────────────────────┘
+
+  Observações:
+    ✅ Todos os componentes têm loading skeleton
+    ✅ Todos os componentes têm empty state
+    ❌ Apenas AnalysisMetrics e AnalysisRunsTable têm error state explícito
+    ❌ Os hooks tratam erro genérico mas só 2 componentes o exibem
+    ❌ Sem fallback nos invoke (diferente da data.ts que tem invokeOrFallback)
+    ❌ Se Tauri falhar, o erro propaga até o hook e é capturado no catch
+
+═══════════════════════════════════════════════════════════════════════════════════
+  15. PENDENTE / MELHORIAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  🔴 PRIORIDADE MÉDIA:
+    - Error handling faltando em 6 dos 8 componentes
+      (atualmente só AnalysisMetrics e AnalysisRunsTable tratam erro)
+    - Adicionar invokeOrFallback na API (igual data.ts) para evitar
+      crash se Tauri não estiver disponível
+    - Filtro por rango de datas custom (atualmente só Hoy/7d/30d)
+    - Tabela analysis_sessions existe no banco mas não é usada
+
+  🔵 PRIORIDADE BAIXA:
+    - URL state para timeframe (persistir na URL)
+    - Refresh manual / auto-refresh periódico
+    - Gráfico comparativo entre períodos
+    - Exportar gráfico como SVG (além de PNG/PDF)
+    - Drill-down: clicar numa traza → ir direto ao chat
+    - Filtro por modelo/provedor nas trazas
+    - Modo escuro consistente (CostSummaryBar tem bg fixo #f5f0e8)
+    - Testes unitários para helpers (relativeTime, formatDuration, formatCost)
+    - Internacionalização (i18n) para labels
+
+═══════════════════════════════════════════════════════════════════════════════════
+  16. ARQUIVOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Frontend (React / TypeScript) — 9 arquivos:
+    src/features/workspace/analysis/AnalysisPage.tsx
+      → Container principal, layout grid, timeframe state
+    src/features/workspace/analysis/AnalysisHeader.tsx
+      → Título, botão Exportar com dropdown (CSV/JSON/PNG/PDF)
+    src/features/workspace/analysis/AnalysisMetrics.tsx
+      → 4 cards métricos com skeleton, error inline
+    src/features/workspace/analysis/TokenChart.tsx
+      → Gráfico SVG linha + barras, hover tooltip, timeframe selector
+    src/features/workspace/analysis/CostSummaryBar.tsx
+      → Barra de custos (hoy, 7d, avg)
+    src/features/workspace/analysis/AnalysisRunsTable.tsx
+      → Tabela paginada de trazas, TraceDetailDialog
+    src/features/workspace/analysis/AnalysisSidePanels.tsx
+      → ModelUsagePanel, SkillPanel, TopQueriesPanel, TokensBarChart
+    src/features/workspace/analysis/useAnalysis.ts
+      → 7 hooks com useAsync pattern (loading/error/data)
+
+  API Layer:
+    src/api/analysis.ts
+      → getAnalysisMetrics, getTokenTimeline, getModelUsage
+      → listAnalysisRuns, getSkillUsage, getCostByTimeframe
+      → getTopQueries, exportAnalysisTraces
+
+  Types:
+    src/types/analysis.ts
+      → AnalysisMetrics, TokenBucket, ModelUsage, AnalysisRun
+      → SkillUsage, CostSummary, TopQuery, Timeframe
+
+  Router:
+    src/features/workspace/GeoNexusWorkspace.tsx
+      → Monta AnalysisPage na rota #analysis
+
+  Backend (Rust):
+    commands/analysis.rs (110L)
+      → 6 wrappers Tauri registrados em main.rs + commands/mod.rs
+    analysis_repo.rs (290L)
+      → 6 queries SQL públicas:
+          get_analysis_metrics    (1 query, 4 métricas)
+          get_token_timeline      (GROUP BY hora/dia)
+          get_model_usage         (GROUP BY model)
+          list_analysis_runs      (JOIN conversations, LIMIT 50)
+          get_skill_usage         (GROUP BY tool_name)
+          export_traces_csv/json  (até 500 registros)
+
+  Dados consultados (tabelas SQLite existentes):
+    messages         → input_tokens, output_tokens, total_tokens, model, cost
+    conversations    → title, created_at
+    chat_tool_calls  → tool_name, success
+
+  Dependências npm:
+    html-to-image   → toPng (export PNG/PDF)
+    jsPDF           → pdf (export PDF)
+    sonner          → toasts
+    lucide-react    → ícones

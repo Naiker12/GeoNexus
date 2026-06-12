@@ -9,6 +9,7 @@ import {
   DEFAULT_THINKING_STEPS,
 } from "@/components/chat/ThinkingInline"
 import type { ThinkingStep } from "@/components/chat/ThinkingInline"
+import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
 import type { Message, MessageStats } from "@/types/chat"
 
 type ChatTranscriptProps = {
@@ -18,6 +19,7 @@ type ChatTranscriptProps = {
   webSearchEnabled?: boolean
   onEditLastUserMessage?: () => void
   onRegenerateLastMessage?: () => void
+  useContext?: boolean
 }
 
 function useThinkingSteps(pending: boolean) {
@@ -30,7 +32,7 @@ function useThinkingSteps(pending: boolean) {
         setStepIndex((prev) =>
           Math.min(prev + 1, DEFAULT_THINKING_STEPS.length - 1)
         )
-      }, 1800)
+      }, 1500)
       return () => clearInterval(timer)
     } else {
       setStepIndex(DEFAULT_THINKING_STEPS.length)
@@ -59,6 +61,7 @@ export function ChatTranscript({
   webSearchEnabled,
   onEditLastUserMessage,
   onRegenerateLastMessage,
+  useContext,
 }: ChatTranscriptProps) {
   const { steps, isComplete } = useThinkingSteps(pending)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
@@ -135,7 +138,18 @@ export function ChatTranscript({
             <GeoNexusIcon className="size-4" variant="nexus" />
           </div>
           <div className="flex flex-col gap-1 pt-1.5">
-            <ThinkingInline steps={steps} isComplete={isComplete} />
+            <ThinkingInline
+              steps={steps}
+              isComplete={isComplete}
+              knowledgeSteps={
+                useContext ? [
+                  { source: "chromadb" as const, label: "Búsqueda semántica", status: "searching" as const },
+                  { source: "graph" as const, label: "Knowledge Graph", status: "searching" as const },
+                  { source: "assets" as const, label: "Assets indexados", status: "searching" as const },
+                ] : undefined
+              }
+            />
+            <StreamEventRenderer />
           </div>
         </div>
       ) : null}

@@ -67,8 +67,6 @@ export function DataPage() {
         if (failed > 0) {
           toast.error(`${failed} store(s) no respondieron`)
         }
-
-
       }
     } catch (e) {
       setError("No se pudieron cargar los datos del centro de datos.")

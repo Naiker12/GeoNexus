@@ -67,6 +67,47 @@ export function DataHeader({ assets, metrics, isLoading, onRefresh }: DataHeader
     setValidating(false)
   }
 
+  const getHealthStatus = () => {
+    if (assets.length === 0) {
+      return {
+        label: "Sin datos",
+        color: "bg-muted/30 text-muted-foreground border-muted-foreground/20",
+        dot: "bg-muted-foreground/60",
+      }
+    }
+
+    const hasError = assets.some((a) => a.status === "error")
+    if (hasError) {
+      return {
+        label: "Error",
+        color: "bg-destructive/10 text-destructive border-destructive/20",
+        dot: "bg-destructive animate-pulse",
+      }
+    }
+
+    const hasConflict = assets.some((a) => a.status === "conflict")
+    const pendingCount = assets.filter(
+      (a) => a.status === "pending" || a.status === "indexing"
+    ).length
+    const hasHighPending = assets.length > 0 && pendingCount / assets.length > 0.2
+
+    if (hasConflict || hasHighPending) {
+      return {
+        label: "Atención",
+        color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        dot: "bg-amber-500 animate-pulse",
+      }
+    }
+
+    return {
+      label: "Saludable",
+      color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      dot: "bg-emerald-500",
+    }
+  }
+
+  const health = getHealthStatus()
+
   return (
     <>
       <header className="overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
@@ -78,9 +119,15 @@ export function DataHeader({ assets, metrics, isLoading, onRefresh }: DataHeader
                 <DatabaseIcon className="size-3.5" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-base font-semibold tracking-tight sm:text-lg">
-                  Centro de datos
-                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-base font-semibold tracking-tight sm:text-lg">
+                    Centro de datos
+                  </h1>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.68rem] font-medium transition-all ${health.color}`}>
+                    <span className={`size-1.5 rounded-full ${health.dot}`} />
+                    {health.label}
+                  </span>
+                </div>
                 <p className="mt-0.5 max-w-4xl text-xs leading-4 text-muted-foreground">
                   Inventario de archivos, cache, embeddings, sync y grafo
                   para auditar como entra la informacion a GeoNexus IA.

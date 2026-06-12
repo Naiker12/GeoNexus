@@ -394,17 +394,7 @@ export function ChatComposer({
             <Button type="button" variant="ghost" size="icon-sm" aria-label="Modo voz">
               <AudioLinesIcon className="size-4" />
             </Button>
-            <ModelSelector>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="rounded-xl"
-                aria-label="Modelos y proveedores"
-              >
-                <MenuIcon className="size-5" />
-              </Button>
-            </ModelSelector>
+
             <Button
               type="submit"
               size="icon"

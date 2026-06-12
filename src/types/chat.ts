@@ -32,6 +32,13 @@ export type MessageStats = {
 
 import type { SearchStep } from "@/components/chat/SearchingIndicator"
 
+export type KnowledgeLookupStep = {
+  source: "chromadb" | "graph" | "assets"
+  label: string
+  status: "searching" | "found" | "empty"
+  count?: number
+}
+
 export type Message = {
   id: string
   conversation_id: string
@@ -50,6 +57,7 @@ export type Message = {
   research_sources?: ResearchSource[]
   searchElapsedSeconds?: number
   searchSteps?: SearchStep[]
+  knowledgeSteps?: KnowledgeLookupStep[]
   stats?: MessageStats
 }
 
@@ -168,4 +176,66 @@ export type SendMessageResponse = {
   search_query?: string
   validation_warnings?: string[]
   intent?: string
+}
+
+// ── Event Preview Streaming ─────────────────────────────────────
+
+export type PreviewChunkType = "text" | "source" | "line" | "rag_doc"
+
+export interface PreviewChunk {
+  event_id: string
+  chunk_type: PreviewChunkType
+  content: string
+  title?: string
+  url?: string
+  snippet?: string
+  score?: number
+  source?: string
+}
+
+export interface StreamEventBase {
+  event_id: string
+  conversation_id: string
+  status: "searching" | "running" | "complete" | "error"
+}
+
+export interface DeepResearchStreamEvent extends StreamEventBase {
+  type: "deep_research"
+  display_query?: string
+  sources_count?: number
+  sources?: Array<{
+    title: string
+    url: string
+    domain: string
+    snippet: string
+  }>
+}
+
+export interface ToolCallStreamEvent extends StreamEventBase {
+  type: "tool_call"
+  tool_name: string
+  display_name: string
+  subtitle?: string
+  lines_read?: number
+}
+
+export interface KnowledgeLookupStreamEvent extends StreamEventBase {
+  type: "knowledge_lookup"
+  docs_count?: number
+}
+
+export interface GeneratingStreamEvent extends StreamEventBase {
+  type: "generating"
+}
+
+export type AnyStreamEvent =
+  | DeepResearchStreamEvent
+  | ToolCallStreamEvent
+  | KnowledgeLookupStreamEvent
+  | GeneratingStreamEvent
+
+export interface EventPreviewState {
+  event_id: string
+  chunks: PreviewChunk[]
+  accumulated_text: string
 }

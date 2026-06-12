@@ -52,9 +52,9 @@ impl DataRepository {
             .execute(pool).await;
         let _ = sqlx::query("DELETE FROM graph_nodes WHERE id LIKE 'node-demo%' OR id LIKE 'node-norma%' OR id LIKE 'node-zona%' OR id LIKE 'node-concepto%' OR id LIKE 'node-capa%'")
             .execute(pool).await;
-        let _ = sqlx::query("DELETE FROM sync_events WHERE asset_id LIKE 'asset-pot%' OR asset_id LIKE 'asset-ley%' OR asset_id LIKE 'asset-estratif%'")
+        let _ = sqlx::query("DELETE FROM sync_events WHERE asset_id LIKE 'asset-pot%' OR asset_id LIKE 'asset-ley%' OR asset_id LIKE 'asset-estratif%' OR connector_id = 'connector-demo'")
             .execute(pool).await;
-        let _ = sqlx::query("DELETE FROM assets WHERE id LIKE 'asset-pot%' OR id LIKE 'asset-ley%' OR id LIKE 'asset-estratif%'")
+        let _ = sqlx::query("DELETE FROM assets WHERE id LIKE 'asset-pot%' OR id LIKE 'asset-ley%' OR id LIKE 'asset-estratif%' OR connector_id = 'connector-demo'")
             .execute(pool).await;
         Ok(())
     }

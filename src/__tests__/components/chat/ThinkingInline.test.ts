@@ -11,12 +11,13 @@ describe("DEFAULT_THINKING_STEPS", () => {
     }
   })
 
-  it("has 4 steps in order", () => {
-    expect(DEFAULT_THINKING_STEPS).toHaveLength(4)
+  it("has 5 steps in order", () => {
+    expect(DEFAULT_THINKING_STEPS).toHaveLength(5)
     expect(DEFAULT_THINKING_STEPS[0].id).toBe("parse")
     expect(DEFAULT_THINKING_STEPS[1].id).toBe("docs")
-    expect(DEFAULT_THINKING_STEPS[2].id).toBe("kb")
-    expect(DEFAULT_THINKING_STEPS[3].id).toBe("gen")
+    expect(DEFAULT_THINKING_STEPS[2].id).toBe("knowledge")
+    expect(DEFAULT_THINKING_STEPS[3].id).toBe("kb")
+    expect(DEFAULT_THINKING_STEPS[4].id).toBe("gen")
   })
 
   it("all IDs are unique", () => {

@@ -142,12 +142,6 @@ export function ChatPanel(_props: ChatPanelProps) {
 
       {/* Main chat area */}
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-        {/* Top bar */}
-        <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 py-1.5">
-          <div className="ml-auto">
-            <ModelHeaderPopover />
-          </div>
-        </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {loadingHistory ? (
@@ -165,6 +159,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               webSearchEnabled={webSearchEnabled}
               onEditLastUserMessage={handleEditLastUserMessage}
               onRegenerateLastMessage={handleRegenerate}
+              useContext={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
             />
           ) : (
             <EmptyChatState />

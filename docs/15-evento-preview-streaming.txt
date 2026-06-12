@@ -1,0 +1,78 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║   EVENT PREVIEW STREAMING — Vista Previa de Eventos (Estilo Claude Code)      ║
+║   Streaming de contenido en vivo dentro de cada evento mientras el LLM trabaja ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+  ESTADO DE IMPLEMENTACIÓN (Junio 2026)
+  ────────────────────────────────────
+
+  FRONTEND (100% implementado):
+    ✅ Tipos TypeScript nuevos en src/types/chat.ts
+        PreviewChunkType, PreviewChunk, StreamEventBase,
+        DeepResearchStreamEvent, ToolCallStreamEvent,
+        KnowledgeLookupStreamEvent, GeneratingStreamEvent,
+        AnyStreamEvent, EventPreviewState
+
+    ✅ Hook useStreamPreview em src/features/workspace/chat/hooks/
+        Acumula chunks por event_id via listener Tauri chat:preview_chunk
+        Store global (Map) com notificação por event_id
+        clearPreviewStore() para cleanup
+
+    ✅ DeepResearchCard — fontes aparecendo uma a uma
+        Loader2Icon durante busca + live source chunks
+        CheckCircle2Icon + "X fuentes consultadas" ao completar
+        Chevron expande para ver fontes com snippet + link
+
+    ✅ GeneratingCard — texto em tempo real
+        Mostra accumulated_text com cursor parpadeante
+        Some quando completa (texto já está na resposta)
+
+    ✅ ToolCallCard — preview de arquivos/código
+        read_file: primeiras 8 linhas em fonte monospace
+        list_directory: árvore com ícones File/Folder
+        search_code: resultados com monospace
+        Chevron para expandir/colapsar
+
+    ✅ KnowledgeLookupCard — documentos RAG
+        Mostra docs encontrados com score de relevância
+        Chevron para expandir/colapsar
+
+    ✅ StreamEventRenderer integrado em ChatTranscript.tsx
+        Escuta chat:stream_event do Tauri
+        Renderiza cards durante pending state
+        Cleanup automático ao desmontar
+
+  BACKEND (RUST) — PENDENTE:
+    ❌ send_message.rs: gerar event_id (short_id via UUID)
+    ❌ send_message.rs: emitir chat:preview_chunk para deep_research
+    ❌ send_message.rs: emitir chat:preview_chunk para texto do LLM
+    ❌ send_message.rs: emitir chat:preview_chunk para tool calls
+    ❌ send_message.rs: emitir chat:preview_chunk para RAG recall
+
+  ARQUIVOS CRIADOS/MODIFICADOS:
+    Frontend (5 novos, 2 modificados):
+      src/types/chat.ts                          → modificado (tipos novos)
+      src/features/workspace/chat/hooks/useStreamPreview.ts  → novo
+      src/features/workspace/chat/hooks/index.ts             → novo
+      src/features/workspace/chat/events/DeepResearchCard.tsx → novo
+      src/features/workspace/chat/events/GeneratingCard.tsx   → novo
+      src/features/workspace/chat/events/ToolCallCard.tsx     → novo
+      src/features/workspace/chat/events/KnowledgeLookupCard.tsx → novo
+      src/features/workspace/chat/events/StreamEventRenderer.tsx → novo
+      src/features/workspace/chat/events/index.ts            → novo
+      src/components/chat/ChatTranscript.tsx     → modificado (integrado)
+      src/__tests__/components/chat/ThinkingInline.test.ts → modificado (5 steps)
+
+  TESTES:
+    ✅ 62 testes passam (9 suites)
+    ✅ ThinkingInline.test.ts atualizado para 5 steps
+    ✅ Sem breaking changes
+
+  PRÓXIMOS PASSOS (Backend Rust):
+    1. Adicionar uuid crate em Cargo.toml
+    2. Criar short_id() em send_message.rs
+    3. Emitir chat:stream_event com event_id em deep_research, generating, tool_call
+    4. Emitir chat:preview_chunk para cada fonte encontrada
+    5. Emitir chat:preview_chunk para cada token do LLM
+    6. Emitir chat:preview_chunk para cada linha de arquivo lido
+    7. Emitir chat:preview_chunk para cada documento RAG

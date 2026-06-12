@@ -33,7 +33,7 @@ export function GeoNexusWorkspace({
   const isData = activeRoute.startsWith("#datos")
   const isDocuments = activeRoute.startsWith("#documentos")
   const isGraph = activeRoute.startsWith("#conocimiento")
-  const isAnalysis = activeRoute.startsWith("#analisis")
+  const isAnalysis = activeRoute.startsWith("#uso")
   const isMcp = activeRoute.startsWith("#mcp")
 
   return (

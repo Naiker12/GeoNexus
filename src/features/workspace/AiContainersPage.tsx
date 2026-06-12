@@ -116,7 +116,10 @@ export function AiContainersPage() {
   }
 
   const handleConnectApi = () => {
-    setCatalogOpen(true)
+    const customApiOption = providerOptions.find((p) => p.id === "custom-api")
+    if (customApiOption) {
+      handleConfig(customApiOption)
+    }
   }
 
   const handleCatalogSelect = (option: ProviderOption) => {

@@ -1,115 +1,705 @@
-╔══════════════════════════════════════════════════════════════════╗
-║   DATA PAGE — ESTADO ACTUAL                                     ║
-║   Página "Centro de datos": componentes, API, bugs             ║
-╚══════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║   DATA PAGE — ANÁLISE COMPLETA (código + tipos + API + backend)                ║
+║   Página "Centro de datos": frontend, API, tipos, fluxo de dados, bugs        ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 
-   1. ESTRUCTURA (DataPage.tsx)
-      ✅ Layout responsive con 2 columnas en xl
-      ✅ Error handling: Promise.allSettled + banner de error con Reintentar
-      ✅ loadData callback reutilizable para refresh
-      ✅ isLoading state propagado a hijos
-      ✅ Filtro memoizado con useMemo
-      ✅ Detección de runtime Tauri v2 (isTauriAvailable → window.__TAURI_INTERNALS__)
-      ✅ Banner ámbar si no hay runtime Tauri
-      ✅ Pasa DEFAULT_PROJECT_ID a todas las APIs
+  SUMÁRIO
+  ───────
+  1.  ESTRUTURA (DataPage.tsx)
+  2.  DataHeader.tsx
+  3.  AssetCatalog.tsx
+  4.  AssetSheet.tsx
+  5.  DataPanels.tsx
+  6.  DataUi.tsx
+  7.  data-data.ts (helpers + fallbacks)
+  8.  TYPES (src/types/data.ts)
+  9.  API LAYER (src/api/data.ts)
+  10. CONNECTOR API (src/api/connector.ts)
+  11. DATA FLOW
+  12. ROUTER INTEGRATION
+  13. CHAT INTEGRATION (attach/detach)
+  14. DEMO DATA (seed/clear)
+  15. BUGS RESOLVIDOS
+  16. PENDENTE / MELHORIAS
+  17. ARQUIVOS (frontend + backend Rust)
 
-   2. DataHeader.tsx
-      ✅ Título "Centro de datos" con subtítulo
-      ✅ 5 métricas con skeleton mientras isLoading
-      ✅ Botón "Reindexar" con Dialog confirmación + loading state
-      ✅ Botón "Validar datos" con Dialog resultados por store
-      ✅ 7 nodos de grafo visibles aunque no haya assets (fix backend)
+═══════════════════════════════════════════════════════════════════════════════════
+  1. ESTRUTURA (DataPage.tsx)
+═══════════════════════════════════════════════════════════════════════════════════
 
-   3. AssetCatalog.tsx
-      ✅ Search con debounce 200ms
-      ✅ Loading skeleton (5 filas animadas)
-      ✅ Empty state: "Sin assets indexados" con icono DB
-      ✅ Empty search results: "Sin resultados para X"
-      ✅ Sort selector: Nombre, Chunks, Estado, Reciente
-      ✅ Paginación 20 items con Anterior/Siguiente
-      ✅ Contador "X–Y de Z assets"
+  Layout: section responsiva h-[calc(100svh-3.5rem)] com overflow auto
+          Container max-w-[110rem] com grid gap-3
 
-   4. AssetSheet.tsx
-      ✅ Sheet slide-over con detalle completo del asset
-      ✅ Botón "Ver fuente": abre URL o muestra ruta local
-      ✅ Botón "Usar en IA": toggle attach/detach con toast
-      ✅ onRefresh callback global
+  Estados:
+    ✅ isLoading (true/false) — propagado a todos os filhos
+    ✅ error (string | null) — banner vermelho com "Reintentar"
+    ✅ tauriOk (boolean | null) — null = ainda não检测, false = banner âmbar
+    ✅ filteredAssets memoizado com useMemo
 
-   5. DataPanels.tsx
-      ✅ StoresPanel: 4 stores con valores dinámicos
-      ✅ SyncPanel: refresh funcional con spinner
-      ✅ Empty state "Sin eventos de sincronización"
-      ✅ Skeleton loading (3 filas)
-      ✅ LineagePanel coloreado según metrics reales
-      ✅ Timestamps con formatRelativeTime defensivo
+  Ciclo de vida:
+    ✅ loadData() chamado via useEffect no mount
+    ✅ loadData usa Promise.allSettled para 3 chamadas paralelas:
+        - listDataAssets(DEFAULT_PROJECT_ID)
+        - getDataStoreMetrics(DEFAULT_PROJECT_ID)
+        - getSyncEvents(DEFAULT_PROJECT_ID)
+    ✅ Se alguma falhar, as outras continuam (partial loading)
+    ✅ Se todas falharem → setError com mensagem + botão Reintentar
+    ✅ Se algumas falharem → toast.error com contagem
 
-   6. DataUi.tsx
-      ✅ Metric, Info, AssetStatusBadge, EventStatusBadge
-      ✅ Soporte dark theme (.geo-dark, .graphite, .midnight)
+  Detecção Tauri:
+    ✅ isTauriAvailable() → window.__TAURI_INTERNALS__ (v2)
+    ✅ Se false → banner âmbar + não chama APIs (isLoading = false)
+    ✅ DEFAULT_PROJECT_ID = "project-default" (hardcoded)
 
-   7. data-data.ts
-      ✅ formatRelativeTime con defensa contra milisegundos
-      ✅ Fallbacks vacíos para assets, metrics, events
+  Layout grid (xl: 2 colunas):
+    Coluna principal: AssetCatalog + LineagePanel
+    Aside (25rem):    StoresPanel + SyncPanel
 
-   8. DATA FLOW
-      ✅ Error handling con Promise.allSettled
-      ✅ onRefresh callback para recarga manual
-      ✅ Tauri v2 detection con window.__TAURI_INTERNALS__
-      ✅ Parametros camelCase desde JS (Tauri v2 convierte a snake_case en Rust)
-      ✅ isTauriAvailable() chequea runtime antes de llamar APIs
+  Sheet (slide-over):
+    AssetSheet com asset selecionado por ID
+    onOpenChange(false) → setSelectedAssetId(null)
 
-   9. BUGS RESUELTOS
-      B1  ✅ Reindexar/Validar/Sync refresh/Ver fuente/Usar en IA
-      B2  ✅ Skeletons Header, Catalog (5 rows), SyncPanel (3 items)
-      B3  ✅ Error handling Promise.allSettled + banner + Reintentar
-      B4  ✅ Empty states: Catalog vacío, sin resultados, SyncPanel
-      B5  ✅ Paginación 20 items en Catalog
-      B6  ✅ Debounce 200ms en search
-      B7  ✅ Memoize filtro + sort
-      B8  ✅ Tauri detection: __TAURI_INTERNALS__ (v2)
-      B9  ✅ LineagePanel coloreado con metrics
-      B10 ✅ DataPage pasa project_id directo
-      B11 ✅ PARAM NAMING: snake_case→camelCase en data.ts (project_id→projectId, etc)
-      B12 ✅ METRICS QUERY: get_data_store_metrics consulta tablas reales (graph_nodes, document_chunks)
-      B13 ✅ CONNECTOR: connector.ts usaba window.__TAURI__ (v1, inexistente en v2) → import invoke
-      B14 ✅ CONNECTOR PARAMS: snake_case→camelCase en connector.ts
-      B15 ✅ CHAT: auto-load de última conversación eliminado, arranca nuevo y vacío
+═══════════════════════════════════════════════════════════════════════════════════
+  2. DataHeader.tsx
+═══════════════════════════════════════════════════════════════════════════════════
 
-   10. PENDIENTE
-         DataHealthBadge en header (medium)
-         URL state para query/selectedAsset (low)
-         RecentIndexingLog componente (low)
-         Scrolling infinito SyncPanel (low)
+  Props: assets, metrics, isLoading, onRefresh
 
-   11. ARCHIVOS
-         Frontend:
-           DataPage.tsx — error handling, isLoading, loadData, tauriOk, banner
-           DataHeader.tsx — skeletons, dialogs, onRefresh
-           AssetCatalog.tsx — debounce, skeleton, empty states, sort, pagination
-           AssetSheet.tsx — Ver fuente, Usar en IA, onRefresh
-           DataPanels.tsx — Sync refresh, empty state, skeleton, Lineage colors
-           data-data.ts — timestamp defensive fix, formatRelativeTime
-           src/api/data.ts — camelCase params, isTauriAvailable(), DEFAULT_PROJECT_ID
-           src/api/connector.ts — Tauri v2 invoke import, camelCase params
-           src/components/chat/useChatSession.ts — sin auto-load, arranca vacío
+  Título: "Centro de dados" com subtítulo descritivo
+  Ícone: DatabaseIcon em bg-primary
 
-         Backend (Rust):
-           commands/data.rs — list, get, metrics, sync_events, validate, seed/clear demo
-           commands/document.rs — index_document, list_chunks, list_nodes/edges, rebuild_graph
-           commands/connector.rs — register_local, cache_file, sync_local
-           commands/oauth.rs — exchange_oauth_code, get_user_info, save/get token (stronghold fallback)
-           commands/filesystem.rs — open_folder_picker, open_file_picker, read_file_base64, validate_folder_path
+  5 Métricas (skeleton enquanto isLoading):
+    - Assets    → assets.length
+    - Chunks    → reduce total
+    - Vectores  → reduce embeddings
+    - Grafo     → reduce graph_nodes + "nodos"
+    - Tamanho   → formatBytes(total size_bytes)
 
-   12. SEED DEMO DATA
-         ✅ Rust command seed_demo_data + clear_demo_data
-         ✅ Frontend: seedDemoData() + "Cargar datos demo" en empty state
-         ✅ source="demo" en assets (fix: antes era "local")
-         ✅ hasDemoData detecta por source="demo" o connector_id="connector-demo"
-         ✅ clear_demo_data elimina en orden correcto (chunks → graph → assets → connectors)
+  Botão "Reindexar":
+    ✅ Dialog de confirmação (explica que regenera chunks/vectores/grafo)
+    ✅ loading state com Loader2Icon + "Indexando..."
+    ✅ Simulação: 2s timeout + onRefresh()
+    ✅ disabled enquanto reindexing
 
-   13. CHAT — COMPORTAMIENTO ACTUAL
-         ✅ Default route: #chat
-         ✅ Arranca nuevo y vacío (conversationId = null al montar)
-         ✅ localStorage "geonexus.activeConversationId" se limpia al montar
-         ✅ No carga ninguna conversación previa automáticamente
-         ✅ Al enviar primer mensaje, se crea nueva conversación
+  Botão "Validar datos":
+    ✅ Dialog com resultados por store (SQLite, Cache, ChromaDB, KG)
+    ✅ Simulado com base nas metrics atuais
+    ✅ loading state com Loader2Icon
+    ✅ Cada store: nome + check/cross + detail dinâmico
+    ✅ Validação real depende do backend futuro
+
+  Dark theme: suporta .geo-dark, .graphite, .midnight via CSS classes
+
+═══════════════════════════════════════════════════════════════════════════════════
+  3. AssetCatalog.tsx
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Props: assets, allAssets, query, onQueryChange, onSelectAsset, isLoading
+
+  Search (Input):
+    ✅ inputValue local state + debounce 200ms (useEffect + setTimeout)
+    ✅ Ícone SearchIcon dentro do input
+    ✅ Placeholder: "Buscar asset, fuente o ruta"
+    ✅ Busca em: name, source, location, kind (join + toLowerCase + includes)
+
+  Sort (select):
+    ✅ Nome ↑ (a.localeCompare(b))
+    ✅ Chunks ↓ (b.chunks - a.chunks)
+    ✅ Estado (ordem custom: ready→indexing→pending→conflict→error)
+    ✅ Reciente (updated_at decrescente)
+
+  Paginação:
+    ✅ 20 items por página (perPage = 20)
+    ✅ totalPages = Math.max(1, ceil(sorted.length / perPage))
+    ✅ Botões Anterior/Siguiente com disabled states
+    ✅ Contador "X–Y de Z assets"
+    ✅ Reset page → 0 quando query ou sortKey muda
+
+  Empty states:
+    ✅ allAssets.length === 0: "Sin assets indexados" + DatabaseIcon
+    ✅ sorted.length === 0 (com query): "Sin resultados para X" + SearchIcon
+
+  Loading:
+    ✅ 5 skeleton rows animadas (animate-pulse)
+    ✅ Estrutura: icon + text + status + chunks + time
+
+  AssetRow (cada linha):
+    ✅ Ícone: DocumentAssetIcon(kind)
+    ✅ Nome truncado + fonte/localização
+    ✅ AssetStatusBadge (colors por status)
+    ✅ Contagem de chunks
+    ✅ formatRelativeTime(updated_at)
+    ✅ onClick → onSelectAsset(asset.id)
+    ✅ Hover effect: hover:bg-muted/35
+
+═══════════════════════════════════════════════════════════════════════════════════
+  4. AssetSheet.tsx
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Props: asset?, open, onOpenChange, onRefresh
+
+  Sheet slide-over: w-[min(94vw,28rem)] com backdrop-blur-xl
+  Cabeçalho: gradient line + DocumentAssetIcon(kind) + nome + fonte/tamanho/tempo
+
+  Métricas (3 colunas):
+    - Chunks
+    - Vectores
+    - Nodos (graph_nodes)
+
+  Seção "Estado operativo" (Info grid):
+    ✅ Estado (statusLabel[status])
+    ✅ Cache (cacheLabel[cache_state])
+    ✅ Ruta (location)
+    ✅ Conector (connector_id ou "—")
+    ✅ Agente (agent_id ou "—")
+    ✅ Workspace (workspace_id ou "—")
+    ✅ Trace ID (só se existir)
+
+  Seção "Lineage" (passos dinâmicos):
+    ✅ Gera passos baseado no source + cache_state + kind + embeddings + graph_nodes
+    ✅ Cada passo numerado (círculo 1-5)
+    ✅ getLineageSteps():
+        - Source name (OneDrive, SharePoint, Google Drive, Dropbox, S3, Local)
+        - "Cache local" se cache_state !== "none"
+        - Indexador (por kind: document→Extractor PDF/DOCX, layer/shapefile→GIS, etc)
+        - "ChromaDB" se embeddings > 0
+        - "Knowledge Graph" se graph_nodes > 0
+
+  Footer (ações):
+    ❌ Delete (Trash2Icon, red):
+        ✅ confirm() dialog
+        ✅ Chama deleteDataAsset(a.id)
+        ✅ Toast sucesso/erro
+        ✅ Fecha sheet + onRefresh
+    ✅ Ver fuente (FileSearchIcon):
+        ✅ Se URL (http/https): window.open(location, "_blank")
+        ✅ Se local: toast com info
+    ✅ Usar en IA (BrainCircuitIcon):
+        ✅ Toggle attach/detach (state local attached)
+        ✅ Toast "Asset adjuntado ao contexto" / "Asset removido do contexto"
+        ✅ Ícone muda para CheckIcon quando attached
+        ✅ Texto: "Usar en IA" / "En contexto ✓"
+        ✅ onRefresh()
+
+═══════════════════════════════════════════════════════════════════════════════════
+  5. DataPanels.tsx
+═══════════════════════════════════════════════════════════════════════════════════
+
+  5.1 StoresPanel:
+    ✅ Título: "Memoria y almacenamiento" com HardDriveIcon
+    ✅ Mini metrics: "Listos" (assets_ready) + "Pendientes" (assets_pending)
+    ✅ 4 stores detalhadas:
+        - SQLite metadata: "X assets" — "Só metadados operacionais"
+        - Cache cifrado: formatBytes(cache_size_bytes) — "AES-256-GCM, 5 GB limite"
+        - ChromaDB: "X vectores" — "Alimenta recall e respostas citadas"
+        - Knowledge Graph: "X nodos" — "Contexto relacional para GeoNexus IA"
+
+  5.2 SyncPanel:
+    ✅ Título: "Sync y eventos" com WorkflowIcon
+    ✅ Refresh button (ghost icon) com spinner animado
+    ✅ loading: 3 skeleton items
+    ✅ empty: "Sin eventos de sincronización" + WorkflowIcon
+    ✅ lista de SyncEventRow:
+        - connector_id ou "sistema"
+        - EventStatusBadge (colors por tipo)
+        - detail
+        - formatRelativeTime(created_at)
+        - trace_id (se existir, cinza)
+
+  5.3 LineagePanel:
+    ✅ Título: "Flujo de datos V2" com GitBranchIcon
+    ✅ 6 passos em grid md:grid-cols-6:
+        1. Conector       → active se total_assets > 0
+        2. Cache           → active se cache_size_bytes > 0
+        3. Indexador       → active se total_chunks > 0
+        4. ChromaDB        → active se total_embeddings > 0
+        5. Knowledge Graph → active se total_graph_nodes > 0
+        6. GeoNexus IA     → sempre active
+    ✅ Passo active: border primary/30 + bg primary/5 + text primary
+    ✅ Passo inactive: border border + bg background/75 + text muted
+    ✅ Descrição textual da arquitetura V2
+
+═══════════════════════════════════════════════════════════════════════════════════
+  6. DataUi.tsx
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Componentes reutilizáveis:
+
+  Metric:   label + value em card compacto (border, bg-background/75)
+            Usado em: Header metrics, AssetSheet metrics, StoresPanel mini metrics
+
+  Info:     label uppercase tracking-wide + value truncado com title
+            Usado em: AssetSheet "Estado operativo" grid
+
+  AssetStatusBadge:
+    ✅ Mapeia AssetStatus → cor + label
+    - ready:    verde (emerald)
+    - indexing: azul (sky)
+    - pending:  cinza (muted)
+    - conflict: âmbar (amber)
+    - error:    vermelho (destructive)
+    ✅ Dark theme: .geo-dark, .graphite, .midnight
+
+  EventStatusBadge:
+    ✅ Determina isSuccess: indexed, downloaded, discovered, conversation_saved
+    ✅ success → CheckCircle2Icon + verde
+    ✅ error → XCircleIcon + vermelho
+    ✅ conflict → AlertTriangleIcon + âmbar
+    ✅ outros → Clock3Icon + cinza
+    ✅ Label via eventTypeLabel
+
+═══════════════════════════════════════════════════════════════════════════════════
+  7. data-data.ts (helpers + fallbacks)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Constants:
+    statusLabel:    Record<AssetStatus, string>  (5 entries)
+    cacheLabel:     Record<CacheState, string>   (4 entries)
+    eventTypeLabel: Record<SyncEventType, string> (8 entries)
+
+  formatBytes(bytes: number | null): string
+    ✅ null/0 → "-"
+    ✅ Unidades: B, KB, MB, GB
+    ✅ Divisão por 1024 encadeada
+    ✅ toFixed(1)
+
+  toSeconds(ts: number): number (internal)
+    ✅ Se > 1e12 (milissegundos) → floor(ts / 1000)
+    ✅ Senão → ts (já em segundos)
+
+  formatRelativeTime(epochSecs: number): string
+    ✅ 0 → "-"
+    ✅ < 60s → "Ahora"
+    ✅ < 1h  → "Hace X min"
+    ✅ < 24h → "Hace Xh"
+    ✅ < 48h → "Ayer"
+    ✅ else  → "Hace X dias"
+
+  Fallbacks (exported for initial/empty state):
+    dataAssets:   DataAsset[] = []
+    defaultMetrics: DataStoreMetrics = {
+        project_id: "project-default",
+        total_assets: 0, assets_ready: 0, assets_pending: 0, assets_error: 0,
+        total_chunks: 0, total_embeddings: 0, total_graph_nodes: 0,
+        cache_size_bytes: 0
+    }
+    syncEvents: SyncEvent[] = []
+
+═══════════════════════════════════════════════════════════════════════════════════
+  8. TYPES (src/types/data.ts)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Union Types:
+    AssetStatus:    "pending" | "indexing" | "ready" | "conflict" | "error"
+    CacheState:     "none" | "partial" | "cached" | "stale"
+    AssetKind:      "document" | "layer" | "shapefile" | "csv" | "raster"
+                    | "word" | "excel" | "output" | "other"
+    SyncEventType:  "discovered" | "downloaded" | "indexed" | "embedded"
+                    | "graph_linked" | "conflict" | "error" | "conversation_saved"
+    GraphNodeType:  "norma" | "documento" | "capa" | "zona" | "concepto"
+                    | "chat_turn" | "web_search" | "upload" | "connector"
+                    | "rag_recall"
+
+  Interfaces:
+
+    DataAsset:
+      id, project_id, workspace_id | null
+      name, kind (AssetKind), source, location
+      agent_id | null, connector_id | null
+      status (AssetStatus), size_bytes | null
+      chunks, embeddings, graph_nodes (numbers)
+      cache_state (CacheState), trace_id | null
+      created_at, updated_at (epoch timestamps)
+
+    DataStoreMetrics:
+      project_id, total_assets, assets_ready, assets_pending, assets_error
+      total_chunks, total_embeddings, total_graph_nodes, cache_size_bytes
+
+    SyncEvent:
+      id, project_id, workspace_id | null, connector_id | null
+      asset_id | null, agent_id | null, event_type (SyncEventType)
+      detail | null, trace_id | null, created_at
+
+    AssetValidation:
+      asset_id, file_exists, path_allowed, metadata_ok
+      cache_valid, chunks_exist, is_ready (booleans)
+      issues (string[])
+
+    DocumentChunk:
+      id, asset_id, chunk_index (number)
+      content (string), token_count (number)
+      page_number | null, created_at
+
+    BackendGraphNode (raw from Rust):
+      id, project_id, workspace_id | null
+      name, kind (string), description, evidence
+      x, y, weight, created_at
+      source_event, event_id, icon, is_ephemeral
+
+    GraphNode (frontend-friendly):
+      id, project_id, workspace_id | null
+      label (name), type (GraphNodeType, converted from kind)
+      description, evidence, x, y, weight, created_at
+      source_event, event_id, icon, is_ephemeral
+
+    GraphUpdatePayload:
+      source_event ("chat" | "upload" | "sync" | "rag")
+      event_id, nodes (BackendGraphNode[]), edges (BackendGraphEdge[])
+      timestamp
+
+    BackendGraphEdge (raw from Rust):
+      id, project_id, source, target, relation, strength, created_at
+
+    GraphEdge (frontend-friendly):
+      source, target, relation, strength
+
+═══════════════════════════════════════════════════════════════════════════════════
+  9. API LAYER (src/api/data.ts)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  DEFAULT_PROJECT_ID = "project-default"
+
+  isTauriAvailable(): boolean
+    ✅ Checa window.__TAURI_INTERNALS__ (Tauri v2 runtime)
+    ✅ Retorna false se estiver no browser
+
+  invokeOrFallback<T>(command, args, fallback):
+    ✅ Wrapper try/catch que retorna fallback se Tauri falhar
+    ✅ Usado para chamadas não críticas
+
+  invokeRequired<T>(command, args):
+    ✅ Wrapper que lança erro se Tauri falhar
+    ✅ Usado para chamadas críticas (delete, index)
+
+  Funções:
+
+    listDataAssets(projectId):          Promise<DataAsset[]>
+      ✅ Valida projectId não vazio
+      ✅ fallback: []
+      ✅ command: "list_data_assets"
+      ✅ params: { projectId }
+
+    getDataAsset(assetId):              Promise<DataAsset | null>
+      ✅ Valida assetId não vazio
+      ✅ fallback: null
+      ✅ command: "get_data_asset"
+      ✅ params: { assetId }
+
+    getDataStoreMetrics(projectId):     Promise<DataStoreMetrics>
+      ✅ Valida projectId não vazio
+      ✅ fallback: defaultMetrics (vazio)
+      ✅ command: "get_data_store_metrics"
+      ✅ params: { projectId }
+
+    getSyncEvents(projectId, limit=50): Promise<SyncEvent[]>
+      ✅ Valida projectId não vazio
+      ✅ fallback: []
+      ✅ command: "get_sync_events"
+      ✅ params: { projectId, limit }
+
+    deleteDataAsset(assetId):           Promise<void>
+      ✅ Valida assetId não vazio
+      ✅ invokeRequired (crítico — lança erro)
+      ✅ command: "delete_data_asset"
+      ✅ params: { assetId }
+
+    validateDataAsset(assetId):         Promise<AssetValidation>
+      ✅ Valida assetId não vazio
+      ✅ fallback customizado com todas as flags false
+      ✅ command: "validate_data_asset"
+      ✅ params: { assetId }
+
+    indexDocument(documentId):          Promise<number>
+      ✅ Valida documentId não vazio
+      ✅ invokeRequired (crítico)
+      ✅ command: "index_document"
+      ✅ params: { documentId }
+
+    listDocumentChunks(documentId):     Promise<DocumentChunk[]>
+      ✅ Valida documentId não vazio
+      ✅ fallback: []
+      ✅ command: "list_document_chunks"
+      ✅ params: { documentId }
+
+    listGraphNodes(projectId):         Promise<GraphNode[]>
+      ✅ fallback: []
+      ✅ command: "list_graph_nodes"
+      ✅ params: { projectId }
+      ✅ Mapeia BackendGraphNode[] → GraphNode[]
+          (kind → type, name → label, + default values)
+
+    listGraphEdges(projectId):         Promise<GraphEdge[]>
+      ✅ fallback: []
+      ✅ command: "list_graph_edges"
+      ✅ params: { projectId }
+      ✅ Mapeia BackendGraphEdge[] → GraphEdge[]
+
+    rebuildKnowledgeGraph(projectId):  Promise<void>
+      ✅ fallback: undefined (silent)
+      ✅ command: "rebuild_knowledge_graph"
+      ✅ params: { projectId }
+
+    updateNodePosition(nodeId, x, y):  Promise<void>
+      ✅ fallback: undefined
+      ✅ command: "update_node_position"
+      ✅ params: { nodeId, x, y }
+
+    clearEphemeralNodes(projectId):    Promise<number>
+      ✅ fallback: 0
+      ✅ command: "clear_ephemeral_nodes"
+      ✅ params: { projectId }
+
+    getRecentGraphEvents(projectId, sourceEvent?, limit?):
+        Promise<BackendGraphNode[]>
+      ✅ fallback: []
+      ✅ command: "get_recent_graph_events"
+      ✅ params: { projectId, sourceEvent, limit }
+
+  Param naming:
+    ✅ camelCase no JS (ex: projectId, assetId, documentId)
+    ✅ Tauri v2 converte para snake_case no Rust automaticamente
+
+═══════════════════════════════════════════════════════════════════════════════════
+  10. CONNECTOR API (src/api/connector.ts)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  invokeOrFallback e invokeRequired (mesmo padrão do data.ts)
+
+  Funções:
+
+    registerLocalConnector(input: RegisterLocalConnectorInput):
+      Promise<ConnectorConfig>
+      ✅ Valida project_id, display_name, root_path (trim + throw)
+      ✅ invokeRequired (crítico)
+      ✅ command: "register_local_connector"
+      ✅ params: { input } (objeto completo)
+
+    listConnectorFiles(connectorId):   Promise<ConnectorFile[]>
+      ✅ Valida connectorId
+      ✅ fallback: []
+      ✅ command: "list_connector_files"
+      ✅ params: { connectorId }
+
+    cacheConnectorFile(connectorId, fileId): Promise<ConnectorFile>
+      ✅ Valida connectorId + fileId
+      ✅ invokeRequired
+      ✅ command: "cache_connector_file"
+      ✅ params: { connectorId, fileId }
+
+    syncLocalConnector(connectorId):   Promise<SyncReport>
+      ✅ Valida connectorId
+      ✅ invokeRequired
+      ✅ command: "sync_local_connector"
+      ✅ params: { connectorId }
+
+    listConnectorConfigs(projectId?):  Promise<ConnectorConfig[]>
+      ✅ fallback: []
+      ✅ command: "list_connector_configs"
+      ✅ params: { projectId }
+
+═══════════════════════════════════════════════════════════════════════════════════
+  11. DATA FLOW
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Ciclo completo:
+
+    1. DataPage monta → useEffect → loadData()
+    2. isTauriAvailable() check
+    3. Promise.allSettled([listDataAssets, getDataStoreMetrics, getSyncEvents])
+    4. Resultados parciais aceitos (some loaded)
+    5. Dados fluem para: DataHeader, AssetCatalog, StoresPanel, SyncPanel, LineagePanel
+    6. Usuário interage:
+       - Search → debounce 200ms → filter
+       - Sort → useMemo
+       - Pagination → slice
+       - Select asset → AssetSheet slide-over
+       - Delete → confirm → deleteDataAsset
+       - "Usar en IA" → toggle local state (attached)
+       - "Ver fuente" → window.open / toast
+    7. Reindexar → dialog → simulação → onRefresh
+    8. Validar → dialog → simulação baseada em metrics
+    9. Sync refresh → onRefresh callback
+
+  Fluxo de dados (arquitetura V2):
+    Conector → Cache cifrado (AES-256-GCM) → Indexador → ChromaDB → Knowledge Graph → GeoNexus IA
+
+  Stores:
+    - SQLite: metadata operacional (assets, routes, ETags, sync logs)
+    - Cache cifrado: arquivos baixados para offline (limite 5GB)
+    - ChromaDB: embeddings para busca semântica
+    - Knowledge Graph: relações norma-zona-capa-documento
+
+  Error handling:
+    ✅ Promise.allSettled + partial loading
+    ✅ Banner de erro com Reintentar
+    ✅ Toast para falhas parciais
+    ✅ Fallbacks silenciosos via invokeOrFallback
+    ✅ Validação de parâmetros com throw (projectId, assetId, etc)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  12. ROUTER INTEGRATION
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Onde DataPage é montada:
+    src/features/workspace/GeoNexusWorkspace.tsx:52
+      <DataPage /> (renderizado condicionalmente por lógica de rota interna)
+
+  A workspace alterna entre:
+    - ChatView   (rota padrão: #chat)
+    - DataPage   (rota: #data)
+    - DocumentsPage
+    - GraphPage
+    - MapPage
+    - SettingsPage
+
+  DataPage não tem rota URL state para query ou selectedAsset (pendente)
+
+═══════════════════════════════════════════════════════════════════════════════════
+  13. CHAT INTEGRATION (attach/detach)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  AssetSheet → "Usar en IA" → toggle attached state local
+    ✅ attached = true  → "Asset adjuntado ao contexto da próxima consulta"
+    ✅ attached = false → "Asset removido do contexto"
+    ✅ Botão muda visualmente (CheckIcon + "En contexto ✓")
+    ✅ onRefresh() é chamado após toggle
+
+  ⚠️ IMPORTANTE: O attached state é LOCAL ao AssetSheet.
+      Não há integração real com o contexto do chat ainda.
+      O asset não é realmente passado para o sistema de chat.
+      É apenas um feedback visual e toast.
+
+  useChatSession.ts:
+    ✅ Não carrega conversa anterior automaticamente
+    ✅ conversationId = null ao montar
+    ✅ localStorage "geonexus.activeConversationId" limpo ao montar
+    ✅ Ao enviar primeira mensagem, nova conversa é criada
+
+═══════════════════════════════════════════════════════════════════════════════════
+  14. DEMO DATA (seed/clear)
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Rust commands:
+    seed_demo_data(projectId) → insere dados de demonstração
+    clear_demo_data(projectId) → remove dados demo
+
+  Frontend:
+    seedDemoData() → chama seed_demo_data + onRefresh()
+    "Cargar datos demo" aparece no empty state do AssetCatalog
+
+  Detecção hasDemoData:
+    ✅ source === "demo" em assets
+    ✅ connector_id === "connector-demo"
+
+  Ordem de deleção (clear):
+    1. chunks
+    2. graph (nodes/edges)
+    3. assets
+    4. connectors
+
+═══════════════════════════════════════════════════════════════════════════════════
+  15. BUGS RESOLVIDOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  B1  ✅ Reindexar/Validar/Sync refresh/Ver fuente/Usar en IA — todos funcionais
+  B2  ✅ Skeletons: Header (5 metrics), Catalog (5 rows), SyncPanel (3 items)
+  B3  ✅ Error handling Promise.allSettled + banner + Reintentar
+  B4  ✅ Empty states: Catalog vazio, sem resultados search, SyncPanel sem eventos
+  B5  ✅ Paginação 20 items no Catalog com Anterior/Siguiente
+  B6  ✅ Debounce 200ms no search input
+  B7  ✅ Memoize filter (useMemo) + sort (useMemo)
+  B8  ✅ Tauri detection: __TAURI_INTERNALS__ (v2, não v1)
+  B9  ✅ LineagePanel colorido conforme metrics reais
+  B10 ✅ DataPage passa project_id direto (DEFAULT_PROJECT_ID)
+  B11 ✅ PARAM NAMING: snake_case → camelCase em data.ts (project_id → projectId)
+  B12 ✅ METRICS QUERY: get_data_store_metrics consulta tabelas reais
+       (graph_nodes, document_chunks)
+  B13 ✅ CONNECTOR: connector.ts usava window.__TAURI__ (v1, inexistente v2)
+       → import invoke do @tauri-apps/api/core
+  B14 ✅ CONNECTOR PARAMS: snake_case → camelCase em connector.ts
+  B15 ✅ CHAT: auto-load de última conversação removido, arranca novo e vazio
+
+═══════════════════════════════════════════════════════════════════════════════════
+  16. PENDENTE / MELHORIAS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  🔴 PRIORIDADE MÉDIA:
+    - DataHealthBadge no header (mostrar saúde geral dos stores)
+    - URL state para query/selectedAsset (persistir na URL)
+    - RecentIndexingLog componente (últimas indexações)
+    - Scrolling infinito no SyncPanel (vs paginação)
+
+  🔵 PRIORIDADE BAIXA:
+    - Integração real do "Usar en IA" com o contexto do chat
+      (atualmente é só visual/toast local)
+    - Validação real no backend (substituir simulação no handleValidate)
+    - Reindexação real no backend (substituir simulação 2s)
+    - Upload/download de assets via drag-and-drop
+    - Filtros avançados (por fonte, por status, por data)
+    - Expor métricas de performance (tempo de query, cache hit ratio)
+    - Testes unitários para os helpers (formatBytes, formatRelativeTime)
+    - Internacionalização (i18n) para labels
+    - Modo de comparação entre assets (diff)
+    - Batch delete / multi-select
+
+═══════════════════════════════════════════════════════════════════════════════════
+  17. ARQUIVOS
+═══════════════════════════════════════════════════════════════════════════════════
+
+  Frontend (React / TypeScript):
+    src/features/workspace/data/DataPage.tsx
+      → Container principal, loadData, error handling, layout grid
+    src/features/workspace/data/DataHeader.tsx
+      → Título, métricas, botões Reindexar/Validar com dialogs
+    src/features/workspace/data/AssetCatalog.tsx
+      → Search, sort, pagination, skeleton, empty states
+    src/features/workspace/data/AssetSheet.tsx
+      → Slide-over detalhe do asset, ações (delete, ver fonte, usar IA)
+    src/features/workspace/data/DataPanels.tsx
+      → StoresPanel, SyncPanel, LineagePanel
+    src/features/workspace/data/DataUi.tsx
+      → Metric, Info, AssetStatusBadge, EventStatusBadge
+    src/features/workspace/data/data-data.ts
+      → Labels, formatBytes, formatRelativeTime, fallbacks vazios
+
+  API Layer:
+    src/api/data.ts
+      → listDataAssets, getDataAsset, getDataStoreMetrics, getSyncEvents
+      → deleteDataAsset, validateDataAsset, indexDocument, listDocumentChunks
+      → listGraphNodes, listGraphEdges, rebuildKnowledgeGraph
+      → updateNodePosition, clearEphemeralNodes, getRecentGraphEvents
+      → isTauriAvailable, invokeOrFallback, invokeRequired
+    src/api/connector.ts
+      → registerLocalConnector, listConnectorFiles, cacheConnectorFile
+      → syncLocalConnector, listConnectorConfigs
+
+  Types:
+    src/types/data.ts
+      → DataAsset, DataStoreMetrics, SyncEvent, AssetValidation
+      → DocumentChunk, GraphNode, GraphEdge, BackendGraphNode, BackendGraphEdge
+      → GraphUpdatePayload, AssetStatus, CacheState, AssetKind, SyncEventType, GraphNodeType
+
+  Router:
+    src/features/workspace/GeoNexusWorkspace.tsx
+      → Monta DataPage na rota #data
+
+  Chat Integration:
+    src/components/chat/useChatSession.ts
+      → Sem auto-load, arranca vazio
+
+  Backend (Rust):
+    commands/data.rs
+      → list_data_assets, get_data_asset, get_data_store_metrics
+      → get_sync_events, delete_data_asset, validate_data_asset
+      → seed_demo_data, clear_demo_data
+    commands/document.rs
+      → index_document, list_document_chunks
+      → list_graph_nodes, list_graph_edges, rebuild_graph
+    commands/connector.rs
+      → register_local_connector, list_connector_files
+      → cache_connector_file, sync_local_connector
+    commands/oauth.rs
+      → exchange_oauth_code, get_user_info, save_token, get_token
+    commands/filesystem.rs
+      → open_folder_picker, open_file_picker
+      → read_file_base64, validate_folder_path

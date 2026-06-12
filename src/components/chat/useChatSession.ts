@@ -4,7 +4,7 @@ import { listMessages, sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { Message, SendMessageInput } from "@/types/chat"
+import type { Message, SendMessageInput, KnowledgeLookupStep } from "@/types/chat"
 
 const DEFAULT_PROJECT_ID = "project-default"
 const DEFAULT_TOGGLES: ContextToggle = {
@@ -217,9 +217,14 @@ export function useChatSession(
           sources: [],
           created_at: Math.floor(Date.now() / 1000),
           isSearching: true,
-          currentSearchQuery: clean,
+          currentSearchQuery: "Buscando fuentes...",
           research_sources: [],
           searchElapsedSeconds: 0,
+          knowledgeSteps: useContext ? [
+            { source: "chromadb", label: "Búsqueda semántica", status: "searching" },
+            { source: "graph", label: "Knowledge Graph", status: "searching" },
+            { source: "assets", label: "Assets indexados", status: "searching" },
+          ] : undefined,
         }
         setMessages((current) => [...current, placeholderAssistant])
 
@@ -228,8 +233,8 @@ export function useChatSession(
           updateAssistantMessage(assistantMsgId!, {
             searchElapsedSeconds: elapsed,
             currentSearchQuery: elapsed < 2
-              ? clean
-              : `${clean} ` + (elapsed < 4 ? "análisis de resultados" : "generando respuesta"),
+              ? "Buscando fuentes..."
+              : elapsed < 4 ? "Analizando resultados..." : "Generando respuesta...",
           })
         }, 500)
       }
@@ -247,6 +252,13 @@ export function useChatSession(
 
         const elapsed = (Date.now() - startTime) / 1000
 
+        const uniqueAssetsCount = new Set(response.chunks_used?.map(c => c.asset_id).filter(Boolean) ?? []).size
+        const finalKnowledgeSteps: KnowledgeLookupStep[] | undefined = useContext ? [
+          { source: "chromadb", label: "Búsqueda semántica", status: (response.chunks_used?.length ?? 0) > 0 ? "found" : "empty", count: response.chunks_used?.length ?? 0 },
+          { source: "graph", label: "Knowledge Graph", status: (response.message.nodes_used?.length ?? 0) > 0 ? "found" : "empty", count: response.message.nodes_used?.length ?? 0 },
+          { source: "assets", label: "Assets indexados", status: uniqueAssetsCount > 0 ? "found" : "empty", count: uniqueAssetsCount },
+        ] : undefined
+
         if (webSearchEnabled && assistantMsgId) {
           updateAssistantMessage(assistantMsgId, {
             conversation_id: response.conversation_id,
@@ -256,6 +268,7 @@ export function useChatSession(
             research_sources: (response.research_sources ?? []),
             searchElapsedSeconds: elapsed,
             stats: response.message.stats,
+            knowledgeSteps: finalKnowledgeSteps,
           })
         } else {
           setMessages((current) => [
@@ -264,7 +277,10 @@ export function useChatSession(
                 ? { ...message, conversation_id: response.conversation_id }
                 : message
             ),
-            response.message,
+            {
+              ...response.message,
+              knowledgeSteps: finalKnowledgeSteps,
+            },
           ])
         }
 

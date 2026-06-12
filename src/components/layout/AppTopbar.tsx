@@ -1,6 +1,6 @@
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { AiStatusPill } from "@/features/ai/AiStatusPill"
+import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
 
 type AppTopbarProps = {
   connector: string
@@ -18,7 +18,7 @@ export function AppTopbar({ connector, model, status }: AppTopbarProps) {
       />
 
       <div className="ml-auto flex items-center gap-3">
-        <AiStatusPill connector={connector} model={model} status={status} />
+        <ModelHeaderPopover />
       </div>
     </header>
   )

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { openUrl } from "@tauri-apps/plugin-opener"
 import { ChevronDown, ChevronUp, ExternalLink, Loader2, Check, CheckCircle2 } from "lucide-react"
+
+import { cn } from "@/lib/utils"
 import type { ResearchSource } from "@/types/chat"
 
 type TauriWindow = Window & { __TAURI__?: Record<string, unknown> }
@@ -44,6 +46,13 @@ export function DeepResearchPanel({
   }, [isSearching])
 
   const doneSources = sources.filter((s) => s.status === "done")
+  const loadingSources = sources.filter((s) => s.status === "loading")
+
+  const progressLabel = isSearching
+    ? loadingSources.length > 0
+      ? `Analizando ${sources.length} fuente${sources.length !== 1 ? "s" : ""}...`
+      : "Buscando fuentes relevantes..."
+    : `${doneSources.length} fuente${doneSources.length !== 1 ? "s" : ""} consultada${doneSources.length !== 1 ? "s" : ""}`
 
   return (
     <div className="my-2 rounded-lg border border-border overflow-hidden text-sm bg-muted/20">
@@ -68,10 +77,7 @@ export function DeepResearchPanel({
             "text-xs",
             isSearching ? "text-blue-400" : "text-emerald-600 dark:text-emerald-400 font-medium"
           )}>
-            {isSearching
-              ? "buscando..."
-              : `${doneSources.length} fuente${doneSources.length !== 1 ? "s" : ""} consultada${doneSources.length !== 1 ? "s" : ""}`
-            }
+            {progressLabel}
           </span>
         </span>
         {elapsedSeconds != null && elapsedSeconds > 0 && (
@@ -88,11 +94,13 @@ export function DeepResearchPanel({
 
       {open && (
         <div className="border-t border-border divide-y divide-border/50">
-          {isSearching && currentQuery && (
+          {isSearching && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5">
               <Loader2 className="h-3 w-3 text-blue-400 animate-spin shrink-0" />
-              <span className="text-[11px] text-blue-400 italic line-clamp-1">
-                buscando: &quot;{currentQuery}&quot;
+              <span className="text-[11px] text-blue-400 font-medium">
+                {loadingSources.length > 0
+                  ? `Leyendo ${loadingSources.length} fuente${loadingSources.length !== 1 ? "s" : ""}...`
+                  : "Iniciando búsqueda web..."}
               </span>
             </div>
           )}
@@ -142,6 +150,3 @@ export function DeepResearchPanel({
   )
 }
 
-function cn(...classes: (string | boolean | undefined | null)[]): string {
-  return classes.filter(Boolean).join(" ")
-}

@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ChevronDown,
   Cpu,
+  Database,
   FileSearch,
   Globe,
   Sparkles,
@@ -16,6 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { SearchingIndicator, type SearchStep } from "@/components/chat/SearchingIndicator"
+import type { KnowledgeLookupStep } from "@/types/chat"
 
 export type StepStatus = "done" | "active" | "pending"
 
@@ -31,6 +33,7 @@ interface ThinkingInlineProps {
   isComplete?: boolean
   expanded?: boolean
   searchSteps?: SearchStep[]
+  knowledgeSteps?: KnowledgeLookupStep[]
 }
 
 function Spinner({ className }: { className?: string }) {
@@ -59,6 +62,7 @@ export function ThinkingInline({
   isComplete = false,
   expanded = false,
   searchSteps,
+  knowledgeSteps,
 }: ThinkingInlineProps) {
   const [open, setOpen] = React.useState(expanded)
   const startRef = React.useRef(Date.now())
@@ -173,8 +177,14 @@ export const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
     status: "pending",
   },
   {
+    id: "knowledge",
+    label: "Consultando conocimiento local",
+    icon: <Database className="size-3.5" />,
+    status: "pending",
+  },
+  {
     id: "kb",
-    label: "Consultando base de conocimiento",
+    label: "Construyendo contexto",
     icon: <Globe className="size-3.5" />,
     status: "pending",
   },

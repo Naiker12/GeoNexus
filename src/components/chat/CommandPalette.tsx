@@ -42,6 +42,7 @@ const groupOrder: SlashCommandGroup[] = ["Contexto", "Chat", "Modo", "Sistema"]
 export function CommandPalette({ query, onSelect, onClose, containerRef }: CommandPaletteProps) {
   const [selectedIndex, setSelectedIndex] = React.useState(0)
   const internalRef = React.useRef<HTMLDivElement>(null) as React.MutableRefObject<HTMLDivElement | null>
+  const activeItemRef = React.useRef<HTMLButtonElement | null>(null)
 
   const ALL_COMMANDS: SlashCommand[] = [
     { id: "attach-file", group: "Contexto", label: "Adjuntar archivo", description: "Sube un documento para usar en esta conversación", icon: "Paperclip", shortcut: null, action: () => {} },
@@ -78,6 +79,15 @@ export function CommandPalette({ query, onSelect, onClose, containerRef }: Comma
   React.useEffect(() => {
     setSelectedIndex(0)
   }, [query])
+
+  React.useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({
+        block: "nearest",
+        behavior: "auto"
+      })
+    }
+  }, [selectedIndex])
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -151,6 +161,7 @@ export function CommandPalette({ query, onSelect, onClose, containerRef }: Comma
                 const isSelected = cmd === filtered[selectedIndex]
                 return (
                   <button
+                    ref={isSelected ? activeItemRef : undefined}
                     key={cmd.id}
                     type="button"
                     className={cn(

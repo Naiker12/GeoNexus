@@ -13,7 +13,7 @@ export function ProviderBrandIcon({
   ...props
 }: ProviderBrandIconProps) {
   const svglRoute = providerBrandRoutes[providerId]
-  const whiteIcons = ["ollama", "openai", "anthropic", "openrouter"]
+  const whiteIcons = ["ollama", "openai", "anthropic", "openrouter", "groq", "cohere"]
   const shouldInvert = whiteIcons.includes(providerId)
 
   if (svglRoute) {
@@ -39,4 +39,9 @@ const providerBrandRoutes: Record<string, string> = {
   openrouter: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/openrouter/default.svg",
   openai: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/openai/default.svg",
   anthropic: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/anthropic/default.svg",
+  groq: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/groq/default.svg",
+  cohere: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/cohere/default.svg",
+  gemini: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/google-gemini/default.svg",
+  deepseek: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/deepseek/default.svg",
+  mistral: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/mistral/default.svg",
 }
