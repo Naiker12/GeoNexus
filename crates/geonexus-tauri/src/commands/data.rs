@@ -188,13 +188,12 @@ pub async fn get_mentionable_sources(
     struct AssetRow {
         id: String,
         name: String,
-        kind: String,
         chunks: i64,
         status: String,
     }
 
     let assets = sqlx::query_as::<_, AssetRow>(
-        "SELECT id, name, COALESCE(kind, 'documento') AS kind, COALESCE(chunks, 0) AS chunks, COALESCE(status, 'unknown') AS status FROM assets WHERE project_id = ? ORDER BY updated_at DESC LIMIT 10"
+        "SELECT id, name, COALESCE(chunks, 0) AS chunks, COALESCE(status, 'unknown') AS status FROM assets WHERE project_id = ? ORDER BY updated_at DESC LIMIT 10"
     )
     .bind(&project_id)
     .fetch_all(pool)
