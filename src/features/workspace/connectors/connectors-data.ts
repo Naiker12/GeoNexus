@@ -215,6 +215,3 @@ export const connectorProviders: ConnectorProvider[] = [
   },
 ]
 
-export const simulatedConnectorCount = connectorProviders.filter(
-  (provider) => provider.status === "simulated"
-).length

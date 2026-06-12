@@ -5,7 +5,6 @@ import type {
   SyncEvent,
   DocumentChunk,
   GraphNode,
-  GraphNodeType,
   GraphEdge,
   BackendGraphNode,
   BackendGraphEdge,
@@ -74,6 +73,11 @@ export function getSyncEvents(
   return invokeOrFallback("get_sync_events", { projectId: projectId, limit }, [])
 }
 
+export function deleteDataAsset(assetId: string): Promise<void> {
+  if (!assetId.trim()) throw new Error("asset_id requerido")
+  return invokeRequired<void>("delete_data_asset", { assetId: assetId })
+}
+
 export function validateDataAsset(assetId: string): Promise<AssetValidation> {
   if (!assetId.trim()) throw new Error("asset_id requerido")
 
@@ -101,27 +105,6 @@ export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]>
   if (!documentId.trim()) throw new Error("document_id requerido")
   return invokeOrFallback<DocumentChunk[]>("list_document_chunks", { documentId: documentId }, [])
 }
-
-const fallbackNodes: GraphNode[] = [
-  { id: "node-norma-1", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 45 - Usos del suelo", type: "norma" as GraphNodeType, description: "Clasificación de usos del suelo: residencial, comercial, industrial. Artículo 45 del POT.", evidence: "POT Municipal 2024", x: 10, y: 10, weight: 3, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-norma-2", project_id: "project-default", workspace_id: "workspace-main", label: "Artículo 78 - Alturas máximas", type: "norma" as GraphNodeType, description: "Alturas máximas permitidas por zona: Z1=3 pisos, Z2=5 pisos, Z3=8 pisos.", evidence: "POT Municipal 2024", x: 30, y: 15, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-zona-1", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Residencial Z1", type: "zona" as GraphNodeType, description: "Zona de baja densidad: máximo 3 pisos, uso residencial exclusivo.", evidence: "POT Municipal 2024", x: 15, y: 30, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-zona-2", project_id: "project-default", workspace_id: "workspace-main", label: "Zona Comercial Z2", type: "zona" as GraphNodeType, description: "Zona mixta comercial-residencial: máximo 5 pisos.", evidence: "POT Municipal 2024", x: 35, y: 35, weight: 2, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-concepto-1", project_id: "project-default", workspace_id: "workspace-main", label: "Suelo urbano", type: "concepto" as GraphNodeType, description: "Suelo dentro del perímetro urbano con servicios públicos domiciliarios.", evidence: "Ley 388 de 1997", x: 50, y: 20, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-concepto-2", project_id: "project-default", workspace_id: "workspace-main", label: "Cesión urbanística", type: "concepto" as GraphNodeType, description: "Porcentaje de suelo que debe cederse al municipio para espacio público.", evidence: "POT Municipal 2024", x: 55, y: 40, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-  { id: "node-capa-1", project_id: "project-default", workspace_id: "workspace-main", label: "Capa de estratificación", type: "capa" as GraphNodeType, description: "Estratificación socioeconómica por manzanas catastrales.", evidence: "DANE - Estratificación", x: 70, y: 25, weight: 1, created_at: 0, source_event: "", event_id: "", icon: "", is_ephemeral: false },
-]
-
-const fallbackEdges: GraphEdge[] = [
-  { source: "node-norma-1", target: "node-zona-1", relation: "regula", strength: 70 },
-  { source: "node-norma-1", target: "node-zona-2", relation: "regula", strength: 70 },
-  { source: "node-norma-2", target: "node-zona-1", relation: "restringe", strength: 70 },
-  { source: "node-norma-2", target: "node-zona-2", relation: "restringe", strength: 70 },
-  { source: "node-zona-1", target: "node-concepto-1", relation: "clasifica", strength: 70 },
-  { source: "node-concepto-2", target: "node-zona-2", relation: "aplica", strength: 70 },
-  { source: "node-capa-1", target: "node-zona-1", relation: "interseca", strength: 70 },
-  { source: "node-capa-1", target: "node-zona-2", relation: "interseca", strength: 70 },
-]
 
 export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<GraphNode[]> {
   const nodes = await invokeOrFallback<BackendGraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
@@ -180,6 +163,3 @@ export async function getRecentGraphEvents(
   return await invokeOrFallback("get_recent_graph_events", { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null }, [])
 }
 
-export async function seedDemoData(): Promise<void> {
-  await invokeRequired("seed_demo_data", {})
-}

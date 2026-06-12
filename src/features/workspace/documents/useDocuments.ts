@@ -45,11 +45,12 @@ export function useDocuments() {
         fileName: file.name,
         bytes: Array.from(new Uint8Array(bytes)),
       })
-      await indexDocument(assetId)
       await fetchAssets()
+      // No auto-index: el usuario hace clic en "Indexar" manualmente
       return { success: true, name: file.name }
     } catch (err) {
       console.error("[useDocuments] uploadDocument:", err)
+      await fetchAssets()
       return { success: false, name: file.name, error: String(err) }
     }
   }

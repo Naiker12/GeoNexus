@@ -6,10 +6,7 @@ import { AddConnectorDialog } from "@/features/workspace/connectors/AddConnector
 import { ConnectorCard } from "@/features/workspace/connectors/ConnectorCard"
 import { ConnectorSetupDialog } from "@/features/workspace/connectors/ConnectorSetupDialog"
 import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
-import {
-  connectorProviders,
-  simulatedConnectorCount,
-} from "@/features/workspace/connectors/connectors-data"
+import { connectorProviders } from "@/features/workspace/connectors/connectors-data"
 
 export function ConnectorsPage() {
   const [catalogOpen, setCatalogOpen] = React.useState(false)
@@ -60,12 +57,6 @@ export function ConnectorsPage() {
                 </Button>
               </div>
             </div>
-
-            <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
-              <MetricCard label="Simulados V1" value={simulatedConnectorCount.toString()} />
-              <MetricCard label="Indexacion" value="Demo" />
-              <MetricCard label="MCP tools" value="Front" />
-            </div>
           </div>
         </header>
 
@@ -95,13 +86,3 @@ export function ConnectorsPage() {
   )
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-border bg-background/60 px-2.5 py-1.5">
-      <p className="text-[0.62rem] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5 text-base font-semibold leading-5">{value}</p>
-    </div>
-  )
-}

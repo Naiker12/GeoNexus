@@ -5,6 +5,7 @@ import {
   FileTextIcon,
   Loader2Icon,
   RefreshCwIcon,
+  Trash2Icon,
   XCircleIcon,
   CheckCircle2Icon,
 } from "lucide-react"
@@ -13,6 +14,7 @@ import {
 import { Button } from "@/components/ui/Button"
 import { useToast } from "@/components/ui/toast"
 import { invoke } from "@tauri-apps/api/core"
+import { deleteDataAsset } from "@/api/data"
 import {
   Dialog,
   DialogContent,
@@ -113,12 +115,14 @@ export function DocumentsPage() {
     setUploading(true)
     let uploaded = 0
     let failed = 0
+    const errors: string[] = []
     for (const pf of pendingFiles) {
       const result = await uploadDocument(pf.file)
       if (result.success) {
         uploaded++
       } else {
         failed++
+        errors.push(`${pf.file.name}: ${result.error}`)
       }
     }
     setUploading(false)
@@ -132,6 +136,7 @@ export function DocumentsPage() {
     if (failed > 0) {
       toast({
         title: `${failed} archivo(s) fallaron`,
+        description: errors.slice(0, 3).join("\n"),
         variant: "error",
       })
     }
@@ -144,9 +149,10 @@ export function DocumentsPage() {
         title: "Documento indexado",
         variant: "success",
       })
-    } catch {
+    } catch (err) {
       toast({
         title: "Error al indexar documento",
+        description: String(err).slice(0, 200),
         variant: "error",
       })
     }
@@ -491,8 +497,20 @@ function DocumentRow({
     }
   }
 
+  const handleDeleteDoc = async () => {
+    const confirmed = window.confirm(`¿Eliminar "${asset.name}"?`)
+    if (!confirmed) return
+    try {
+      await deleteDataAsset(asset.id)
+      toast({ title: "Eliminado", description: asset.name, variant: "success" })
+      window.location.reload()
+    } catch (err) {
+      toast({ title: "Error al eliminar", description: `${err}`, variant: "error" })
+    }
+  }
+
   return (
-    <article className="grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem_8rem_3rem] md:items-center">
+    <article className="grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem_11rem] md:items-center">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-background">
@@ -510,39 +528,47 @@ function DocumentRow({
         <span className="font-medium text-foreground">{asset.chunks}</span>{" "}
         chunks
       </div>
-      <div className="flex items-center gap-1 justify-end">
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label="Descargar"
-          disabled={downloading || !asset.location}
-          onClick={handleDownload}
-        >
-          {downloading ? (
-            <Loader2Icon className="size-3 animate-spin" />
-          ) : (
-            <DownloadIcon className="size-3" />
-          )}
-        </Button>
-        <Button
-          variant={asset.status === "ready" ? "outline" : "default"}
-          size="sm"
-          className="h-7 px-2 text-xs gap-1"
-          disabled={isIndexing || asset.status === "indexing"}
-          onClick={onIndex}
-        >
-          {isIndexing || asset.status === "indexing" ? (
-            <>
-              <RefreshCwIcon className="size-3 animate-spin" />
-              Indexando
-            </>
-          ) : asset.status === "ready" ? (
-            "Reindexar"
-          ) : (
-            "Indexar"
-          )}
-        </Button>
-      </div>
+          <div className="flex items-center gap-1 justify-end">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Eliminar"
+              onClick={handleDeleteDoc}
+            >
+              <Trash2Icon className="size-3 text-destructive/70 hover:text-destructive" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Descargar"
+              disabled={downloading || !asset.location}
+              onClick={handleDownload}
+            >
+              {downloading ? (
+                <Loader2Icon className="size-3 animate-spin" />
+              ) : (
+                <DownloadIcon className="size-3" />
+              )}
+            </Button>
+            <Button
+              variant={asset.status === "ready" ? "outline" : "default"}
+              size="sm"
+              className="h-7 px-2 text-xs gap-1"
+              disabled={isIndexing || asset.status === "indexing"}
+              onClick={onIndex}
+            >
+              {isIndexing || asset.status === "indexing" ? (
+                <>
+                  <RefreshCwIcon className="size-3 animate-spin" />
+                  Indexando
+                </>
+              ) : asset.status === "ready" ? (
+                "Reindexar"
+              ) : (
+                "Indexar"
+              )}
+            </Button>
+          </div>
     </article>
   )
 }

@@ -15,11 +15,11 @@ export function Metric({ label, value }: { label: string; value: string }) {
 
 export function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-card/70 px-2.5 py-2">
+    <div className="min-w-0 rounded-md border border-border bg-card/70 px-2.5 py-2">
       <p className="text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-0.5 truncate text-xs">{value}</p>
+      <p className="mt-0.5 truncate text-xs" title={value}>{value}</p>
     </div>
   )
 }

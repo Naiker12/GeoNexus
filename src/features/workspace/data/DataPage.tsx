@@ -8,7 +8,6 @@ import {
   getSyncEvents,
   isTauriAvailable,
   listDataAssets,
-  seedDemoData,
 } from "@/api/data"
 import { Button } from "@/components/ui/Button"
 import { AssetCatalog } from "@/features/workspace/data/AssetCatalog"
@@ -69,15 +68,7 @@ export function DataPage() {
           toast.error(`${failed} store(s) no respondieron`)
         }
 
-        // Si Tauri responde pero no hay datos, sugerir cargar demo
-        if (
-          assetsRes.status === "fulfilled" &&
-          assetsRes.value.length === 0
-        ) {
-          toast.info("Centro de datos vacío. Usa 'Cargar datos de demostración' para ver ejemplos.", {
-            duration: 6000,
-          })
-        }
+
       }
     } catch (e) {
       setError("No se pudieron cargar los datos del centro de datos.")
@@ -85,16 +76,6 @@ export function DataPage() {
       setIsLoading(false)
     }
   }, [])
-
-  const handleSeedDemo = React.useCallback(async () => {
-    try {
-      await seedDemoData()
-      toast.success("Datos de demostración cargados")
-      loadData()
-    } catch {
-      toast.error("Error al cargar datos de demo")
-    }
-  }, [loadData])
 
   React.useEffect(() => {
     loadData()
@@ -152,7 +133,6 @@ export function DataPage() {
               onQueryChange={setQuery}
               onSelectAsset={setSelectedAssetId}
               isLoading={isLoading}
-              onSeedDemo={tauriOk ? handleSeedDemo : undefined}
             />
             <LineagePanel metrics={metrics} />
           </div>

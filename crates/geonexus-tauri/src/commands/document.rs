@@ -1,6 +1,6 @@
 use tauri::State;
 use uuid::Uuid;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::AppState;
 use geonexus_core::{AssetStatus, DocumentChunk, GraphNode, GraphEdge, GraphUpdatePayload, SyncEventType};
 use crate::commands::graph_events::emit_graph_update;
@@ -82,12 +82,18 @@ pub async fn index_document(
         .await?;
 
     // 2. Determinar la ruta del ejecutable de Python y del script sidecar
-    let project_root = std::env::current_dir().unwrap_or_default();
-    let root_path = if project_root.ends_with("geonexus-tauri") {
-        project_root.parent().unwrap_or(&project_root).to_path_buf()
-    } else {
-        project_root.clone()
-    };
+    // Buscar el directorio raiz del proyecto que contiene `ai/sidecar.py`
+    let mut root_path = std::env::current_dir().unwrap_or_default();
+    loop {
+        if root_path.join("ai").join("sidecar.py").exists() {
+            break;
+        }
+        if !root_path.pop() {
+            // no more ancestors — keep current_dir as-is, the .exists() check below will fail
+            root_path = std::env::current_dir().unwrap_or_default();
+            break;
+        }
+    }
 
     let mut python_exe = "python".to_string();
     let candidates = vec![
@@ -127,9 +133,22 @@ pub async fn index_document(
         .arg(&asset.id)
         .current_dir(&root_path);
 
-    let output = cmd
-        .output()
+    let child = cmd.spawn()
         .map_err(|e| format!("Fallo al ejecutar el sidecar de Python: {e}"))?;
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let result = child.wait_with_output();
+        let _ = tx.send(result);
+    });
+
+    let output = match rx.recv_timeout(Duration::from_secs(300)) {
+        Ok(result) => result.map_err(|e| format!("Fallo al ejecutar el sidecar de Python: {e}"))?,
+        Err(_) => {
+            state.repo.update_asset_indexing_result(&asset.id, AssetStatus::Error, 0, 0, 0, unix_now()).await?;
+            return Err("El indexador de Python no respondió en 5 minutos".to_string());
+        }
+    };
 
     if !output.status.success() {
         let err_msg = String::from_utf8_lossy(&output.stderr);
@@ -149,8 +168,13 @@ pub async fn index_document(
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
-    let res: PythonIndexResult = serde_json::from_str(&stdout_str)
-        .map_err(|e| format!("Error deserializando el resultado del indexador: {e}. Output: {stdout_str}"))?;
+    let res: PythonIndexResult = match serde_json::from_str(&stdout_str) {
+        Ok(r) => r,
+        Err(e) => {
+            state.repo.update_asset_indexing_result(&asset.id, AssetStatus::Error, 0, 0, 0, unix_now()).await?;
+            return Err(format!("Error deserializando el resultado del indexador: {e}. Output: {stdout_str}"));
+        }
+    };
 
     if res.status == "error" {
         let _ = state
@@ -328,12 +352,16 @@ pub async fn rebuild_knowledge_graph(
     state.repo.clear_graph(&project_id).await?;
 
     // 2. Localizar el sidecar de Python
-    let project_root = std::env::current_dir().unwrap_or_default();
-    let root_path = if project_root.ends_with("geonexus-tauri") {
-        project_root.parent().unwrap_or(&project_root).to_path_buf()
-    } else {
-        project_root
-    };
+    let mut root_path = std::env::current_dir().unwrap_or_default();
+    loop {
+        if root_path.join("ai").join("sidecar.py").exists() {
+            break;
+        }
+        if !root_path.pop() {
+            root_path = std::env::current_dir().unwrap_or_default();
+            break;
+        }
+    }
 
     let mut python_exe = "python".to_string();
     let candidates = vec![

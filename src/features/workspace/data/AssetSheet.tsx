@@ -4,10 +4,12 @@ import {
   CheckIcon,
   ExternalLinkIcon,
   FileSearchIcon,
+  Trash2Icon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/Button"
+import { deleteDataAsset } from "@/api/data"
 import {
   Sheet,
   SheetContent,
@@ -58,6 +60,19 @@ export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetP
       toast.success("Asset removido del contexto")
     }
     onRefresh()
+  }
+
+  async function handleDelete() {
+    const confirmed = window.confirm(`¿Eliminar "${a.name}"?\nSe borrarán chunks, embeddings y eventos asociados.`)
+    if (!confirmed) return
+    try {
+      await deleteDataAsset(a.id)
+      toast.success(`"${a.name}" eliminado`)
+      onOpenChange(false)
+      onRefresh()
+    } catch (e) {
+      toast.error(`Error al eliminar: ${e}`)
+    }
   }
 
   return (
@@ -114,7 +129,10 @@ export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetP
         </div>
 
         <SheetFooter className="border-t border-border bg-card/95 p-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2">
+            <Button variant="outline" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
+              <Trash2Icon className="size-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={handleVerFuente}>
               <FileSearchIcon className="size-4" />
               Ver fuente

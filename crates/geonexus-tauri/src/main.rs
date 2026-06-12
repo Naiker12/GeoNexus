@@ -61,7 +61,8 @@ fn main() {
             commands::data::get_data_store_metrics,
             commands::data::get_sync_events,
             commands::data::validate_data_asset,
-            commands::data::seed_demo_data,
+            commands::data::delete_data_asset,
+
             // Fase 2
             commands::connector::register_local_connector,
             commands::connector::list_connector_files,
@@ -110,8 +111,7 @@ fn main() {
             commands::filesystem::read_file_base64,
             commands::filesystem::validate_folder_path,
             commands::filesystem::list_directory,
-            // Demo data
-            commands::data::clear_demo_data,
+
             // Agents
             commands::agent::list_agents,
             commands::agent::toggle_agent,

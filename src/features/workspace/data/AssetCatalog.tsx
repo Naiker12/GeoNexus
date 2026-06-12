@@ -16,7 +16,6 @@ type AssetCatalogProps = {
   onQueryChange: (query: string) => void
   onSelectAsset: (assetId: string) => void
   isLoading: boolean
-  onSeedDemo?: () => void
 }
 
 export function AssetCatalog({
@@ -26,7 +25,6 @@ export function AssetCatalog({
   onQueryChange,
   onSelectAsset,
   isLoading,
-  onSeedDemo,
 }: AssetCatalogProps) {
   const [inputValue, setInputValue] = useState(query)
   const [sortKey, setSortKey] = useState<SortKey>("name")
@@ -118,15 +116,7 @@ export function AssetCatalog({
               Los archivos conectados, cacheados o procesados aparecen aquí
               automáticamente una vez que configures una fuente de datos.
             </p>
-            {onSeedDemo && (
-              <button
-                type="button"
-                onClick={onSeedDemo}
-                className="mt-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-muted/60"
-              >
-                Cargar datos de demostración
-              </button>
-            )}
+
           </div>
         ) : sorted.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-3 py-8 text-center">

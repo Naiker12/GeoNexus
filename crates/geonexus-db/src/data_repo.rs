@@ -46,10 +46,27 @@ impl DataRepository {
 
         let repo = Self { pool };
 
+        // Limpiar datos demo legacy de ejecuciones anteriores
+        repo.cleanup_legacy_demo().await?;
+
         // Sembrar datos si la DB está vacía
         repo.seed_if_empty().await?;
 
         Ok(repo)
+    }
+
+    /// Elimina datos demo legacy que pudieron haber quedado de ejecuciones anteriores.
+    async fn cleanup_legacy_demo(&self) -> Result<(), String> {
+        let pool = &self.pool;
+        let _ = sqlx::query("DELETE FROM graph_edges WHERE source LIKE 'node-demo%' OR target LIKE 'node-demo%' OR source LIKE 'node-norma%' OR target LIKE 'node-norma%' OR source LIKE 'node-zona%' OR target LIKE 'node-zona%' OR source LIKE 'node-concepto%' OR target LIKE 'node-concepto%' OR source LIKE 'node-capa%' OR target LIKE 'node-capa%'")
+            .execute(pool).await;
+        let _ = sqlx::query("DELETE FROM graph_nodes WHERE id LIKE 'node-demo%' OR id LIKE 'node-norma%' OR id LIKE 'node-zona%' OR id LIKE 'node-concepto%' OR id LIKE 'node-capa%'")
+            .execute(pool).await;
+        let _ = sqlx::query("DELETE FROM sync_events WHERE asset_id LIKE 'asset-pot%' OR asset_id LIKE 'asset-ley%' OR asset_id LIKE 'asset-estratif%'")
+            .execute(pool).await;
+        let _ = sqlx::query("DELETE FROM assets WHERE id LIKE 'asset-pot%' OR id LIKE 'asset-ley%' OR id LIKE 'asset-estratif%'")
+            .execute(pool).await;
+        Ok(())
     }
 
     /// Comprueba si la base de datos tiene datos; si no, inserta las semillas.
@@ -76,241 +93,6 @@ impl DataRepository {
             .execute(&self.pool)
             .await
             .map_err(|e| format!("Error creando workspace default: {e}"))?;
-        }
-
-        // Sembrar nodos de conocimiento por defecto si el grafo está vacío
-        let graph_count: i64 = sqlx::query("SELECT COUNT(*) FROM graph_nodes")
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| format!("Error contando nodos: {e}"))?
-            .get(0);
-
-        if graph_count == 0 {
-            let now = Self::unix_now();
-            let nodes = vec![
-                ("node-norma-1", "Artículo 45 - Usos del suelo", "norma", "Clasificación de usos del suelo: residencial, comercial, industrial. Artículo 45 del POT.", "POT Municipal 2024", 10.0, 10.0, 3),
-                ("node-norma-2", "Artículo 78 - Alturas máximas", "norma", "Alturas máximas permitidas por zona: Z1=3 pisos, Z2=5 pisos, Z3=8 pisos.", "POT Municipal 2024", 30.0, 15.0, 2),
-                ("node-zona-1", "Zona Residencial Z1",   "zona", "Zona de baja densidad: máximo 3 pisos, uso residencial exclusivo.", "POT Municipal 2024", 15.0, 30.0, 2),
-                ("node-zona-2", "Zona Comercial Z2",     "zona", "Zona mixta comercial-residencial: máximo 5 pisos.", "POT Municipal 2024", 35.0, 35.0, 2),
-                ("node-concepto-1", "Suelo urbano", "concepto", "Suelo dentro del perímetro urbano con servicios públicos domiciliarios.", "Ley 388 de 1997", 50.0, 20.0, 1),
-                ("node-concepto-2", "Cesión urbanística", "concepto", "Porcentaje de suelo que debe cederse al municipio para espacio público.", "POT Municipal 2024", 55.0, 40.0, 1),
-                ("node-capa-1", "Capa de estratificación", "capa", "Estratificación socioeconómica por manzanas catastrales.", "DANE - Estratificación", 70.0, 25.0, 1),
-            ];
-            for (id, name, kind, description, evidence, x, y, weight) in &nodes {
-                sqlx::query(
-                    "INSERT INTO graph_nodes (id, project_id, workspace_id, name, kind, description, evidence, x, y, weight, created_at, source_event, event_id, icon, is_ephemeral)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     ON CONFLICT(id) DO NOTHING"
-                )
-                .bind(id)
-                .bind("project-default")
-                .bind(Some("workspace-main"))
-                .bind(name)
-                .bind(kind)
-                .bind(description)
-                .bind(evidence)
-                .bind(x)
-                .bind(y)
-                .bind(weight)
-                .bind(now)
-                .bind("")
-                .bind("")
-                .bind("")
-                .bind(false)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| format!("Error sembrando nodo {id}: {e}"))?;
-            }
-
-            // Sembrar aristas por defecto
-            let edges = vec![
-                ("edge-1", "node-norma-1", "node-zona-1", "regula"),
-                ("edge-2", "node-norma-1", "node-zona-2", "regula"),
-                ("edge-3", "node-norma-2", "node-zona-1", "restringe"),
-                ("edge-4", "node-norma-2", "node-zona-2", "restringe"),
-                ("edge-5", "node-zona-1", "node-concepto-1", "clasifica"),
-                ("edge-6", "node-concepto-2", "node-zona-2", "aplica"),
-                ("edge-7", "node-capa-1", "node-zona-1", "interseca"),
-                ("edge-8", "node-capa-1", "node-zona-2", "interseca"),
-            ];
-            for (id, source, target, relation) in &edges {
-                sqlx::query(
-                    "INSERT INTO graph_edges (id, project_id, source, target, relation, strength, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                     ON CONFLICT(id) DO NOTHING"
-                )
-                .bind(id)
-                .bind("project-default")
-                .bind(source)
-                .bind(target)
-                .bind(relation)
-                .bind(70i64)
-                .bind(now)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| format!("Error sembrando arista {id}: {e}"))?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Inserta datos de demostración para ver la UI con contenido real.
-    pub async fn seed_demo_data(&self) -> Result<(), String> {
-        let now = Self::unix_now();
-        let pid = "project-default";
-
-        // 3 activos de demostración
-        let demo_assets = vec![
-            DataAsset {
-                id: "asset-pot-2024".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                name: "Plan de Ordenamiento Territorial 2024".into(),
-                kind: AssetKind::Document,
-                source: "demo".into(),
-                location: "/data/pot-2024.pdf".into(),
-                agent_id: None,
-                connector_id: Some("connector-demo".into()),
-                status: AssetStatus::Ready,
-                size_bytes: Some(2_450_000),
-                chunks: 24,
-                embeddings: 24,
-                graph_nodes: 3,
-                cache_state: CacheState::Cached,
-                trace_id: Some("trace-pot".into()),
-                created_at: now - 86400,
-                updated_at: now - 3600,
-            },
-            DataAsset {
-                id: "asset-ley-388".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                name: "Ley 388 de 1997".into(),
-                kind: AssetKind::Document,
-                source: "demo".into(),
-                location: "/data/ley-388.pdf".into(),
-                agent_id: None,
-                connector_id: Some("connector-demo".into()),
-                status: AssetStatus::Ready,
-                size_bytes: Some(890_000),
-                chunks: 12,
-                embeddings: 12,
-                graph_nodes: 2,
-                cache_state: CacheState::Cached,
-                trace_id: Some("trace-ley388".into()),
-                created_at: now - 172800,
-                updated_at: now - 7200,
-            },
-            DataAsset {
-                id: "asset-estratificacion".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                name: "Estratificación por manzanas 2025".into(),
-                kind: AssetKind::Layer,
-                source: "demo".into(),
-                location: "/data/estratificacion.geojson".into(),
-                agent_id: None,
-                connector_id: Some("connector-demo".into()),
-                status: AssetStatus::Pending,
-                size_bytes: Some(320_000),
-                chunks: 0,
-                embeddings: 0,
-                graph_nodes: 1,
-                cache_state: CacheState::None,
-                trace_id: None,
-                created_at: now - 300,
-                updated_at: now - 300,
-            },
-        ];
-
-        for asset in &demo_assets {
-            self.upsert_data_asset(asset).await?;
-        }
-
-        // Eventos de sincronización de demostración
-        let demo_events = vec![
-            SyncEvent {
-                id: "evt-discover-1".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                connector_id: Some("connector-demo".into()),
-                asset_id: None,
-                agent_id: None,
-                event_type: SyncEventType::Discovered,
-                detail: Some("12 archivos descubiertos en carpeta POT 2024".into()),
-                trace_id: Some("trace-pot".into()),
-                created_at: now - 86400,
-            },
-            SyncEvent {
-                id: "evt-index-1".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                connector_id: Some("connector-demo".into()),
-                asset_id: Some("asset-pot-2024".into()),
-                agent_id: Some("agent-indexer".into()),
-                event_type: SyncEventType::Indexed,
-                detail: Some("Indexado: Plan de Ordenamiento Territorial 2024 — 24 chunks".into()),
-                trace_id: Some("trace-pot".into()),
-                created_at: now - 3600,
-            },
-            SyncEvent {
-                id: "evt-embed-1".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                connector_id: Some("connector-demo".into()),
-                asset_id: Some("asset-pot-2024".into()),
-                agent_id: Some("agent-embedder".into()),
-                event_type: SyncEventType::Embedded,
-                detail: Some("24 embeddings generados para POT 2024".into()),
-                trace_id: Some("trace-pot".into()),
-                created_at: now - 3500,
-            },
-            SyncEvent {
-                id: "evt-graph-1".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                connector_id: Some("connector-demo".into()),
-                asset_id: Some("asset-pot-2024".into()),
-                agent_id: Some("agent-graph".into()),
-                event_type: SyncEventType::GraphLinked,
-                detail: Some("3 nodos enlazados al grafo de conocimiento".into()),
-                trace_id: Some("trace-pot".into()),
-                created_at: now - 3400,
-            },
-            SyncEvent {
-                id: "evt-error-1".into(),
-                project_id: pid.into(),
-                workspace_id: Some("workspace-main".into()),
-                connector_id: None,
-                asset_id: Some("asset-estratificacion".into()),
-                agent_id: None,
-                event_type: SyncEventType::Error,
-                detail: Some("Formato no soportado para indexación automática".into()),
-                trace_id: Some("trace-error".into()),
-                created_at: now - 300,
-            },
-        ];
-
-        for event in &demo_events {
-            sqlx::query(
-                "INSERT INTO sync_events (id, project_id, workspace_id, connector_id, asset_id, agent_id, event_type, detail, trace_id, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(id) DO NOTHING"
-            )
-            .bind(&event.id)
-            .bind(&event.project_id)
-            .bind(&event.workspace_id)
-            .bind(&event.connector_id)
-            .bind(&event.asset_id)
-            .bind(&event.agent_id)
-            .bind(to_str(&event.event_type))
-            .bind(&event.detail)
-            .bind(&event.trace_id)
-            .bind(event.created_at)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| format!("Error insertando evento demo: {e}"))?;
         }
 
         Ok(())
@@ -599,6 +381,22 @@ impl DataRepository {
             .execute(&self.pool)
             .await
             .map_err(|e| format!("Error eliminando chunks del asset: {e}"))?;
+        Ok(())
+    }
+
+    /// Elimina un activo de datos y todos sus datos relacionados (chunks, eventos, nodos).
+    pub async fn delete_data_asset(&self, asset_id: &str) -> Result<(), String> {
+        let _ = sqlx::query("DELETE FROM document_chunks WHERE asset_id = ?")
+            .bind(asset_id)
+            .execute(&self.pool).await;
+        let _ = sqlx::query("DELETE FROM sync_events WHERE asset_id = ?")
+            .bind(asset_id)
+            .execute(&self.pool).await;
+        sqlx::query("DELETE FROM assets WHERE id = ?")
+            .bind(asset_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error eliminando asset: {e}"))?;
         Ok(())
     }
 
