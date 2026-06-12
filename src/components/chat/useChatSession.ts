@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { Message, SendMessageInput, KnowledgeLookupStep } from "@/types/chat"
+import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 
 const DEFAULT_PROJECT_ID = "project-default"
 const DEFAULT_TOGGLES: ContextToggle = {
@@ -64,6 +65,7 @@ export function useChatSession(
     null
   )
   const [pending, setPending] = React.useState(false)
+  const [loadingPhase, setLoadingPhase] = React.useState<ChatLoadingPhase>("idle")
   const [error, setError] = React.useState<string | null>(null)
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [contextToggles, setContextToggles] =
@@ -172,7 +174,36 @@ export function useChatSession(
 
       setError(null)
       setPending(true)
+      setLoadingPhase("classifying")
       setMessages((current) => [...current, optimistic])
+
+      const assistantMsgId = `assistant-${Date.now()}`
+      const startTime = Date.now()
+
+      const placeholderAssistant: Message = {
+        id: assistantMsgId,
+        conversation_id: conversationId ?? "pending",
+        role: "assistant",
+        content: "",
+        provider: activeProvider.provider,
+        model: activeProvider.model,
+        trace_id: "",
+        chunks_used: [],
+        nodes_used: [],
+        tool_calls: [],
+        sources: [],
+        created_at: Math.floor(Date.now() / 1000),
+        ...(webSearchEnabled ? {
+          isSearching: true,
+          currentSearchQuery: "Buscando fuentes...",
+          research_sources: [],
+          searchElapsedSeconds: 0,
+        } : {}),
+      }
+      setMessages((current) => [...current, placeholderAssistant])
+
+      const phaseTimer1 = setTimeout(() => setLoadingPhase("searching"), 1200)
+      const phaseTimer2 = setTimeout(() => setLoadingPhase("generating"), 4000)
 
       const useContext = contextToggles.rag_chunks
         || contextToggles.indexed_assets
@@ -196,41 +227,10 @@ export function useChatSession(
         mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
       }
 
-      // When web search is active, create a placeholder assistant message
-      // showing the Deep Research panel during loading
-      let assistantMsgId: string | null = null
-      let startTime = Date.now()
-
       if (webSearchEnabled) {
-        assistantMsgId = `research-${Date.now()}`
-        const placeholderAssistant: Message = {
-          id: assistantMsgId,
-          conversation_id: conversationId ?? "pending",
-          role: "assistant",
-          content: "",
-          provider: activeProvider.provider,
-          model: activeProvider.model,
-          trace_id: "",
-          chunks_used: [],
-          nodes_used: [],
-          tool_calls: [],
-          sources: [],
-          created_at: Math.floor(Date.now() / 1000),
-          isSearching: true,
-          currentSearchQuery: "Buscando fuentes...",
-          research_sources: [],
-          searchElapsedSeconds: 0,
-          knowledgeSteps: useContext ? [
-            { source: "chromadb", label: "Búsqueda semántica", status: "searching" },
-            { source: "graph", label: "Knowledge Graph", status: "searching" },
-            { source: "assets", label: "Assets indexados", status: "searching" },
-          ] : undefined,
-        }
-        setMessages((current) => [...current, placeholderAssistant])
-
         researchTimerId = setInterval(() => {
           const elapsed = (Date.now() - startTime) / 1000
-          updateAssistantMessage(assistantMsgId!, {
+          updateAssistantMessage(assistantMsgId, {
             searchElapsedSeconds: elapsed,
             currentSearchQuery: elapsed < 2
               ? "Buscando fuentes..."
@@ -239,8 +239,26 @@ export function useChatSession(
         }, 500)
       }
 
+      let unlisten: (() => void) | null = null
+
       try {
+        const { listen } = await import("@tauri-apps/api/event")
+        unlisten = await listen<string>("llm:token", ({ payload }) => {
+          setMessages((current) =>
+            current.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, content: msg.content + payload }
+                : msg
+            )
+          )
+        })
+
+        clearTimeout(phaseTimer1)
+        clearTimeout(phaseTimer2)
+        setLoadingPhase("extracting")
+
         const response = await sendMessage(input)
+        unlisten?.()
         console.log("[DEBUG] sendMessage response.research_sources:", response.research_sources)
         setConversationId(response.conversation_id)
         saveConversationId(response.conversation_id)
@@ -259,7 +277,7 @@ export function useChatSession(
           { source: "assets", label: "Assets indexados", status: uniqueAssetsCount > 0 ? "found" : "empty", count: uniqueAssetsCount },
         ] : undefined
 
-        if (webSearchEnabled && assistantMsgId) {
+        if (webSearchEnabled) {
           updateAssistantMessage(assistantMsgId, {
             conversation_id: response.conversation_id,
             content: response.message.content,
@@ -271,35 +289,26 @@ export function useChatSession(
             knowledgeSteps: finalKnowledgeSteps,
           })
         } else {
-          setMessages((current) => [
-            ...current.map((message) =>
-              message.id === optimistic.id
-                ? { ...message, conversation_id: response.conversation_id }
-                : message
-            ),
-            {
-              ...response.message,
-              knowledgeSteps: finalKnowledgeSteps,
-            },
-          ])
+          updateAssistantMessage(assistantMsgId, {
+            conversation_id: response.conversation_id,
+            stats: response.message.stats,
+            knowledgeSteps: finalKnowledgeSteps,
+          })
         }
 
         toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })
       } catch (err) {
+        clearTimeout(phaseTimer1)
+        clearTimeout(phaseTimer2)
+
         if (researchTimerId) {
           clearInterval(researchTimerId)
           researchTimerId = null
         }
 
-        if (webSearchEnabled && assistantMsgId) {
-          setMessages((current) =>
-            current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
-          )
-        } else {
-          setMessages((current) =>
-            current.filter((message) => message.id !== optimistic.id)
-          )
-        }
+        setMessages((current) =>
+          current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
+        )
 
         const message = typeof err === "string"
           ? err
@@ -310,6 +319,7 @@ export function useChatSession(
         toast({ title: "Error en el chat", description: message, variant: "error" })
       } finally {
         setPending(false)
+        setLoadingPhase("idle")
       }
     },
     [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage]
@@ -343,6 +353,7 @@ export function useChatSession(
     error,
     messages,
     pending,
+    loadingPhase,
     loadingHistory,
     contextToggles,
     setContextToggles,

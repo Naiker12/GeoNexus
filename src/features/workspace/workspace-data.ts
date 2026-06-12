@@ -4,6 +4,7 @@ import {
   BrainCircuitIcon,
   BarChart3Icon,
   CloudIcon,
+  CpuIcon,
   DatabaseIcon,
   FileTextIcon,
   FlameIcon,
@@ -91,6 +92,7 @@ export const navigationItems: NavItem[] = [
   { title: "Conectores", url: "#conectores", icon: LayersIcon },
   { title: "Conocimiento", url: "#conocimiento", icon: GitBranchIcon },
   { title: "Uso", url: "#uso", icon: ActivityIcon },
+  { title: "Skills", url: "#skills", icon: CpuIcon },
   { title: "Datos", url: "#datos", icon: DatabaseIcon },
 ]
 

@@ -16,6 +16,7 @@ import { MemorySection } from "@/features/workspace/configuration/sections/Memor
 import { TelegramIntegrationPanel } from "@/features/workspace/configuration/sections/TelegramIntegrationPanel"
 import { CommandsSection } from "@/features/workspace/configuration/sections/CommandsSection"
 import { AgentsSection } from "@/features/workspace/configuration/sections/AgentsSection"
+import { NotificationsPanel } from "@/features/workspace/configuration/sections/NotificationsPanel"
 
 type ConfigurationDialogProps = {
   open: boolean
@@ -34,6 +35,7 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   "gis-tools": GisToolsPanel,
   commands: CommandsSection,
   agents: AgentsSection,
+  notifications: NotificationsPanel,
 }
 
 export function ConfigurationDialog({

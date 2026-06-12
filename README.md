@@ -1,85 +1,148 @@
-# Geo Agents
+# GeoNexus
 
-**Geo Agents** es una plataforma de agentes IA para análisis geoespacial, consulta normativa, documentos técnicos y herramientas GIS conectadas. Cada agente es un módulo independiente que puede ejecutar tareas específicas usando LLMs, MCP servers y datos locales o en la nube.
+**GeoNexus** es una plataforma desktop de agentes IA para análisis de documentos, consulta normativa y gestión de conocimiento territorial. Conversa con modelos locales o cloud, indexa documentos, explora un grafo de conocimiento y audita cada ejecución.
+
+---
 
 ## Objetivo
 
-Unificar la consulta de información territorial (normas POT, capas GIS, documentos técnicos, datos estructurados) en un solo entorno desktop donde el usuario conversa con agentes IA especializados que orquestan herramientas, recuperan contexto y producen respuestas trazables.
+Unificar la consulta de información territorial (normas, documentos técnicos, capas GIS, datos estructurados) en un solo entorno desktop donde el usuario conversa con agentes IA que orquestan herramientas, recuperan contexto vectorial (RAG) y producen respuestas trazables con referencias.
 
-## Agentes
-
-| Agente | Función |
-|---|---|
-| **Planner Agent** | Orquesta la solicitud del usuario y delega a los agentes especializados. |
-| **GIS Agent** | Visualiza capas, ejecuta buffer, distancia, heatmap, clustering sobre QGIS/ArcGIS. |
-| **Research Agent** | Busca en documentos, web, OneDrive, SharePoint y fuentes externas. |
-| **Data Agent** | Analiza CSV, Excel, bases SQL y produce reportes estructurados. |
-| **Document Agent** | Indexa PDFs, DOCX, contratos e informes para consulta con citas. |
-| **Coding Agent** | Lee repositorios, ejecuta herramientas MCP y asiste en desarrollo. |
+---
 
 ## Funciones principales
 
-| Función | Agente | Descripción |
-|---|---|---|
-| Chat IA | Planner | Conversación con agentes, envío de archivos, ejecución de tools. |
-| Mapa | GIS | Visualización de capas geográficas y resultados de análisis. |
-| Documentos | Document | Subida, conexión e indexación de PDFs, DOCX, DXF, GeoJSON. |
-| Grafo | — | Red de conocimiento que relaciona documentos, normas, zonas y capas. |
-| Datos | Data | Gestión de capas, proyectos, tablas y registros estructurados. |
-| Conectores | — | Fuentes externas: OneDrive, SharePoint, Google Drive, S3, Local. |
-| Servidores MCP | — | Herramientas externas: QGIS MCP, Memory MCP, AI MCP, ArcGIS MCP. |
-| Multi-LLM | Todos | Conexión a Ollama, LM Studio, OpenRouter, OpenAI, Anthropic. |
+| Función | Descripción |
+|---------|-------------|
+| **Chat IA** | Conversación contextual con modelos locales (Ollama, LM Studio) o cloud (OpenAI, Anthropic, OpenRouter). Soporta tool-calling, web search y @menciones. |
+| **Indexación documental** | Sube PDFs, DOCX, TXT y archivos técnicos → extrae texto → chunkifica → genera embeddings → almacena en ChromaDB para búsqueda RAG. |
+| **Grafo de conocimiento** | Red de nodos (documentos, entidades, conceptos) y aristas que se construye automáticamente al chatear e indexar. Visualización interactiva con zoom/arrastre. |
+| **Conectores** | Fuentes de datos: carpetas locales, OneDrive (próximamente Google Drive, SharePoint, Dropbox, S3). Cachea archivos y los indexa. |
+| **Containers MCP** | Sistema de herramientas MCP para operar archivos: listar, buscar, sincronizar y subir documentos desde conectores registrados. |
+| **Análisis y métricas** | Dashboard de uso: tokens por modelo, consultas top, skills usadas, costo estimado y trazas de ejecución con paginación. |
+| **Agentes de IA** | 5 agentes preconfigurados (Indexador, Embedder, Grafo, Clasificador, Chat IA) activables desde Configuración. |
+| **Multi-LLM** | Cambia de proveedor IA en caliente: Ollama, LM Studio, OpenAI, OpenRouter, Anthropic. Detección automática de modelos. |
+| **Actividad reciente** | Panel de trazas con paginación que muestra eventos de sincronización, descubrimiento e indexación en tiempo real. |
+| **Notificaciones** | Sistema de notificaciones configurable por categoría y canal (toast, sistema, sonido). |
+
+---
+
+## Capturas (próximamente)
+
+Interfaz principal con chat lateral, panel de trazas y dashboard de análisis.
+
+---
+
+## Stack técnico
+
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide |
+| Desktop | Tauri 2 |
+| Backend Rust | geonexus-core, geonexus-db (SQLite), geonexus-mcp, geonexus-tauri |
+| Sidecar Python | ChromaDB, extracción de texto, embeddings, búsqueda web, NER |
+| Base de datos | SQLite (12 tablas) + ChromaDB (vectores) |
+| IA local | Ollama, LM Studio |
+| IA cloud | OpenAI, Anthropic, OpenRouter |
+
+---
+
+## Descarga e instalación
+
+### Requisitos
+
+- **Windows 10/11** (64 bits)
+- **Git** (para clonar)
+- **Node.js 18+** y **pnpm**
+- **Rust toolchain** (https://rustup.rs)
+- **Python 3.10+** con `pip`
+- **(Opcional)** Ollama o LM Studio para IA local
+
+### Pasos
+
+```powershell
+# 1. Clonar el repositorio
+git clone https://github.com/tu-usuario/GeoNexus.git
+cd GeoNexus
+
+# 2. Instalar dependencias del frontend
+pnpm install
+
+# 3. Instalar dependencias Python (sidecar)
+pip install -r ai/requirements.txt
+
+# 4. Iniciar en modo desarrollo
+pnpm tauri dev
+
+# 5. Compilar para producción
+pnpm tauri build
+```
+
+El binario compilado se genera en `src-tauri/target/release/`.
+
+### Vista previa web (sin Tauri)
+
+```powershell
+pnpm dev
+# Abre http://localhost:1420
+# Nota: las funciones Tauri (archivos, BD) no estarán disponibles
+```
+
+---
 
 ## Arquitectura
 
 ```
-Usuario
-  └→ Planner Agent
-       ├→ GIS Agent      (QGIS MCP, ArcGIS MCP, GeoPandas)
-       ├→ Research Agent (Web, PDFs, OneDrive, SharePoint)
-       ├→ Data Agent     (CSV, Excel, SQL, Power BI)
-       ├→ Document Agent (Word, PDF, contratos)
-       └→ Coding Agent   (GitHub, VS Code, MCP, repos)
-            └→ LLM Router → ChromaDB / Knowledge Graph
-                 └→ MCP Router → MCP Servers
+React Frontend (TypeScript)
+  ├── Chat / Documentos / Grafo / Análisis
+  ├── API layer (src/api/*.ts → invoke Tauri)
+  └── Paneles: Trazas, Agentes, Notificaciones, Configuración
+        │
+ Tauri IPC (invoke / events)
+        │
+Rust Backend (56+ commands)
+  ├── geonexus-core     → tipos, lógica de negocio
+  ├── geonexus-db       → repositorios SQLite (12 tablas)
+  ├── geonexus-mcp      → containers MCP (local, cloud)
+  └── geonexus-tauri    → commands, eventos, AppState
+        │
+ Python Sidecar (ai/sidecar.py)
+  ├── index             → extracción + chunk + embedding
+  ├── recall_chunks     → RAG vectorial (ChromaDB)
+  ├── chat_llm          → comunicación con LLMs
+  ├── search_web        → búsqueda web
+  ├── extract_entities  → NER para grafo de conocimiento
+  └── ping_llm          → health check
 ```
 
 Principios del sistema:
 
-- **Offline-first:** Ollama, LM Studio, SQLite, ChromaDB permiten operar sin internet.
-- **Multi-LLM:** el proveedor de IA se cambia sin reiniciar el sistema.
-- **Multi-mapa:** ArcGIS JS, MapLibre GL, Leaflet y Deck.gl.
-- **MCP-extensible:** las herramientas se conectan como servidores MCP sin recompilar el core.
-- **Seguridad por defecto:** keys en keychain, allowlist localhost, tokens HMAC.
-- **Trazabilidad:** cada tool-call conserva `trace_id`, servidor, duración y resultado.
+- **Offline-first:** Ollama + SQLite + ChromaDB permiten operar sin internet.
+- **Multi-LLM:** el proveedor de IA se cambia sin reiniciar.
+- **Trazabilidad:** cada operación conserva `trace_id` para auditoría.
+- **MCP-extensible:** nuevas herramientas se conectan como servidores MCP.
+- **Seguridad:** keys en keychain, allowlist localhost, tokens OAuth.
 
-## Stack técnico
+---
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Radix UI.
-- **Desktop:** Tauri 2.
-- **Rust:** crates modulares para core, MCP, DB y shell Tauri.
-- **Python:** LLM Router, GeoPandas, Shapely, ChromaDB.
-- **Base de datos:** SQLite + ChromaDB.
-- **IA local:** Ollama y LM Studio.
-- **IA cloud:** OpenRouter, OpenAI, Anthropic.
+## Estado del proyecto
 
-## Comandos
+| Fase | Estado |
+|------|--------|
+| Inventario y metadata local | ✅ Completo |
+| Conector local y cache | ✅ Completo |
+| Indexación documental y vectorial | ✅ Completo |
+| Containers MCP | ✅ Completo |
+| OAuth (OneDrive/Cloud) | ❌ Pendiente |
+| LLM base (ping, list, send) | ✅ Completo |
+| Chat con memoria (RAG, tools, grafo) | ✅ Completo |
+| Auto-detección de modelos | ✅ Completo |
+| RAG + contexto GIS | ✅ Completo |
 
-```powershell
-pnpm install          # Instalar dependencias
-pnpm run dev          # Frontend en desarrollo
-pnpm run build        # Compilar frontend
-pnpm run tauri:dev    # Ejecutar con Tauri
-pnpm run tauri:build  # Build desktop
-```
+56+ comandos Tauri · 12 tablas SQLite · 81 tests Rust · 62 tests TypeScript
 
-## Roadmap
+---
 
-| Versión | Enfoque |
-|---|---|
-| V1 | Chat IA, mapas, documentos, QGIS MCP, Memory MCP, arquitectura local-first. |
-| V1.1 | Heatmaps avanzados, clustering y exportación PDF/DXF. |
-| V1.2 | Grafo de conocimiento interactivo con relaciones norma-zona. |
-| V1.3 | Sincronización ArcGIS Online / Portal y WMS/WFS. |
-| V2 | Flujos multi-agente para análisis y reportes. |
-| V3 | Planner Agent + agentes especializados (GIS, Research, Data, Document, Coding). |
+## Licencia
+
+Uso interno — GeoNexus

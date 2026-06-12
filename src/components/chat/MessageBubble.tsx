@@ -62,7 +62,7 @@ export function MessageBubble({
       {/* Bubble */}
       <div
         className={cn(
-          "min-w-0 rounded-2xl px-3.5 py-2.5 text-sm shadow-xs",
+          "min-w-0 rounded-2xl px-3.5 py-2.5 text-sm shadow-xs break-words overflow-wrap-anywhere",
           isUser
             ? "max-w-[75%] sm:max-w-sm bg-primary/10 text-foreground"
             : "flex-1 bg-card text-card-foreground ring-1 ring-border/50"
@@ -71,14 +71,14 @@ export function MessageBubble({
         {eyebrow ? (
           <p
             className={cn(
-              "mb-1 text-[10px] font-semibold uppercase tracking-wider",
+              "mb-1 text-[10px] font-semibold uppercase tracking-wider break-words",
               isUser ? "text-primary/60" : "text-emerald-600/60 dark:text-emerald-400/60"
             )}
           >
             {eyebrow}
           </p>
         ) : null}
-        <div className="leading-6">{children}</div>
+        <div className="leading-6 break-words">{children}</div>
       </div>
     </article>
   )

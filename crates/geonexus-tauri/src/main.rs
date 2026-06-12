@@ -73,6 +73,9 @@ fn main() {
             commands::connector::sync_local_connector,
             commands::connector::upload_asset_file,
             commands::connector::list_connector_configs,
+            commands::connector::exchange_dropbox_oauth_code,
+            commands::connector::list_dropbox_folder,
+            commands::connector::download_dropbox_file,
             // Fase 3
             commands::document::index_document,
             commands::document::list_document_chunks,
@@ -104,6 +107,9 @@ fn main() {
             commands::chat::recall_chunks,
             commands::chat::get_project_context,
             // OAuth
+            commands::oauth::generate_pkce_challenge,
+            commands::oauth::build_oauth_url,
+            commands::oauth::start_oauth_flow,
             commands::oauth::exchange_oauth_code,
             commands::oauth::get_oauth_user_info,
             commands::oauth::save_oauth_token,
@@ -121,6 +127,10 @@ fn main() {
             // Graph Events
             commands::graph_events::clear_ephemeral_nodes,
             commands::graph_events::get_recent_graph_events,
+
+            // Notifications
+            commands::notifications::send_os_notification,
+            commands::notifications::request_notification_permission,
 
             // Graph CRUD & Operations
             commands::graph::delete_graph_node,

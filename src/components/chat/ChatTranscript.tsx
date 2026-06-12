@@ -10,11 +10,13 @@ import {
 } from "@/components/chat/ThinkingInline"
 import type { ThinkingStep } from "@/components/chat/ThinkingInline"
 import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
+import { ChatLoadingIndicator, type ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message, MessageStats } from "@/types/chat"
 
 type ChatTranscriptProps = {
   messages: Message[]
   pending: boolean
+  loadingPhase?: ChatLoadingPhase
   onSendMessage?: (text: string) => void
   webSearchEnabled?: boolean
   onEditLastUserMessage?: () => void
@@ -57,6 +59,7 @@ function useThinkingSteps(pending: boolean) {
 export function ChatTranscript({
   messages,
   pending,
+  loadingPhase,
   onSendMessage,
   webSearchEnabled,
   onEditLastUserMessage,
@@ -109,7 +112,7 @@ export function ChatTranscript({
         message.role === "user" ? (
           <div key={message.id} className="group flex flex-col items-end">
             <MessageBubble role="user">
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
             </MessageBubble>
             <div className="flex items-center gap-0.5 pt-0.5">
               <CopyButton content={message.content} />
@@ -137,7 +140,10 @@ export function ChatTranscript({
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
             <GeoAgentsIcon className="size-4" variant="nexus" />
           </div>
-          <div className="flex flex-col gap-1 pt-1.5">
+          <div className="flex flex-col gap-2 pt-1.5">
+            {loadingPhase && loadingPhase !== "idle" && (
+              <ChatLoadingIndicator phase={loadingPhase} />
+            )}
             <ThinkingInline
               steps={steps}
               isComplete={isComplete}

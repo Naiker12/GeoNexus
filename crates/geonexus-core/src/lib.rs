@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod allowlist;
 pub mod chat;
 pub mod connector;

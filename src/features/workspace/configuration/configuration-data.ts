@@ -1,4 +1,5 @@
 import {
+  BellIcon,
   BrainCircuitIcon,
   DatabaseIcon,
   FolderCogIcon,
@@ -96,6 +97,12 @@ export const configGroups: ConfigGroup[] = [
         id: "commands",
         label: "Comandos",
         icon: TerminalIcon,
+        indicator: null,
+      },
+      {
+        id: "notifications",
+        label: "Notificaciones",
+        icon: BellIcon,
         indicator: null,
       },
       {

@@ -104,7 +104,14 @@ pub async fn get_model_usage(pool: &SqlitePool, project_id: &str) -> Result<Vec<
     }).collect())
 }
 
-pub async fn list_analysis_runs(pool: &SqlitePool, project_id: &str) -> Result<Vec<AnalysisRun>, String> {
+pub async fn list_analysis_runs(
+    pool: &SqlitePool,
+    project_id: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<AnalysisRun>, String> {
+    let limit = limit.clamp(1, 100);
+    let offset = offset.max(0);
     let rows = sqlx::query(
         "SELECT
             m.id,
@@ -121,9 +128,11 @@ pub async fn list_analysis_runs(pool: &SqlitePool, project_id: &str) -> Result<V
          WHERE c.project_id = ?
            AND m.role = 'assistant'
          ORDER BY m.created_at DESC
-         LIMIT 50"
+         LIMIT ? OFFSET ?"
     )
     .bind(project_id)
+    .bind(limit)
+    .bind(offset)
     .fetch_all(pool)
     .await
     .map_err(|e| format!("Error listando trazas de analisis: {e}"))?;

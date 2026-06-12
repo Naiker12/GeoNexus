@@ -67,10 +67,11 @@ export function getDataStoreMetrics(
 
 export function getSyncEvents(
   projectId = DEFAULT_PROJECT_ID,
-  limit = 50
+  limit = 50,
+  offset = 0
 ): Promise<SyncEvent[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_sync_events", { projectId: projectId, limit }, [])
+  return invokeOrFallback("get_sync_events", { projectId, limit, offset }, [])
 }
 
 export function deleteDataAsset(assetId: string): Promise<void> {

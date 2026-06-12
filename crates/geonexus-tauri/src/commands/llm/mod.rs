@@ -7,6 +7,7 @@ mod tests;
 
 pub use commands::*;
 pub use sidecar::run_sidecar;
+pub use sidecar::run_sidecar_streaming;
 pub use sidecar::project_root;
 
 #[derive(Debug, serde::Deserialize)]

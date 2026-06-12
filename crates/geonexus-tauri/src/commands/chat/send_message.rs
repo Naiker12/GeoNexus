@@ -18,7 +18,7 @@ use super::stats::extract_message_stats;
 use super::tools::{execute_tool_call, get_tool_definitions};
 use super::validator::validate_response;
 use super::{run_sidecar_json, unix_now, AppState, ContextNode};
-use crate::commands::llm::run_sidecar;
+use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
 
 #[derive(Debug, serde::Deserialize)]
@@ -290,7 +290,7 @@ pub async fn send_message(
 
         let mut sidecar_args: Vec<String> = vec![
             "--action".into(),
-            "chat_llm".into(),
+            "chat_llm_stream".into(),
             "--provider_type".into(),
             input.provider.clone(),
             "--base_url".into(),
@@ -307,8 +307,9 @@ pub async fn send_message(
             sidecar_args.push(key.clone());
         }
 
-        let output = run_sidecar(
+        let output = run_sidecar_streaming(
             &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
+            state.app_handle.as_ref(),
         )?;
 
         let sidecar: super::SidecarChatResult = serde_json::from_str(&output)

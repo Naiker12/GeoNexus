@@ -11,6 +11,7 @@ import {
   GlobeIcon,
   HexagonIcon,
   Loader2,
+  MapPinIcon,
   MenuIcon,
   MicIcon,
   PlusIcon,
@@ -48,6 +49,7 @@ import { Textarea } from "@/components/ui/Textarea"
 import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
 import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
 import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
+import { ShapefileConnectorDialog } from "@/components/chat/ShapefileConnectorDialog"
 import { getMentionableSources } from "@/api/chat"
 import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand } from "@/types/chat"
 
@@ -479,6 +481,7 @@ function ToolMenu({
 }) {
   const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
   const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
+  const [showShapefileDialog, setShowShapefileDialog] = React.useState(false)
 
   return (
     <>
@@ -543,6 +546,20 @@ function ToolMenu({
             </span>
             <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
               LOCAL
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="min-h-8 gap-2 px-2.5 py-1.5"
+            onSelect={() => {
+              setShowShapefileDialog(true)
+            }}
+          >
+            <MapPinIcon className="size-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">
+              Shapefile
+            </span>
+            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
+              SHP
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -657,6 +674,26 @@ function ToolMenu({
         }}
       />
     )}
+    <ShapefileConnectorDialog
+      connector={{
+        id: "shapefile-connector",
+        kind: "connector",
+        label: "Shapefile",
+        sublabel: "Archivo .shp local",
+        icon: "MapPin",
+        color: "#F59E0B",
+        status: "disconnected",
+        last_synced: null,
+        asset_count: null,
+        provider: null,
+      }}
+      open={showShapefileDialog}
+      onOpenChange={setShowShapefileDialog}
+      onConnected={() => {
+        setShowShapefileDialog(false)
+        refreshSources()
+      }}
+    />
     </>
   )
 }

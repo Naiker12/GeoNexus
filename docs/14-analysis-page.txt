@@ -156,7 +156,6 @@
   Loading: skeleton 56px animate-pulse
 
   Empty: return null (se !data)
-
   Colunas:
     1. Costo hoy        → formatCost(data.cost_hoy)
     2. Costo 7d          → formatCost(data.cost_7d)

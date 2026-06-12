@@ -91,19 +91,28 @@ impl DataRepository {
         })
     }
 
-    /// Obtiene los eventos de sincronización.
-    pub async fn get_sync_events(&self, project_id: &str, limit: i64) -> Result<Vec<SyncEvent>, String> {
+    /// Obtiene los eventos de sincronización con paginación.
+    pub async fn get_sync_events(
+        &self,
+        project_id: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SyncEvent>, String> {
         if project_id.trim().is_empty() {
             return Err("project_id requerido".into());
         }
 
         let limit = limit.clamp(1, 100);
-        let rows = sqlx::query("SELECT * FROM sync_events WHERE project_id = ? ORDER BY created_at DESC LIMIT ?")
-            .bind(project_id)
-            .bind(limit)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| format!("Error listando eventos de sync: {e}"))?;
+        let offset = offset.max(0);
+        let rows = sqlx::query(
+            "SELECT * FROM sync_events WHERE project_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        )
+        .bind(project_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| format!("Error listando eventos de sync: {e}"))?;
 
         let mut events = Vec::new();
         for r in rows {

@@ -32,9 +32,11 @@ export async function getModelUsage(
 }
 
 export async function listAnalysisRuns(
-  projectId: string = DEFAULT_PROJECT_ID
+  projectId: string = DEFAULT_PROJECT_ID,
+  limit: number = 50,
+  offset: number = 0
 ): Promise<AnalysisRun[]> {
-  return invoke<AnalysisRun[]>("list_analysis_runs", { projectId })
+  return invoke<AnalysisRun[]>("list_analysis_runs", { projectId, limit, offset })
 }
 
 export async function getSkillUsage(

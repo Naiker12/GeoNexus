@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { BrainCircuitIcon, GaugeIcon, BarChart3Icon, CopyIcon, InfoIcon, MessageSquareTextIcon } from "lucide-react"
+import { RecentTracesPanel } from "@/features/workspace/traces/RecentTracesPanel"
 import { toast } from "sonner"
 import {
   Tooltip,
@@ -121,6 +122,7 @@ function ModelDetailDialog({
 export function AnalysisSidePanels() {
   return (
     <aside className="grid content-start gap-3">
+      <RecentTracesPanel />
       <ModelUsagePanel />
       <SkillPanel />
       <TopQueriesPanel />

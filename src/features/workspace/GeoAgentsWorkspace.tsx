@@ -8,6 +8,7 @@ import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
+import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
 type GeoAgentsWorkspaceProps = {
@@ -35,6 +36,7 @@ export function GeoAgentsWorkspace({
   const isGraph = activeRoute.startsWith("#conocimiento")
   const isAnalysis = activeRoute.startsWith("#uso")
   const isMcp = activeRoute.startsWith("#mcp")
+  const isSkills = activeRoute.startsWith("#skills")
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
@@ -54,6 +56,8 @@ export function GeoAgentsWorkspace({
           <GraphPage />
         ) : isAnalysis ? (
           <AnalysisPage />
+        ) : isSkills ? (
+          <SkillsPage />
         ) : isMcp ? (
           <McpServersPage />
         ) : isConnectors ? (

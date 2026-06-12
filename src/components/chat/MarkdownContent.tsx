@@ -71,7 +71,7 @@ export function MarkdownContent({
   return (
     <div
       className={cn(
-        "space-y-2 text-sm leading-relaxed text-foreground",
+        "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere",
         isStreaming &&
           "after:content-['▋'] after:ml-0.5 after:animate-pulse after:text-emerald-500"
       )}

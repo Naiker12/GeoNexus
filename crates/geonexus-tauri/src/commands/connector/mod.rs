@@ -1,10 +1,12 @@
 pub mod register;
 pub mod list;
 pub mod sync;
+pub mod dropbox;
 
 pub use register::*;
 pub use list::*;
 pub use sync::*;
+pub use dropbox::*;
 
 use geonexus_core::AssetKind;
 

@@ -10,6 +10,8 @@ type ToastInput = {
   variant?: ToastVariant
   /** Keep toast visible until dismissed (for loading states) */
   persistent?: boolean
+  /** Override default duration in ms */
+  duration?: number
   /** Sonner toast id for later dismissal */
   id?: string | number
 }
@@ -17,8 +19,8 @@ type ToastInput = {
 export function useToast() {
   return {
     toast: (input: ToastInput) => {
-      const { title, description, variant = "info", persistent, id } = input
-      const opts = { description, duration: persistent ? Infinity : undefined, id }
+      const { title, description, variant = "info", persistent, duration, id } = input
+      const opts = { description, duration: duration ?? (persistent ? Infinity : undefined), id }
       switch (variant) {
         case "success":
           return sonnerToast.success(title, opts)

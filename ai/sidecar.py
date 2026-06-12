@@ -59,6 +59,14 @@ def _chat(args) -> None:
     _print(chat_llm_provider(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None))
 
 
+def _chat_stream(args) -> None:
+    from llm.router import chat_llm_provider_stream
+    messages = json.loads(args.messages) if args.messages else []
+    tools = json.loads(args.tools) if args.tools else None
+    for chunk in chat_llm_provider_stream(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None):
+        _print(chunk)
+
+
 def _list_models(args) -> None:
     from llm.router import list_llm_models
     _print(list_llm_models(args.provider_type, args.base_url))
@@ -109,7 +117,7 @@ def _extract_keywords(args) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Geo Agents AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -135,6 +143,7 @@ def main() -> None:
         "build_project_context": _build_context,
         "ping_llm": _ping,
         "chat_llm": _chat,
+        "chat_llm_stream": _chat_stream,
         "list_llm_models": _list_models,
         "search_web": _search_web,
         "extract": _extract,

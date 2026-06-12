@@ -39,13 +39,15 @@ pub async fn get_data_store_metrics(
 pub async fn get_sync_events(
     project_id: String,
     limit: Option<i64>,
+    offset: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<Vec<SyncEvent>, String> {
     if project_id.trim().is_empty() {
         return Err("project_id requerido".into());
     }
     let limit = limit.unwrap_or(50).clamp(1, 100);
-    state.repo.get_sync_events(&project_id, limit).await
+    let offset = offset.unwrap_or(0).max(0);
+    state.repo.get_sync_events(&project_id, limit, offset).await
 }
 
 #[tauri::command]

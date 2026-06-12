@@ -127,7 +127,7 @@ export function AppSidebar({
           <SidebarGroupLabel>Sistema</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.filter((i) => i.title === "Conectores" || i.title === "Uso").map((item) => (
+              {navigationItems.filter((i) => i.title === "Conectores" || i.title === "Uso" || i.title === "Skills").map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

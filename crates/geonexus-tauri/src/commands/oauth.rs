@@ -1,6 +1,5 @@
-/// Comandos OAuth para OneDrive y otros proveedores en la nube.
-/// Maneja el intercambio de PKCE y el almacenamiento de tokens a través de Tauri stronghold.
-
+use rand::Rng;
+use sha2::{Sha256, Digest};
 use tauri::Manager;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -17,8 +16,148 @@ pub struct OAuthUserInfo {
     pub email: String,
 }
 
+#[derive(serde::Serialize)]
+pub struct PkceChallenge {
+    pub code_verifier: String,
+    pub code_challenge: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct OAuthProviderConfig {
+    pub auth_url: String,
+    pub client_id: String,
+    pub redirect_uri: String,
+    pub scope: String,
+}
+
+const PKCE_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+
+/// Genera un code_verifier aleatorio (128 bytes) y su code_challenge SHA-256.
+#[tauri::command]
+pub fn generate_pkce_challenge() -> PkceChallenge {
+    let mut rng = rand::thread_rng();
+    let verifier: String = (0..128)
+        .map(|_| {
+            let idx = rng.gen_range(0..PKCE_CHARS.len());
+            PKCE_CHARS[idx] as char
+        })
+        .collect();
+
+    let mut hasher = Sha256::new();
+    hasher.update(verifier.as_bytes());
+    let hash = hasher.finalize();
+
+    let challenge = base64::Engine::encode(
+        &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+        hash,
+    );
+
+    PkceChallenge {
+        code_verifier: verifier,
+        code_challenge: challenge,
+    }
+}
+
+/// Construye la URL de autorización OAuth para un proveedor dado.
+#[tauri::command]
+pub fn build_oauth_url(
+    provider: String,
+    client_id: String,
+    redirect_uri: String,
+    scope: String,
+    code_challenge: String,
+) -> Result<String, String> {
+    match provider.as_str() {
+        "onedrive" => {
+            let tenant = std::env::var("ONEDRIVE_TENANT_ID").unwrap_or_else(|_| "common".into());
+            Ok(format!(
+                "https://login.microsoftonline.com/{}/oauth2/v2.0/authorize?{}",
+                tenant,
+                urlencode_params(&[
+                    ("client_id", &client_id),
+                    ("response_type", "code"),
+                    ("redirect_uri", &redirect_uri),
+                    ("scope", &scope),
+                    ("code_challenge", &code_challenge),
+                    ("code_challenge_method", "S256"),
+                ])
+            ))
+        }
+        "dropbox" => Ok(format!(
+            "https://www.dropbox.com/oauth2/authorize?{}",
+            urlencode_params(&[
+                ("client_id", &client_id),
+                ("response_type", "code"),
+                ("redirect_uri", &redirect_uri),
+                ("token_access_type", "offline"),
+                ("code_challenge", &code_challenge),
+                ("code_challenge_method", "S256"),
+            ])
+        )),
+        _ => Err(format!("Proveedor OAuth no soportado: {provider}")),
+    }
+}
+
+/// Abre el navegador del sistema con la URL de autorización OAuth.
+/// Almacena el code_verifier temporalmente en el estado de la app.
+#[tauri::command]
+pub async fn start_oauth_flow(
+    app: tauri::AppHandle,
+    provider: String,
+    client_id: String,
+    redirect_uri: String,
+    scope: String,
+) -> Result<String, String> {
+    let challenge = generate_pkce_challenge();
+
+    let auth_url = build_oauth_url(
+        provider.clone(),
+        client_id,
+        redirect_uri,
+        scope,
+        challenge.code_challenge,
+    )?;
+
+    // Almacenar code_verifier temporal en una variable de entorno (para este proceso)
+    std::env::set_var(format!("GX_OAUTH_VERIFIER_{}", provider), &challenge.code_verifier);
+
+    // Abrir navegador del sistema usando tauri-plugin-opener
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(&auth_url, None::<&str>)
+        .map_err(|e| format!("Error al abrir navegador: {e}"))?;
+
+    Ok(auth_url)
+}
+
+fn urlencode_params(params: &[(&str, &str)]) -> String {
+    params
+        .iter()
+        .map(|(k, v)| format!(
+            "{}={}",
+            urlencoding(k),
+            urlencoding(v)
+        ))
+        .collect::<Vec<_>>()
+        .join("&")
+}
+
+fn urlencoding(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                result.push(byte as char);
+            }
+            _ => {
+                result.push_str(&format!("%{:02X}", byte));
+            }
+        }
+    }
+    result
+}
+
 /// Intercambia un código de autorización OAuth por tokens usando PKCE.
-/// POST al endpoint /token de la plataforma de identidad de Microsoft.
 #[tauri::command]
 pub async fn exchange_oauth_code(
     code: String,
@@ -99,7 +238,6 @@ pub async fn get_oauth_user_info(
 }
 
 /// Almacena un token de acceso OAuth en el llavero local a través del plugin Tauri stronghold.
-/// Utiliza almacenamiento de archivo cifrado como alternativa si stronghold no está disponible.
 #[tauri::command]
 pub async fn save_oauth_token(
     app: tauri::AppHandle,
@@ -108,12 +246,10 @@ pub async fn save_oauth_token(
 ) -> Result<(), String> {
     let _key = format!("geonexus_token_{provider}");
 
-    // Intentar usar stronghold primero, con caída alternativa a archivo local cifrado
     #[cfg(feature = "stronghold")]
     {
         use tauri_plugin_stronghold::StrongholdExt;
         if let Ok(stronghold) = app.try_stronghold() {
-            // Almacenar en el cofre de stronghold
             let vault_path = vec!["geonexus".to_string(), "oauth".to_string()];
             if let Ok(mut vault) = stronghold.create_client(b"geonexus-oauth") {
                 let _ = vault.write()
@@ -123,7 +259,6 @@ pub async fn save_oauth_token(
         }
     }
 
-    // Caída alternativa: guardar en el directorio de datos de la app (menos seguro pero funcional)
     let app_data = app
         .path()
         .app_data_dir()
@@ -146,7 +281,6 @@ pub async fn get_oauth_token(
 ) -> Result<Option<String>, String> {
     let _key = format!("geonexus_token_{provider}");
 
-    // Intentar con stronghold primero
     #[cfg(feature = "stronghold")]
     {
         use tauri_plugin_stronghold::StrongholdExt;
@@ -162,7 +296,6 @@ pub async fn get_oauth_token(
         }
     }
 
-    // Caída alternativa: leer desde el directorio de datos de la app
     let app_data = app
         .path()
         .app_data_dir()

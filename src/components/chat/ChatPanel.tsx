@@ -33,6 +33,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     error,
     messages,
     pending,
+    loadingPhase,
     loadingHistory,
     contextToggles,
     setContextToggles,
@@ -155,6 +156,7 @@ export function ChatPanel(_props: ChatPanelProps) {
             <ChatTranscript
               messages={messages}
               pending={pending}
+              loadingPhase={loadingPhase}
               onSendMessage={submit}
               webSearchEnabled={webSearchEnabled}
               onEditLastUserMessage={handleEditLastUserMessage}

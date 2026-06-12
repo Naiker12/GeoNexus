@@ -4,8 +4,23 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toast"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
+import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
+import type { ToastPosition } from "@/types/notifications"
 import type { CSSProperties } from "react"
+
+const STORAGE_KEY = "geonexus:notification-settings"
+
+function readToastPosition(): ToastPosition {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed.toastPosition) return parsed.toastPosition
+    }
+  } catch { /* ignore */ }
+  return "bottom-right"
+}
 
 const themeClassNames: ThemePreset["id"][] = [
   "geo-dark",
@@ -42,8 +57,10 @@ export default function App() {
     }
   }, [activeTheme])
 
+  const toastPosition = readToastPosition()
+
   return (
-    <>
+    <NotificationSettingsProvider>
     <SidebarProvider
       className={`${activeTheme} bg-background text-foreground`}
       style={
@@ -66,8 +83,8 @@ export default function App() {
         />
       </SidebarInset>
     </SidebarProvider>
-      <Toaster />
-    </>
+      <Toaster position={toastPosition} />
+    </NotificationSettingsProvider>
   )
 }
 

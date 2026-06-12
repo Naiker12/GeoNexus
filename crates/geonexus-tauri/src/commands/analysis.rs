@@ -43,12 +43,16 @@ pub async fn get_model_usage(
 #[tauri::command]
 pub async fn list_analysis_runs(
     project_id: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<Vec<analysis_repo::AnalysisRun>, String> {
     if project_id.trim().is_empty() {
         return Err("project_id requerido".into());
     }
-    analysis_repo::list_analysis_runs(&state.db, &project_id).await
+    let limit = limit.unwrap_or(50).clamp(1, 100);
+    let offset = offset.unwrap_or(0).max(0);
+    analysis_repo::list_analysis_runs(&state.db, &project_id, limit, offset).await
 }
 
 #[tauri::command]

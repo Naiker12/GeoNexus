@@ -12,6 +12,7 @@ export type ConfigSectionId =
   | "commands"
   | "maintenance"
   | "agents"
+  | "notifications"
 
 export type ConfigSection = {
   id: ConfigSectionId
