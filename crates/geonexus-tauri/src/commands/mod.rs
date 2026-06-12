@@ -9,3 +9,4 @@ pub mod oauth;
 pub mod filesystem;
 pub mod agent;
 pub mod graph_events;
+pub mod graph;

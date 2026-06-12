@@ -1,5 +1,5 @@
-/// OAuth commands for OneDrive and other cloud providers.
-/// Handles PKCE exchange and token storage via Tauri stronghold.
+/// Comandos OAuth para OneDrive y otros proveedores en la nube.
+/// Maneja el intercambio de PKCE y el almacenamiento de tokens a través de Tauri stronghold.
 
 use tauri::Manager;
 
@@ -17,8 +17,8 @@ pub struct OAuthUserInfo {
     pub email: String,
 }
 
-/// Exchanges an OAuth authorization code for tokens using PKCE.
-/// POST to Microsoft identity platform /token endpoint.
+/// Intercambia un código de autorización OAuth por tokens usando PKCE.
+/// POST al endpoint /token de la plataforma de identidad de Microsoft.
 #[tauri::command]
 pub async fn exchange_oauth_code(
     code: String,
@@ -46,20 +46,20 @@ pub async fn exchange_oauth_code(
         .form(&params)
         .send()
         .await
-        .map_err(|e| format!("Error exchanging OAuth code: {e}"))?;
+        .map_err(|e| format!("Error al intercambiar código OAuth: {e}"))?;
 
     let status = res.status();
     let body = res.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("Token endpoint returned {status}: {body}"));
+        return Err(format!("El endpoint de token devolvió {status}: {body}"));
     }
 
     serde_json::from_str::<OAuthTokenResponse>(&body)
-        .map_err(|e| format!("Error parsing token response: {e}"))
+        .map_err(|e| format!("Error al analizar la respuesta del token: {e}"))
 }
 
-/// Retrieves user info from Microsoft Graph using an access token.
+/// Obtiene la información del usuario desde Microsoft Graph usando un token de acceso.
 #[tauri::command]
 pub async fn get_oauth_user_info(
     access_token: String,
@@ -70,13 +70,13 @@ pub async fn get_oauth_user_info(
         .header("Authorization", format!("Bearer {access_token}"))
         .send()
         .await
-        .map_err(|e| format!("Error fetching user info: {e}"))?;
+        .map_err(|e| format!("Error al obtener información del usuario: {e}"))?;
 
     let status = res.status();
     let body = res.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("Graph API returned {status}: {body}"));
+        return Err(format!("La API Graph devolvió {status}: {body}"));
     }
 
     #[derive(serde::Deserialize)]
@@ -87,19 +87,19 @@ pub async fn get_oauth_user_info(
     }
 
     let user = serde_json::from_str::<GraphUser>(&body)
-        .map_err(|e| format!("Error parsing user info: {e}"))?;
+        .map_err(|e| format!("Error al analizar la información del usuario: {e}"))?;
 
     Ok(OAuthUserInfo {
-        name: user.display_name.unwrap_or_else(|| "Unknown".into()),
+        name: user.display_name.unwrap_or_else(|| "Desconocido".into()),
         email: user
             .mail
             .or(user.user_principal_name)
-            .unwrap_or_else(|| "unknown@unknown.com".into()),
+            .unwrap_or_else(|| "desconocido@desconocido.com".into()),
     })
 }
 
-/// Stores an OAuth token in the local keychain via Tauri stronghold plugin.
-/// Falls back to encrypted file storage if stronghold is unavailable.
+/// Almacena un token de acceso OAuth en el llavero local a través del plugin Tauri stronghold.
+/// Utiliza almacenamiento de archivo cifrado como alternativa si stronghold no está disponible.
 #[tauri::command]
 pub async fn save_oauth_token(
     app: tauri::AppHandle,
@@ -108,12 +108,12 @@ pub async fn save_oauth_token(
 ) -> Result<(), String> {
     let _key = format!("geonexus_token_{provider}");
 
-    // Try stronghold first, fall back to encrypted local file
+    // Intentar usar stronghold primero, con caída alternativa a archivo local cifrado
     #[cfg(feature = "stronghold")]
     {
         use tauri_plugin_stronghold::StrongholdExt;
         if let Ok(stronghold) = app.try_stronghold() {
-            // Store in stronghold vault
+            // Almacenar en el cofre de stronghold
             let vault_path = vec!["geonexus".to_string(), "oauth".to_string()];
             if let Ok(mut vault) = stronghold.create_client(b"geonexus-oauth") {
                 let _ = vault.write()
@@ -123,22 +123,22 @@ pub async fn save_oauth_token(
         }
     }
 
-    // Fallback: store in app data dir (less secure but functional)
+    // Caída alternativa: guardar en el directorio de datos de la app (menos seguro pero funcional)
     let app_data = app
         .path()
         .app_data_dir()
-        .map_err(|e| format!("Error resolving app data dir: {e}"))?;
+        .map_err(|e| format!("Error al resolver el directorio de datos de la app: {e}"))?;
 
-    std::fs::create_dir_all(&app_data).map_err(|e| format!("Error creating app data dir: {e}"))?;
+    std::fs::create_dir_all(&app_data).map_err(|e| format!("Error al crear el directorio de datos de la app: {e}"))?;
 
     let file_path = app_data.join(format!("token_{provider}.enc"));
     std::fs::write(&file_path, &token_json)
-        .map_err(|e| format!("Error writing token file: {e}"))?;
+        .map_err(|e| format!("Error al escribir el archivo de token: {e}"))?;
 
     Ok(())
 }
 
-/// Retrieves a stored OAuth token from the local keychain.
+/// Recupera un token OAuth almacenado del llavero local.
 #[tauri::command]
 pub async fn get_oauth_token(
     app: tauri::AppHandle,
@@ -146,7 +146,7 @@ pub async fn get_oauth_token(
 ) -> Result<Option<String>, String> {
     let _key = format!("geonexus_token_{provider}");
 
-    // Try stronghold first
+    // Intentar con stronghold primero
     #[cfg(feature = "stronghold")]
     {
         use tauri_plugin_stronghold::StrongholdExt;
@@ -162,16 +162,16 @@ pub async fn get_oauth_token(
         }
     }
 
-    // Fallback: read from app data dir
+    // Caída alternativa: leer desde el directorio de datos de la app
     let app_data = app
         .path()
         .app_data_dir()
-        .map_err(|e| format!("Error resolving app data dir: {e}"))?;
+        .map_err(|e| format!("Error al resolver el directorio de datos de la app: {e}"))?;
 
     let file_path = app_data.join(format!("token_{provider}.enc"));
     if file_path.exists() {
         let data = std::fs::read_to_string(&file_path)
-            .map_err(|e| format!("Error reading token file: {e}"))?;
+            .map_err(|e| format!("Error al leer el archivo de token: {e}"))?;
         return Ok(Some(data));
     }
 

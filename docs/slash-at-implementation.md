@@ -8,7 +8,7 @@
 - El placeholder era confuso
 - La navegación por teclado en el MentionPicker no funcionaba (ArrowUp/ArrowDown/Enter atrapados por el textarea)
 
-### Archivos modificados/creados
+### Archivos modificados/creadoscontinur
 
 #### Frontend (TypeScript/React)
 

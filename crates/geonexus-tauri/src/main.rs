@@ -43,6 +43,9 @@ fn main() {
             let db = repo.pool.clone();
             let db_path_str = db_path.to_string_lossy().to_string();
 
+            // Guardar la ruta de la base de datos en la variable de entorno global para procesos hijos
+            std::env::set_var("GEONEXUS_DB_PATH", &db_path_str);
+
             // Gestionar el estado global unificado de la aplicación
             let app_handle = app.handle().clone();
             app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle) });
@@ -73,10 +76,10 @@ fn main() {
             // Fase 3
             commands::document::index_document,
             commands::document::list_document_chunks,
-            commands::document::list_graph_nodes,
-            commands::document::list_graph_edges,
+            commands::graph::list_graph_nodes,
+            commands::graph::list_graph_edges,
             commands::document::rebuild_knowledge_graph,
-            commands::document::update_node_position,
+            commands::graph::update_node_position,
             // Fase 4
             commands::containers_mcp::init_containers_mcp,
             commands::containers_mcp::dispatch_container_tool,
@@ -118,6 +121,13 @@ fn main() {
             // Graph Events
             commands::graph_events::clear_ephemeral_nodes,
             commands::graph_events::get_recent_graph_events,
+
+            // Graph CRUD & Operations
+            commands::graph::delete_graph_node,
+            commands::graph::pin_node,
+            commands::graph::restore_graph_node,
+            commands::graph::list_orphan_nodes,
+            commands::graph::merge_nodes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

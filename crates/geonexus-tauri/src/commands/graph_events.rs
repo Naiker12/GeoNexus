@@ -53,7 +53,7 @@ pub async fn get_recent_graph_events(
             .collect()
     };
 
-    // Sort by created_at descending and limit
+   
     filtered.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     filtered.truncate(limit as usize);
 

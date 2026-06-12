@@ -466,6 +466,11 @@ pub async fn send_message(
                     event_id: conversation_id.clone(),
                     icon: "".into(),
                     is_ephemeral: true,
+                    source_asset_id: None,
+                    source_chat_id: Some(conversation_id.clone()),
+                    origin_kind: "chat".into(),
+                    pinned: false,
+                    deleted_at: None,
                 };
                 extracted_nodes.push(gn.clone());
             }
@@ -516,6 +521,11 @@ pub async fn send_message(
                     event_id: conversation_id.clone(),
                     icon: "".into(),
                     is_ephemeral: true,
+                    source_asset_id: None,
+                    source_chat_id: Some(conversation_id.clone()),
+                    origin_kind: "chat".into(),
+                    pinned: false,
+                    deleted_at: None,
                 });
                 if let Some(first_node) = extracted_nodes.first() {
                     web_edges.push(GraphEdge {
