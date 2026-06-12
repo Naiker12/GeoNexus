@@ -94,7 +94,7 @@ export function MapEngineDialog({
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Estilo base">
               <NativeSelect className="w-full">
-                <option>GeoNexus tecnico</option>
+                <option>Geo Agents tecnico</option>
                 <option>Claro operativo</option>
                 <option>Oscuro GIS</option>
               </NativeSelect>

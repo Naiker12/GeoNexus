@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
@@ -135,7 +135,7 @@ export function ChatTranscript({
       {pending ? (
         <div className="flex items-start gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-            <GeoNexusIcon className="size-4" variant="nexus" />
+            <GeoAgentsIcon className="size-4" variant="nexus" />
           </div>
           <div className="flex flex-col gap-1 pt-1.5">
             <ThinkingInline

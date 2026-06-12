@@ -1,1 +1,1 @@
-"""Document readers for GeoNexus AI sidecar."""
+"""Document readers for Geo Agents AI sidecar."""

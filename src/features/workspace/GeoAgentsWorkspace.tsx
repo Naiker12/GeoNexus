@@ -10,17 +10,17 @@ import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
-type GeoNexusWorkspaceProps = {
+type GeoAgentsWorkspaceProps = {
   activeRoute: string
   configOpen: boolean
   onConfigOpenChange: (open: boolean) => void
 }
 
-export function GeoNexusWorkspace({
+export function GeoAgentsWorkspace({
   activeRoute,
   configOpen,
   onConfigOpenChange,
-}: GeoNexusWorkspaceProps) {
+}: GeoAgentsWorkspaceProps) {
   const { connectors, activeConnectorId } = useConnectors()
   const activeConnector =
     connectors.find((c) => c.id === activeConnectorId) ?? {

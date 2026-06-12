@@ -35,7 +35,7 @@ def ping_llm_provider(provider_type: str, base_url: str, model: str = "") -> Dic
             headers = {
                 "authorization": f"Bearer {api_key}",
                 "http-referer": "https://geonexus.local",
-                "x-title": "GeoNexus",
+                "x-title": "Geo Agents",
             }
             response = requests.post(
                 f"{url}/chat/completions",
@@ -141,8 +141,8 @@ def list_llm_models(provider_type: str, base_url: str) -> Dict:
                 }
             headers = {
                 "authorization": f"Bearer {api_key}",
-                "http-referer": "https://geonexus.local",
-                "x-title": "GeoNexus",
+                "http-referer": "https://geoagents.local",
+                "x-title": "Geo Agents",
             }
             response = requests.get(f"{url}/models", headers=headers, timeout=12)
             response.raise_for_status()
@@ -237,8 +237,8 @@ def chat_llm_provider(
                 }
             headers = {
                 "authorization": f"Bearer {key}",
-                "http-referer": "https://geonexus.local",
-                "x-title": "GeoNexus",
+                "http-referer": "https://geoagents.local",
+                "x-title": "Geo Agents",
                 "content-type": "application/json",
             }
             response = requests.post(

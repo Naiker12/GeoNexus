@@ -138,7 +138,7 @@ export function ConnectorSetupDialog({
               <DialogDescription className="mt-1 text-sm leading-5">
                 {isCloud
                   ? `Conecta ${provider.name} con un solo clic. Te enviaremos al navegador para iniciar sesion.`
-                  : `Configura ${provider.name} como fuente de datos local para GeoNexus IA.`}
+                  : `Configura ${provider.name} como fuente de datos local para Geo Agents.`}
               </DialogDescription>
             </div>
           </div>
@@ -235,7 +235,7 @@ function ConnectorCapabilityPanels({ provider }: { provider: ConnectorProvider }
     <div className="grid gap-3">
       <ConnectorInfoPanel icon={ShieldCheckIcon} title="Permisos solicitados" items={provider.permissions} />
       <ConnectorInfoPanel icon={WrenchIcon} title="Herramientas MCP" items={provider.tools} />
-      <ConnectorInfoPanel icon={DatabaseIcon} title="Indexa en GeoNexus" items={provider.indexTargets} />
+      <ConnectorInfoPanel icon={DatabaseIcon} title="Indexa en Geo Agents" items={provider.indexTargets} />
       <div className="rounded-lg border border-border bg-muted/40 p-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <RouteIcon className="size-4 text-primary" />
@@ -244,7 +244,7 @@ function ConnectorCapabilityPanels({ provider }: { provider: ConnectorProvider }
         <p className="mt-2 text-sm leading-5 text-muted-foreground">
           Connector Manager recibe la solicitud, valida permisos, crea el
           conector, envia archivos al indexador, genera embeddings en ChromaDB y
-          actualiza el Knowledge Graph para GeoNexus IA.
+          actualiza el Knowledge Graph para Geo Agents.
         </p>
         <p className="mt-2 text-xs text-muted-foreground">MCP: {provider.mcpServer}</p>
       </div>

@@ -1,1 +1,1 @@
-"""Document indexing pipeline for GeoNexus sidecar."""
+"""Document indexing pipeline for Geo Agents sidecar."""

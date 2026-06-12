@@ -1,4 +1,4 @@
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { ConnectCard } from "@/components/chat/ConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
@@ -35,12 +35,12 @@ export function AssistantMessage({
   return (
     <div className="group flex items-start gap-2 py-0.5">
       <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-        <GeoNexusIcon className="size-3.5" variant="nexus" />
+        <GeoAgentsIcon className="size-3.5" variant="nexus" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="mb-0.5">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-              GeoNexus IA
+              Geo Agents
             </span>
           </div>
         <ThinkingInline

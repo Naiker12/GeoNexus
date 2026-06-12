@@ -38,7 +38,7 @@ def _search_duckduckgo_lite(query: str, max_results: int = 5) -> list[dict[str, 
             "https://api.duckduckgo.com/",
             params=params,
             timeout=10,
-            headers={"User-Agent": "GeoNexus/1.0"},
+            headers={"User-Agent": "GeoAgents/1.0"},
         )
         resp.raise_for_status()
         data = resp.json()

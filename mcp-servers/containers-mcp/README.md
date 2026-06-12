@@ -1,6 +1,6 @@
 # containers-mcp
 
-Servidor MCP JSON-RPC para exponer operaciones de contenedores a GeoNexus IA.
+Servidor MCP JSON-RPC para exponer operaciones de contenedores a Geo Agents.
 
 Fase 4 implementa el proveedor `local`. Los proveedores cloud quedan preparados
 para Fase 5, cuando entren OAuth y credenciales.

@@ -212,7 +212,7 @@ export const layerLegend = [
 ]
 
 export const activeAssistant = {
-  name: "GeoNexus IA",
+  name: "Geo Agents",
   connector: "Sin proveedor",
   model: "Sin modelo",
   status: "offline",

@@ -181,7 +181,7 @@ export const connectorProviders: ConnectorProvider[] = [
     formats: ["JSON", "GeoJSON", "CSV", "XML"],
     permissions: [
       "Consultar endpoints aprobados",
-      "Transformar respuestas a datos GeoNexus",
+      "Transformar respuestas a datos Geo Agents",
       "Indexar respuestas seleccionadas",
     ],
     mcpServer: "api-mcp",

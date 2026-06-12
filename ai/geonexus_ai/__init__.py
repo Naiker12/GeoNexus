@@ -1,3 +1,3 @@
-"""GeoNexus AI package placeholder."""
+"""Geo Agents AI package placeholder."""
 
 __all__ = ["llm", "memory", "gis", "docs", "graph"]

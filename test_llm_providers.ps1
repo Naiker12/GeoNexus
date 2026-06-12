@@ -74,7 +74,7 @@ function Test-Provider {
 
 Write-Host @"
 ╔════════════════════════════════════════════════════════════════╗
-║           GeoNexus LLM Provider Test Suite                     ║
+║           Geo Agents LLM Provider Test Suite                     ║
 ║                                                                ║
 ║  Este script prueba la conexión a todos los proveedores LLM   ║
 ║                                                                ║

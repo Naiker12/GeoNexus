@@ -1,1 +1,1 @@
-"""GIS utilities for GeoNexus AI sidecar."""
+"""GIS utilities for Geo Agents AI sidecar."""

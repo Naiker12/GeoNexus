@@ -40,7 +40,7 @@ export function StoresPanel({ metrics }: { metrics: DataStoreMetrics }) {
       name: "Knowledge Graph",
       role: "Relaciones norma-zona-capa-documento",
       value: `${metrics.total_graph_nodes} nodos`,
-      detail: "Contexto relacional para GeoNexus IA.",
+      detail: "Contexto relacional para Geo Agents.",
     },
   ]
 
@@ -168,7 +168,7 @@ export function LineagePanel({ metrics }: { metrics: DataStoreMetrics }) {
       tooltip: "Construye relaciones norma↔zona↔capa",
     },
     {
-      name: "GeoNexus IA",
+      name: "Geo Agents",
       active: true,
       tooltip: "Consume todo el pipeline en cada consulta",
     },

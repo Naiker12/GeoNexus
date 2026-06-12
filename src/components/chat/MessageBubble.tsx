@@ -1,6 +1,6 @@
 import type React from "react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 
@@ -55,7 +55,7 @@ export function MessageBubble({
         {isUser ? (
           <span>TU</span>
         ) : (
-          <GeoNexusIcon className="size-3.5" variant="nexus" />
+          <GeoAgentsIcon className="size-3.5" variant="nexus" />
         )}
       </div>
 
@@ -94,7 +94,7 @@ export function AssistantMessage({
   return (
     <MessageBubble role="assistant">
       <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-        <GeoNexusIcon className="size-4" variant="agent" />
+        <GeoAgentsIcon className="size-4" variant="agent" />
         {title}
       </div>
       <p className="mt-3 text-sm font-medium">{summary}</p>

@@ -67,7 +67,7 @@ export function AddConnectorDialog({
               <DialogTitle className="text-base">Agregar conector</DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
                 Selecciona una fuente disponible o crea una conexion manual para
-                simular el flujo en GeoNexus.
+                simular el flujo en Geo Agents.
               </DialogDescription>
             </div>
           </div>

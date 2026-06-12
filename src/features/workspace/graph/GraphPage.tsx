@@ -39,6 +39,8 @@ export function GraphPage() {
   const [kindFilter, setKindFilter] = React.useState<KindFilter>("all")
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [activityOpen, setActivityOpen] = React.useState(false)
+  const [rebuilding, setRebuilding] = React.useState(false)
+  const [layoutKey, setLayoutKey] = React.useState(0)
   const canvasRef = React.useRef<HTMLDivElement | null>(null)
   const dragMovedRef = React.useRef(false)
   const dragEndTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -52,8 +54,8 @@ export function GraphPage() {
     nodes.forEach((node) => {
       initialPositions[node.id] = { x: node.x, y: node.y }
     })
-    setPositions((prev) => ({ ...prev, ...initialPositions }))
-  }, [nodes.length])
+    setPositions(initialPositions)
+  }, [nodes.length, layoutKey])
 
   React.useEffect(() => {
     if (searchOpen && inputRef.current) {
@@ -95,29 +97,32 @@ export function GraphPage() {
       strength: e.strength / 100,
     }))
 
+    const tickRef = { current: 0 }
     const simulation = forceSimulation(simNodes)
       .force(
         "link",
         forceLink(simLinks)
           .id((d: any) => d.id)
-          .distance((l: any) => 10 + (1 - l.strength) * 30)
-          .strength(0.6),
+          .distance((l: any) => 15 + (1 - l.strength) * 40)
+          .strength(0.5),
       )
-      .force("charge", forceManyBody().strength(-120))
-      .force("center", forceCenter(50, 50))
-      .force("collision", forceCollide(18))
+      .force("charge", forceManyBody().strength(-300))
+      .force("collision", forceCollide(24))
       .force(
         "y",
-        forceY((d: any) => 10 + (depthMap[d.id] / Math.max(maxDepth, 1)) * 75).strength(0.4),
+        forceY((d: any) => 10 + (depthMap[d.id] / Math.max(maxDepth, 1)) * 75).strength(0.3),
       )
       .force(
         "x",
-        forceX(50).strength(0.08),
+        forceX(50).strength(0.04),
       )
       .alpha(1)
-      .alphaDecay(0.04)
-      .velocityDecay(0.35)
+      .alphaMin(0.001)
+      .alphaDecay(0.015)
+      .velocityDecay(0.12)
       .on("tick", () => {
+        tickRef.current++
+        if (tickRef.current % 2 !== 0) return
         const newPositions: Record<string, NodePosition> = {}
         simulation.nodes().forEach((n: any) => {
           newPositions[n.id] = {
@@ -129,15 +134,19 @@ export function GraphPage() {
       })
 
     return () => { simulation.stop() }
-  }, [nodes.length, edges.length])
+  }, [nodes.length, edges.length, layoutKey])
 
   const handleRebuild = async () => {
+    setRebuilding(true)
+    setLayoutKey((k) => k + 1)
     const { rebuildKnowledgeGraph } = await import("@/api/data")
     try {
       await rebuildKnowledgeGraph()
       await refresh()
     } catch (e) {
       console.error("Error al recalcular red:", e)
+    } finally {
+      setTimeout(() => setRebuilding(false), 400)
     }
   }
 
@@ -214,7 +223,7 @@ export function GraphPage() {
   const hasGraphData = nodes.length > 0
   const recentEvents = React.useMemo(() => {
     return nodes
-      .filter((n) => n.source_event)
+      .slice()
       .sort((a, b) => b.created_at - a.created_at)
       .slice(0, 20)
   }, [nodes])
@@ -279,10 +288,10 @@ export function GraphPage() {
             </span>
           </div>
 
-          {loading ? (
+          {loading || rebuilding ? (
             <div className="flex size-full items-center justify-center gap-2 text-sm text-muted-foreground bg-background/75">
-              <RefreshCwIcon className="size-4 animate-spin" />
-              Cargando base de conocimiento...
+              <RefreshCwIcon className={cn("size-4", rebuilding && "animate-spin")} />
+              {rebuilding ? "Recalculando red..." : "Cargando base de conocimiento..."}
             </div>
           ) : !hasGraphData ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -458,15 +467,15 @@ function GraphCanvas({
                 x2={target.x}
                 y2={target.y}
                 className={cn(
-                  "transition-all duration-300",
+                  "transition-all duration-500",
                   isPulsing
                     ? "stroke-amber-400/80"
                     : active
-                      ? "stroke-primary/60"
-                      : "stroke-primary/25"
+                      ? "stroke-primary/70"
+                      : "stroke-foreground/20 dark:stroke-primary/30"
                 )}
-                strokeWidth={isPulsing ? 1.5 : active ? 1.2 : Math.max(0.4, edge.strength / 140)}
-                strokeDasharray={isPulsing ? "none" : active ? "1.2,1.8" : "0.8,2.2"}
+                strokeWidth={isPulsing ? 1.5 : active ? 1.2 : Math.max(0.5, edge.strength / 130)}
+                strokeDasharray={isPulsing ? "none" : active ? "1.2,1.8" : "1.2,2.8"}
                 vectorEffect="non-scaling-stroke"
                 filter={isPulsing ? "url(#pulse-glow)" : undefined}
               >
@@ -479,9 +488,9 @@ function GraphCanvas({
                   />
                 )}
               </line>
-              <circle r="0.3" className="fill-primary/60">
+              <circle r="0.35" className="fill-foreground/40 dark:fill-primary/60">
                 <animateMotion
-                  dur={`${3 + (1 - edge.strength / 100) * 4}s`}
+                  dur={`${4 + (1 - edge.strength / 100) * 6}s`}
                   repeatCount="indefinite"
                   path={`M ${source.x} ${source.y} L ${target.x} ${target.y}`}
                 />

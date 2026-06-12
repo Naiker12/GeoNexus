@@ -43,7 +43,7 @@ export function ThemeSettingsDialog({
             <div className="min-w-0">
               <DialogTitle className="text-base font-bold">Apariencia</DialogTitle>
               <DialogDescription className="mt-1 max-w-lg text-sm leading-5">
-                Ajusta el tema visual de GeoNexus sin cambiar tus datos ni el
+                Ajusta el tema visual de Geo Agents sin cambiar tus datos ni el
                 contexto de trabajo.
               </DialogDescription>
             </div>

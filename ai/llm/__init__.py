@@ -1,1 +1,1 @@
-"""LLM provider wrappers for GeoNexus AI sidecar."""
+"""LLM provider wrappers for Geo Agents AI sidecar."""

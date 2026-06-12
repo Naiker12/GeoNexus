@@ -1,6 +1,6 @@
 import { CircleIcon } from "lucide-react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { cn } from "@/lib/utils"
 
 type AiStatusPillProps = {
@@ -31,7 +31,7 @@ export function AiStatusPill({
       <CircleIcon
         className={cn("size-2 fill-current", isOnline && "text-primary")}
       />
-      <GeoNexusIcon className="size-4" variant="agent" />
+      <GeoAgentsIcon className="size-4" variant="agent" />
       <span>{connector}</span>
       <span className="text-current/60">-</span>
       <span>{model}</span>

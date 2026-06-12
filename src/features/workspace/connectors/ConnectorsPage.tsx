@@ -41,7 +41,7 @@ export function ConnectorsPage() {
                   </div>
                   <p className="mt-0.5 max-w-3xl text-xs leading-4 text-muted-foreground">
                     Conecta OneDrive, SharePoint y otras fuentes para cargar
-                    capas GIS, documentos POT y resultados sin salir de GeoNexus.
+                    capas GIS, documentos POT y resultados sin salir de Geo Agents.
                   </p>
                 </div>
               </div>

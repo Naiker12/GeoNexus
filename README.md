@@ -1,142 +1,85 @@
-# GeoNexus
+# Geo Agents
 
-**GeoNexus** es una plataforma desktop offline-first para analisis geoespacial, consulta normativa POT, documentos tecnicos, grafos de conocimiento y herramientas GIS conectadas por IA.
-
-![Vista principal de GeoNexus](public/Geonexus.png)
+**Geo Agents** es una plataforma de agentes IA para análisis geoespacial, consulta normativa, documentos técnicos y herramientas GIS conectadas. Cada agente es un módulo independiente que puede ejecutar tareas específicas usando LLMs, MCP servers y datos locales o en la nube.
 
 ## Objetivo
 
-GeoNexus busca ser un centro de conexion para datos geograficos, documentos normativos y modelos de IA. La aplicacion permite trabajar con mapas, capas GIS, archivos tecnicos, chat IA, memoria semantica y servidores MCP, manteniendo una arquitectura local-first donde los datos pueden permanecer en la maquina del usuario.
+Unificar la consulta de información territorial (normas POT, capas GIS, documentos técnicos, datos estructurados) en un solo entorno desktop donde el usuario conversa con agentes IA especializados que orquestan herramientas, recuperan contexto y producen respuestas trazables.
 
-El sistema esta pensado para urbanismo, arquitectura, planeacion territorial, analisis POT y flujos GIS donde se necesita trazabilidad: saber que documento, capa, norma o tool produjo cada respuesta.
+## Agentes
+
+| Agente | Función |
+|---|---|
+| **Planner Agent** | Orquesta la solicitud del usuario y delega a los agentes especializados. |
+| **GIS Agent** | Visualiza capas, ejecuta buffer, distancia, heatmap, clustering sobre QGIS/ArcGIS. |
+| **Research Agent** | Busca en documentos, web, OneDrive, SharePoint y fuentes externas. |
+| **Data Agent** | Analiza CSV, Excel, bases SQL y produce reportes estructurados. |
+| **Document Agent** | Indexa PDFs, DOCX, contratos e informes para consulta con citas. |
+| **Coding Agent** | Lee repositorios, ejecuta herramientas MCP y asiste en desarrollo. |
 
 ## Funciones principales
 
-| Funcion | Para que sirve |
-| --- | --- |
-| Chat IA | Consultar normas POT, pedir analisis GIS, subir archivos y ejecutar acciones asistidas por IA. |
-| Mapa | Visualizar capas geograficas y resultados de analisis sobre motores de mapa configurables. |
-| Documentos | Subir, conectar e indexar PDFs, DOCX, DXF, ZIP, GeoJSON y fuentes externas para consulta con citas. |
-| Grafo | Explorar relaciones entre documentos, normas, zonas, capas GIS y conceptos tecnicos. |
-| Servidores MCP | Administrar herramientas externas como QGIS MCP, Memory MCP, AI MCP y UI MCP. |
-| Datos | Preparar la futura gestion de capas, proyectos, tablas y registros estructurados. |
-| Temas | Cambiar la apariencia visual de la app sin alterar el contexto de trabajo. |
-| Multi-LLM | Conectar modelos locales o cloud como Ollama, LM Studio, OpenRouter y APIs compatibles. |
-| Memoria semantica | Guardar y recuperar contexto de proyectos, normas POT, conversaciones y conocimiento GIS. |
-| Tool-calls GIS | Ejecutar herramientas como buffer, distancia, carga de capas, heatmap, clustering y consulta POT. |
+| Función | Agente | Descripción |
+|---|---|---|
+| Chat IA | Planner | Conversación con agentes, envío de archivos, ejecución de tools. |
+| Mapa | GIS | Visualización de capas geográficas y resultados de análisis. |
+| Documentos | Document | Subida, conexión e indexación de PDFs, DOCX, DXF, GeoJSON. |
+| Grafo | — | Red de conocimiento que relaciona documentos, normas, zonas y capas. |
+| Datos | Data | Gestión de capas, proyectos, tablas y registros estructurados. |
+| Conectores | — | Fuentes externas: OneDrive, SharePoint, Google Drive, S3, Local. |
+| Servidores MCP | — | Herramientas externas: QGIS MCP, Memory MCP, AI MCP, ArcGIS MCP. |
+| Multi-LLM | Todos | Conexión a Ollama, LM Studio, OpenRouter, OpenAI, Anthropic. |
 
 ## Arquitectura
 
-GeoNexus sigue una arquitectura monolitica modular:
-
-```text
-React UI
-  -> Tauri Commands
-    -> Core Rust
-      -> MCP Router
-        -> MCP Servers
-    -> AI Sidecar Python
-      -> LLM Router
-      -> ChromaDB / memoria
-      -> GeoPandas / Shapely
+```
+Usuario
+  └→ Planner Agent
+       ├→ GIS Agent      (QGIS MCP, ArcGIS MCP, GeoPandas)
+       ├→ Research Agent (Web, PDFs, OneDrive, SharePoint)
+       ├→ Data Agent     (CSV, Excel, SQL, Power BI)
+       ├→ Document Agent (Word, PDF, contratos)
+       └→ Coding Agent   (GitHub, VS Code, MCP, repos)
+            └→ LLM Router → ChromaDB / Knowledge Graph
+                 └→ MCP Router → MCP Servers
 ```
 
 Principios del sistema:
 
-- **Offline-first:** Ollama, LM Studio, SQLite, ChromaDB y herramientas locales permiten operar sin internet.
-- **Multi-LLM:** el proveedor de IA se puede cambiar sin reiniciar el sistema.
-- **Multi-mapa:** la arquitectura contempla ArcGIS JS, MapLibre GL, Leaflet y Deck.gl.
-- **MCP-extensible:** las herramientas GIS se conectan como servidores MCP sin recompilar el core.
-- **Seguridad por defecto:** keys en keychain, allowlist localhost, tokens HMAC y schemas fijos para tools.
-- **Trazabilidad:** cada tool-call debe conservar `trace_id`, servidor, duracion, proveedor IA y resultado.
+- **Offline-first:** Ollama, LM Studio, SQLite, ChromaDB permiten operar sin internet.
+- **Multi-LLM:** el proveedor de IA se cambia sin reiniciar el sistema.
+- **Multi-mapa:** ArcGIS JS, MapLibre GL, Leaflet y Deck.gl.
+- **MCP-extensible:** las herramientas se conectan como servidores MCP sin recompilar el core.
+- **Seguridad por defecto:** keys en keychain, allowlist localhost, tokens HMAC.
+- **Trazabilidad:** cada tool-call conserva `trace_id`, servidor, duración y resultado.
 
-## Modulos de la aplicacion
+## Stack técnico
 
-| Modulo | Ruta | Responsabilidad |
-| --- | --- | --- |
-| Workspace | `src/features/workspace` | Layout principal, paginas de documentos, grafo, MCP y contenedores IA. |
-| Chat | `src/components/chat` | Composer, mensajes, tool-calls y entrada de usuario. |
-| Mapas | `src/features/map` y `src/components/map` | Motor de mapa y adaptadores visuales. |
-| Documentos | `src/features/workspace/documents` | Fuentes, biblioteca documental e indexacion visual. |
-| Grafo | `src/features/workspace/graph` | Red interactiva de conocimiento y relaciones. |
-| MCP | `src/features/workspace/mcp` | Vista de servidores, tools, seguridad y trazas. |
-| IA | `src/features/workspace/ai-containers` | Proveedores, modelos, endpoints y configuracion. |
-| Stores | `src/store` | Estado global previsto para proyectos, mapa, chat, LLM y MCP. |
-| API | `src/api` | Bindings tipados hacia Tauri commands. |
-| Rust crates | `crates/*` | Core, MCP router, DB y shell Tauri. |
-| Python AI | `ai/*` | LLM router, memoria, GIS, documentos y grafo. |
-
-## Servidores MCP previstos
-
-| Servidor | Tools | Uso |
-| --- | --- | --- |
-| `qgis-mcp` | `buffer`, `distance`, `load_layer`, `heatmap`, `cluster` | Procesamiento GIS complejo con QGIS. |
-| `memory-mcp` | `query_pot`, `store_context`, `recall` | Consulta normativa, memoria semantica y recuperacion de contexto. |
-| `ai-mcp` | `switch_llm` | Cambio controlado de proveedor/modelo IA. |
-| `ui-mcp` | `switch_map` | Acciones de interfaz como cambio de motor de mapa. |
-| `arcgis-mcp` | Futuro | Sincronizacion con ArcGIS Online, Portal y servicios externos. |
-
-## Stack tecnico
-
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Radix UI / shadcn-style components.
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Radix UI.
 - **Desktop:** Tauri 2.
-- **Rust:** crates modulares para core, MCP, DB y shell.
-- **Python:** LLM Router, GeoPandas, Shapely, ChromaDB, lectores documentales y grafo.
-- **Base de datos:** SQLite para datos estructurados y ChromaDB para memoria semantica.
+- **Rust:** crates modulares para core, MCP, DB y shell Tauri.
+- **Python:** LLM Router, GeoPandas, Shapely, ChromaDB.
+- **Base de datos:** SQLite + ChromaDB.
 - **IA local:** Ollama y LM Studio.
-- **IA cloud opcional:** OpenRouter, OpenAI, Anthropic y APIs compatibles.
+- **IA cloud:** OpenRouter, OpenAI, Anthropic.
 
 ## Comandos
 
-Instalar dependencias:
-
 ```powershell
-pnpm install
+pnpm install          # Instalar dependencias
+pnpm run dev          # Frontend en desarrollo
+pnpm run build        # Compilar frontend
+pnpm run tauri:dev    # Ejecutar con Tauri
+pnpm run tauri:build  # Build desktop
 ```
 
-Ejecutar frontend en desarrollo:
+## Roadmap
 
-```powershell
-pnpm run dev
-```
-
-Compilar frontend:
-
-```powershell
-pnpm run build
-```
-
-Ejecutar con Tauri:
-
-```powershell
-pnpm run tauri:dev
-```
-
-Build desktop:
-
-```powershell
-pnpm run tauri:build
-```
-
-## Estado actual
-
-La interfaz base ya incluye paginas y componentes para Chat IA, Documentos, Grafo, Servidores MCP, temas y contenedores IA. Varias integraciones backend todavia estan como placeholders y deben conectarse progresivamente con Tauri commands, stores tipados, crates Rust y el sidecar Python.
-
-## Seguridad esperada
-
-- El frontend no debe llamar directamente a servidores MCP.
-- React debe comunicarse con Tauri mediante wrappers en `src/api`.
-- Las API keys no se guardan en SQLite ni en archivos planos.
-- Los servidores MCP deben pasar por allowlist, token firmado y schema fijo.
-- Los tool-calls deben registrar trazas con `trace_id`.
-
-## Roadmap resumido
-
-| Version | Enfoque |
-| --- | --- |
-| V1 | Chat IA, mapas, documentos, QGIS MCP, Memory MCP y arquitectura local-first. |
-| V1.1 | Heatmaps avanzados, clustering y exportacion PDF/DXF. |
+| Versión | Enfoque |
+|---|---|
+| V1 | Chat IA, mapas, documentos, QGIS MCP, Memory MCP, arquitectura local-first. |
+| V1.1 | Heatmaps avanzados, clustering y exportación PDF/DXF. |
 | V1.2 | Grafo de conocimiento interactivo con relaciones norma-zona. |
-| V1.3 | Sincronizacion ArcGIS Online / Portal y WMS/WFS. |
-| V2 | Flujos multi-agente para analisis y reportes. |
-
+| V1.3 | Sincronización ArcGIS Online / Portal y WMS/WFS. |
+| V2 | Flujos multi-agente para análisis y reportes. |
+| V3 | Planner Agent + agentes especializados (GIS, Research, Data, Document, Coding). |

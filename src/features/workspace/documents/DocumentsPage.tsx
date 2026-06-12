@@ -669,7 +669,7 @@ function FolderPermissionDialog({
         <DialogHeader className="px-4 pb-3 pt-4 border-b border-border">
           <DialogTitle className="text-sm">Permisos de carpeta</DialogTitle>
           <DialogDescription className="mt-1 text-xs">
-            GeoNexus necesita los siguientes permisos sobre:
+            Geo Agents necesita los siguientes permisos sobre:
             <code className="mt-1 block rounded bg-muted px-2 py-1 text-xs font-mono">{folderPath}</code>
           </DialogDescription>
         </DialogHeader>
@@ -678,7 +678,7 @@ function FolderPermissionDialog({
             {[
               ["Lectura", "Leer archivos PDF, DOCX, GeoJSON, SHP y mas formatos"],
               ["Indexacion", "Extraer texto, crear chunks y generar embeddings"],
-              ["Cache local", "Copiar archivos al cache interno de GeoNexus"],
+              ["Cache local", "Copiar archivos al cache interno de Geo Agents"],
               ["Grafo", "Vincular entidades y relaciones en el grafo de conocimiento"],
             ].map(([title, desc]) => (
               <li key={title} className="flex items-start gap-2 rounded-md border border-border bg-background/60 px-2.5 py-2">

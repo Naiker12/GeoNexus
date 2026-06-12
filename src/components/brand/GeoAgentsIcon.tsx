@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils"
 
-type GeoNexusIconProps = {
+type GeoAgentsIconProps = {
   className?: string
   variant?: "nexus" | "agent" | "terrain"
 }
 
-export function GeoNexusIcon({
+export function GeoAgentsIcon({
   className,
   variant = "nexus",
-}: GeoNexusIconProps) {
+}: GeoAgentsIconProps) {
   if (variant === "agent") {
     return (
       <svg

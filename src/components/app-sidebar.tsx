@@ -6,7 +6,7 @@ import {
   Settings2Icon,
 } from "lucide-react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import {
   Sidebar,
   SidebarContent,
@@ -57,14 +57,14 @@ export function AppSidebar({
               className={cn("font-semibold", cleanSidebarButton)}
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <GeoNexusIcon className="size-5" variant="nexus" />
+                <GeoAgentsIcon className="size-5" variant="nexus" />
               </div>
               <div className="grid flex-1 text-left leading-tight">
                 <span className="truncate text-base font-semibold">
-                  GeoNexus
+                  Geo Agents
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
-                  IA Espacial
+                  Plataforma de Agentes IA
                 </span>
               </div>
             </SidebarMenuButton>
@@ -74,10 +74,60 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
+          <SidebarGroupLabel>Agentes</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {navigationItems.filter((i) => i.title === "Chat IA" || i.title === "Mapa").map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActiveRoute(activeRoute, item.url)}
+                    className={cleanSidebarButton}
+                    tooltip={item.title}
+                  >
+                  <a
+                    href={item.url}
+                  >
+                    <item.icon className="size-4" />
+                    <span className="truncate">{item.title}</span>
+                  </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Contenido</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.filter((i) => i.title === "Documentos" || i.title === "Conocimiento" || i.title === "Datos").map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActiveRoute(activeRoute, item.url)}
+                    className={cleanSidebarButton}
+                    tooltip={item.title}
+                  >
+                  <a
+                    href={item.url}
+                  >
+                    <item.icon className="size-4" />
+                    <span className="truncate">{item.title}</span>
+                  </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Sistema</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigationItems.filter((i) => i.title === "Conectores" || i.title === "Uso").map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

@@ -5,7 +5,7 @@ import {
   PanelLeftOpenIcon,
 } from "lucide-react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { Button } from "@/components/ui/Button"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
 import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
@@ -203,7 +203,7 @@ export function ChatPanel(_props: ChatPanelProps) {
             const url = URL.createObjectURL(blob)
             const a = document.createElement("a")
             a.href = url
-            a.download = `geonexus-chat-${conversationId ?? "new"}.md`
+            a.download = `geoagents-chat-${conversationId ?? "new"}.md`
             a.click()
             URL.revokeObjectURL(url)
           }}
@@ -229,10 +229,10 @@ function EmptyChatState() {
     <div className="flex min-h-full items-center justify-center pb-16 pt-10">
       <div className="w-full max-w-3xl text-center">
         <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <GeoNexusIcon className="size-6" variant="nexus" />
+          <GeoAgentsIcon className="size-6" variant="nexus" />
         </div>
         <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-          GeoNexus IA
+          Geo Agents
         </h1>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Consulta normas POT, analiza capas GIS, sube archivos o graba una

@@ -18,8 +18,8 @@ def get_headers() -> Dict[str, str]:
     api_key = get_api_key()
     return {
         "authorization": f"Bearer {api_key}",
-        "http-referer": "https://geonexus.local",
-        "x-title": "GeoNexus",
+        "http-referer": "https://geoagents.local",
+        "x-title": "Geo Agents",
         "content-type": "application/json",
     }
 

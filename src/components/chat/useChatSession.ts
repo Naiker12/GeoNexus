@@ -284,7 +284,7 @@ export function useChatSession(
           ])
         }
 
-        toast({ title: "Respuesta recibida", description: "GeoNexus ha completado el analisis", variant: "success" })
+        toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })
       } catch (err) {
         if (researchTimerId) {
           clearInterval(researchTimerId)

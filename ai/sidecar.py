@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GeoNexus Sidecar CLI — dispatcher puro. Cada accion en su modulo."""
+"""Geo Agents Sidecar CLI — dispatcher puro. Cada accion en su modulo."""
 
 import argparse
 import json
@@ -108,7 +108,7 @@ def _extract_keywords(args) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="GeoNexus AI Sidecar CLI")
+    p = argparse.ArgumentParser(description="Geo Agents AI Sidecar CLI")
     p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")

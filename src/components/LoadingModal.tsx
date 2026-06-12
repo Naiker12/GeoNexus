@@ -17,7 +17,7 @@ export function LoadingModal({ open, onOpenChange }: LoadingModalProps) {
         <DialogHeader>
           <DialogTitle>Cargando panel</DialogTitle>
           <DialogDescription>
-            Estamos preparando la interfaz de GeoNexus. Por favor espera unos segundos.
+            Estamos preparando la interfaz de Geo Agents. Por favor espera unos segundos.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-muted/50 bg-muted/10 p-6 text-sm text-muted-foreground">

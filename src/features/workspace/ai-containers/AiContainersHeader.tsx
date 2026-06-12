@@ -1,6 +1,6 @@
 import { KeyRoundIcon } from "lucide-react"
 
-import { GeoNexusIcon } from "@/components/brand/GeoNexusIcon"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { Button } from "@/components/ui/Button"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 
@@ -45,7 +45,7 @@ export function AiContainersHeader({
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-2.5">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-              <GeoNexusIcon className="size-4" variant="agent" />
+              <GeoAgentsIcon className="size-4" variant="agent" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
@@ -63,7 +63,7 @@ export function AiContainersHeader({
               Conectar por API
             </Button>
             <Button size="sm" onClick={onAddProvider}>
-              <GeoNexusIcon className="size-4" variant="agent" />
+              <GeoAgentsIcon className="size-4" variant="agent" />
               Agregar modelo
             </Button>
           </div>

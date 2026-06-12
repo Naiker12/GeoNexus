@@ -1,6 +1,6 @@
-# GeoNexus AI modules
+# Geo Agents AI modules
 
-This folder contains Python placeholders for AI integrations used by GeoNexus.
+This folder contains Python placeholders for AI integrations used by Geo Agents.
 
 Setup (recommended):
 

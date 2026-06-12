@@ -3,7 +3,7 @@ import * as React from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toast"
-import { GeoNexusWorkspace } from "@/features/workspace/GeoNexusWorkspace"
+import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
 import type { CSSProperties } from "react"
 
@@ -59,7 +59,7 @@ export default function App() {
         onOpenConfig={() => setConfigOpen(true)}
       />
       <SidebarInset className="overflow-hidden">
-        <GeoNexusWorkspace
+        <GeoAgentsWorkspace
           activeRoute={activeRoute}
           configOpen={configOpen}
           onConfigOpenChange={setConfigOpen}

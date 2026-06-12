@@ -130,7 +130,7 @@ export function DataHeader({ assets, metrics, isLoading, onRefresh }: DataHeader
                 </div>
                 <p className="mt-0.5 max-w-4xl text-xs leading-4 text-muted-foreground">
                   Inventario de archivos, cache, embeddings, sync y grafo
-                  para auditar como entra la informacion a GeoNexus IA.
+                   para auditar como entra la informacion a Geo Agents.
                 </p>
               </div>
             </div>

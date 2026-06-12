@@ -2,7 +2,7 @@ export function TypingDots() {
   return (
     <div
       className="flex h-5 items-center gap-1 py-1"
-      aria-label="GeoNexus esta escribiendo"
+      aria-label="Geo Agents esta escribiendo"
     >
       {[0, 1, 2].map((i) => (
         <span

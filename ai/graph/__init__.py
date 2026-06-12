@@ -1,1 +1,1 @@
-"""Knowledge graph utilities for GeoNexus AI sidecar."""
+"""Knowledge graph utilities for Geo Agents AI sidecar."""

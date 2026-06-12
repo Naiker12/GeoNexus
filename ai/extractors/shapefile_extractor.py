@@ -1,4 +1,4 @@
-"""Shapefile extractor for GeoNexus.
+"""Shapefile extractor for Geo Agents.
 Extracts metadata from .shp, .gpkg, .geojson files and converts to text chunks.
 """
 

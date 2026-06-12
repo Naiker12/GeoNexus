@@ -1,1 +1,1 @@
-"""Vector memory store for GeoNexus AI sidecar."""
+"""Vector memory store for Geo Agents AI sidecar."""

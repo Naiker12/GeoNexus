@@ -23,7 +23,7 @@ pub fn build_messages(
     messages.push(json!({
         "role": "system",
         "content": concat!(
-            "Eres GeoNexus IA. Responde en espanol claro y con criterio tecnico. ",
+            "Eres Geo Agents. Responde en espanol claro y con criterio tecnico. ",
             "Puedes usar las herramientas disponibles para leer archivos y explorar ",
             "el codigo del proyecto cuando sea necesario."
         ),

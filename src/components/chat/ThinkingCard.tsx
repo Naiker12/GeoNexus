@@ -61,7 +61,7 @@ export function ThinkingCard({
             <Sparkles className="size-4 text-emerald-500" aria-hidden="true" />
             <div className="text-left">
               <p className="mb-0.5 text-[10px] font-medium uppercase leading-none tracking-widest text-muted-foreground">
-                GeoNexus IA
+                Geo Agents
               </p>
               <p className="text-sm font-medium leading-none text-foreground">
                 {isComplete ? "Análisis completado" : "Analizando tu consulta"}

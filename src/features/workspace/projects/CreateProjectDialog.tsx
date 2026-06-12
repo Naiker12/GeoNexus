@@ -43,7 +43,7 @@ const sourceOptions = [
   {
     id: "default",
     title: "Plantilla del sistema",
-    description: "Usa la estructura GeoNexus por defecto.",
+    description: "Usa la estructura Geo Agents por defecto.",
     icon: DatabaseIcon,
   },
 ] as const
@@ -70,7 +70,7 @@ export function CreateProjectDialog() {
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base">
-                Crear proyecto GeoNexus
+                Crear proyecto Geo Agents
               </DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
                 Define el proyecto y carga la informacion inicial que la IA
@@ -235,7 +235,7 @@ function SourceModePanel({ mode }: { mode: SourceMode }) {
         <div>
           <h3 className="text-sm font-semibold">Plantilla del sistema</h3>
           <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-            GeoNexus creara estructura base para documentos, capas, memoria,
+            Geo Agents creara estructura base para documentos, capas, memoria,
             analisis y trazabilidad.
           </p>
         </div>
