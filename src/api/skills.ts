@@ -23,3 +23,16 @@ export function toggleSkill(skillId: string, enabled: boolean): Promise<void> {
 export function readSkillMd(skillId: string): Promise<string> {
   return invoke<string>("read_skill_md", { skillId })
 }
+
+export function previewSkillFile(path: string): Promise<string> {
+  return invoke<string>("preview_skill_file", { path })
+}
+
+export function normalizeGithubUrl(url: string): string {
+  if (url.includes("raw.githubusercontent.com")) return url
+  const base = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+  if (!base.includes("/main/") && !base.includes("/master/")) {
+    return `${base.replace(/\/+$/, "")}/main/SKILL.md`
+  }
+  return base
+}

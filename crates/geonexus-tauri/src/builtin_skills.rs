@@ -80,6 +80,7 @@ pub fn install_builtin_skills(app: &AppHandle, pool: &sqlx::SqlitePool) -> Resul
             &skills_dir,
             None,
             now,
+            true,
         )
         .await;
 

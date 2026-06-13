@@ -53,6 +53,22 @@ pub async fn ping_mcp_server(
         &state.db, &server_id, result.online, result.latency_ms,
     ).await;
 
+    let err_count: i32 = sqlx::query_scalar("SELECT error_count FROM mcp_servers WHERE id = ?1")
+        .bind(&server_id)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0);
+
+    let _ = registry::record_server_metric(
+        &state.db, &server_id,
+        if result.online { "online" } else { "offline" },
+        result.latency_ms, err_count,
+    ).await;
+
+    if result.online {
+        let _ = registry::auto_discover_tools(&state.db, &url, &server_id).await;
+    }
+
     Ok(result)
 }
 

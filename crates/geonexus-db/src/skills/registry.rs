@@ -45,6 +45,7 @@ pub async fn install_from_file(
     skills_dir: &PathBuf,
     source_url: Option<String>,
     now_ts: i64,
+    builtin: bool,
 ) -> Result<Skill, String> {
     let content = std::fs::read_to_string(skill_md_path)
         .map_err(|e| format!("Error leyendo {skill_md_path}: {e}"))?;
@@ -71,7 +72,7 @@ pub async fn install_from_file(
         "INSERT INTO skills (id, name, description, version, category, author, tags_json,
                 mcp_servers_json, skill_md_path, skill_md_hash, source_url, enabled, builtin,
                 use_count, installed_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 0, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            version          = excluded.version,
            description      = excluded.description,
@@ -82,6 +83,7 @@ pub async fn install_from_file(
            skill_md_path    = excluded.skill_md_path,
            skill_md_hash    = excluded.skill_md_hash,
            source_url       = excluded.source_url,
+           builtin          = excluded.builtin,
            updated_at       = excluded.updated_at"
     )
     .bind(&frontmatter.name)  // id = name
@@ -95,6 +97,7 @@ pub async fn install_from_file(
     .bind(&dest_path_str)
     .bind(&hash)
     .bind(&source_url)
+    .bind(builtin as i32)
     .bind(now_ts)  // installed_at
     .bind(now_ts)  // updated_at
     .execute(pool)

@@ -32,7 +32,7 @@ pub async fn install_skill_from_file(
 
     let now = unix_now();
     geonexus_db::skills::registry::install_from_file(
-        &state.db, &skill_md_path, &skills_dir, source_url, now,
+        &state.db, &skill_md_path, &skills_dir, source_url, now, false,
     )
     .await
     .map(|s| serde_json::to_value(s).unwrap())
@@ -53,6 +53,12 @@ pub async fn read_skill_md(
     skill_id: String,
 ) -> Result<String, String> {
     geonexus_db::skills::registry::read_skill_md(&state.db, &skill_id).await
+}
+
+#[tauri::command]
+pub async fn preview_skill_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("Error leyendo {path}: {e}"))
 }
 
 #[tauri::command]
@@ -87,6 +93,7 @@ pub async fn install_skill_from_github(
         &skills_dir,
         Some(github_url),
         now,
+        false,
     )
     .await?;
 

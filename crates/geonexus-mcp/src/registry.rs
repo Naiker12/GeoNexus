@@ -49,6 +49,11 @@ pub async fn register_server(pool: &SqlitePool, payload: RegisterServerPayload) 
         }
     }
 
+    // Auto-descubrimiento de tools via JSON-RPC tools/list
+    if let Err(e) = auto_discover_tools(pool, &payload.url, &payload.id).await {
+        tracing::warn!("auto_discover_tools falló para {}: {e}", payload.id);
+    }
+
     get_server(pool, &payload.id).await
 }
 
@@ -105,7 +110,16 @@ pub async fn list_tools(pool: &SqlitePool, server_id: &str) -> Result<Vec<McpToo
 
 pub async fn upsert_tool(pool: &SqlitePool, server_id: &str, name: &str, category: &str,
     description: &str, args: &str, result: &str) -> Result<(), sqlx::Error> {
-    let tool_id = Uuid::new_v4().to_string();
+    let existing: Option<(String,)> = sqlx::query_as(
+        "SELECT id FROM mcp_tools WHERE server_id = ?1 AND name = ?2"
+    )
+    .bind(server_id)
+    .bind(name)
+    .fetch_optional(pool)
+    .await?;
+
+    let tool_id = existing.map(|r| r.0).unwrap_or_else(|| Uuid::new_v4().to_string());
+
     sqlx::query(
         "INSERT INTO mcp_tools (id, server_id, name, category, description, args, result, status)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready')
@@ -113,7 +127,8 @@ pub async fn upsert_tool(pool: &SqlitePool, server_id: &str, name: &str, categor
            category = excluded.category,
            description = excluded.description,
            args = excluded.args,
-           result = excluded.result"
+           result = excluded.result,
+           updated_at = datetime('now')"
     )
     .bind(&tool_id)
     .bind(server_id)
@@ -125,6 +140,87 @@ pub async fn upsert_tool(pool: &SqlitePool, server_id: &str, name: &str, categor
     .execute(pool)
     .await?;
     Ok(())
+}
+
+pub async fn auto_discover_tools(pool: &SqlitePool, server_url: &str, server_id: &str) -> Result<usize, String> {
+    let endpoint = server_url.trim_end_matches('/');
+    let client = reqwest::Client::new();
+
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": Uuid::new_v4().to_string(),
+        "method": "tools/list",
+    });
+
+    let response = client
+        .post(endpoint)
+        .json(&request)
+        .send()
+        .await
+        .map_err(|e| format!("Error conectando al servidor MCP: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP {} en tools/list", response.status()));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Error parsing JSON-RPC response: {e}"))?;
+
+    if let Some(err) = json.get("error") {
+        return Err(
+            err.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Error JSON-RPC en tools/list")
+                .to_string()
+        );
+    }
+
+    let tools = json
+        .get("result")
+        .and_then(|r| r.get("tools"))
+        .and_then(|t| t.as_array())
+        .ok_or_else(|| "Respuesta tools/list inválida: falta result.tools".to_string())?;
+
+    for tool in tools {
+        let name = tool.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+        let description = tool.get("description").and_then(|d| d.as_str()).unwrap_or("");
+        let input_schema = tool.get("inputSchema");
+
+        let args_json = input_schema
+            .map(|s| serde_json::to_string(s).unwrap_or_default())
+            .unwrap_or_default();
+
+        let category = infer_tool_category(name, description);
+
+        let _ = upsert_tool(pool, server_id, name, &category, description, &args_json, "").await;
+    }
+
+    Ok(tools.len())
+}
+
+fn infer_tool_category(name: &str, description: &str) -> String {
+    let lower = format!("{} {}", name, description).to_lowercase();
+    if lower.contains("gis") || lower.contains("geo") || lower.contains("map")
+        || lower.contains("spatial") || lower.contains("coordinate")
+    {
+        "gis".into()
+    } else if lower.contains("search") || lower.contains("query") || lower.contains("find")
+        || lower.contains("lookup")
+    {
+        "search".into()
+    } else if lower.contains("data") || lower.contains("file") || lower.contains("read")
+        || lower.contains("write") || lower.contains("storage")
+    {
+        "data".into()
+    } else if lower.contains("ai") || lower.contains("llm") || lower.contains("model")
+        || lower.contains("generate") || lower.contains("analyze")
+    {
+        "ai".into()
+    } else {
+        "general".into()
+    }
 }
 
 pub async fn list_allowlist(pool: &SqlitePool, server_id: &str) -> Result<Vec<AllowlistRule>, sqlx::Error> {
@@ -193,6 +289,28 @@ pub async fn check_allowlist(pool: &SqlitePool, server_id: &str, tool_name: &str
     .await?;
 
     Ok(row.map(|r| r.0 != 0).unwrap_or(true))
+}
+
+pub async fn record_server_metric(
+    pool: &SqlitePool,
+    server_id: &str,
+    status: &str,
+    latency_ms: Option<u64>,
+    error_count: i32,
+) -> Result<(), sqlx::Error> {
+    let id = Uuid::new_v4().to_string();
+    sqlx::query(
+        "INSERT INTO mcp_server_metrics (id, server_id, status, latency_ms, error_count, tool_calls_ok, tool_calls_error, sampled_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, 0, 0, datetime('now'))"
+    )
+    .bind(&id)
+    .bind(server_id)
+    .bind(status)
+    .bind(latency_ms.map(|l| l as i64))
+    .bind(error_count)
+    .execute(pool)
+    .await?;
+    Ok(())
 }
 
 pub async fn audit_tool_call(

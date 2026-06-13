@@ -1,5 +1,58 @@
 use serde::{Deserialize, Serialize};
 
+/// Evento de razonamiento emitido en tiempo real desde send_message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ReasoningStepEvent {
+    IntentClassified {
+        intent: String,
+        confidence: f32,
+        detected_entities: Vec<String>,
+    },
+    KnowledgeRetrieved {
+        chunks_found: usize,
+        assets_queried: Vec<String>,
+        top_relevance: f32,
+    },
+    WebSearching {
+        query: String,
+        sources_found: usize,
+    },
+    SkillsInjected {
+        skill_names: Vec<String>,
+        total_tokens: usize,
+    },
+    McpToolCalled {
+        server_id: String,
+        tool_name: String,
+        success: bool,
+        duration_ms: u64,
+    },
+    GraphContextLoaded {
+        nodes_count: usize,
+        edges_count: usize,
+    },
+    GeneratingResponse {
+        model: String,
+        provider: String,
+    },
+    ResponseComplete {
+        total_duration_ms: u64,
+        input_tokens: usize,
+        output_tokens: usize,
+        steps_executed: Vec<String>,
+    },
+}
+
+/// Resumen de la sesión actual para mostrar "vida previa" del agente
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SessionSummary {
+    pub message_count: usize,
+    pub skills_in_session: Vec<String>,
+    pub assets_in_session: Vec<String>,
+    pub last_topics: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MessageRole {
@@ -126,6 +179,8 @@ pub struct SendMessageResponse {
     pub validation_warnings: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub intent: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_summary: Option<SessionSummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

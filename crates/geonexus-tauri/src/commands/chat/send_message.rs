@@ -1,13 +1,15 @@
 use std::time::Instant;
 
 use geonexus_core::chat::{
-    ChunkReference, Message, MessageRole, ResearchSource, SendMessageInput, SendMessageResponse,
+    ChunkReference, Message, MessageRole, ReasoningStepEvent, ResearchSource,
+    SendMessageInput, SendMessageResponse, SessionSummary,
 };
 use geonexus_core::reasoning::QueryIntent;
 use geonexus_core::{GraphUpdatePayload, GraphEdge};
 use geonexus_db::chat_repo;
 use serde_json::json;
 use tauri::State;
+use tauri::Emitter;
 use uuid::Uuid;
 
 use super::classifier::classify_intent;
@@ -20,6 +22,18 @@ use super::validator::validate_response;
 use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
+
+fn emit_reasoning_step(handle: Option<&tauri::AppHandle>, event: &ReasoningStepEvent) {
+    if let Some(h) = handle {
+        let _ = h.emit("reasoning:step", event);
+    }
+}
+
+fn emit_reasoning_done(handle: Option<&tauri::AppHandle>, summary: &SessionSummary) {
+    if let Some(h) = handle {
+        let _ = h.emit("reasoning:done", summary);
+    }
+}
 
 #[derive(Debug, sqlx::FromRow)]
 struct EdgeRow {
@@ -66,6 +80,11 @@ pub async fn send_message(
     // === Intent Classification ===
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
+    let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::IntentClassified {
+        intent: intent_label.clone(),
+        confidence: 0.85,
+        detected_entities: vec![],
+    });
 
     // === Graph nodes + edges for enhanced context ===
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
@@ -97,6 +116,13 @@ pub async fn send_message(
     .collect();
 
     let graph_context = build_graph_context(&graph_nodes, &graph_edges, &intent);
+
+    if !graph_nodes.is_empty() {
+        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GraphContextLoaded {
+            nodes_count: graph_nodes.len(),
+            edges_count: graph_edges.len(),
+        });
+    }
 
     // === RAG context ===
     let mentioned_asset_ids_str = if input.mentioned_asset_ids.is_empty() && input.mentioned_connector_ids.is_empty() {
@@ -180,6 +206,13 @@ pub async fn send_message(
             .map(|(i, c)| format!("[{}] {}", i + 1, c.text))
             .collect::<Vec<_>>()
             .join("\n\n");
+        let top_relevance = chunks_used.iter().map(|c| c.relevance_score).fold(0.0_f32, f32::max);
+        let assets_queried: Vec<String> = chunks_used.iter().map(|c| c.asset_name.clone()).collect();
+        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::KnowledgeRetrieved {
+            chunks_found: recall_chunks.len(),
+            assets_queried,
+            top_relevance,
+        });
         format!(
             "Contexto relevante del proyecto (documentos indexados):\n{}\n\n\
              Usa este contexto para responder. Cita el numero de fuente cuando uses informacion de el.",
@@ -281,7 +314,13 @@ pub async fn send_message(
             "5",
         ]);
         match &result {
-            Ok(srcs) => eprintln!("[DEBUG] search_web OK: {} sources", srcs.len()),
+            Ok(srcs) => {
+                let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::WebSearching {
+                    query: search_query.clone(),
+                    sources_found: srcs.len(),
+                });
+                eprintln!("[DEBUG] search_web OK: {} sources", srcs.len());
+            },
             Err(e) => eprintln!("[DEBUG] search_web error: {e}"),
         }
         result.unwrap_or_default()
@@ -322,6 +361,13 @@ pub async fn send_message(
                 contents.push(content);
             }
         }
+        if !contents.is_empty() {
+            let total_tokens: usize = contents.iter().map(|c| c.len() / 4).sum();
+            let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::SkillsInjected {
+                skill_names: input.skill_names.clone(),
+                total_tokens,
+            });
+        }
         if contents.is_empty() {
             String::new()
         } else {
@@ -332,10 +378,25 @@ pub async fn send_message(
         }
     };
 
+    // Record activation for each skill used
+    if !input.skill_names.is_empty() {
+        let now = unix_now();
+        for skill_name in &input.skill_names {
+            let _ = geonexus_db::skills::registry::record_activation(
+                &state.db,
+                skill_name,
+                input.conversation_id.as_deref(),
+                Some("chat"),
+                now,
+            ).await;
+        }
+    }
+
     // === Build messages array ===
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
+    let asset_count = chunks_used.iter().map(|c| &c.asset_id).collect::<std::collections::HashSet<_>>().len();
     let mut messages =
-        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &input.content);
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &input.content, &input.skill_names, asset_count);
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
@@ -346,6 +407,11 @@ pub async fn send_message(
                 "El modelo excedio el maximo de llamadas a herramientas (10)".into(),
             );
         }
+
+        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GeneratingResponse {
+            model: input.model.clone(),
+            provider: input.provider.clone(),
+        });
 
         let mut sidecar_args: Vec<String> = vec![
             "--action".into(),
@@ -411,7 +477,19 @@ pub async fn send_message(
                     .as_str()
                     .unwrap_or("call_unknown")
                     .to_string();
+                let tool_name = tc.get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("unknown");
+                let t_start = Instant::now();
                 let result = execute_tool_call(tc);
+                let t_dur = t_start.elapsed().as_millis() as u64;
+                let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::McpToolCalled {
+                    server_id: "filesystem".into(),
+                    tool_name: tool_name.to_string(),
+                    success: true,
+                    duration_ms: t_dur,
+                });
                 messages.push(json!({
                     "role": "tool",
                     "tool_call_id": tool_call_id,
@@ -506,7 +584,7 @@ pub async fn send_message(
         } else {
             Some(research_sources.clone())
         },
-        stats: msg_stats,
+        stats: msg_stats.clone(),
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
@@ -639,6 +717,35 @@ pub async fn send_message(
         }
     }
 
+    // Build session summary for "vida previa"
+    let session_summary = SessionSummary {
+        message_count: history.len() + 1,
+        skills_in_session: input.skill_names.clone(),
+        assets_in_session: chunks_used.iter().map(|c| c.asset_name.clone()).collect(),
+        last_topics: vec![],
+    };
+
+    let _ = emit_reasoning_done(state.app_handle.as_ref(), &session_summary);
+
+    let total_duration = chat_start.elapsed().as_millis() as u64;
+    let steps_executed: Vec<String> = {
+        let mut s = vec!["intent_classified".to_string()];
+        if !graph_nodes.is_empty() { s.push("graph_context_loaded".to_string()); }
+        if !recall_chunks.is_empty() { s.push("knowledge_retrieved".to_string()); }
+        if input.web_search { s.push("web_searching".to_string()); }
+        if !input.skill_names.is_empty() { s.push("skills_injected".to_string()); }
+        s.push("generating_response".to_string());
+        s.push("response_complete".to_string());
+        s
+    };
+
+    let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::ResponseComplete {
+        total_duration_ms: total_duration,
+        input_tokens: msg_stats.as_ref().map(|s| s.input_tokens as usize).unwrap_or(0),
+        output_tokens: msg_stats.as_ref().map(|s| s.output_tokens as usize).unwrap_or(0),
+        steps_executed,
+    });
+
     Ok(SendMessageResponse {
         conversation_id,
         message: assistant_msg,
@@ -648,6 +755,7 @@ pub async fn send_message(
         search_query,
         validation_warnings,
         intent: Some(intent_label),
+        session_summary: Some(session_summary),
     })
 }
 

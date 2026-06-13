@@ -52,6 +52,8 @@ export function useMcpTerminal() {
   ping <id>       → hacer ping a un servidor
   tools <id>      → listar tools de un servidor
   status          → estado global del router
+  register <url>  → registrar servidor desde URL
+  delete <id>     → eliminar servidor
   clear           → limpiar terminal`)
       return
     }
@@ -102,6 +104,23 @@ export function useMcpTerminal() {
             addLine("info", `  ${t.name.padEnd(20)} ${t.status.padEnd(10)} ${t.category ?? ""}`)
           }
         }
+      } catch (err) {
+        addLine("error", `Error: ${err}`)
+      }
+      return
+    }
+
+    if (cmd === "status") {
+      try {
+        const servers = await listMcpServers()
+        const total = servers.length
+        const online = servers.filter(s => s.status === "online").length
+        const offline = servers.filter(s => s.status === "offline").length
+        const pending = servers.filter(s => s.status === "pending").length
+        addLine("info", `Total servidores: ${total}`)
+        addLine("success", `  Online:  ${online}`)
+        if (offline > 0) addLine("error",   `  Offline: ${offline}`)
+        if (pending > 0) addLine("info",    `  Pending: ${pending}`)
       } catch (err) {
         addLine("error", `Error: ${err}`)
       }

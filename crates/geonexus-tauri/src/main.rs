@@ -51,6 +51,27 @@ fn main() {
             let app_handle = app.handle().clone();
             app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle) });
 
+            // Cargar o crear geonexus.config.toml
+            let config_path = app_data_dir.join("geonexus.config.toml");
+            let config = geonexus_core::config::GeoNexusConfig::load_or_create(&config_path)
+                .unwrap_or_default();
+            tracing::info!("Config loaded: {} servidores MCP por defecto", config.mcp.default_servers.len());
+
+            // Registrar servidores MCP por defecto
+            for server_def in &config.mcp.default_servers {
+                let payload = geonexus_mcp::types::RegisterServerPayload {
+                    id: server_def.id.clone(),
+                    name: server_def.name.clone(),
+                    url: server_def.url.clone(),
+                    auth_type: server_def.auth_type.clone(),
+                    auth_ref: server_def.auth_ref.clone(),
+                    tools: None,
+                };
+                let _ = tauri::async_runtime::block_on(
+                    geonexus_mcp::registry::register_server(&db, payload)
+                );
+            }
+
             // Sembrar agentes por defecto si es primera ejecución
             let _ = tauri::async_runtime::block_on(
                 geonexus_db::agent_repo::seed_default_agents(&db)
@@ -58,6 +79,40 @@ fn main() {
 
             // Instalar skills built-in
             let _ = builtin_skills::install_builtin_skills(app.handle(), &db);
+
+            // Background ping interval para servidores MCP registrados
+            let bg_db = db.clone();
+            let ping_interval = std::time::Duration::from_secs(config.mcp.ping_interval_secs);
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(ping_interval);
+                interval.tick().await; // primer tick inmediato
+                loop {
+                    interval.tick().await;
+                    let servers = match geonexus_mcp::registry::list_servers(&bg_db).await {
+                        Ok(s) => s,
+                        Err(_) => continue,
+                    };
+                    for server in servers {
+                        let url = server.url.clone();
+                        let sid = server.id.clone();
+                        let result = geonexus_mcp::pinger::ping_server(&url).await;
+                        let _ = geonexus_mcp::registry::update_server_status(
+                            &bg_db, &sid, result.online, result.latency_ms,
+                        ).await;
+                        if result.online {
+                            let _ = geonexus_mcp::registry::auto_discover_tools(
+                                &bg_db, &url, &sid,
+                            ).await;
+                        }
+                        let err_count = server.error_count;
+                        let _ = geonexus_mcp::registry::record_server_metric(
+                            &bg_db, &sid,
+                            if result.online { "online" } else { "offline" },
+                            result.latency_ms, err_count,
+                        ).await;
+                    }
+                }
+            });
 
             Ok(())
         })
@@ -171,6 +226,7 @@ fn main() {
             commands::skills::install_skill_from_github,
             commands::skills::toggle_skill,
             commands::skills::read_skill_md,
+            commands::skills::preview_skill_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

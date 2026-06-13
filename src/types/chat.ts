@@ -170,6 +170,13 @@ export type ChunkReference = {
   text_preview: string
 }
 
+export type SessionSummary = {
+  message_count: number
+  skills_in_session: string[]
+  assets_in_session: string[]
+  last_topics: string[]
+}
+
 export type SendMessageResponse = {
   conversation_id: string
   message: Message
@@ -179,6 +186,28 @@ export type SendMessageResponse = {
   search_query?: string
   validation_warnings?: string[]
   intent?: string
+  session_summary?: SessionSummary
+}
+
+// ── Reasoning Events (from Rust reasoning:step) ──
+
+export type ReasoningStep =
+  | { type: "intent_classified"; intent: string; confidence: number; detected_entities: string[] }
+  | { type: "knowledge_retrieved"; chunks_found: number; assets_queried: string[]; top_relevance: number }
+  | { type: "web_searching"; query: string; sources_found: number }
+  | { type: "skills_injected"; skill_names: string[]; total_tokens: number }
+  | { type: "mcp_tool_called"; server_id: string; tool_name: string; success: boolean; duration_ms: number }
+  | { type: "graph_context_loaded"; nodes_count: number; edges_count: number }
+  | { type: "generating_response"; model: string; provider: string }
+  | { type: "response_complete"; total_duration_ms: number; input_tokens: number; output_tokens: number; steps_executed: string[] }
+
+export interface ReasoningStepDisplay {
+  id: string
+  type: string
+  label: string
+  detail: string
+  durationMs?: number
+  status: "pending" | "running" | "done" | "skipped"
 }
 
 // ── Event Preview Streaming ─────────────────────────────────────

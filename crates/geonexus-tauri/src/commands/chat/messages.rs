@@ -9,21 +9,55 @@ pub fn build_messages(
     rag_context: &str,
     skills_context: &str,
     user_content: &str,
+    skill_names: &[String],
+    asset_count: usize,
 ) -> Vec<serde_json::Value> {
     let mut messages = vec![];
 
+    let msg_count = history.len();
+    let has_history = msg_count > 0;
+    let skills_note = if skill_names.is_empty() {
+        String::new()
+    } else {
+        format!(" Skills activos en esta sesión: {}.", skill_names.join(", "))
+    };
+    let assets_note = if asset_count > 0 {
+        format!(" {} fuentes de datos referenciadas.", asset_count)
+    } else {
+        String::new()
+    };
+    let first_msg_instruction = if !has_history {
+        "Preséntate brevemente como Geo Agents, asistente de análisis geoespacial.".to_string()
+    } else {
+        format!(
+            "Esta conversación tiene {} mensajes previos. \
+             Haz referencia a lo que se habló antes: 'Como vimos anteriormente...', \
+             'Continuando con el análisis de...'. \
+             Varía tu apertura, no siempre empieces igual. \
+             Menciona explícitamente qué skills o fuentes estás usando.",
+            msg_count
+        )
+    };
+
     messages.push(json!({
         "role": "system",
-        "content": concat!(
-            "Eres Geo Agents, un asistente experto en analisis territorial, ",
-            "normativa urbana, GIS, y gestion de conocimiento geoespacial. ",
-            "Responde en espanol claro y directo. ",
-            "Usa el contexto del proyecto cuando sea relevante. ",
-            "Si no tienes informacion suficiente, indicalo claramente. ",
-            "Puedes usar herramientas (read_file, search_code, ",
-            "list_directory, glob_files) para explorar archivos del proyecto. ",
-            "Usa texto plano. Separa listas con guiones. ",
-            "Codigo en bloque con triple backtick."
+        "content": format!(
+            "Eres Geo Agents, un asistente experto en analisis territorial, \
+             normativa urbana, GIS, y gestion de conocimiento geoespacial. \
+             Responde en espanol claro y directo. \
+             Usa el contexto del proyecto cuando sea relevante. \
+             Si no tienes informacion suficiente, indicalo claramente. \
+             Puedes usar herramientas (read_file, search_code, \
+             list_directory, glob_files) para explorar archivos del proyecto. \
+             Usa texto plano. Separa listas con guiones. \
+             Codigo en bloque con triple backtick.\n\n\
+             ## Comportamiento conversacional\n\
+             {} \
+             {}{}\n\
+             Cuando uses un skill, menciona explícitamente cuál estás aplicando. \
+             Cuando consultes datos, menciona qué fuentes usaste. \
+             Cuando no encuentres información, sé específico sobre qué faltó.",
+            first_msg_instruction, skills_note, assets_note
         ),
     }));
 
