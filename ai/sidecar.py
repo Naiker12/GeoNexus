@@ -52,17 +52,31 @@ def _ping(args) -> None:
     _print(ping_llm_provider(args.provider_type, args.base_url, args.model))
 
 
+def _load_json_arg(raw: str, file_path: str | None) -> list | dict | None:
+    if file_path:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            _err(f"No se pudo leer {file_path}: {e}")
+    if raw:
+        return json.loads(raw)
+    return None
+
+
 def _chat(args) -> None:
     from llm.router import chat_llm_provider
-    messages = json.loads(args.messages) if args.messages else [{"role": "user", "content": args.prompt}]
-    tools = json.loads(args.tools) if args.tools else None
+    messages = _load_json_arg(args.messages, args.messages_file)
+    if messages is None:
+        messages = [{"role": "user", "content": args.prompt}]
+    tools = _load_json_arg(args.tools, args.tools_file)
     _print(chat_llm_provider(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None))
 
 
 def _chat_stream(args) -> None:
     from llm.router import chat_llm_provider_stream
-    messages = json.loads(args.messages) if args.messages else []
-    tools = json.loads(args.tools) if args.tools else None
+    messages = _load_json_arg(args.messages, args.messages_file) or []
+    tools = _load_json_arg(args.tools, args.tools_file)
     for chunk in chat_llm_provider_stream(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None):
         _print(chunk)
 
@@ -96,7 +110,7 @@ def _extract_chat_entities(args) -> None:
 
 def _extract_graph_entities(args) -> None:
     from graph.extractor import extract_graph_entities
-    chunks = json.loads(args.chunks_json) if args.chunks_json else []
+    chunks = _load_json_arg(args.chunks_json, args.chunks_file) or []
     _print(extract_graph_entities(chunks, args.project_id, args.workspace_id))
 
 
@@ -127,9 +141,12 @@ def main() -> None:
     p.add_argument("--model", default="")
     p.add_argument("--prompt", default="")
     p.add_argument("--messages", default="")
+    p.add_argument("--messages_file", default="")
     p.add_argument("--tools", default="")
+    p.add_argument("--tools_file", default="")
     p.add_argument("--api_key", default="")
     p.add_argument("--chunks_json", default="")
+    p.add_argument("--chunks_file", default="")
     p.add_argument("--query", default="")
     p.add_argument("--top_k", type=int, default=4)
     p.add_argument("--collection", default="project_memory")

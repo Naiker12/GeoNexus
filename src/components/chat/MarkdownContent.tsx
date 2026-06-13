@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, memo } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -26,6 +26,44 @@ interface MarkdownContentProps {
 type Segment =
   | { type: "md"; text: string }
   | { type: "chart"; code: string }
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  js: "JavaScript",
+  jsx: "JSX",
+  ts: "TypeScript",
+  tsx: "TSX",
+  py: "Python",
+  rs: "Rust",
+  go: "Go",
+  rb: "Ruby",
+  java: "Java",
+  kt: "Kotlin",
+  swift: "Swift",
+  cpp: "C++",
+  c: "C",
+  cs: "C#",
+  php: "PHP",
+  html: "HTML",
+  css: "CSS",
+  scss: "SCSS",
+  json: "JSON",
+  yaml: "YAML",
+  yml: "YAML",
+  xml: "XML",
+  sql: "SQL",
+  sh: "Shell",
+  bash: "Bash",
+  zsh: "Zsh",
+  powershell: "PowerShell",
+  ps1: "PowerShell",
+  dockerfile: "Dockerfile",
+  diff: "Diff",
+  graphql: "GraphQL",
+  md: "Markdown",
+  txt: "Text",
+  env: ".env",
+  ignore: ".gitignore",
+}
 
 function splitContent(content: string): Segment[] {
   const segments: Segment[] = []
@@ -62,20 +100,37 @@ function splitContent(content: string): Segment[] {
   return segments
 }
 
-export function MarkdownContent({
+function StreamingContent({ content }: { content: string }) {
+  const lines = useMemo(() => {
+    const trimmed = content.replace(/\n{3,}/g, "\n\n")
+    return trimmed.split("\n").filter(Boolean)
+  }, [content])
+
+  if (lines.length <= 3) {
+    return <p className="mb-2 leading-relaxed whitespace-pre-wrap">{content}</p>
+  }
+
+  return (
+    <>
+      {lines.slice(0, 3).map((line, i) => (
+        <p key={i} className="mb-1 leading-relaxed whitespace-pre-wrap last:mb-0">
+          {line}
+        </p>
+      ))}
+      <span className="text-xs text-muted-foreground">···</span>
+    </>
+  )
+}
+
+const RenderedContent = memo(function RenderedContent({
   content,
-  isStreaming,
-}: MarkdownContentProps) {
+}: {
+  content: string
+}) {
   const segments = useMemo(() => splitContent(content), [content])
 
   return (
-    <div
-      className={cn(
-        "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere",
-        isStreaming &&
-          "after:content-['▋'] after:ml-0.5 after:animate-pulse after:text-emerald-500"
-      )}
-    >
+    <>
       {segments.map((seg, i) =>
         seg.type === "chart" ? (
           <ChartFromText key={i} code={seg.code} />
@@ -159,7 +214,7 @@ export function MarkdownContent({
               tr({ children }) {
                 return <tr className="even:bg-muted/20">{children}</tr>
               },
-              code({ node, className, children, ...props }) {
+              code({ className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || "")
                 const language = match?.[1] ?? ""
                 const codeString = String(children).replace(/\n$/, "")
@@ -183,9 +238,31 @@ export function MarkdownContent({
           </ReactMarkdown>
         )
       )}
+    </>
+  )
+})
+
+export const MarkdownContent = memo(function MarkdownContent({
+  content,
+  isStreaming,
+}: MarkdownContentProps) {
+  return (
+    <div
+      className={cn(
+        "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere"
+      )}
+    >
+      {isStreaming ? (
+        <StreamingContent content={content} />
+      ) : (
+        <RenderedContent content={content} />
+      )}
+      {isStreaming && (
+        <span className="inline-block w-[3px] h-[1em] ml-0.5 bg-emerald-500 animate-pulse align-middle" />
+      )}
     </div>
   )
-}
+})
 
 function ChartFromText({ code }: { code: string }) {
   const parsed = parseAsciiChart(code)
@@ -258,12 +335,21 @@ function CodeBlock({
     }
   }
 
+  const label = LANGUAGE_LABELS[language] || language || "code"
+
   return (
     <div className="my-3 rounded-lg border border-border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-1.5 bg-muted border-b border-border">
-        <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-wide">
-          {language || "code"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="flex gap-1">
+            <span className="size-2.5 rounded-full bg-red-500" />
+            <span className="size-2.5 rounded-full bg-yellow-500" />
+            <span className="size-2.5 rounded-full bg-green-500" />
+          </span>
+          <span className="text-[11px] font-mono text-muted-foreground">
+            {label}
+          </span>
+        </div>
         <button
           onClick={handleCopy}
           className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
@@ -282,24 +368,26 @@ function CodeBlock({
           )}
         </button>
       </div>
-      <SyntaxHighlighter
-        language={language || "text"}
-        style={oneDark}
-        customStyle={{
-          margin: 0,
-          padding: "1rem",
-          fontSize: "12.5px",
-          lineHeight: "1.6",
-          background: "var(--color-muted)",
-        }}
-        codeTagProps={{
-          style: { fontFamily: "var(--font-mono, inherit)" },
-        }}
-      >
-        {code}
-      </SyntaxHighlighter>
+      <div className="overflow-x-auto">
+        <SyntaxHighlighter
+          language={language || "text"}
+          style={oneDark}
+          wrapLongLines={false}
+          customStyle={{
+            margin: 0,
+            padding: "1rem",
+            fontSize: "12.5px",
+            lineHeight: "1.6",
+            background: "var(--color-muted)",
+            whiteSpace: "pre",
+          }}
+          codeTagProps={{
+            style: { fontFamily: "var(--font-mono, inherit)" },
+          }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
     </div>
   )
 }
-
-

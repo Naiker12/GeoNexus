@@ -1,47 +1,66 @@
 import { describe, expect, it } from "vitest"
-import { buildSummary, type ThinkingStep } from "@/components/chat/ThinkingInline"
+import { getContextualSteps, computeStepStates } from "@/components/chat/contextualSteps"
+import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 
-function step(label: string, status: "done" | "active" | "pending"): ThinkingStep {
-  return { id: label, label, icon: null as unknown as React.ReactNode, status }
-}
+describe("computeStepStates", () => {
+  const steps = getContextualSteps("hola mundo")
 
-describe("buildSummary", () => {
-  it("shows active step label when a step is active", () => {
-    const steps = [step("Analizando", "done"), step("Buscando", "active"), step("Generando", "pending")]
-    expect(buildSummary(steps)).toBe("Buscando")
+  it("all pending when phase is idle", () => {
+    const states = computeStepStates(steps, "idle")
+    expect(states.every((s) => s === "done")).toBe(true)
   })
 
-  it("includes elapsed seconds when active step has elapsed", () => {
-    const steps = [step("Analizando", "done"), step("Buscando", "active"), step("Generando", "pending")]
-    expect(buildSummary(steps, 3.5)).toBe("Buscando · 3.5s")
+  it("first step active during classifying", () => {
+    const states = computeStepStates(steps, "classifying")
+    expect(states.filter((s) => s === "active")).toHaveLength(1)
+    expect(states[0]).toBe("active")
   })
 
-  it("shows completion message when all steps done", () => {
-    const steps = [step("Analizando", "done"), step("Buscando", "done"), step("Generando", "done")]
-    expect(buildSummary(steps)).toBe("Razonamiento completado")
+  it("searching phase: classifying done, last searching step active", () => {
+    const states = computeStepStates(steps, "searching")
+    expect(states[0]).toBe("done")
+    let lastSearchIdx = -1
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].phase === "searching") lastSearchIdx = i
+    }
+    for (let i = 0; i < lastSearchIdx; i++) {
+      if (steps[i].phase === "searching") expect(states[i]).toBe("done")
+    }
+    expect(states[lastSearchIdx]).toBe("active")
   })
 
-  it("includes elapsed time on completion", () => {
-    const steps = [step("Analizando", "done"), step("Generando", "done")]
-    expect(buildSummary(steps, 12.345)).toBe("Razonamiento completado · 12.3s")
+  it("generating phase: first two phases done, last gen step active", () => {
+    const states = computeStepStates(steps, "generating")
+    expect(states[0]).toBe("done")
+    expect(states[1]).toBe("done")
+    let genIdx = -1
+    for (let i = 0; i < steps.length; i++) {
+      if (steps[i].phase === "generating") genIdx = i
+    }
+    expect(states[genIdx]).toBe("active")
   })
 
-  it("shows count when no active steps but not all done", () => {
-    const steps = [step("Analizando", "done"), step("Buscando", "pending"), step("Generando", "pending")]
-    expect(buildSummary(steps)).toBe("1 de 3 pasos completados")
+  it("extracting completes all but last which is active", () => {
+    const states = computeStepStates(steps, "extracting")
+    const allButLast = states.slice(0, -1)
+    expect(allButLast.every((s) => s === "done")).toBe(true)
+    expect(states[states.length - 1]).toBe("active")
   })
 
-  it("shows zero count when no steps done", () => {
-    const steps = [step("Analizando", "pending"), step("Buscando", "pending")]
-    expect(buildSummary(steps)).toBe("0 de 2 pasos completados")
+  it("all done when phase is done", () => {
+    const states = computeStepStates(steps, "done")
+    expect(states.every((s) => s === "done")).toBe(true)
   })
 
-  it("handles empty steps array (vacuous all-done)", () => {
-    expect(buildSummary([])).toBe("Razonamiento completado")
-  })
-
-  it("prefers active over anything else", () => {
-    const steps = [step("Analizando", "done"), step("Buscando", "active"), step("Generando", "done")]
-    expect(buildSummary(steps)).toBe("Buscando")
+  it("works for all intents", () => {
+    const queries = ["archivo", "código", "ley", "mapa", "informe", "busca", "docker", "sql", "arquitectura"]
+    const phases: ChatLoadingPhase[] = ["classifying", "searching", "generating", "extracting"]
+    for (const q of queries) {
+      const s = getContextualSteps(q)
+      for (const phase of phases) {
+        const states = computeStepStates(s, phase)
+        expect(states.filter((st) => st === "active")).toHaveLength(1)
+      }
+    }
   })
 })

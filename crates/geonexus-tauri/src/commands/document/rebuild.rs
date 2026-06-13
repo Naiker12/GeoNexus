@@ -100,21 +100,28 @@ pub async fn rebuild_knowledge_graph(
         let chunks_str = serde_json::to_string(&chunks_json)
             .map_err(|e| format!("Error serializando chunks: {e}"))?;
 
+        let chunks_file = std::env::temp_dir().join(format!("geonexus_chunks_{}.json", asset.id));
+        let _ = std::fs::write(&chunks_file, &chunks_str);
+
         let mut cmd = std::process::Command::new(&python_exe);
         cmd.arg(&sidecar_script)
             .arg("--action")
             .arg("extract_graph_entities")
-            .arg("--chunks_json")
-            .arg(&chunks_str)
+            .arg("--chunks_file")
+            .arg(chunks_file.to_string_lossy().as_ref())
             .arg("--project_id")
             .arg(&project_id)
             .arg("--workspace_id")
             .arg(asset.workspace_id.as_deref().unwrap_or("workspace-main"))
             .current_dir(&root_path);
 
-        if let Ok(output) = cmd.output() {
+        let output = cmd.output();
+        let _ = std::fs::remove_file(&chunks_file);
+
+        if let Ok(output) = output {
             if output.status.success() {
-                let stdout_str = String::from_utf8_lossy(&output.stdout);
+                let stdout_str = String::from_utf8(output.stdout)
+                    .map_err(|e| format!("stdout del indexador no es UTF-8 válido: {e}"))?;
                 if let Ok(extracted) = serde_json::from_str::<serde_json::Value>(&stdout_str) {
                     if let Some(nodes) = extracted["nodes"].as_array() {
                         for n in nodes {

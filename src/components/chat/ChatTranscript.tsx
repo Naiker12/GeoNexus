@@ -6,7 +6,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
 import { ThinkingInline } from "@/components/chat/ThinkingInline"
 import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
-import { ChatLoadingIndicator, type ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
+import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message, MessageStats } from "@/types/chat"
 
 type ChatTranscriptProps = {
@@ -67,6 +67,13 @@ export function ChatTranscript({
     return 128_000
   }, [messages])
 
+  const lastUserMessage = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") return messages[i].content
+    }
+    return ""
+  }, [messages])
+
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, pending])
@@ -105,20 +112,11 @@ export function ChatTranscript({
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
             <GeoAgentsIcon className="size-4" variant="nexus" />
           </div>
-          <div className="flex flex-col gap-2 pt-1.5">
-            {loadingPhase && loadingPhase !== "idle" && (
-              <ChatLoadingIndicator phase={loadingPhase} />
-            )}
+          <div className="flex flex-col gap-2 pt-1.5 w-full">
             <ThinkingInline
               phase={loadingPhase ?? "classifying"}
               startTime={submitTime ?? null}
-              knowledgeSteps={
-                useContext ? [
-                  { source: "chromadb" as const, label: "Búsqueda semántica", status: "searching" as const },
-                  { source: "graph" as const, label: "Knowledge Graph", status: "searching" as const },
-                  { source: "assets" as const, label: "Assets indexados", status: "searching" as const },
-                ] : undefined
-              }
+              query={lastUserMessage}
             />
             <StreamEventRenderer />
           </div>

@@ -144,7 +144,8 @@ pub async fn index_document(
     };
 
     if !output.status.success() {
-        let err_msg = String::from_utf8_lossy(&output.stderr);
+        let err_msg = String::from_utf8(output.stderr)
+            .map_err(|e| format!("stderr del indexador no es UTF-8 válido: {e}"))?;
         let _ = state
             .repo
             .update_asset_indexing_result(
@@ -159,7 +160,8 @@ pub async fn index_document(
         return Err(format!("Error en el indexador de Python: {err_msg}"));
     }
 
-    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    let stdout_str = String::from_utf8(output.stdout)
+        .map_err(|e| format!("stdout del indexador no es UTF-8 válido: {e}"))?;
     let res: PythonIndexResult = match serde_json::from_str(&stdout_str) {
         Ok(r) => r,
         Err(e) => {

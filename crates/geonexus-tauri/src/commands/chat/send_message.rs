@@ -285,9 +285,6 @@ pub async fn send_message(
             );
         }
 
-        let messages_json = serde_json::to_string(&messages)
-            .map_err(|e| format!("Error serializando mensajes: {e}"))?;
-
         let mut sidecar_args: Vec<String> = vec![
             "--action".into(),
             "chat_llm_stream".into(),
@@ -297,11 +294,24 @@ pub async fn send_message(
             input.endpoint.clone(),
             "--model".into(),
             input.model.clone(),
-            "--messages".into(),
-            messages_json,
-            "--tools".into(),
-            tools_json.clone(),
         ];
+
+        // Pasar JSON grande via archivos temporales para evitar
+        // error 206 en Windows (límite de ~8191 chars en cmd line)
+        let messages_json = serde_json::to_string(&messages)
+            .map_err(|e| format!("Error serializando mensajes: {e}"))?;
+        let msgs_file = std::env::temp_dir().join(format!("geonexus_msgs_{}.json", Uuid::new_v4()));
+        std::fs::write(&msgs_file, &messages_json)
+            .map_err(|e| format!("Error escribiendo archivo temporal de mensajes: {e}"))?;
+        sidecar_args.push("--messages_file".into());
+        sidecar_args.push(msgs_file.to_string_lossy().to_string());
+
+        let tools_file = std::env::temp_dir().join(format!("geonexus_tools_{}.json", Uuid::new_v4()));
+        std::fs::write(&tools_file, &tools_json)
+            .map_err(|e| format!("Error escribiendo archivo temporal de tools: {e}"))?;
+        sidecar_args.push("--tools_file".into());
+        sidecar_args.push(tools_file.to_string_lossy().to_string());
+
         if let Some(ref key) = input.api_key {
             sidecar_args.push("--api_key".into());
             sidecar_args.push(key.clone());
@@ -310,7 +320,13 @@ pub async fn send_message(
         let output = run_sidecar_streaming(
             &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
             state.app_handle.as_ref(),
-        )?;
+        );
+
+        // Limpiar archivos temporales
+        let _ = std::fs::remove_file(&msgs_file);
+        let _ = std::fs::remove_file(&tools_file);
+
+        let output = output?;
 
         let sidecar: super::SidecarChatResult = serde_json::from_str(&output)
             .map_err(|e| format!("Error deserializando respuesta LLM: {e}. Output: {output}"))?;

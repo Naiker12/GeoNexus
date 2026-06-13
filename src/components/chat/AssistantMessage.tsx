@@ -5,7 +5,6 @@ import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
-import { ThinkingInline, DEFAULT_THINKING_STEPS } from "@/components/chat/ThinkingInline"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData } from "@/utils/parseContent"
@@ -43,12 +42,6 @@ export function AssistantMessage({
               Geo Agents
             </span>
           </div>
-        <ThinkingInline
-          steps={DEFAULT_THINKING_STEPS.map(s => ({ ...s, status: "done" as const }))}
-          isComplete={true}
-          searchSteps={message.searchSteps}
-          knowledgeSteps={message.knowledgeSteps}
-        />
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />
         ) : (
