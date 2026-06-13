@@ -72,6 +72,10 @@ pub struct RecallChunk {
     pub text: String,
     pub source: String,
     pub asset_id: String,
+    #[serde(default)]
+    pub chunk_index: usize,
+    #[serde(default)]
+    pub chunk_id: String,
     pub score: f32,
 }
 

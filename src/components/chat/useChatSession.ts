@@ -149,7 +149,7 @@ export function useChatSession(
   }, [])
 
   const submit = React.useCallback(
-    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[] }) => {
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[]) => {
       const clean = content.trim()
       if (!clean || pending) return
       if (!activeProvider) {
@@ -227,6 +227,8 @@ export function useChatSession(
         mentioned_asset_ids: mentions?.assetIds.length ? mentions.assetIds : undefined,
         mentioned_connector_ids: mentions?.connectorIds.length ? mentions.connectorIds : undefined,
         mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
+        mentioned_agent_sources: mentions?.agentSources?.length ? mentions.agentSources : undefined,
+        skill_names: skillNames && skillNames.length > 0 ? skillNames : undefined,
       }
 
       if (webSearchEnabled) {
@@ -279,23 +281,23 @@ export function useChatSession(
           { source: "assets", label: "Assets indexados", status: uniqueAssetsCount > 0 ? "found" : "empty", count: uniqueAssetsCount },
         ] : undefined
 
+        const baseUpdate: Record<string, unknown> = {
+          conversation_id: response.conversation_id,
+          stats: response.message.stats,
+          knowledgeSteps: finalKnowledgeSteps,
+          chunk_references: response.chunks_used,
+        }
         if (webSearchEnabled) {
           updateAssistantMessage(assistantMsgId, {
-            conversation_id: response.conversation_id,
+            ...baseUpdate,
             content: response.message.content,
             isSearching: false,
             currentSearchQuery: response.search_query ?? clean,
             research_sources: (response.research_sources ?? []),
             searchElapsedSeconds: elapsed,
-            stats: response.message.stats,
-            knowledgeSteps: finalKnowledgeSteps,
-          })
+          } as Partial<Message>)
         } else {
-          updateAssistantMessage(assistantMsgId, {
-            conversation_id: response.conversation_id,
-            stats: response.message.stats,
-            knowledgeSteps: finalKnowledgeSteps,
-          })
+          updateAssistantMessage(assistantMsgId, baseUpdate as Partial<Message>)
         }
 
         toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })

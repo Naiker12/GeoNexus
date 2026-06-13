@@ -21,7 +21,7 @@ export type ConnectorProvider = {
     | "GIS desktop"
     | "External API"
     | "Object storage"
-  status: "simulated" | "planned"
+  status: "simulated" | "planned" | "connected"
   phase: "V1" | "V2" | "V3"
   auth: string
   scope: string

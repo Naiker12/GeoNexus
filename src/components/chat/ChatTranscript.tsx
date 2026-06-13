@@ -6,6 +6,7 @@ import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
 import { ThinkingInline } from "@/components/chat/ThinkingInline"
 import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
+import { AgentEventRenderer } from "@/features/workspace/chat/events/AgentEventRenderer"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message, MessageStats } from "@/types/chat"
 
@@ -119,6 +120,7 @@ export function ChatTranscript({
               query={lastUserMessage}
             />
             <StreamEventRenderer />
+            <AgentEventRenderer />
           </div>
         </div>
       ) : null}

@@ -94,6 +94,7 @@ export const navigationItems: NavItem[] = [
   { title: "Uso", url: "#uso", icon: ActivityIcon },
   { title: "Skills", url: "#skills", icon: CpuIcon },
   { title: "Datos", url: "#datos", icon: DatabaseIcon },
+  { title: "Agentes", url: "#agentes", icon: SparklesIcon },
 ]
 
 export const systemItems: NavItem[] = [

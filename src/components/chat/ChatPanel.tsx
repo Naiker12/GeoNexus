@@ -15,6 +15,7 @@ import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
 
 const PROJECT_ID = "project-default"
@@ -63,6 +64,20 @@ export function ChatPanel(_props: ChatPanelProps) {
   React.useEffect(() => {
     setSidebarRefreshKey((k) => k + 1)
   }, [conversationId])
+
+  const [activeSkills, setActiveSkills] = React.useState<SkillInfo[]>([])
+
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const skill = (e as CustomEvent).detail as SkillInfo
+      setActiveSkills(prev => {
+        if (prev.some(s => s.id === skill.id)) return prev
+        return [...prev, skill]
+      })
+    }
+    window.addEventListener("geonexus:use-skill", handler)
+    return () => window.removeEventListener("geonexus:use-skill", handler)
+  }, [])
 
   const sidebarWidth = sidebarOpen ? 220 : 44
   const [composerValue, setComposerValue] = React.useState("")
@@ -177,13 +192,14 @@ export function ChatPanel(_props: ChatPanelProps) {
           activeProvider={activeProvider}
           error={error}
           pending={pending}
+          activeSkills={activeSkills}
+          onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
           onSubmit={(content, mentions) => {
             setComposerValue("")
-            if (mentions && (mentions.assetIds.length > 0 || mentions.connectorIds.length > 0 || mentions.nodeIds.length > 0)) {
-              submit(content, mentions)
-            } else {
-              submit(content)
-            }
+            const fromActive = activeSkills.map(s => s.name)
+            const fromMention = mentions?.skillNames ?? []
+            const allSkillNames = [...new Set([...fromActive, ...fromMention])]
+            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined)
           }}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
@@ -198,6 +214,14 @@ export function ChatPanel(_props: ChatPanelProps) {
                 : "El asistente solo usará información local del proyecto",
               variant: next ? "success" : "info",
             })
+          }}
+          onMentionSelect={(source) => {
+            if (source.kind === "skill") {
+              setActiveSkills(prev => {
+                if (prev.some(s => s.id === source.id)) return prev
+                return [...prev, { id: source.id, name: source.label, category: "tool", description: source.sublabel }]
+              })
+            }
           }}
           onNewChat={() => { setComposerValue(""); newConversation() }}
           onClearChat={() => { setComposerValue(""); newConversation() }}

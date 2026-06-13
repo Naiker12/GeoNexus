@@ -82,6 +82,10 @@ pub struct SendMessageInput {
     pub mentioned_connector_ids: Vec<String>,
     #[serde(default)]
     pub mentioned_node_ids: Vec<String>,
+    #[serde(default)]
+    pub mentioned_agent_sources: Vec<String>,
+    #[serde(default)]
+    pub skill_names: Vec<String>,
 }
 
 impl SendMessageInput {

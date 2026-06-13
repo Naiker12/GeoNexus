@@ -1,0 +1,269 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS COMPLETO DEL SISTEMA DE SKILLS                                ║
+║   Backend Rust + Frontend React/TypeScript                               ║
+║   Fecha: Junio 2026                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════════════════
+1. ¿QUÉ ES UN SKILL?
+════════════════════════════════════════════════════════════════════════════
+
+  Un Skill es un archivo SKILL.md con frontmatter YAML estructurado:
+  ---
+  name: pot-analyzer
+  description: Analiza documentos POT colombianos.
+  version: 1.0.0
+  author: Code Clean / GeoNexus
+  category: gis
+  tags: [POT, PBOT, usos-suelo]
+  mcp-servers: [memory-mcp, qgis-mcp]
+  ---
+  # Contenido markdown...
+  - Instrucciones especializadas
+  - Protocolos de análisis
+  - Reglas de formato
+
+════════════════════════════════════════════════════════════════════════════
+2. BACKEND RUST — IMPLEMENTADO
+════════════════════════════════════════════════════════════════════════════
+
+  A. Migración SQL: 20260613000003_skills.sql
+     ┌─ skills              → id, name, description, version, category, author,
+     │                         tags_json, mcp_servers_json, skill_md_path,
+     │                         skill_md_hash, source_url, enabled, builtin,
+     │                         use_count, last_used_at, installed_at, updated_at
+     └─ skill_activations   → id, skill_id, conversation_id, trigger, created_at
+
+  B. Crate geonexus-db/src/skills/ (4 módulos):
+     ├── types.rs       → Skill struct (#[serde(rename_all = "camelCase")]),
+     │                     SkillCategory enum (gis, research, data, agent,
+     │                     tool, connector), SkillFrontmatter (para YAML),
+     │                     InstallSkillPayload, InstallSource
+     ├── parser.rs      → parse_skill_md(content) → (frontmatter, body)
+     │                     compute_hash(content) → SHA256 hex string
+     │                     Separa frontmatter YAML entre --- delimitadores
+     ├── registry.rs    → list_skills, get_skill, install_from_file,
+     │                     toggle_skill, read_skill_md, record_activation,
+     │                     list_enabled_skills_for_injection
+     │                     → CRUD completo en SQLite
+     └── injector.rs    → select_skills_for_goal(pool, goal, max_skills)
+     │                     → Scoring por palabras clave + tags
+     │                     build_skills_context(skill_contents) → String
+     └── mod.rs         → pub mod types, parser, registry, injector
+
+  C. Crate geonexus-tauri/src/commands/skills.rs (5 Tauri commands):
+     ├── list_skills                → SELECT todos los skills ordenados
+     ├── install_skill_from_file    → Lee archivo, parsea, copia a app_data/skills/,
+     │                                 INSERT en SQLite (ON CONFLICT DO UPDATE)
+     ├── install_skill_from_github  → Descarga raw de GitHub, mismo flujo que file
+     ├── toggle_skill               → UPDATE enabled = ? WHERE id = ?
+     └── read_skill_md              → Lee skill_md_path, retorna contenido raw
+
+  D. Built-in skills (crates/geonexus-tauri/src/builtin_skills.rs):
+     └── pot-analyzer (SKILL.md embebido via include_str!)
+         → Instalado automáticamente al iniciar la app
+         → Estrategia: escribe a temp file, instala vía install_from_file (sin duplicar lógica)
+
+  E. Integración en send_message (send_message.rs):
+     └── Cuando skill_names no está vacío:
+         1. Por cada skill_name, llama read_skill_md()
+         2. Construye string "## Skills activos\n\n{contenido1}\n\n---\n\n{contenido2}"
+         3. Inyecta como mensaje system en build_messages()
+
+════════════════════════════════════════════════════════════════════════════
+3. FRONTEND — IMPLEMENTADO
+════════════════════════════════════════════════════════════════════════════
+
+  A. Tipos (src/types/skills.ts):
+     └── Skill (id, name, description, version, category, tags, mcpServers,
+                 skillMdPath, enabled, builtin, useCount, etc.)
+     └── SkillCategory = 'gis' | 'research' | 'data' | 'agent' | 'tool' | 'connector'
+
+  B. API (src/api/skills.ts):
+     ├── listSkills()                                 → invoke("list_skills")
+     ├── installSkillFromFile(path, sourceUrl?)       → invoke("install_skill_from_file")
+     ├── installSkillFromGithub(githubUrl)             → invoke("install_skill_from_github")
+     ├── toggleSkill(skillId, enabled)                 → invoke("toggle_skill")
+     └── readSkillMd(skillId)                          → invoke("read_skill_md")
+
+  C. Hook (src/features/workspace/skills/hooks/useSkills.ts):
+     ├── skills, loading, error — estado
+     ├── installFromFile()      → Abre diálogo nativo (tauri dialog) → installSkillFromFile
+     ├── installFromGithub(url) → installSkillFromGithub → merge en estado
+     ├── toggleSkill(id, bool)  → toggleSkill + optimista
+     ├── readSkillMd(id)        → readSkillMd
+     └── refresh()              → refetch listSkills
+
+  D. Componentes (src/features/workspace/skills/):
+     ├── SkillsPage.tsx              → Página principal:
+     │                                  ├── Header con título + botón instalar
+     │                                  ├── Stats (Total, Activos, Built-in, Externos)
+     │                                  ├── Filtros por categoría + búsqueda
+     │                                  ├── Grid responsive de SkillCards
+     │                                  ├── Empty state (sin skills / sin resultados)
+     │                                  ├── SkillDetailDrawer
+     │                                  └── InstallSkillDialog
+     │
+     ├── SkillCard.tsx               → Card individual:
+     │                                  ├── Icono + nombre + categoría + versión
+     │                                  ├── Toggle on/off
+     │                                  ├── Descripción (2 líneas)
+     │                                  ├── MCP servers badges
+     │                                  ├── Tags
+     │                                  ├── Use count + autor + GitHub link
+     │                                  ├── "Ver SKILL.md" → abre drawer
+     │                                  └── "Usar en chat" → dispatches event
+     │
+     ├── SkillDetailDrawer.tsx       → Drawer lateral raw markdown:
+     │                                  ├── Header: filename, nombre, line count
+     │                                  ├── Copy button
+     │                                  ├── "Usar en chat" button
+     │                                  ├── Line numbers sticky
+     │                                  ├── Syntax highlighting (YAML keys/values,
+     │                                  │   headings, lists, inline code, links)
+     │                                  └── Colores del theme (light/dark)
+     │
+     ├── InstallSkillDialog.tsx      → Diálogo de instalación:
+     │                                  ├── Input GitHub URL + botón instalar
+     │                                  ├── O selector de archivo local (Tauri dialog)
+     │                                  └── Status feedback (loading, done, error)
+     │
+     └── SkillActivationBadge.tsx    → Badge colapsable para mostrar en chat:
+                                      ├── Icono por categoría
+                                      ├── Nombre del skill
+                                      └── Descripción expandible
+
+  E. Integración en Chat (src/components/chat/):
+     ├── ChatPanel.tsx               → Escucha evento "geonexus:use-skill"
+     │                                  → activeSkills[] state
+     │                                  → Combina skills activos + @mencionados
+     │                                  → Pasa skillNames a submit()
+     │
+     ├── ChatComposer.tsx            → Muestra skill badges (activos) sobre el input
+     │                                  → Fetch skills como @mention sources
+     │                                  → skill chips → skillNames en submit
+     │                                  → Botón ✕ para desactivar skill
+     │
+     ├── MentionPicker.tsx           → kindIcons[kind="skill"] = PuzzleIcon
+     │                                  → kindLabels[kind="skill"] = "Skills"
+     │                                  → kindOrder incluye "skill"
+     │
+     └── useChatSession.ts           → skillNames[] incluido en SendMessageInput
+
+  F. Routing:
+     └── GeoAgentsWorkspace.tsx → #skills → SkillsPage
+
+════════════════════════════════════════════════════════════════════════════
+4. FLUJO DE USO
+════════════════════════════════════════════════════════════════════════════
+
+  A. Instalar skill:
+     1. SkillsPage → botón "+ Instalar skill"
+     2. InstallSkillDialog:
+        a. Pegar GitHub URL → install_skill_from_github → descarga raw → instala
+        b. O seleccionar archivo .md local → install_skill_from_file
+     3. Aparece en el grid
+
+  B. Activar skill en chat:
+     SkillsPage:
+       1. Toggle on/off → toggleSkill()
+       2. "Usar en chat" → dispatches "geonexus:use-skill"
+     O desde el chat:
+       1. Escribir @nombre-del-skill
+       2. Seleccionar del MentionPicker
+       3. Se agrega a activeSkills + chips
+
+  C. Enviar mensaje con skills:
+     1. ChatPanel combina:
+        - activeSkills (skills activados desde SkillsPage)
+        - skillNamesFromChips (skills mencionados vía @)
+     2. allSkillNames → submit() → SendMessageInput.skill_names
+     3. Rust send_message:
+        - Lee SKILL.md de cada skill desde SQLite
+        - Construye "## Skills activos\n\n..."
+        - Inyecta como system message
+
+════════════════════════════════════════════════════════════════════════════
+5. ESTADO — IMPLEMENTADO VS PENDIENTE
+════════════════════════════════════════════════════════════════════════════
+
+  ✅ Implementado:
+     ├── Migración SQL + modelo de datos
+     ├── Parser YAML frontmatter + hash SHA256
+     ├── CRUD skills (list, install, toggle, read)
+     ├── Inyector por relevancia (keyword scoring)
+     ├── Built-in pot-analyzer instalado al inicio
+     ├── 5 Tauri commands registrados
+     ├── Frontend completo (SkillsPage, SkillCard, Drawer, Dialog, Badge)
+     ├── @mention integration en chat composer
+     ├── activeSkills state + badges en composer
+     ├── Integración con send_message pipeline
+     └── camelCase fix (Skill struct rename)
+
+  🔴 Pendiente / Mejorable:
+     ├── Más built-in skills (solo pot-analyzer existe)
+     ├── Marketplace de skills (explorar skills de la comunidad)
+     ├── Skill versioning automático (git-like)
+     ├── Skill dependencies (que un skill requiera otro)
+     ├── Skill testing (probar skill antes de instalar)
+     ├── Visualización de skill activations timeline
+     ├── Compartir skills export/import entre proyectos
+     ├── Skill editor integrado (crear SKILL.md desde la UI)
+     ├── Validación más robusta del frontmatter YAML
+     ├── Rate limiting por skill
+     └── Templates de skills (empezar desde plantilla)
+
+════════════════════════════════════════════════════════════════════════════
+6. ARQUITECTURA — MAPA DE ARCHIVOS
+════════════════════════════════════════════════════════════════════════════
+
+  Backend (Rust):
+  ┌─ crates/geonexus-db/
+  │  ├─ migrations/20260613000003_skills.sql
+  │  └─ src/skills/
+  │     ├── mod.rs
+  │     ├── types.rs
+  │     ├── parser.rs
+  │     ├── registry.rs
+  │     └── injector.rs
+  │
+  └─ crates/geonexus-tauri/
+     ├─ src/commands/skills.rs         (5 Tauri commands)
+     ├─ src/builtin_skills.rs          (pot-analyzer embebido)
+     ├─ src/commands/chat/send_message.rs (integración en pipeline)
+     └─ src/main.rs                    (registro de commands + setup)
+
+  Frontend (React/TypeScript):
+  ┌─ src/
+  │  ├─ types/skills.ts
+  │  ├─ api/skills.ts
+  │  ├─ features/workspace/skills/
+  │  │  ├── SkillsPage.tsx
+  │  │  ├── SkillCard.tsx
+  │  │  ├── SkillDetailDrawer.tsx
+  │  │  ├── InstallSkillDialog.tsx
+  │  │  ├── SkillActivationBadge.tsx
+  │  │  └── hooks/
+  │  │       └── useSkills.ts
+  │  ├─ components/chat/
+  │  │  ├── ChatPanel.tsx
+  │  │  ├── ChatComposer.tsx
+  │  │  ├── MentionPicker.tsx
+  │  │  └── useChatSession.ts
+  │  └─ features/workspace/
+  │     └── GeoAgentsWorkspace.tsx (routing)
+
+════════════════════════════════════════════════════════════════════════════
+7. NOTAS TÉCNICAS
+════════════════════════════════════════════════════════════════════════════
+
+  - `cargo check` → 0 errors, 0 warnings
+  - `pnpm tsc --noEmit` → 0 errors
+  - Los skills se identifican por `name` (del frontmatter YAML),
+    que se usa como primary key en la tabla `skills`
+  - El frontmatter YAML usa claves con guiones: `mcp-servers`, `source-url`
+  - La serialización del struct Skill usa `#[serde(rename_all = "camelCase")]`
+  - Los built-in skills se instalan escribiendo a temp file y usando
+    install_from_file (misma ruta que skills externos, sin duplicación)
+  - Serde YAML: serde_yaml = "0.9", SHA256: sha2 = "0.10"
+  - reqwest ya estaba en geonexus-tauri para descarga de GitHub

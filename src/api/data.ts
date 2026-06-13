@@ -8,6 +8,7 @@ import type {
   GraphEdge,
   BackendGraphNode,
   BackendGraphEdge,
+  DataLineage,
 } from "@/types/data"
 import { defaultMetrics } from "@/features/workspace/data/data-data"
 import { invoke } from "@tauri-apps/api/core"
@@ -162,5 +163,15 @@ export async function getRecentGraphEvents(
   limit?: number,
 ): Promise<BackendGraphNode[]> {
   return await invokeOrFallback("get_recent_graph_events", { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null }, [])
+}
+
+export function getDataLineage(assetId: string): Promise<DataLineage> {
+  if (!assetId.trim()) throw new Error("asset_id requerido")
+  return invokeRequired<DataLineage>("get_data_lineage", { assetId })
+}
+
+export function reindexAsset(assetId: string): Promise<number> {
+  if (!assetId.trim()) throw new Error("asset_id requerido")
+  return invokeRequired<number>("reindex_asset", { assetId })
 }
 

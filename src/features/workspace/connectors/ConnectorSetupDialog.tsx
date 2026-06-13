@@ -38,6 +38,7 @@ type ConnectorSetupDialogProps = {
   open: boolean
   provider: ConnectorProvider
   onOpenChange: (open: boolean) => void
+  onConfigSaved?: () => void
 }
 
 function isCloudProvider(provider: ConnectorProvider): boolean {
@@ -48,6 +49,7 @@ export function ConnectorSetupDialog({
   open,
   provider,
   onOpenChange,
+  onConfigSaved,
 }: ConnectorSetupDialogProps) {
   const { toast, loading: showLoading, dismiss } = useToast()
   const [connecting, setConnecting] = React.useState(false)
@@ -87,6 +89,7 @@ export function ConnectorSetupDialog({
       })
       dismiss(loadingId)
       setConnected(true)
+      onConfigSaved?.()
       toast({ title: "Conector local registrado", description: `${provider.name} configurado en ${folderPath}`, variant: "success" })
     } catch (err) {
       dismiss(loadingId)
@@ -110,6 +113,7 @@ export function ConnectorSetupDialog({
         tokenJson: JSON.stringify({ status: "pending", provider: provider.id }),
       })
 
+      onConfigSaved?.()
       toast({ title: "Navegador abierto", description: `Completa el inicio de sesion de ${provider.name} en el navegador.`, variant: "success" })
     } catch (err) {
       toast({ title: "Error de conexion", description: `${err}`, variant: "error" })

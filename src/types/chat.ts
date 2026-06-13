@@ -48,6 +48,7 @@ export type Message = {
   model: string | null
   trace_id: string
   chunks_used: string[]
+  chunk_references?: ChunkReference[]
   nodes_used: string[]
   tool_calls: unknown[]
   sources: string[]
@@ -99,6 +100,8 @@ export type SendMessageInput = {
   mentioned_asset_ids?: string[]
   mentioned_connector_ids?: string[]
   mentioned_node_ids?: string[]
+  mentioned_agent_sources?: string[]
+  skill_names?: string[]
 }
 
 // ── Mentionable Sources (from Rust get_mentionable_sources) ──
@@ -142,7 +145,7 @@ export interface SlashCommand {
 
 // ── Mention Sources ──
 
-export type MentionKind = "connector" | "asset" | "graph_node"
+export type MentionKind = "connector" | "asset" | "graph_node" | "agent_source" | "skill"
 
 export interface MentionSource {
   id: string
@@ -233,6 +236,13 @@ export type AnyStreamEvent =
   | ToolCallStreamEvent
   | KnowledgeLookupStreamEvent
   | GeneratingStreamEvent
+
+export type SkillInfo = {
+  id: string
+  name: string
+  category: string
+  description?: string
+}
 
 export interface EventPreviewState {
   event_id: string

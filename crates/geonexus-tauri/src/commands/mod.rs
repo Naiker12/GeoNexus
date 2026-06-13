@@ -10,5 +10,8 @@ pub mod filesystem;
 pub mod agent;
 pub mod graph_events;
 pub mod graph;
+pub mod mcp;
 pub mod notifications;
 pub mod notification_emitter;
+pub mod settings;
+pub mod skills;

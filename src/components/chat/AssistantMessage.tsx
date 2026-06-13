@@ -3,6 +3,7 @@ import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { ConnectCard } from "@/components/chat/ConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
+import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
@@ -67,6 +68,9 @@ export function AssistantMessage({
             )}
             {message.sources && message.sources.length > 0 && (
               <SearchSourcesBlock sources={message.sources} />
+            )}
+            {message.chunk_references && message.chunk_references.length > 0 && (
+              <CitationsBlock chunks={message.chunk_references} />
             )}
             <ActionSuggestions
               suggestions={suggestions}

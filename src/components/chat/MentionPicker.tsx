@@ -6,6 +6,8 @@ import {
   FolderIcon,
   GitForkIcon,
   HardDriveIcon,
+  CpuIcon,
+  PuzzleIcon,
   LucideIcon,
 } from "lucide-react"
 
@@ -24,15 +26,19 @@ const kindIcons: Record<MentionKind, LucideIcon> = {
   connector: CloudIcon,
   asset: FileTextIcon,
   graph_node: GitForkIcon,
+  agent_source: CpuIcon,
+  skill: PuzzleIcon,
 }
 
 const kindLabels: Record<MentionKind, string> = {
   connector: "Conectores",
   asset: "Assets recientes",
   graph_node: "Grafo",
+  agent_source: "Agentes",
+  skill: "Skills",
 }
 
-const kindOrder: MentionKind[] = ["connector", "asset", "graph_node"]
+const kindOrder: MentionKind[] = ["connector", "asset", "graph_node", "skill", "agent_source"]
 
 export function MentionPicker({ query, sources, onSelect, onClose, containerRef }: MentionPickerProps) {
   const [selectedIndex, setSelectedIndex] = React.useState(0)

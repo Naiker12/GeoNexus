@@ -7,6 +7,7 @@ import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
 import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
+import { AgentsPage } from "@/features/workspace/agents/AgentsPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
 import { useConnectors } from "@/contexts/ConnectorsContext"
@@ -35,6 +36,7 @@ export function GeoAgentsWorkspace({
   const isDocuments = activeRoute.startsWith("#documentos")
   const isGraph = activeRoute.startsWith("#conocimiento")
   const isAnalysis = activeRoute.startsWith("#uso")
+  const isAgents = activeRoute.startsWith("#agentes")
   const isMcp = activeRoute.startsWith("#mcp")
   const isSkills = activeRoute.startsWith("#skills")
 
@@ -56,6 +58,8 @@ export function GeoAgentsWorkspace({
           <GraphPage />
         ) : isAnalysis ? (
           <AnalysisPage />
+        ) : isAgents ? (
+          <AgentsPage />
         ) : isSkills ? (
           <SkillsPage />
         ) : isMcp ? (

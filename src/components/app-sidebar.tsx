@@ -77,7 +77,7 @@ export function AppSidebar({
           <SidebarGroupLabel>Agentes</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.filter((i) => i.title === "Chat IA" || i.title === "Mapa").map((item) => (
+              {navigationItems.filter((i) => i.title === "Chat IA" || i.title === "Mapa" || i.title === "Agentes").map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

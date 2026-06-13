@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/Button"
-import { deleteDataAsset, listDocumentChunks } from "@/api/data"
+import { deleteDataAsset, listDocumentChunks, getDataLineage } from "@/api/data"
 import { cn } from "@/lib/utils"
 import {
   Sheet,
@@ -27,7 +27,7 @@ import {
   statusLabel,
 } from "@/features/workspace/data/data-data"
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
-import type { DataAsset, DocumentChunk } from "@/types/data"
+import type { DataAsset, DocumentChunk, DataLineage } from "@/types/data"
 
 type AssetSheetProps = {
   asset?: DataAsset
@@ -41,14 +41,28 @@ export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetP
   const [activeTab, setActiveTab] = useState<"details" | "chunks">("details")
   const [chunks, setChunks] = useState<DocumentChunk[]>([])
   const [chunksLoading, setChunksLoading] = useState(false)
+  const [lineage, setLineage] = useState<DataLineage | null>(null)
+  const [lineageLoading, setLineageLoading] = useState(false)
 
   // Reset tab when sheet opens/closes or asset changes
   useEffect(() => {
     if (!open) {
       setActiveTab("details")
       setChunks([])
+      setLineage(null)
     }
   }, [open, asset])
+
+  // Fetch lineage when opening sheet
+  useEffect(() => {
+    if (open && asset && activeTab === "details") {
+      setLineageLoading(true)
+      getDataLineage(asset.id)
+        .then(setLineage)
+        .catch(() => setLineage(null))
+        .finally(() => setLineageLoading(false))
+    }
+  }, [open, asset, activeTab])
 
   // Fetch chunks when switching to "chunks" tab
   useEffect(() => {
@@ -210,16 +224,33 @@ export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetP
 
               <section className="rounded-lg border border-border bg-background/75 p-3">
                 <h3 className="text-sm font-semibold">Lineage</h3>
-                <div className="mt-3 grid gap-2">
-                  {getLineageSteps(asset).map((step, index) => (
-                    <div key={`${step}-${index}`} className="flex items-center gap-2">
-                      <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[0.65rem] font-semibold text-primary">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm text-muted-foreground">{step}</span>
-                    </div>
-                  ))}
-                </div>
+                {lineageLoading ? (
+                  <div className="mt-3 flex items-center justify-center py-4">
+                    <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : lineage ? (
+                  <div className="mt-3 grid gap-2">
+                    {lineage.steps.map((step, index) => (
+                      <div key={`${step.step}-${index}`} className="flex items-start gap-2">
+                        <span className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-semibold ${
+                          step.status === "done"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : step.status === "error"
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-amber-500/10 text-amber-600"
+                        }`}>
+                          {step.status === "done" ? "✓" : step.status === "error" ? "✗" : "..."}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium">{step.step}</span>
+                          <p className="text-[0.68rem] text-muted-foreground">{step.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-muted-foreground">No disponible</p>
+                )}
               </section>
             </>
           ) : (
@@ -289,46 +320,4 @@ export function AssetSheet({ asset, open, onOpenChange, onRefresh }: AssetSheetP
   )
 }
 
-/** Genera pasos de lineage basado en el source del asset */
-function getLineageSteps(asset: DataAsset): string[] {
-  const steps: string[] = []
 
-  // Source
-  const sourceNames: Record<string, string> = {
-    onedrive: "OneDrive",
-    sharepoint: "SharePoint",
-    google_drive: "Google Drive",
-    dropbox: "Dropbox",
-    s3: "Amazon S3",
-    local: "Carpeta local",
-  }
-  steps.push(sourceNames[asset.source] ?? asset.source)
-
-  // Cache
-  if (asset.cache_state !== "none") {
-    steps.push("Cache local")
-  }
-
-  // Indexer
-  const indexerNames: Record<string, string> = {
-    document: "Extractor PDF/DOCX",
-    layer: "Indexador GIS",
-    shapefile: "Indexador GIS",
-    csv: "Parser CSV",
-    raster: "Indexador Raster",
-    other: "Indexador genérico",
-  }
-  steps.push(indexerNames[asset.kind] ?? "Indexador")
-
-  // ChromaDB (if has embeddings)
-  if (asset.embeddings > 0) {
-    steps.push("ChromaDB")
-  }
-
-  // Knowledge Graph (if has graph nodes)
-  if (asset.graph_nodes > 0) {
-    steps.push("Knowledge Graph")
-  }
-
-  return steps
-}

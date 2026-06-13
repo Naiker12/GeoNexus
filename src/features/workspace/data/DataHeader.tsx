@@ -17,6 +17,7 @@ import {
 import { Metric } from "@/features/workspace/data/DataUi"
 import { formatBytes } from "@/features/workspace/data/data-data"
 import type { DataAsset, DataStoreMetrics } from "@/types/data"
+import { reindexAsset } from "@/api/data"
 
 type DataHeaderProps = {
   assets: DataAsset[]
@@ -47,7 +48,13 @@ export function DataHeader({ assets, metrics, isLoading, onRefresh }: DataHeader
   async function handleReindex() {
     setReindexing(true)
     setReindexOpen(false)
-    await new Promise((r) => setTimeout(r, 2000))
+    for (const asset of assets) {
+      try {
+        await reindexAsset(asset.id)
+      } catch {
+        // skip individual failures
+      }
+    }
     setReindexing(false)
     await onRefresh()
   }

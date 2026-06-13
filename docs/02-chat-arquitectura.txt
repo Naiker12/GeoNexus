@@ -1,37 +1,273 @@
-╔══════════════════════════════════════════════════════════════════╗
-║   CHAT IA — ARQUITECTURA COMPLETA                              ║
-║   Frontend → Tauri → Python → SQLite                           ║
-╚══════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CHAT IA — ARQUITECTURA COMPLETA                                        ║
+║   Frontend → Tauri → Python → LLM Provider + Skills + MCP + RAG          ║
+║   Actualizado: Junio 2026                                                ║
+╚════════════════════════════════════════════════════════════════════════════╝
 
-  FLUJO: ChatPanel → useChatSession.submit() → api/chat.ts →
-    invoke("send_message") → Rust send_message() → Python sidecar
-    → LLM provider → respuesta con stats, fuentes, trazabilidad
+FLUJO GENERAL:
+  ChatPanel
+    → useChatSession.submit()
+    → api/chat.ts (invoke "send_message")
+    → Rust send_message() en geonexus-tauri
+      → Valida input / crea conversación / guarda user msg
+      → Classify intent (QueryIntent)
+      → Graph context (graph_nodes + graph_edges)
+      → RAG recall (Python sidecar — ChromaDB chunks reales)
+      → Build chunk references (asset_name lookup, text_preview, score)
+      → Project context (sidecar build_project_context)
+      → Mention context (connectors, assets, graph_nodes)
+      → Skills context (skills activados — lee SKILL.md de SQLite)
+      → Web search opcional (sidecar search_web)
+      → Build messages array (system + context + history + user)
+      → Tool-calling loop (max 10 iter, tools: read_file, search_code,
+        list_directory, glob_files)
+      → Extraer MessageStats
+      → Guardar assistant msg
+      → Responder con SendMessageResponse
 
-  Frontend (src/components/chat/):
-    ChatPanel.tsx (508L) — orquestador: sidebar, transcript,
-      composer, contexto, modelo
-    ChatTranscript.tsx — lista de mensajes + thinking steps
-    AssistantMessage.tsx — markdown + fuentes + stats + research
-    MessageBubble.tsx — burbujas user/assistant
-    MessageActions.tsx — copiar, editar, regenerar, TokenStatsBadge
-    DeepResearchPanel.tsx — fuentes web colapsable
-    ThinkingInline.tsx — pasos de razonamiento animados
-    useChatSession.ts (338L) — estado, submit, regenerate, persist
+════════════════════════════════════════════════════════════════════════════
+1. FRONTEND — COMPONENTES
+════════════════════════════════════════════════════════════════════════════
 
-  Rust pipeline (send_message.rs, 391L):
-    Validar → crear conversación → guardar user msg →
-    RAG recall (sidecar) → project context (SQLite) →
-    web search opcional (sidecar) → build_messages →
-    tool-calling loop (max 10 iter, 4 tools: read_file,
-    search_code, list_directory, glob_files) →
-    extraer MessageStats → guardar assistant msg → responder
+  src/components/chat/
+  ├── ChatPanel.tsx            → Orquestador principal:
+  │                              ├── Sidebar conversaciones (izquierda)
+  │                              ├── ChatTranscript (mensajes)
+  │                              ├── ChatComposer (input)
+  │                              ├── ProjectContextPanel (GIS toggles)
+  │                              ├── activeSkills[] state
+  │                              ├── Escucha "geonexus:use-skill" event
+  │                              └── Combina skills activos + @mencionados
+  │
+  ├── ChatComposer.tsx         → Input con:
+  │                              ├── @mentions (assets, conectores, skills,
+  │                              │   agent sources, graph nodes)
+  │                              ├── /comandos (new-chat, clear, export,
+  │                              │   use-graph, mode-research, etc.)
+  │                              ├── Chips de fuentes adjuntas
+  │                              ├── Skill badges (skills activos)
+  │                              ├── Web search toggle
+  │                              ├── Context toggle
+  │                              └── File attach
+  │
+  ├── ChatTranscript.tsx       → Lista scrollable de mensajes:
+  │                              ├── UserMessage (burbuja usuario)
+  │                              ├── AssistantMessage (respuesta IA)
+  │                              ├── KnowledgeSteps indicator
+  │                              └── Loading states
+  │
+  ├── AssistantMessage.tsx     → Mensaje del asistente:
+  │                              ├── MarkdownContent (renderizado markdown)
+  │                              ├── DeepResearchPanel (fuentes web)
+  │                              ├── SearchSourcesBlock
+  │                              ├── CitationsBlock (chunks ChromaDB)
+  │                              ├── ActionSuggestions
+  │                              ├── ConnectCard (conexiones sugeridas)
+  │                              ├── TokenStatsBadge
+  │                              └── CopyButton
+  │
+  ├── CitationsBlock.tsx       → Citas por chunk colapsables:
+  │                              ├── asset_name + relevance_score
+  │                              ├── text_preview (200 chars)
+  │                              └── chunk_index
+  │
+  ├── DeepResearchPanel.tsx    → Panel de búsqueda web profunda
+  ├── ProjectContextPanel.tsx  → Toggles RAG + assets + graph
+  ├── MentionPicker.tsx        → @mentions con grupos (connector, asset,
+  │                              graph_node, skill, agent_source)
+  ├── MarkdownContent.tsx      → Renderizado markdown (react-markdown)
+  ├── MessageActions.tsx       → CopyButton, TokenStatsBadge
+  ├── UserMessage.tsx          → Burbuja de usuario
+  ├── ModelSelector.tsx        → Selector de modelo LLM
+  ├── CommandPalette.tsx       → Paleta de comandos (/)
+  ├── ConnectorStatusBadge.tsx → Status badge para conectores
+  └── TypingDots.tsx           → Indicador de escritura
 
-  DB: conversations + messages + chat_tool_calls tables
-  Tipos: Message, Conversation, SendMessageInput/Response,
-    MessageStats, ResearchSource, ContextNode, RecallChunk
+  src/features/workspace/chat/
+  ├── MentionPicker.tsx        → Parser de @menciones en texto
+  ├── ReasoningEventStream.tsx → Stream de eventos de agente en chat
+  └── events/
+     ├── index.ts              → Tipos de eventos de agente
+     └── AgentEventRenderer.tsx → Render de fase del pipeline
 
-  4 tools en tool loop: read_file, search_code, list_dir, glob
-  Sin streaming (request/response blocking)
+════════════════════════════════════════════════════════════════════════════
+2. HOOKS Y ESTADO
+════════════════════════════════════════════════════════════════════════════
 
-  Tests: 14 tests en chat commands, 8 en chat_repo, ~40 en core
-    chat.rs. Sin tests E2E ni de componentes frontend.
+  useChatSession.ts → Hook principal del chat:
+    ├── messages[] → Message[] (user + assistant)
+    ├── conversationId → string | null
+    ├── pending, loadingPhase, loadingHistory
+    ├── activeProvider → provider + model + endpoint
+    ├── contextToggles → ContextToggle (rag, assets, graph)
+    ├── webSearchEnabled → boolean
+    ├── submit(content, mentions?, skillNames?) → envía mensaje
+    ├── regenerate() → reenvía último mensaje
+    ├── loadConversation(id) → carga historial
+    └── newConversation() → limpia estado
+
+    Submit flow:
+      1. Crea mensaje user optimista
+      2. Crea placeholder assistant
+      3. Escucha evento "llm:token" para streaming
+      4. Llama sendMessage(input)
+      5. Actualiza mensaje assistant con respuesta real
+      6. Maneja errores (rollback optimista)
+
+════════════════════════════════════════════════════════════════════════════
+3. RUST PIPELINE (send_message.rs — 658 líneas)
+════════════════════════════════════════════════════════════════════════════
+
+  Orden de ejecución:
+    1. validate() input
+    2. Crear/actualizar conversación + UUID trace_id
+    3. Insertar user_msg en DB
+    4. classify_intent(content) → QueryIntent
+    5. Graph context: SELECT graph_nodes + edges
+    6. RAG recall: Python sidecar recall_chunks (top_k=4)
+       → Construye ChunkReference[] (asset_name, text_preview, score)
+    7. Project context: sidecar build_project_context
+    8. Mention context: lookup connector_configs, assets, graph_nodes
+    9. Skills context: read_skill_md() por cada skill_name activo
+       → "## Skills activos\n\n{contenido1}\n\n---\n\n{contenido2}"
+   10. Web search: sidecar search_web (si web_search=true)
+   11. build_messages() → mensajes system + context + history + user
+   12. Tool-calling loop (max 10 iter):
+       - Sidecar chat_llm_stream (primera llamada)
+       - Si hay tool_calls, ejecuta execute_tool_call()
+       - read_file / search_code / list_directory / glob_files
+       - Continúa loop hasta respuesta final
+   13. extract_message_stats() del último sidecar
+   14. Insertar assistant_msg en DB
+   15. Retornar SendMessageResponse
+
+════════════════════════════════════════════════════════════════════════════
+4. MENSAJES — ESTRUCTURA
+════════════════════════════════════════════════════════════════════════════
+
+  SendMessageInput:
+    project_id, conversation_id, content, provider, model, endpoint,
+    api_key, use_context, max_context_chunks, web_search,
+    mentioned_asset_ids, mentioned_connector_ids, mentioned_node_ids,
+    mentioned_agent_sources, skill_names
+
+  SendMessageResponse:
+    conversation_id, message (Message), chunks_used (ChunkReference[]),
+    trace_id, research_sources, search_query, validation_warnings, intent
+
+  Message (objeto completo):
+    id, conversation_id, role, content, provider, model, trace_id,
+    chunks_used[], nodes_used[], tool_calls[], sources[],
+    research_sources[], stats (MessageStats), created_at
+
+  ChunkReference:
+    chunk_id, asset_id, asset_name, chunk_index, relevance_score, text_preview
+
+  MessageStats:
+    input_tokens, output_tokens, total_tokens, duration_ms,
+    tokens_per_second, cost_usd, context_window, context_used_pct
+
+════════════════════════════════════════════════════════════════════════════
+5. INTEGRACIONES ESPECIALES
+════════════════════════════════════════════════════════════════════════════
+
+  A. Skills:
+     ├── Skill names enviados desde frontend en skill_names[]
+     ├── Rust lee read_skill_md() de cada skill
+     ├── Inyecta como system message "## Skills activos"
+     ├── Skills vía @mention: se agregan a activeSkills automáticamente
+     └── Skills desde SkillsPage "Usar en chat": dispatch custom event
+
+  B. Agent Pipeline:
+     ├── Tauri event "agent:event" con payload { agent, status, message, timestamp, data? }
+     ├── ChatPanel muestra ReasoningEventStream durante ejecución
+     └── 6 fases: Planner → Discovery → Knowledge → MCP → Reasoning → Result
+
+  C. ChromaDB RAG:
+     ├── Python sidecar _recall retorna chunks con chunk_index + chunk_id
+     ├── Rust construye ChunkReference[] con lookup de asset_name
+     ├── Frontend renderiza CitationsBlock colapsable
+     └── Knowledge steps: chromadb → graph → assets
+
+  D. Web Search:
+     ├── Python sidecar search_web con max_results=5
+     ├── DeepResearchPanel muestra fuentes en tiempo real
+     └── research_timer actualiza elapsed seconds
+
+  E. Streaming:
+     ├── Evento Tauri "llm:token" para streaming de tokens
+     ├── ChatPanel escucha y actualiza mensaje assistant en tiempo real
+     └── loadingPhase: classifying → searching → generating → extracting
+
+════════════════════════════════════════════════════════════════════════════
+6. TIPOS COMPARTIDOS (src/types/chat.ts — 251 líneas)
+════════════════════════════════════════════════════════════════════════════
+
+  Message, MessageRole, MessageStats, Conversation
+  SendMessageInput, SendMessageResponse
+  RecallChunk, ChunkReference, ContextAsset, ContextNode, ProjectContext
+  KnowledgeLookupStep, ResearchSource
+  MentionSource, MentionKind (connector, asset, graph_node, agent_source, skill)
+  SkillInfo
+  SlashCommand, SlashCommandGroup
+  StreamEvent types (DeepResearch, ToolCall, KnowledgeLookup, Generating)
+  EventPreviewState, PreviewChunk, PreviewChunkType
+
+════════════════════════════════════════════════════════════════════════════
+7. RUTAS Y NAVEGACIÓN
+════════════════════════════════════════════════════════════════════════════
+
+  GeoAgentsWorkspace.tsx maneja las rutas:
+    #chat         → ChatPanel (default)
+    #documentos   → DocumentsPage
+    #datos        → DataPage
+    #conocimiento → GraphPage
+    #uso          → AnalysisPage
+    #agentes      → AgentsPage
+    #skills       → SkillsPage
+    #mcp          → McpServersPage
+    #conectores   → ConnectorsPage
+    #contenedores-ia → AiContainersPage
+
+════════════════════════════════════════════════════════════════════════════
+8. ESTADO ACTUAL
+════════════════════════════════════════════════════════════════════════════
+
+  ✅ Implementado:
+     ├── Chat completo con streaming de tokens
+     ├── @mentions para 5 tipos de fuentes
+     ├── Skills activos via badges + pipeline
+     ├── ChromaDB RAG con citas reales
+     ├── Web search integrado
+     ├── Agent pipeline events en chat
+     ├── Tool-calling loop (4 tools)
+     ├── Knowledge steps visualization
+     ├── Message stats (tokens, cost, velocidad)
+     ├── Historial de conversaciones persistente
+     ├── Export chat a markdown
+     ├── Regenerar último mensaje
+     ├── Deep research panel
+     ├── Conexión con MCP servers
+     └── Conexión con proveedores LLM
+
+  🔴 Pendiente / Mejorable:
+     ├── Streaming completo (solo tokens, faltan tool_calls en vivo)
+     ├── Edición de mensajes enviados
+     ├── Búsqueda dentro del historial
+     ├── Multi-turno con memoria de skills
+     ├── Tests E2E de componentes frontend
+     ├── Rate limiting en frontend
+     └── Temas visuales para mensajes (código, tablas, mapas)
+
+════════════════════════════════════════════════════════════════════════════
+9. NOTAS TÉCNICAS
+════════════════════════════════════════════════════════════════════════════
+
+  - `cargo check` → 0 errors, 0 warnings
+  - `pnpm tsc --noEmit` → 0 errors
+  - El sidecar Python se llama con run_sidecar_json() y run_sidecar_streaming()
+  - Los eventos Tauri "llm:token" se escuchan con @tauri-apps/api/event listen()
+  - La tabla conversations + messages están en SQLite
+  - Las skills se almacenan en app_data_dir/skills/{name}/SKILL.md
+  - ChunkReference se construye desde recall_chunks + lookup en tabla assets
+  - Mention context se construye con queries directas a SQLite

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use geonexus_core::chat::{
-    Message, MessageRole, ResearchSource, SendMessageInput, SendMessageResponse,
+    ChunkReference, Message, MessageRole, ResearchSource, SendMessageInput, SendMessageResponse,
 };
 use geonexus_core::reasoning::QueryIntent;
 use geonexus_core::{GraphUpdatePayload, GraphEdge};
@@ -17,15 +17,9 @@ use super::search::extract_search_query;
 use super::stats::extract_message_stats;
 use super::tools::{execute_tool_call, get_tool_definitions};
 use super::validator::validate_response;
-use super::{run_sidecar_json, unix_now, AppState, ContextNode};
+use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
-
-#[derive(Debug, serde::Deserialize)]
-struct RecallChunk {
-    text: String,
-    source: String,
-}
 
 #[derive(Debug, sqlx::FromRow)]
 struct EdgeRow {
@@ -125,6 +119,56 @@ pub async fn send_message(
             args.push(&mentioned_asset_ids_str);
         }
         run_sidecar_json(&args).unwrap_or_default()
+    };
+
+    // Build chunk references for citations
+    let chunks_used: Vec<ChunkReference> = {
+        if recall_chunks.is_empty() {
+            Vec::new()
+        } else {
+            let asset_ids: Vec<&str> = recall_chunks.iter().map(|c| c.asset_id.as_str()).collect();
+            let mut name_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+            if !asset_ids.is_empty() {
+                let placeholders: Vec<String> = asset_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+                let sql = format!(
+                    "SELECT DISTINCT id, name FROM assets WHERE id IN ({})",
+                    placeholders.join(",")
+                );
+                // Build a raw query with positional bindings
+                let mut q = sqlx::query(&sql);
+                for aid in &asset_ids {
+                    q = q.bind(aid);
+                }
+                if let Ok(rows) = q.fetch_all(&state.db).await {
+                    for row in rows {
+                        use sqlx::Row;
+                        let id: String = row.get("id");
+                        let name: String = row.get("name");
+                        name_map.insert(id, name);
+                    }
+                }
+            }
+
+            recall_chunks
+                .iter()
+                .map(|c| {
+                    let asset_name = name_map.get(&c.asset_id).cloned().unwrap_or_else(|| c.source.clone());
+                    let text_preview = if c.text.len() > 200 {
+                        format!("{}...", &c.text[..200])
+                    } else {
+                        c.text.clone()
+                    };
+                    ChunkReference {
+                        chunk_id: c.chunk_id.clone(),
+                        asset_id: c.asset_id.clone(),
+                        asset_name,
+                        chunk_index: c.chunk_index,
+                        relevance_score: c.score,
+                        text_preview,
+                    }
+                })
+                .collect()
+        }
     };
 
     let rag_context = if recall_chunks.is_empty() {
@@ -270,10 +314,28 @@ pub async fn send_message(
     let tools_json = serde_json::to_string(&tools)
         .map_err(|e| format!("Error serializando tools: {e}"))?;
 
+    // === Skills context ===
+    let skills_context = {
+        let mut contents: Vec<String> = Vec::new();
+        for skill_name in &input.skill_names {
+            if let Ok(content) = geonexus_db::skills::registry::read_skill_md(&state.db, skill_name).await {
+                contents.push(content);
+            }
+        }
+        if contents.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "## Skills activos\n\nSigue las instrucciones de estos skills:\n\n{}",
+                contents.join("\n\n---\n\n")
+            )
+        }
+    };
+
     // === Build messages array ===
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
     let mut messages =
-        build_messages(&history, &all_project_context, &web_context, &rag_context, &input.content);
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &input.content);
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
@@ -580,7 +642,7 @@ pub async fn send_message(
     Ok(SendMessageResponse {
         conversation_id,
         message: assistant_msg,
-        chunks_used: Vec::new(),
+        chunks_used,
         trace_id,
         research_sources,
         search_query,

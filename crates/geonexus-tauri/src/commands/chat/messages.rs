@@ -7,6 +7,7 @@ pub fn build_messages(
     project_context: &str,
     web_context: &str,
     rag_context: &str,
+    skills_context: &str,
     user_content: &str,
 ) -> Vec<serde_json::Value> {
     let mut messages = vec![];
@@ -47,6 +48,13 @@ pub fn build_messages(
         messages.push(json!({
             "role": "system",
             "content": rag_context,
+        }));
+    }
+
+    if !skills_context.is_empty() {
+        messages.push(json!({
+            "role": "system",
+            "content": skills_context,
         }));
     }
 

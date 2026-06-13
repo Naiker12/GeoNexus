@@ -35,9 +35,12 @@ def _recall(args) -> None:
     for i, doc_id in enumerate(res["results"].get("ids", [[]])[0]):
         meta = (res["results"].get("metadatas", [[]])[0] or [{}])[i] if i < len(res["results"].get("metadatas", [[]])[0]) else {}
         dist = (res["results"].get("distances", [[]])[0] or [0.0])[i] if i < len(res["results"].get("distances", [[]])[0]) else 0.0
+        chunk_index = meta.get("chunk_index", 0)
         chunks.append({"text": (res["results"].get("documents", [[]])[0] or [""])[i] if i < len(res["results"].get("documents", [[]])[0]) else "",
                         "source": meta.get("source", "desconocido"),
                         "asset_id": meta.get("asset_id", ""),
+                        "chunk_index": chunk_index,
+                        "chunk_id": doc_id,
                         "score": 1.0 - dist})
     _print(chunks)
 

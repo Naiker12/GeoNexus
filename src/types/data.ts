@@ -153,3 +153,18 @@ export interface GraphEdge {
   relation: string
   strength: number
 }
+
+export interface LineageStep {
+  step: string
+  status: string
+  detail: string
+  timestamp: number | null
+}
+
+export interface DataLineage {
+  asset_id: string
+  asset_name: string
+  source: string
+  kind: string
+  steps: LineageStep[]
+}

@@ -4,6 +4,7 @@ use tauri::{Manager, AppHandle};
 use geonexus_db::DataRepository;
 
 pub mod commands;
+mod builtin_skills;
 
 pub struct AppState {
     pub db: sqlx::SqlitePool,
@@ -55,6 +56,9 @@ fn main() {
                 geonexus_db::agent_repo::seed_default_agents(&db)
             );
 
+            // Instalar skills built-in
+            let _ = builtin_skills::install_builtin_skills(app.handle(), &db);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +69,8 @@ fn main() {
             commands::data::get_sync_events,
             commands::data::validate_data_asset,
             commands::data::delete_data_asset,
+            commands::data::get_data_lineage,
+            commands::data::reindex_asset,
 
             // Fase 2
             commands::connector::register_local_connector,
@@ -76,6 +82,9 @@ fn main() {
             commands::connector::exchange_dropbox_oauth_code,
             commands::connector::list_dropbox_folder,
             commands::connector::download_dropbox_file,
+            commands::connector::get_onedrive_drive_info,
+            commands::connector::list_onedrive_folder,
+            commands::connector::download_onedrive_file,
             // Fase 3
             commands::document::index_document,
             commands::document::list_document_chunks,
@@ -124,6 +133,7 @@ fn main() {
             // Agents
             commands::agent::list_agents,
             commands::agent::toggle_agent,
+            commands::agent::run_agent_pipeline,
             // Graph Events
             commands::graph_events::clear_ephemeral_nodes,
             commands::graph_events::get_recent_graph_events,
@@ -132,12 +142,35 @@ fn main() {
             commands::notifications::send_os_notification,
             commands::notifications::request_notification_permission,
 
+            // MCP Runtime
+            commands::mcp::list_mcp_servers,
+            commands::mcp::register_mcp_server,
+            commands::mcp::delete_mcp_server,
+            commands::mcp::ping_mcp_server,
+            commands::mcp::ping_mcp_server_url,
+            commands::mcp::list_mcp_tools,
+            commands::mcp::call_mcp_tool,
+            commands::mcp::list_mcp_allowlist,
+            commands::mcp::upsert_mcp_allowlist,
+            commands::mcp::delete_mcp_allowlist,
+
+            // Settings
+            commands::settings::get_setting,
+            commands::settings::set_setting,
+
             // Graph CRUD & Operations
             commands::graph::delete_graph_node,
             commands::graph::pin_node,
             commands::graph::restore_graph_node,
             commands::graph::list_orphan_nodes,
             commands::graph::merge_nodes,
+
+            // Skills
+            commands::skills::list_skills,
+            commands::skills::install_skill_from_file,
+            commands::skills::install_skill_from_github,
+            commands::skills::toggle_skill,
+            commands::skills::read_skill_md,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -60,8 +60,14 @@ export function ConnectorCard({ provider, onSelect }: ConnectorCardProps) {
 }
 
 function StatusBadge({ status }: { status: ConnectorProvider["status"] }) {
+  if (status === "connected") {
+    return (
+      <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.68rem] font-medium text-emerald-600 dark:text-emerald-400">
+        Conectado
+      </span>
+    )
+  }
   const label = status === "simulated" ? "Simulado" : "Planeado"
-
   return (
     <span className="shrink-0 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[0.68rem] font-medium text-muted-foreground">
       {label}

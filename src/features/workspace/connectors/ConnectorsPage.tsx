@@ -3,16 +3,41 @@ import { CloudIcon, FolderSyncIcon, PlusIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 import { AddConnectorDialog } from "@/features/workspace/connectors/AddConnectorDialog"
+import { CloudProvidersPanel } from "@/features/workspace/connectors/CloudProvidersPanel"
 import { ConnectorCard } from "@/features/workspace/connectors/ConnectorCard"
 import { ConnectorSetupDialog } from "@/features/workspace/connectors/ConnectorSetupDialog"
 import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
 import { connectorProviders } from "@/features/workspace/connectors/connectors-data"
+import { listConnectorConfigs } from "@/api/connector"
+import type { ConnectorConfig } from "@/types/connector"
+
+/** Mapea el provider de backend (snake_case) al id del frontend (kebab-case) */
+const backendProviderToId: Record<string, string> = {
+  local: "local",
+  one_drive: "onedrive",
+  share_point: "sharepoint",
+  google_drive: "google-drive",
+  dropbox: "dropbox",
+  s3: "s3",
+}
 
 export function ConnectorsPage() {
   const [catalogOpen, setCatalogOpen] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [selectedProvider, setSelectedProvider] =
     React.useState<ConnectorProvider>(connectorProviders[0])
+  const [configs, setConfigs] = React.useState<ConnectorConfig[]>([])
+
+  React.useEffect(() => {
+    listConnectorConfigs("project-default").then(setConfigs).catch(() => {})
+  }, [])
+
+  const connectedIds = new Set(configs.map((c) => backendProviderToId[c.provider] ?? c.provider))
+
+  const providersWithStatus = connectorProviders.map((p) => ({
+    ...p,
+    status: connectedIds.has(p.id) ? ("connected" as const) : p.status,
+  }))
 
   const openProvider = (provider: ConnectorProvider) => {
     setSelectedProvider(provider)
@@ -61,7 +86,7 @@ export function ConnectorsPage() {
         </header>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {connectorProviders.map((provider) => (
+          {providersWithStatus.map((provider) => (
             <ConnectorCard
               key={provider.id}
               provider={provider}
@@ -69,11 +94,13 @@ export function ConnectorsPage() {
             />
           ))}
         </section>
+
+        <CloudProvidersPanel />
       </div>
 
       <AddConnectorDialog
         open={catalogOpen}
-        providers={connectorProviders}
+        providers={providersWithStatus}
         onOpenChange={setCatalogOpen}
         onSelectProvider={openProvider}
       />
@@ -81,6 +108,9 @@ export function ConnectorsPage() {
         open={dialogOpen}
         provider={selectedProvider}
         onOpenChange={setDialogOpen}
+        onConfigSaved={() => {
+          listConnectorConfigs("project-default").then(setConfigs).catch(() => {})
+        }}
       />
     </section>
   )

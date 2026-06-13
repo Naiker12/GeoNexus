@@ -1,0 +1,236 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS COMPLETO DE MCP EN GEONEXUS                                   ║
+║   Incluye: MCP Runtime + Settings + Skills + Fases 1-9                    ║
+║   Actualizado: Junio 2026                                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════════════════
+1. MCP RUNTIME — BACKEND RUST COMPLETO
+════════════════════════════════════════════════════════════════════════════
+
+  A. Crate geonexus-mcp (nuevo):
+     ├── types.rs         → McpServer, McpTool, AllowlistRule, PingResult,
+     │                      CallToolPayload, CallToolResult, RegisterServerPayload,
+     │                      UpsertAllowlistPayload, McpAuditLog (structs completos)
+     ├── registry.rs      → CRUD servidores/tools/allowlist en SQLite
+     │                      (list_servers, register_server, delete_server,
+     │                       list_tools, list_allowlist, upsert_allowlist_rule,
+     │                       delete_allowlist_rule, update_server_status)
+     ├── pinger.rs        → Ping HTTP real a servidores MCP con timeout 5s
+     │                      (reqwest, retorna online + latency_ms + error)
+     └── executor.rs      → Ejecuta tools MCP vía HTTP POST, valida allowlist,
+                            registra auditoría en container_mcp_calls
+
+  B. Migración SQL: 20260613000001_mcp_servers_tools_audit.sql
+     Tablas: mcp_servers, mcp_tools, mcp_allowlist, container_mcp_calls (auditoría)
+     Con índices por project_id, server_id, created_at
+
+  C. 10 Tauri commands en commands/mcp/handlers.rs:
+     ├── list_mcp_servers      → SELECT desde SQLite
+     ├── register_mcp_server   → INSERT con validación (id, name, url obligatorios)
+     ├── delete_mcp_server     → DELETE por id
+     ├── ping_mcp_server       → Ping real + actualiza status en DB
+     ├── ping_mcp_server_url   → Ping sin persistir
+     ├── list_mcp_tools        → Tools por server_id
+     ├── call_mcp_tool         → Ejecuta tool real vía HTTP POST
+     ├── list_mcp_allowlist    → Reglas allowlist por server
+     ├── upsert_mcp_allowlist  → Crea/actualiza regla
+     └── delete_mcp_allowlist  → Elimina regla
+
+  D. Frontend MCP (src/features/workspace/mcp/):
+     ├── McpServersPage.tsx    → Página real con datos de backend
+     ├── McpServerCard.tsx     → Card individual con ping real, tools, status
+     ├── McpServerGrid.tsx     → Grid reactivo
+     ├── McpToolsViewer.tsx    → Visor de tools reales
+     ├── McpConsole.tsx        → Consola interactiva (comandos reales)
+     ├── McpHeader.tsx         → Header con actions
+     ├── McpRegisterDialog.tsx → Dialog de registro (forma manual + JSON)
+     └── hooks/                → useMcpServers, useMcpTools, useMcpTerminal
+         useMcpServers.ts      → Hook con CRUD + ping real
+         useMcpTools.ts        → Hook para listar tools
+         useMcpTerminal.ts     → Hook para consola
+
+════════════════════════════════════════════════════════════════════════════
+2. SETTINGS SYSTEM
+════════════════════════════════════════════════════════════════════════════
+
+  A. Migración SQL: 20260613000002_app_settings.sql
+     Tabla: app_settings (key TEXT PRIMARY KEY, value TEXT, updated_at)
+
+  B. Tauri commands:
+     ├── get_setting    → SELECT value FROM app_settings WHERE key = ?
+     └── set_setting    → INSERT OR REPLACE
+
+  C. Frontend: src/api/settings.ts
+     ├── getSetting(key): Promise<string | null>
+     └── setSetting(key, value): Promise<void>
+
+════════════════════════════════════════════════════════════════════════════
+3. AGENT PIPELINE
+════════════════════════════════════════════════════════════════════════════
+
+  A. Comando run_agent_pipeline (commands/agent.rs):
+     6 fases: Planner → Discovery → Knowledge → MCP → Reasoning → Result
+     Emite eventos Tauri "agent:event" por fase
+     Knowledge phase: llama a Python sidecar recall_chunks
+     MCP phase: enumera servidores online, check allowlist, ejecuta tool
+
+  B. Frontend agents (src/features/workspace/agents/):
+     ├── AgentsPage.tsx         → Página de agentes
+     ├── AgentCard.tsx          → Card de agente
+     ├── AgentsPipeline.tsx     → Pipeline visual
+     ├── PlannerView.tsx        → Vista planner
+     ├── DiscoveryView.tsx      → Vista discovery
+     ├── ReasoningPanel.tsx     → Panel de razonamiento
+     └── hooks/                 → useAgentPipeline, usePlannerAgent,
+                                  useDiscoveryAgent, useKnowledgeAgent
+
+  C. Chat integration:
+     ├── ReasoningEventStream.tsx   → Stream de eventos en chat
+     ├── AgentEventRenderer.tsx     → Render de eventos de agente
+     └── MentionPicker → @agent_source mentions (memory, qgis, arcgis, etc.)
+
+════════════════════════════════════════════════════════════════════════════
+4. FASE 1 — DATA LINEAGE + REINDEX
+════════════════════════════════════════════════════════════════════════════
+
+  A. Tauri commands (commands/data/assets.rs):
+     ├── get_data_lineage(assetId) → Steps: source → cache → indexer → chromadb → kg
+     └── reindex_asset(assetId)    → Pending → Indexing → Python sidecar → save → sync event
+
+  B. Frontend:
+     ├── src/api/data.ts → getDataLineage, reindexAsset
+     ├── DataHeader.tsx  → Botón reindex llama reindexAsset()
+     ├── AssetSheet.tsx  → Pestaña lineage con status icons
+     └── types/data.ts   → DataLineage, LineageStep types
+
+════════════════════════════════════════════════════════════════════════════
+5. FASE 2 — CONECTORES UI REAL
+════════════════════════════════════════════════════════════════════════════
+
+  A. Frontend:
+     ├── ConnectorsPage.tsx         → Fetch real de listConnectorConfigs
+     │                                + merge con catálogo estático
+     ├── ConnectorCard.tsx          → Badge "Conectado" cuando backend tiene config
+     ├── ConnectorSetupDialog.tsx   → Llama registerLocalConnector / save_oauth_token
+     │                                + callback onConfigSaved refresca lista
+     ├── CloudProvidersPanel.tsx    → init_containers_mcp, status por provider
+     └── connector-types.ts        → status extendido con "connected"
+
+════════════════════════════════════════════════════════════════════════════
+6. FASE 3 — CHROMADB REAL + CITAS POR CHUNK
+════════════════════════════════════════════════════════════════════════════
+
+  A. Python sidecar (ai/sidecar.py): _recall retorna chunk_index + chunk_id
+
+  B. Rust:
+     ├── RecallChunk extendido con chunk_index + chunk_id
+     └── send_message.rs: build ChunkReference[] real (asset_name lookup,
+                          text_preview truncation, relevance score)
+
+  C. Frontend:
+     ├── CitationsBlock.tsx     → Componente colapsable de citas por chunk
+     ├── AssistantMessage.tsx   → Renderiza CitationsBlock
+     ├── useChatSession.ts      → Pasa response.chunks_used como chunk_references
+     └── types/chat.ts          → ChunkReference, Message.chunk_references
+
+════════════════════════════════════════════════════════════════════════════
+7. FASE 5 — OAUTH ONEDRIVE
+════════════════════════════════════════════════════════════════════════════
+
+  3 Tauri commands (commands/connector/onedrive.rs):
+  ├── get_onedrive_drive_info   → Microsoft Graph /me/drive
+  ├── list_onedrive_folder      → Graph /me/drive/root/children
+  └── download_onedrive_file    → Graph /me/drive/items/{id}/content
+
+════════════════════════════════════════════════════════════════════════════
+8. SETTINGS & CONFIGURACIÓN UI
+════════════════════════════════════════════════════════════════════════════
+
+  ├── SettingsDialogs.tsx      → Diálogos de configuración
+  ├── McpSettingsDialog.tsx    → Editar reglas allowlist + rate limit
+  ├── McpRulesTable.tsx        → Tabla de reglas (con delete, toggle, inline edit)
+  ├── GisToolsPanel.tsx        → Panel QGIS + herramientas GIS
+  └── McpRouterSection.tsx     → Sección MCP en configuración
+
+════════════════════════════════════════════════════════════════════════════
+9. CHAT UI COMPLETO
+════════════════════════════════════════════════════════════════════════════
+
+  ├── ChatPanel.tsx            → Layout principal + sidebar conversaciones
+  ├── ChatTranscript.tsx       → Lista de mensajes con scroll
+  ├── ChatComposer.tsx         → Input con @mentions, /commands, chips, skills
+  ├── AssistantMessage.tsx     → Markdown, citas, tokens, research, skills
+  ├── CitationsBlock.tsx       → Citas por chunk colapsables
+  ├── DeepResearchPanel.tsx    → Panel de búsqueda web profunda
+  ├── ProjectContextPanel.tsx  → Contexto GIS toggle
+  ├── MentionPicker.tsx        → @mentions para assets, conectores, skills, agentes
+  └── MarkdownContent.tsx      → Renderizado markdown
+
+════════════════════════════════════════════════════════════════════════════
+10. ESTADO ACTUAL — TODO REAL (sin placeholders)
+════════════════════════════════════════════════════════════════════════════
+
+  ✅ Funciona (todo real, conectado a backend):
+     - UI completa servidores MCP (grid, cards, tools, consola) con datos reales
+     - Registro de servidores con persistencia SQLite
+     - Ping real a servidores MCP (HTTP, timeout 5s)
+     - Ejecución de tools MCP vía HTTP POST
+     - Allowlist rules CRUD
+     - Settings persistidos en SQLite
+     - Agent pipeline (6 fases) con eventos Tauri
+     - Conectores reales (listConnectorConfigs)
+     - Cloud providers status (init_containers_mcp)
+     - Reindex + data lineage
+     - ChromaDB real con chunk citations
+     - OAuth OneDrive (3 commands)
+     - Skills system completo (backend + frontend)
+     - @mentions para skills en el chat
+
+  🔴 Pendiente / Mejorable:
+     - Stronghold keychain para tokens (solo SQLite ahora)
+     - Más built-in skills (solo pot-analyzer)
+     - Tests automatizados del pipeline MCP
+     - Conexión real a ArcGIS MCP + Supabase MCP
+     - Rate limiting del lado servidor
+     - Dashboard de monitoreo MCP (métricas en tiempo real)
+
+════════════════════════════════════════════════════════════════════════════
+11. FLUJO COMPLETO ACTUAL
+════════════════════════════════════════════════════════════════════════════
+
+  Agregar servidor MCP:
+     UI (McpRegisterDialog)
+       → JSON config validado en frontend
+       → Tauri command: register_mcp_server
+       → Rust: valida campos, INSERT en SQLite
+       → Responde con McpServer
+       → UI refresca lista
+
+  Ping servidor:
+     UI (McpServerCard → botón ping)
+       → Tauri command: ping_mcp_server
+       → Rust: SELECT url FROM mcp_servers
+       → reqwest::get(url) con timeout 5s
+       → UPDATE status en SQLite
+       → Responde online/latency/error
+
+  Ejecutar tool:
+     Chat IA / Consola MCP
+       → Tauri command: call_mcp_tool
+       → Rust: SELECT url, check allowlist
+       → POST tool al servidor MCP
+       → Registra auditoría en container_mcp_calls
+       → Devuelve resultado
+
+════════════════════════════════════════════════════════════════════════════
+12. NOTAS ADICIONALES
+════════════════════════════════════════════════════════════════════════════
+
+  - Todas las migraciones SQL están en crates/geonexus-db/migrations/
+  - sqlx::migrate!("./migrations") corre al iniciar DataRepository::new()
+  - `cargo check`  → 0 errors, 0 warnings
+  - `pnpm tsc --noEmit` → 0 errors
+  - El crate geonexus-mcp es independiente, puede publicarse como crate aparte
+  - Skills se integraron al @mention picker y al pipeline de mensajes
+  - La UI de skills permite instalar desde GitHub o archivo local

@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/Button"
 import { ModelSelector } from "@/components/chat/ModelSelector"
 import { CommandPalette } from "@/components/chat/CommandPalette"
 import { MentionPicker } from "@/components/chat/MentionPicker"
+import { SkillActivationBadge } from "@/features/workspace/skills/SkillActivationBadge"
+import type { SkillInfo } from "@/types/chat"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +53,10 @@ import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
 import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
 import { ShapefileConnectorDialog } from "@/components/chat/ShapefileConnectorDialog"
 import { getMentionableSources } from "@/api/chat"
-import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand } from "@/types/chat"
+import { listSkills } from "@/api/skills"
+import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand, MentionKind } from "@/types/chat"
+import type { AgentSourceType } from "@/types/agents"
+import { parseMentions } from "@/features/workspace/chat/MentionPicker"
 
 export type ChatComposerProps = {
   value: string
@@ -59,7 +64,7 @@ export type ChatComposerProps = {
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
   pending: boolean
-  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[] }) => void
+  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }) => void
   onToggleContext: () => void
   contextActive: boolean
   webSearchEnabled: boolean
@@ -69,6 +74,8 @@ export type ChatComposerProps = {
   onClearChat?: () => void
   onExportChat?: () => void
   onReindex?: () => void
+  activeSkills?: SkillInfo[]
+  onRemoveSkill?: (id: string) => void
 }
 
 type Chip = {
@@ -94,6 +101,8 @@ export function ChatComposer({
   onClearChat,
   onExportChat,
   onReindex,
+  activeSkills,
+  onRemoveSkill,
 }: ChatComposerProps) {
   // Slash command state
   const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
@@ -110,11 +119,26 @@ export function ChatComposer({
 
   // Mention sources — fetched from real DB via get_mentionable_sources
   const [rawSources, setRawSources] = React.useState<MentionableSourcesResponse | null>(null)
+  const [skillSources, setSkillSources] = React.useState<MentionSource[]>([])
 
   const refreshSources = React.useCallback(() => {
     getMentionableSources("project-default")
       .then(setRawSources)
       .catch(() => setRawSources(null))
+  }, [])
+
+  React.useEffect(() => {
+    listSkills().then(skills => {
+      setSkillSources(skills.map(s => ({
+        id: s.name,
+        kind: "skill" as MentionKind,
+        label: s.name,
+        sublabel: s.description ?? "Skill",
+        icon: "Cpu",
+        color: "#8B5CF6",
+        contextPayload: { type: "skill" as MentionKind, id: s.name },
+      })))
+    }).catch(() => {})
   }, [])
 
   React.useEffect(() => {
@@ -160,6 +184,33 @@ export function ChatComposer({
       })
     }
 
+    // Skills
+    for (const s of skillSources) {
+      result.push(s)
+    }
+
+    // Agent sources
+    const AGENT_SOURCES: { id: AgentSourceType; label: string; sublabel: string; icon: string; color: string }[] = [
+      { id: "memory",     label: "Memoria",     sublabel: "Memoria semántica (ChromaDB)", icon: "Database",     color: "#8B5CF6" },
+      { id: "qgis",       label: "QGIS",        sublabel: "Capas y procesos QGIS",         icon: "Map",          color: "#10B981" },
+      { id: "arcgis",     label: "ArcGIS",      sublabel: "ArcGIS Online / Portal",         icon: "Globe",        color: "#3B82F6" },
+      { id: "onedrive",   label: "OneDrive",    sublabel: "Buscar en OneDrive",             icon: "Cloud",        color: "#F59E0B" },
+      { id: "filesystem", label: "Archivos",    sublabel: "Carpetas locales",               icon: "Folder",       color: "#6B7280" },
+      { id: "graph",      label: "Grafo",       sublabel: "Knowledge Graph",                icon: "GitFork",      color: "#EC4899" },
+      { id: "github",     label: "GitHub",      sublabel: "Repositorios Git",               icon: "Code2",        color: "#1F2937" },
+    ]
+    for (const s of AGENT_SOURCES) {
+      result.push({
+        id: s.id,
+        kind: "agent_source" as MentionKind,
+        label: s.label,
+        sublabel: s.sublabel,
+        icon: s.icon,
+        color: s.color,
+        contextPayload: { type: "agent_source" as MentionKind, id: s.id },
+      })
+    }
+
     return result
   }, [rawSources])
 
@@ -171,6 +222,8 @@ export function ChatComposer({
     const assetIds: string[] = []
     const connectorIds: string[] = []
     const nodeIds: string[] = []
+    const agentSources: AgentSourceType[] = []
+    const skillNamesFromChips: string[] = []
 
     let finalContent = clean
     for (const chip of chips) {
@@ -181,13 +234,21 @@ export function ChatComposer({
       if (chip.kind === "asset") assetIds.push(chip.id)
       else if (chip.kind === "connector") connectorIds.push(chip.id)
       else if (chip.kind === "graph_node") nodeIds.push(chip.id)
+      else if (chip.kind === "agent_source") agentSources.push(chip.id as AgentSourceType)
+      else if (chip.kind === "skill") skillNamesFromChips.push(chip.id)
     }
+
+    // Merge text-parsed mentions with chip-based mentions
+    const { mentions: textMentions } = parseMentions(finalContent)
+    const allAgentSources = [...new Set([...agentSources, ...textMentions])]
 
     onValueChange("")
     setChips([])
     setShowMentionPicker(false)
     setSlashQuery(null)
-    onSubmit(finalContent, { assetIds, connectorIds, nodeIds })
+
+    const allSkillNames = skillNamesFromChips.length > 0 ? skillNamesFromChips : undefined
+    onSubmit(finalContent, { assetIds, connectorIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames })
   }
 
   const handleComposerChange = (newValue: string) => {
@@ -213,10 +274,16 @@ export function ChatComposer({
     }
   }
 
+  // Extract agent source mentions from text (also handle via chips)
+  const agentMentionsFromText = React.useMemo(() => {
+    const { mentions } = parseMentions(value)
+    return mentions
+  }, [value])
+
   const handleMentionSelect = (source: MentionSource) => {
     setChips((prev) => [
       ...prev.filter((c) => c.id !== source.id),
-      { id: source.id, kind: source.kind, label: source.label, color: source.color },
+      { id: source.id, kind: source.kind, label: source.label, color: source.color ?? "#8B5CF6" },
     ])
     setShowMentionPicker(false)
 
@@ -311,6 +378,26 @@ export function ChatComposer({
         className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
         onSubmit={handleSubmit}
       >
+        {activeSkills && activeSkills.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1.5 px-2">
+            {activeSkills.map(skill => (
+              <span
+                key={skill.id}
+                className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary"
+              >
+                {skill.name}
+                <button
+                  type="button"
+                  onClick={() => onRemoveSkill?.(skill.id)}
+                  className="hover:text-destructive ml-0.5"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         <InputGroup className="min-h-12 items-center rounded-xl bg-background/95 py-1">
           <InputGroupAddon className="items-center">
             <ToolMenu

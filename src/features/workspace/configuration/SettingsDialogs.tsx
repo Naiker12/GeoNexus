@@ -71,7 +71,9 @@ export function SettingsDialogs({
       <McpSettingsDialog
         open={open}
         name={dialog.name}
+        serverId={dialog.serverId}
         onOpenChange={close}
+        onSaved={() => onOpenChange(null)}
       />
     )
   }
