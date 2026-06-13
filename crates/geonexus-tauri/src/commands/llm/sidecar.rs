@@ -21,6 +21,7 @@ fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<
     let mut command = std::process::Command::new(&python_exe);
     command.arg(&sidecar_script).args(args).current_dir(&root_path);
     command.env("PYTHONIOENCODING", "utf-8");
+    command.env("PYTHONUTF8", "1");
     if let Some((key, value)) = env_var {
         command.env(key, value);
     }
@@ -29,9 +30,13 @@ fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<
         .output()
         .map_err(|e| format!("Fallo al ejecutar sidecar Python: {e}"))?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|e| format!("stdout del sidecar no es UTF-8 válido: {e}"))?
+        .trim()
+        .to_string();
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stderr = String::from_utf8(output.stderr)
+            .map_err(|e| format!("stderr del sidecar no es UTF-8 válido: {e}"))?;
         return Err(format!("Error en sidecar Python: {stderr} {stdout}"));
     }
 
@@ -56,6 +61,7 @@ pub fn run_sidecar_streaming(
     let mut command = std::process::Command::new(&python_exe);
     command.arg(&sidecar_script).args(args).current_dir(&root_path);
     command.env("PYTHONIOENCODING", "utf-8");
+    command.env("PYTHONUTF8", "1");
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 

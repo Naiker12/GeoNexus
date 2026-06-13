@@ -13,10 +13,10 @@ describe("DEFAULT_THINKING_STEPS", () => {
 
   it("has 5 steps in order", () => {
     expect(DEFAULT_THINKING_STEPS).toHaveLength(5)
-    expect(DEFAULT_THINKING_STEPS[0].id).toBe("parse")
-    expect(DEFAULT_THINKING_STEPS[1].id).toBe("docs")
-    expect(DEFAULT_THINKING_STEPS[2].id).toBe("knowledge")
-    expect(DEFAULT_THINKING_STEPS[3].id).toBe("kb")
+    expect(DEFAULT_THINKING_STEPS[0].id).toBe("classify")
+    expect(DEFAULT_THINKING_STEPS[1].id).toBe("retrieval")
+    expect(DEFAULT_THINKING_STEPS[2].id).toBe("search")
+    expect(DEFAULT_THINKING_STEPS[3].id).toBe("reasoning")
     expect(DEFAULT_THINKING_STEPS[4].id).toBe("gen")
   })
 

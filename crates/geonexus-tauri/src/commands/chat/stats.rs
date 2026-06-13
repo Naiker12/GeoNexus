@@ -1,32 +1,39 @@
 use geonexus_core::chat::MessageStats;
 
 /// Extrae estadísticas de uso de la respuesta del sidecar LLM.
+/// Siempre retorna Some (con estimación si el proveedor no reporta usage).
 pub fn extract_message_stats(
     result: &super::SidecarChatResult,
     elapsed: std::time::Duration,
     model: &str,
 ) -> Option<MessageStats> {
-    let usage = result.usage.as_ref()?;
-
-    let input_tokens = usage
-        .get("prompt_tokens")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as u32;
-    let output_tokens = usage
-        .get("completion_tokens")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as u32;
-    let total_tokens = input_tokens + output_tokens;
-
     let duration_ms = elapsed.as_millis() as u64;
     let duration_secs = elapsed.as_secs_f64();
+    let context_window = model_context_window(model);
+
+    let (input_tokens, output_tokens) = if let Some(usage) = &result.usage {
+        let inp = usage
+            .get("prompt_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+        let out = usage
+            .get("completion_tokens")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as u32;
+        (inp, out)
+    } else {
+        let content_len = result.content().map(|c| c.len() as u32).unwrap_or(0);
+        let out = (content_len / 4).max(1);
+        let inp = (context_window / 8).min(4096);
+        (inp, out)
+    };
+
+    let total_tokens = input_tokens + output_tokens;
     let tokens_per_second = if duration_secs > 0.0 {
         output_tokens as f32 / duration_secs as f32
     } else {
         0.0
     };
-
-    let context_window = model_context_window(model);
     let context_used_pct = if context_window > 0 {
         (input_tokens as f32 / context_window as f32) * 100.0
     } else {

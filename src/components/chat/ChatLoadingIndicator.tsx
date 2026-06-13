@@ -10,10 +10,10 @@ export type ChatLoadingPhase =
 
 const PHASE_CONFIG: Record<ChatLoadingPhase, { label: string; icon: typeof BrainCircuitIcon } | null> = {
   idle: null,
-  classifying: { label: "Analizando consulta...", icon: BrainCircuitIcon },
-  searching: { label: "Buscando en documentos...", icon: FileSearchIcon },
+  classifying: { label: "Clasificando consulta...", icon: BrainCircuitIcon },
+  searching: { label: "Consultando documentos y contexto...", icon: FileSearchIcon },
   generating: { label: "Generando respuesta...", icon: MessageSquareIcon },
-  extracting: { label: "Actualizando grafo...", icon: NetworkIcon },
+  extracting: { label: "Actualizando grafo de conocimiento...", icon: NetworkIcon },
   done: null,
 }
 

@@ -73,6 +73,7 @@ export function useChatSession(
   const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(
     () => loadWebSearchEnabled()
   )
+  const [submitTime, setSubmitTime] = React.useState<number | null>(null)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -157,6 +158,8 @@ export function useChatSession(
         return
       }
 
+      setSubmitTime(Date.now())
+
       const optimistic: Message = {
         id: `local-${Date.now()}`,
         conversation_id: conversationId ?? "pending",
@@ -202,8 +205,7 @@ export function useChatSession(
       }
       setMessages((current) => [...current, placeholderAssistant])
 
-      const phaseTimer1 = setTimeout(() => setLoadingPhase("searching"), 1200)
-      const phaseTimer2 = setTimeout(() => setLoadingPhase("generating"), 4000)
+      const searchingTimer = setTimeout(() => setLoadingPhase("searching"), 300)
 
       const useContext = contextToggles.rag_chunks
         || contextToggles.indexed_assets
@@ -253,15 +255,15 @@ export function useChatSession(
           )
         })
 
-        clearTimeout(phaseTimer1)
-        clearTimeout(phaseTimer2)
-        setLoadingPhase("extracting")
+        clearTimeout(searchingTimer)
+        setLoadingPhase("generating")
 
         const response = await sendMessage(input)
         unlisten?.()
         console.log("[DEBUG] sendMessage response.research_sources:", response.research_sources)
         setConversationId(response.conversation_id)
         saveConversationId(response.conversation_id)
+        setLoadingPhase("extracting")
 
         if (researchTimerId) {
           clearInterval(researchTimerId)
@@ -298,8 +300,7 @@ export function useChatSession(
 
         toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })
       } catch (err) {
-        clearTimeout(phaseTimer1)
-        clearTimeout(phaseTimer2)
+        clearTimeout(searchingTimer)
 
         if (researchTimerId) {
           clearInterval(researchTimerId)
@@ -359,6 +360,7 @@ export function useChatSession(
     setContextToggles,
     webSearchEnabled,
     setWebSearchEnabled,
+    submitTime,
     submit,
     regenerate,
     loadConversation,

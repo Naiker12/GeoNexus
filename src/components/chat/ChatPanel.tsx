@@ -39,6 +39,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     setContextToggles,
     webSearchEnabled,
     setWebSearchEnabled,
+    submitTime,
     submit,
     regenerate,
     loadConversation,
@@ -157,6 +158,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               messages={messages}
               pending={pending}
               loadingPhase={loadingPhase}
+              submitTime={submitTime}
               onSendMessage={submit}
               webSearchEnabled={webSearchEnabled}
               onEditLastUserMessage={handleEditLastUserMessage}

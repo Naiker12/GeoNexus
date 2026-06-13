@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/collapsible"
 import { SearchingIndicator, type SearchStep } from "@/components/chat/SearchingIndicator"
 import type { KnowledgeLookupStep } from "@/types/chat"
+import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 
 export type StepStatus = "done" | "active" | "pending"
 
@@ -29,8 +30,10 @@ export interface ThinkingStep {
 }
 
 interface ThinkingInlineProps {
-  steps: ThinkingStep[]
+  steps?: ThinkingStep[]
   isComplete?: boolean
+  phase?: ChatLoadingPhase
+  startTime?: number | null
   expanded?: boolean
   searchSteps?: SearchStep[]
   knowledgeSteps?: KnowledgeLookupStep[]
@@ -57,32 +60,72 @@ export function buildSummary(steps: ThinkingStep[], elapsed?: number): string {
   return `${doneCount} de ${steps.length} pasos completados`
 }
 
+const PHASE_STEPS: Record<ChatLoadingPhase, number> = {
+  classifying: 1,
+  searching: 2,
+  generating: 4,
+  extracting: 5,
+  idle: 5,
+  done: 5,
+}
+
+function computeStepsFromPhase(phase: ChatLoadingPhase): ThinkingStep[] {
+  const completedCount = PHASE_STEPS[phase] ?? 5
+  return DEFAULT_THINKING_STEPS.map((step, i) => ({
+    ...step,
+    status: i < completedCount ? "done" : i === completedCount ? "active" : "pending",
+  }))
+}
+
 export function ThinkingInline({
-  steps,
-  isComplete = false,
+  steps: stepsProp,
+  isComplete: isCompleteProp = false,
   expanded = false,
   searchSteps,
   knowledgeSteps,
+  phase,
+  startTime,
 }: ThinkingInlineProps) {
   const [open, setOpen] = React.useState(expanded)
-  const startRef = React.useRef(Date.now())
   const [elapsed, setElapsed] = React.useState<number | undefined>(undefined)
 
+  const usingPhase = phase !== undefined
+
   React.useEffect(() => {
-    if (isComplete) {
-      setElapsed((Date.now() - startRef.current) / 1000)
+    if (usingPhase) {
+      if (!startTime) return
+      if (phase === "idle" || phase === "done") {
+        setElapsed((Date.now() - startTime) / 1000)
+        if (!expanded) {
+          const t = setTimeout(() => setOpen(false), 1000)
+          return () => clearTimeout(t)
+        }
+        return
+      }
+      setOpen(true)
+      const id = setInterval(() => {
+        setElapsed((Date.now() - startTime) / 1000)
+      }, 200)
+      return () => clearInterval(id)
+    }
+
+    if (isCompleteProp) {
+      setElapsed((Date.now() - Date.now()) / 1000)
       if (!expanded) {
         const t = setTimeout(() => setOpen(false), 1000)
         return () => clearTimeout(t)
       }
     } else {
-      startRef.current = Date.now()
-      const interval = setInterval(() => {
-        setElapsed((Date.now() - startRef.current) / 1000)
+      const startRef = Date.now()
+      const id = setInterval(() => {
+        setElapsed((Date.now() - startRef) / 1000)
       }, 200)
-      return () => clearInterval(interval)
+      return () => clearInterval(id)
     }
-  }, [isComplete, expanded])
+  }, [usingPhase, phase, startTime, isCompleteProp, expanded])
+
+  const steps = usingPhase ? computeStepsFromPhase(phase!) : (stepsProp ?? [])
+  const isComplete = usingPhase ? (phase === "idle" || phase === "extracting" || phase === "done") : isCompleteProp
 
   const summary = buildSummary(steps, elapsed)
   const allDone = steps.every((s) => s.status === "done")
@@ -165,27 +208,27 @@ export function ThinkingInline({
 
 export const DEFAULT_THINKING_STEPS: ThinkingStep[] = [
   {
-    id: "parse",
-    label: "Analizando mensaje",
+    id: "classify",
+    label: "Analizando consulta",
     icon: <Sparkles className="size-3.5" />,
     status: "pending",
   },
   {
-    id: "docs",
-    label: "Buscando documentos relevantes",
-    icon: <FileSearch className="size-3.5" />,
-    status: "pending",
-  },
-  {
-    id: "knowledge",
-    label: "Consultando conocimiento local",
+    id: "retrieval",
+    label: "Recuperando documentos y contexto",
     icon: <Database className="size-3.5" />,
     status: "pending",
   },
   {
-    id: "kb",
-    label: "Construyendo contexto",
+    id: "search",
+    label: "Buscando en fuentes externas",
     icon: <Globe className="size-3.5" />,
+    status: "pending",
+  },
+  {
+    id: "reasoning",
+    label: "Razonando con la información",
+    icon: <FileSearch className="size-3.5" />,
     status: "pending",
   },
   {

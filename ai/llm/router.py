@@ -333,9 +333,11 @@ def chat_llm_provider_stream(
             response = requests.post(f"{url}/api/chat", json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
-            for line in response.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(decode_unicode=False):
                 if not line:
                     continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
                 try:
                     chunk = json.loads(line)
                     content = chunk.get("message", {}).get("content", "")
@@ -372,7 +374,11 @@ def chat_llm_provider_stream(
             response.raise_for_status()
             full_content = ""
             tool_calls_map: dict = {}
-            for line in response.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(decode_unicode=False):
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
                 if not line or not line.startswith("data: "):
                     continue
                 data_str = line[6:].strip()
@@ -421,7 +427,11 @@ def chat_llm_provider_stream(
             response.raise_for_status()
             full_content = ""
             tool_calls_map: dict = {}
-            for line in response.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(decode_unicode=False):
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
                 if not line or not line.startswith("data: "):
                     continue
                 data_str = line[6:].strip()
@@ -475,7 +485,11 @@ def chat_llm_provider_stream(
             response = requests.post(f"{url}/v1/messages", headers=headers, json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
-            for line in response.iter_lines(decode_unicode=True):
+            for line in response.iter_lines(decode_unicode=False):
+                if not line:
+                    continue
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
                 if not line or not line.startswith("data: "):
                     continue
                 data_str = line[6:].strip()

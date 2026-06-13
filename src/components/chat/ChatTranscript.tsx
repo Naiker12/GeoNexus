@@ -4,11 +4,7 @@ import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
-import {
-  ThinkingInline,
-  DEFAULT_THINKING_STEPS,
-} from "@/components/chat/ThinkingInline"
-import type { ThinkingStep } from "@/components/chat/ThinkingInline"
+import { ThinkingInline } from "@/components/chat/ThinkingInline"
 import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
 import { ChatLoadingIndicator, type ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message, MessageStats } from "@/types/chat"
@@ -17,6 +13,7 @@ type ChatTranscriptProps = {
   messages: Message[]
   pending: boolean
   loadingPhase?: ChatLoadingPhase
+  submitTime?: number | null
   onSendMessage?: (text: string) => void
   webSearchEnabled?: boolean
   onEditLastUserMessage?: () => void
@@ -24,49 +21,17 @@ type ChatTranscriptProps = {
   useContext?: boolean
 }
 
-function useThinkingSteps(pending: boolean) {
-  const [stepIndex, setStepIndex] = React.useState(0)
-
-  React.useEffect(() => {
-    if (pending) {
-      setStepIndex(0)
-      const timer = setInterval(() => {
-        setStepIndex((prev) =>
-          Math.min(prev + 1, DEFAULT_THINKING_STEPS.length - 1)
-        )
-      }, 1500)
-      return () => clearInterval(timer)
-    } else {
-      setStepIndex(DEFAULT_THINKING_STEPS.length)
-    }
-  }, [pending])
-
-  const steps: ThinkingStep[] = React.useMemo(
-    () =>
-      DEFAULT_THINKING_STEPS.map((step, i) => ({
-        ...step,
-        status:
-          i < stepIndex ? "done" : i === stepIndex ? "active" : "pending",
-      })),
-    [stepIndex]
-  )
-
-  const isComplete = stepIndex >= DEFAULT_THINKING_STEPS.length
-
-  return { steps, isComplete }
-}
-
 export function ChatTranscript({
   messages,
   pending,
   loadingPhase,
+  submitTime,
   onSendMessage,
   webSearchEnabled,
   onEditLastUserMessage,
   onRegenerateLastMessage,
   useContext,
 }: ChatTranscriptProps) {
-  const { steps, isComplete } = useThinkingSteps(pending)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
   const lastAssistantIndex = React.useMemo(() => {
@@ -145,8 +110,8 @@ export function ChatTranscript({
               <ChatLoadingIndicator phase={loadingPhase} />
             )}
             <ThinkingInline
-              steps={steps}
-              isComplete={isComplete}
+              phase={loadingPhase ?? "classifying"}
+              startTime={submitTime ?? null}
               knowledgeSteps={
                 useContext ? [
                   { source: "chromadb" as const, label: "Búsqueda semántica", status: "searching" as const },
