@@ -1,67 +1,73 @@
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║   ANÁLISIS COMPLETO DE MCP EN GEONEXUS                                   ║
 ║   Incluye: MCP Runtime + Settings + Skills + Fases 1-9                    ║
-║   Actualizado: Junio 2026                                                 ║
+║   Actualizado: Junio 2026 (verificado contra código real)                 ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 ════════════════════════════════════════════════════════════════════════════
-1. MCP RUNTIME — BACKEND RUST COMPLETO
+1. MCP RUNTIME — BACKEND RUST (crate independiente geonexus-mcp)
 ════════════════════════════════════════════════════════════════════════════
 
-  A. Crate geonexus-mcp (nuevo):
-     ├── types.rs         → McpServer, McpTool, AllowlistRule, PingResult,
-     │                      CallToolPayload, CallToolResult, RegisterServerPayload,
-     │                      UpsertAllowlistPayload, McpAuditLog (structs completos)
-     ├── registry.rs      → CRUD servidores/tools/allowlist en SQLite
-     │                      (list_servers, register_server, delete_server,
-     │                       list_tools, list_allowlist, upsert_allowlist_rule,
-     │                       delete_allowlist_rule, update_server_status)
-     ├── pinger.rs        → Ping HTTP real a servidores MCP con timeout 5s
-     │                      (reqwest, retorna online + latency_ms + error)
-     └── executor.rs      → Ejecuta tools MCP vía HTTP POST, valida allowlist,
-                            registra auditoría en container_mcp_calls
+  A. Crate geonexus-mcp (Cargo.toml sin dependencias Tauri ni geonexus-core):
+     ├── types.rs (218L) → McpServer, McpTool, AllowlistRule, PingResult,
+     │   CallToolPayload, CallToolResult, RegisterServerPayload,
+     │   UpsertAllowlistPayload (7 structs — McpAuditLog NO existe)
+     ├── registry.rs → CRUD servidores/tools/allowlist en SQLite:
+     │   list_servers, register_server, delete_server, list_tools,
+     │   list_allowlist, upsert_allowlist_rule, delete_allowlist_rule,
+     │   update_server_status — todo REAL
+     ├── pinger.rs → Ping HTTP real con reqwest. SIN timeout explícito
+     │   (doc anterior decía "timeout 5s" pero no hay .timeout() configurado)
+     └── executor.rs → Ejecuta tools MCP vía HTTP POST, valida allowlist,
+         registra auditoría en tabla mcp_tool_calls (NO container_mcp_calls
+         como decía doc anterior — esa tabla es de Fase 4 containers-mcp)
 
   B. Migración SQL: 20260613000001_mcp_servers_tools_audit.sql
-     Tablas: mcp_servers, mcp_tools, mcp_allowlist, container_mcp_calls (auditoría)
-     Con índices por project_id, server_id, created_at
+     Tablas: mcp_servers, mcp_tools, mcp_allowlist, mcp_tool_calls
+     Índices: idx_mcp_tools_server(server_id),
+              idx_mcp_tool_calls_server(server_id),
+              idx_mcp_tool_calls_trace(trace_id),
+              idx_mcp_allowlist_server(server_id)
+     NOTA: doc anterior decía índices por project_id/created_at — incorrecto.
+           Estas tablas NO tienen project_id ni created_at indexados.
 
-  C. 10 Tauri commands en commands/mcp/handlers.rs:
+  C. 10 Tauri commands en handlers.rs — TODOS reales, registrados en main.rs:
      ├── list_mcp_servers      → SELECT desde SQLite
-     ├── register_mcp_server   → INSERT con validación (id, name, url obligatorios)
+     ├── register_mcp_server   → INSERT con validación (id, name, url)
      ├── delete_mcp_server     → DELETE por id
-     ├── ping_mcp_server       → Ping real + actualiza status en DB
+     ├── ping_mcp_server       → Ping real HTTP (reqwest) + update status
      ├── ping_mcp_server_url   → Ping sin persistir
      ├── list_mcp_tools        → Tools por server_id
-     ├── call_mcp_tool         → Ejecuta tool real vía HTTP POST
+     ├── call_mcp_tool         → POST tool al servidor + auditoría
      ├── list_mcp_allowlist    → Reglas allowlist por server
      ├── upsert_mcp_allowlist  → Crea/actualiza regla
      └── delete_mcp_allowlist  → Elimina regla
 
-  D. Frontend MCP (src/features/workspace/mcp/):
-     ├── McpServersPage.tsx    → Página real con datos de backend
-     ├── McpServerCard.tsx     → Card individual con ping real, tools, status
-     ├── McpServerGrid.tsx     → Grid reactivo
-     ├── McpToolsViewer.tsx    → Visor de tools reales
-     ├── McpConsole.tsx        → Consola interactiva (comandos reales)
-     ├── McpHeader.tsx         → Header con actions
-     ├── McpRegisterDialog.tsx → Dialog de registro (forma manual + JSON)
-     └── hooks/                → useMcpServers, useMcpTools, useMcpTerminal
-         useMcpServers.ts      → Hook con CRUD + ping real
-         useMcpTools.ts        → Hook para listar tools
-         useMcpTerminal.ts     → Hook para consola
+  D. Frontend MCP (src/features/workspace/mcp/) — TODOS reales:
+     ├── McpServersPage.tsx     → Página con datos reales del backend
+     ├── McpServerCard.tsx      → Status dot (4 estados), ping btn, tools, metrics
+     ├── McpServerGrid.tsx      → Grid responsive con empty state
+     ├── McpToolsViewer.tsx     → Tools con args_schema JSON, status pills
+     ├── McpConsole.tsx         → Terminal interactivo (historial, search, copy)
+     ├── McpHeader.tsx          → Stats bar + action buttons
+     ├── McpRegisterDialog.tsx  → Form manual + JSON config + file upload + ping test
+     └── hooks/                 → useMcpServers (CRUD+ping), useMcpTools,
+         useMcpTerminal (10 comandos: help, list, ping, tools, status, clear...)
 
 ════════════════════════════════════════════════════════════════════════════
 2. SETTINGS SYSTEM
 ════════════════════════════════════════════════════════════════════════════
 
   A. Migración SQL: 20260613000002_app_settings.sql
-     Tabla: app_settings (key TEXT PRIMARY KEY, value TEXT, updated_at)
+     Tabla: app_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)
+     3 valores por defecto insertados en migración.
 
-  B. Tauri commands:
-     ├── get_setting    → SELECT value FROM app_settings WHERE key = ?
-     └── set_setting    → INSERT OR REPLACE
+  B. Tauri commands (commands/settings.rs, 43L):
+     ├── get_setting(key)  → SELECT con validación
+     └── set_setting(k,v)  → INSERT ON CONFLICT DO UPDATE con validación
+     Ambos registrados en main.rs líneas 213-214.
 
-  C. Frontend: src/api/settings.ts
+  C. Frontend: src/api/settings.ts (9L)
      ├── getSetting(key): Promise<string | null>
      └── setSetting(key, value): Promise<void>
 
@@ -69,38 +75,54 @@
 3. AGENT PIPELINE
 ════════════════════════════════════════════════════════════════════════════
 
-  A. Comando run_agent_pipeline (commands/agent.rs):
-     6 fases: Planner → Discovery → Knowledge → MCP → Reasoning → Result
-     Emite eventos Tauri "agent:event" por fase
-     Knowledge phase: llama a Python sidecar recall_chunks
-     MCP phase: enumera servidores online, check allowlist, ejecuta tool
+  A. Comando run_agent_pipeline (commands/agent.rs, 346L) — 6 fases REALES:
+     1. Planner → genera plan JSON con 5 pasos, emite evento
+     2. Discovery → emite servidores descubiertos, carga contexto MCP
+     3. Knowledge → llama Python sidecar recall_chunks (ChromaDB real)
+     4. MCP → itera servidores online, check allowlist, ejecuta tool
+     5. Reasoning → llama LLM vía sidecar si disponible
+     6. Result → emite respuesta final con agent:event (event_id, status, data)
+     Registrado en main.rs línea 191 + list_agents y toggle_agent.
 
-  B. Frontend agents (src/features/workspace/agents/):
-     ├── AgentsPage.tsx         → Página de agentes
-     ├── AgentCard.tsx          → Card de agente
-     ├── AgentsPipeline.tsx     → Pipeline visual
-     ├── PlannerView.tsx        → Vista planner
-     ├── DiscoveryView.tsx      → Vista discovery
-     ├── ReasoningPanel.tsx     → Panel de razonamiento
-     └── hooks/                 → useAgentPipeline, usePlannerAgent,
-                                  useDiscoveryAgent, useKnowledgeAgent
+  B. Frontend agents (src/features/workspace/agents/) — TODOS reales:
+     ├── AgentsPage.tsx         → Goal input + pipeline runner
+     ├── AgentCard.tsx          → Icon + label + status (running/done/error)
+     ├── AgentsPipeline.tsx     → Pipeline visual reusable
+     ├── PlannerView.tsx        → AgentPlan con steps + source chips
+     ├── DiscoveryView.tsx      → DiscoveredAsset list con type icons
+     ├── ReasoningPanel.tsx     → Event list scrollable con spinners
+     └── hooks/                 → useAgentPipeline (invoke + listener agent:event),
+         usePlannerAgent, useDiscoveryAgent, useKnowledgeAgent (ChromaDB recall)
 
   C. Chat integration:
-     ├── ReasoningEventStream.tsx   → Stream de eventos en chat
-     ├── AgentEventRenderer.tsx     → Render de eventos de agente
-     └── MentionPicker → @agent_source mentions (memory, qgis, arcgis, etc.)
+     ├── StreamEventRenderer.tsx  → (REEMPLAZA ReasoningEventStream.tsx que
+     │    NO existe — el doc anterior listaba un archivo eliminado/renombrado)
+     │    Escucha chat:stream_event, renderiza DeepResearchCard, GeneratingCard,
+     │    ToolCallCard, KnowledgeLookupCard
+     ├── useReasoningStream.ts    → (REEMPLAZA AgentEventRenderer.tsx que
+     │    NO existe — mismo caso) Escucha reasoning:step, llm:tool_call, etc.
+     ├── ReasoningPanel.tsx + ReasoningStepItem.tsx → Steps colapsables en chat
+     └── MentionPicker → @agent_source mentions (memory, qgis, arcgis,
+         onedrive, filesystem, graph, github) — real y funcional, con dos
+         sistemas paralelos: parseMentions() por regex + chip-based picker UI
 
 ════════════════════════════════════════════════════════════════════════════
 4. FASE 1 — DATA LINEAGE + REINDEX
 ════════════════════════════════════════════════════════════════════════════
 
-  A. Tauri commands (commands/data/assets.rs):
-     ├── get_data_lineage(assetId) → Steps: source → cache → indexer → chromadb → kg
-     └── reindex_asset(assetId)    → Pending → Indexing → Python sidecar → save → sync event
+  A. Tauri commands (commands/data/assets.rs, 266L):
+     ├── get_data_lineage(assetId) → Steps reales:
+     │   1) Source/connector origin  2) Local cache state
+     │   3) Indexer (PDF/GIS/CSV/Raster)  4) ChromaDB embeddings count
+     │   5) Knowledge graph nodes count
+     └── reindex_asset(assetId) → Pipeline real:
+         Pending → Indexing → Python sidecar index → parse result
+         → Update Ready → Log sync event
+     Ambos registrados en main.rs líneas 127-128.
 
   B. Frontend:
      ├── src/api/data.ts → getDataLineage, reindexAsset
-     ├── DataHeader.tsx  → Botón reindex llama reindexAsset()
+     ├── DataHeader.tsx  → Botón reindex
      ├── AssetSheet.tsx  → Pestaña lineage con status icons
      └── types/data.ts   → DataLineage, LineageStep types
 
@@ -108,14 +130,20 @@
 5. FASE 2 — CONECTORES UI REAL
 ════════════════════════════════════════════════════════════════════════════
 
-  A. Frontend:
-     ├── ConnectorsPage.tsx         → Fetch real de listConnectorConfigs
-     │                                + merge con catálogo estático
+  A. Frontend (src/features/workspace/connectors/):
+     ├── ConnectorsPage.tsx         → Fetch real listConnectorConfigs + merge catálogo
      ├── ConnectorCard.tsx          → Badge "Conectado" cuando backend tiene config
-     ├── ConnectorSetupDialog.tsx   → Llama registerLocalConnector / save_oauth_token
-     │                                + callback onConfigSaved refresca lista
-     ├── CloudProvidersPanel.tsx    → init_containers_mcp, status por provider
-     └── connector-types.ts        → status extendido con "connected"
+     ├── ConnectorSetupDialog.tsx   → Configura local + OAuth cloud, llama
+     │   registerLocalConnector / save_oauth_token, callback onConfigSaved
+     ├── CloudProvidersPanel.tsx    → init_containers_mcp + status por provider
+     ├── AddConnectorDialog.tsx     → Diálogo adicional de añadir
+     ├── AddCustomConnectorDialog.tsx → Conector personalizado
+     ├── ConnectorInfoPanel.tsx     → Panel informativo
+     ├── ConnectorLogo.tsx          → Logo por tipo
+     ├── InfoRow.tsx                → Fila reutilizable
+     ├── connector-types.ts        → status extendido "simulated"|"planned"|"connected"
+     ├── connectors-data.ts        → Datos estáticos de catálogo
+     └── hooks/useOAuthFlow.ts     → Flujo OAuth PKCE
 
 ════════════════════════════════════════════════════════════════════════════
 6. FASE 3 — CHROMADB REAL + CITAS POR CHUNK
@@ -123,80 +151,113 @@
 
   A. Python sidecar (ai/sidecar.py): _recall retorna chunk_index + chunk_id
 
-  B. Rust:
-     ├── RecallChunk extendido con chunk_index + chunk_id
-     └── send_message.rs: build ChunkReference[] real (asset_name lookup,
-                          text_preview truncation, relevance score)
+  B. Rust: RecallChunk con text, source, asset_id, chunk_index, chunk_id, score
+     send_message.rs construye ChunkReference[] real con asset_name lookup,
+     text_preview truncation (200 chars), relevance score.
 
   C. Frontend:
-     ├── CitationsBlock.tsx     → Componente colapsable de citas por chunk
+     ├── CitationsBlock.tsx     → Colapsable con relevance bars + highlights
      ├── AssistantMessage.tsx   → Renderiza CitationsBlock
-     ├── useChatSession.ts      → Pasa response.chunks_used como chunk_references
+     ├── useChatSession.ts      → Pasa chunks_used como chunk_references
      └── types/chat.ts          → ChunkReference, Message.chunk_references
 
 ════════════════════════════════════════════════════════════════════════════
 7. FASE 5 — OAUTH ONEDRIVE
 ════════════════════════════════════════════════════════════════════════════
 
-  3 Tauri commands (commands/connector/onedrive.rs):
-  ├── get_onedrive_drive_info   → Microsoft Graph /me/drive
-  ├── list_onedrive_folder      → Graph /me/drive/root/children
-  └── download_onedrive_file    → Graph /me/drive/items/{id}/content
+  3 Tauri commands (commands/connector/onedrive.rs) — REALES, registrados:
+  ├── get_onedrive_drive_info   → Microsoft Graph /me/drive (HTTP real)
+  ├── list_onedrive_folder      → Graph /me/drive/root/children (HTTP real)
+  └── download_onedrive_file    → Graph /me/drive/items/{id}/content → base64
+  Frontend: ConnectorSetupDialog construye URL OAuth PKCE, llama save_oauth_token.
 
 ════════════════════════════════════════════════════════════════════════════
 8. SETTINGS & CONFIGURACIÓN UI
 ════════════════════════════════════════════════════════════════════════════
 
-  ├── SettingsDialogs.tsx      → Diálogos de configuración
-  ├── McpSettingsDialog.tsx    → Editar reglas allowlist + rate limit
-  ├── McpRulesTable.tsx        → Tabla de reglas (con delete, toggle, inline edit)
-  ├── GisToolsPanel.tsx        → Panel QGIS + herramientas GIS
-  └── McpRouterSection.tsx     → Sección MCP en configuración
+  NOTA: Los archivos están en src/features/workspace/configuration/
+        (NO en settings/ como decía doc anterior — ese directorio no existe)
+
+  ├── SettingsDialogs.tsx      → Dispatcher a sub-diálogos (109L)
+  ├── McpSettingsDialog.tsx    → Edita allowlist + rate limit (119L)
+  ├── McpRulesTable.tsx        → Tabla servidores MCP con edit/delete (121L)
+  ├── GisToolsPanel.tsx        → Panel QGIS + tools GIS (177L)
+  └── McpRouterSection.tsx     → Sección MCP en configuración (47L)
 
 ════════════════════════════════════════════════════════════════════════════
 9. CHAT UI COMPLETO
 ════════════════════════════════════════════════════════════════════════════
 
-  ├── ChatPanel.tsx            → Layout principal + sidebar conversaciones
-  ├── ChatTranscript.tsx       → Lista de mensajes con scroll
-  ├── ChatComposer.tsx         → Input con @mentions, /commands, chips, skills
-  ├── AssistantMessage.tsx     → Markdown, citas, tokens, research, skills
-  ├── CitationsBlock.tsx       → Citas por chunk colapsables
-  ├── DeepResearchPanel.tsx    → Panel de búsqueda web profunda
-  ├── ProjectContextPanel.tsx  → Contexto GIS toggle
-  ├── MentionPicker.tsx        → @mentions para assets, conectores, skills, agentes
-  └── MarkdownContent.tsx      → Renderizado markdown
+  ├── ChatPanel.tsx            → Layout + sidebar + AgentLifeIndicator
+  ├── ChatTranscript.tsx       → Mensajes + ReasoningPanel + useReasoningStream
+  ├── ChatComposer.tsx         → @mentions, /commands, chips, skills, web toggle
+  ├── AssistantMessage.tsx     → Markdown, citas, tokens, research, McpToolCallCard
+  ├── CitationsBlock.tsx       → Citas colapsables con barras de relevancia
+  ├── DeepResearchPanel.tsx    → Búsqueda web profunda
+  ├── ProjectContextPanel.tsx  → Contexto GIS toggle (RAG, assets, grafo)
+  ├── MentionPicker.tsx        → @ para assets, conectores, skills, agentes (2 versiones)
+  ├── MarkdownContent.tsx      → Renderizado markdown
+  ├── ReasoningPanel.tsx       → Steps colapsables con resumen (N pasos · Ns)
+  ├── ReasoningStepItem.tsx    → Step individual con icono por tipo
+  ├── McpToolCallCard.tsx      → Card tool MCP inline en mensajes completados
+  ├── AgentLifeIndicator.tsx   → Barra superior "GEO AGENTS · Activo"
+  └── ConversationMemoryBadge.tsx → Badge de memoria de sesión
 
 ════════════════════════════════════════════════════════════════════════════
-10. ESTADO ACTUAL — TODO REAL (sin placeholders)
+10. FASE 4 — CONTAINERS MCP (no cubierto en doc anterior)
+════════════════════════════════════════════════════════════════════════════
+
+  Backend (commands/containers_mcp/):
+  ├── init_containers_mcp     → status + tool schemas por provider
+  ├── dispatch_container_tool → 5 tool handlers reales
+  ├── container_list          → Lista archivos de conectores desde DB
+  ├── container_get           → Cachea archivo + registra como asset
+  ├── container_search        → Busca archivos por nombre/ruta
+  ├── container_sync          → Sync metadata de conector local
+  └── container_upload        → Placeholder — "pending OAuth Phase 5"
+
+════════════════════════════════════════════════════════════════════════════
+11. ESTADO ACTUAL
 ════════════════════════════════════════════════════════════════════════════
 
   ✅ Funciona (todo real, conectado a backend):
-     - UI completa servidores MCP (grid, cards, tools, consola) con datos reales
+     - UI completa servidores MCP (grid, cards, tools, consola)
      - Registro de servidores con persistencia SQLite
-     - Ping real a servidores MCP (HTTP, timeout 5s)
-     - Ejecución de tools MCP vía HTTP POST
+     - Ping real a servidores MCP (HTTP reqwest)
+     - Ejecución de tools MCP vía HTTP POST + auditoría
      - Allowlist rules CRUD
      - Settings persistidos en SQLite
      - Agent pipeline (6 fases) con eventos Tauri
-     - Conectores reales (listConnectorConfigs)
+     - Conectores reales (listConnectorConfigs + registro)
      - Cloud providers status (init_containers_mcp)
-     - Reindex + data lineage
+     - Reindex + data lineage (5 pasos reales)
      - ChromaDB real con chunk citations
-     - OAuth OneDrive (3 commands)
-     - Skills system completo (backend + frontend)
-     - @mentions para skills en el chat
+     - OAuth OneDrive (3 commands Graph API real)
+     - Skills system completo (backend + frontend + @mentions)
+     - Tools filesystem reales (read_file, search_code, list_directory, glob_files)
+     - File system tools ejecutan llamadas reales std::fs
+
+  ⚠️ Correcciones respecto al doc anterior:
+     - McpAuditLog struct NO existe en types.rs (doc lo listaba)
+     - Ping NO tiene timeout 5s configurado (doc lo afirmaba)
+     - Executor escribe a mcp_tool_calls, NO container_mcp_calls
+     - Índices SQL son por server_id/trace_id, NO project_id/created_at
+     - ReasoningEventStream.tsx y AgentEventRenderer.tsx NO existen
+       (reemplazados por StreamEventRenderer.tsx + useReasoningStream.ts)
+     - Settings UI está en configuration/ NO settings/
 
   🔴 Pendiente / Mejorable:
      - Stronghold keychain para tokens (solo SQLite ahora)
+     - Timeout explícito en pinger.rs (5s como decía doc)
      - Más built-in skills (solo pot-analyzer)
      - Tests automatizados del pipeline MCP
      - Conexión real a ArcGIS MCP + Supabase MCP
      - Rate limiting del lado servidor
      - Dashboard de monitoreo MCP (métricas en tiempo real)
+     - container_upload es placeholder (pendiente OAuth real)
 
 ════════════════════════════════════════════════════════════════════════════
-11. FLUJO COMPLETO ACTUAL
+12. FLUJO COMPLETO ACTUAL
 ════════════════════════════════════════════════════════════════════════════
 
   Agregar servidor MCP:
@@ -211,7 +272,7 @@
      UI (McpServerCard → botón ping)
        → Tauri command: ping_mcp_server
        → Rust: SELECT url FROM mcp_servers
-       → reqwest::get(url) con timeout 5s
+       → reqwest::get(url) (SIN timeout explícito)
        → UPDATE status en SQLite
        → Responde online/latency/error
 
@@ -220,17 +281,19 @@
        → Tauri command: call_mcp_tool
        → Rust: SELECT url, check allowlist
        → POST tool al servidor MCP
-       → Registra auditoría en container_mcp_calls
+       → Registra auditoría en mcp_tool_calls
        → Devuelve resultado
 
 ════════════════════════════════════════════════════════════════════════════
-12. NOTAS ADICIONALES
+13. NOTAS ADICIONALES
 ════════════════════════════════════════════════════════════════════════════
 
   - Todas las migraciones SQL están en crates/geonexus-db/migrations/
   - sqlx::migrate!("./migrations") corre al iniciar DataRepository::new()
-  - `cargo check`  → 0 errors, 0 warnings
+  - `cargo check`  → 0 errors
   - `pnpm tsc --noEmit` → 0 errors
-  - El crate geonexus-mcp es independiente, puede publicarse como crate aparte
-  - Skills se integraron al @mention picker y al pipeline de mensajes
-  - La UI de skills permite instalar desde GitHub o archivo local
+  - `pnpm build` → 0 errors
+  - El crate geonexus-mcp es independiente (sin Tauri), publicable aparte
+  - Skills integrados al @mention picker + pipeline de mensajes
+  - UI de skills permite instalar desde GitHub o archivo local
+  - ~50 archivos frontend verificados: todos reales, 0 placeholders

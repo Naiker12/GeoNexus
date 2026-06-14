@@ -1,42 +1,86 @@
 ╔══════════════════════════════════════════════════════════════════╗
 ║   GRAFO DE CONOCIMIENTO TERRITORIAL                            ║
-║   24 archivos: TS, Rust, Python, SQL                           ║
+║   33+ archivos: TS, Rust, Python, SQL                          ║
 ╚══════════════════════════════════════════════════════════════════╝
 
   Stack: SQLite (graph_nodes + graph_edges) → Rust API →
-    Frontend SVG interactivo. Sin Neo4j — todo en SQLite.
+    Frontend SVG interactivo con d3-force. Sin Neo4j — todo en
+    SQLite con 9 índices en nodes, 3 en edges.
 
-  DB: graph_nodes (id, name, kind, x, y, weight, evidence) con
-    kinds: norma, documento, capa, zona, concepto
+  DB: graph_nodes (22 columnas tras 3 migraciones). Kinds reales:
+    norma, documento, capa, zona, concepto, chat_turn, web_search,
+    upload, connector, rag_recall
     graph_edges (source, target, relation, strength) con CASCADE
+    Columnas adicionales: is_ephemeral, source_event, event_id,
+    icon, origin_kind (document|chat|manual|import|connector),
+    pinned, deleted_at (soft-delete), source_asset_id (FK assets),
+    source_chat_id (FK conversations)
 
   Python extractor (ai/graph/extractor.py): regex para Art. N,
-    Zona/Sector, 5 conceptos hardcodeados + co-ocurrencia en
-    chunks → aristas semánticas (aplica_en, define, afecta)
-    Fallback: nodo "documento" si no hay entidades
+    Zona/Sector, 20 conceptos hardcodeados + co-ocurrencia en
+    chunks → aristas semánticas (aplica_en, define, afecta, o
+    asociado_con por defecto). Strength=80.
+    Fallback: nodo "documento" si no hay entidades.
+    Sin NLP, sin deduplicación entre documentos.
 
-  chat_extractor.py: extrae desde texto del chat (no chunks),
-    15 topics CHAT_TOPIC_MAP (POT, licencia, quebrada, etc.)
-    Aristas con strength=60 (vs 80 de docs)
+  chat_extractor.py: extrae desde texto del chat — 6 niveles:
+    1) definiciones (X es un...), 2) acrónimos 3-6 mayúsculas,
+    3) términos multi-word capitalizados, 4) 20 tech keywords
+    hardcodeados (Python, Rust, SQL, etc.), 5) match Art./Zona,
+    6) fallback nodo genérico. Todos regex, sin NLP.
+    Aristas strength=50 (NO 60 como decía doc anterior).
+    NO existe CHAT_TOPIC_MAP (doc anterior incorrecto).
 
-  layout.py: posiciona por tipo (normas arriba, zonas izq, etc.)
+  layout.py: posiciona por tipo con regiones semánticas + jitter
+    ±2px. Contadores por tipo para distribución uniforme.
 
-  Rust: 4 comandos Tauri (list_graph_nodes, list_graph_edges,
-    rebuild_knowledge_graph, update_node_position)
-    CRUD en data_repo.rs con INSERT OR REPLACE
+  Rust: 4 comandos Tauri registrados + 2 adicionales:
+    list_graph_nodes, list_graph_edges, rebuild_knowledge_graph,
+    update_node_position, clear_ephemeral_nodes,
+    get_recent_graph_events
+    5 comandos definidos pero NO registrados (work-in-progress):
+    delete_graph_node, pin_node, restore_graph_node,
+    list_orphan_nodes, merge_nodes
+    CRUD en data_repo.rs con INSERT ... ON CONFLICT DO UPDATE SET
+    (más robusto que el INSERT OR REPLACE del doc anterior).
+    weight se mergea con MAX(). soft-delete via deleted_at.
 
-  Frontend: GraphPage.tsx (595L) — SVG con burbujas arrastrables,
-    partículas animateMotion, NodeSheet con detalle/evidencia,
-    leyenda 5 colores, grid background con glow
+  Frontend: GraphPage.tsx (641L) — SVG con d3-force simulation
+    (forceLink, forceManyBody, forceCenter, forceCollide, forceX,
+    forceY). Burbujas arrastrables con persistencia de posición.
+    Partículas animateMotion, NodeSheet con detalle/evidencia/
+    relaciones/botón "Use in AI", GraphFilters con 11 opciones
+    (All + 10 tipos), GraphActivityPanel, GraphLegend con 10
+    colores, grid background con glow. Búsqueda client-side por
+    label (string match, SIN backend search_graph_nodes).
 
-  Chat integración: ProjectContextPanel toggle, nodos en prompt,
-    extracción automática tras cada mensaje
+  Chat integración: ProjectContextPanel con toggle de grafo,
+    nodos (top 8) inyectados en prompt del LLM, extracción
+    automática tras cada mensaje con is_ephemeral=true, emisión
+    graph:updated event. Nodos web_search creados desde fuentes.
 
-  Limitaciones: sin búsqueda de nodos (placeholder visual),
-    sin filtros funcionales, sin análisis con IA de la red,
-    extractor solo regex sin NLP, sin deduplicación de nodos
-    entre documentos, sin force-directed layout completo
+  Limitaciones actuales:
+    ❌ backend search_graph_nodes NO existe (búsqueda solo
+       client-side por substring)
+    ❌ nodes_used nunca se popula en send_message.rs — campo
+       siempre vacío (vec![]), aunque frontend lo lee
+    ❌ 5 comandos CRUD (delete, pin, restore, orphans, merge)
+       definidos pero no registrados en main.rs
+    ❌ Sin deduplicación de nodos entre documentos (merge_nodes
+       existe pero desactivado)
+    ❌ Sin análisis con IA de la red (caminos, clústeres,
+       detección de comunidades)
+    ❌ Sin NLP semántico (solo regex en extractores)
+    ❌ GraphPage sin filtros combinados, sin zoom-to-fit,
+       sin exportar imagen
 
-  Próximos pasos: búsqueda y filtros funcionales, NLP
-    semántico, deduplicación, operaciones de grafo (caminos,
-    BFS), tracking real de nodes_used en respuestas chat
+  Próximos pasos prioritarios:
+    1. Crear search_graph_nodes command (SQL con LIKE + kind
+       filter + paginación) y conectar frontend
+    2. Poblar nodes_used en send_message.rs (extraer los node IDs
+       del graph_context usado en el prompt)
+    3. Registrar los 5 comandos CRUD huérfanos en main.rs
+    4. Activar merge_nodes automático tras cada extracción
+    5. NLP semántico en extractor Python
+    6. Operaciones de grafo: caminos, BFS, clústeres
+    7. Zoom-to-fit, export SVG/PNG

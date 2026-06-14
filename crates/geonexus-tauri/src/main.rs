@@ -63,8 +63,17 @@ fn main() {
                     id: server_def.id.clone(),
                     name: server_def.name.clone(),
                     url: server_def.url.clone(),
+                    transport: None,
                     auth_type: server_def.auth_type.clone(),
                     auth_ref: server_def.auth_ref.clone(),
+                    auth_token: server_def.auth_token.clone(),
+                    command: None,
+                    args: None,
+                    env: None,
+                    headers: None,
+                    disabled: None,
+                    auto_approve: None,
+                    timeout_ms: None,
                     tools: None,
                 };
                 let _ = tauri::async_runtime::block_on(
@@ -93,15 +102,30 @@ fn main() {
                         Err(_) => continue,
                     };
                     for server in servers {
-                        let url = server.url.clone();
                         let sid = server.id.clone();
-                        let result = geonexus_mcp::pinger::ping_server(&url).await;
-                        let _ = geonexus_mcp::registry::update_server_status(
+                        if server.disabled { continue; }
+                        let is_http = server.transport == geonexus_mcp::types::McpTransport::Http
+                            || server.transport == geonexus_mcp::types::McpTransport::Sse;
+                        if !is_http || server.url.is_empty() {
+                            continue;
+                        }
+                        let url = server.url.clone();
+                        let auth_token = server.auth_token.clone()
+                            .or_else(|| server.auth_ref.clone());
+                        let result = geonexus_mcp::pinger::ping_server_with_auth(
+                            &url, auth_token.as_deref(),
+                        ).await;
+                        let _ = geonexus_mcp::registry::update_server_ping_result(
                             &bg_db, &sid, result.online, result.latency_ms,
+                            result.tools_count.map(|c| c as i32),
+                            result.protocol_version.as_deref(),
+                            result.error.as_deref(),
                         ).await;
                         if result.online {
+                            let auth = server.auth_token.clone()
+                                .or_else(|| server.auth_ref.clone());
                             let _ = geonexus_mcp::registry::auto_discover_tools(
-                                &bg_db, &url, &sid,
+                                &bg_db, &url, &sid, auth.as_deref(),
                             ).await;
                         }
                         let err_count = server.error_count;
@@ -145,6 +169,7 @@ fn main() {
             commands::document::list_document_chunks,
             commands::graph::list_graph_nodes,
             commands::graph::list_graph_edges,
+            commands::graph::search_graph_nodes,
             commands::document::rebuild_knowledge_graph,
             commands::graph::update_node_position,
             // Fase 4
@@ -208,6 +233,8 @@ fn main() {
             commands::mcp::list_mcp_allowlist,
             commands::mcp::upsert_mcp_allowlist,
             commands::mcp::delete_mcp_allowlist,
+            commands::mcp::import_mcp_config,
+            commands::mcp::export_mcp_config,
 
             // Settings
             commands::settings::get_setting,

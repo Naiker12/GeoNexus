@@ -16,6 +16,7 @@ pub fn build_messages(
 
     let msg_count = history.len();
     let has_history = msg_count > 0;
+
     let skills_note = if skill_names.is_empty() {
         String::new()
     } else {
@@ -26,16 +27,31 @@ pub fn build_messages(
     } else {
         String::new()
     };
-    let first_msg_instruction = if !has_history {
-        "Preséntate brevemente como Geo Agents, asistente de análisis geoespacial.".to_string()
+
+    let conversational_block = if !has_history {
+        format!(
+            r#"Preséntate brevemente como Geo Agents, asistente de análisis geoespacial para Colombia.{}"#,
+            if !skills_note.is_empty() || !assets_note.is_empty() {
+                format!("\n{}", [skills_note.clone(), assets_note.clone()].concat().trim())
+            } else {
+                String::new()
+            }
+        )
     } else {
         format!(
-            "Esta conversación tiene {} mensajes previos. \
-             Haz referencia a lo que se habló antes: 'Como vimos anteriormente...', \
-             'Continuando con el análisis de...'. \
-             Varía tu apertura, no siempre empieces igual. \
-             Menciona explícitamente qué skills o fuentes estás usando.",
-            msg_count
+            r#"## Memoria de sesión activa
+- Esta conversación tiene {} mensajes previos.{}{}
+
+## Instrucciones de naturalidad
+1. Si hay mensajes previos, haz referencia a lo que se habló: "Como vimos antes...", "Continuando con el análisis de...".
+2. Cuando uses un skill, menciona explícitamente qué skill estás aplicando y por qué.
+3. Cuando consultes datos, menciona qué fuentes usaste: "Revisando los documentos del proyecto...".
+4. Cuando no encuentres información, sé específico: "No encontré datos sobre X en las fuentes disponibles."
+5. Varía tu apertura: no siempre empieces igual.
+6. Si el usuario mencionó archivos o conectores específicos (@mentions), úsalos como fuente prioritaria."#,
+            msg_count,
+            if !skills_note.is_empty() { format!("\n- {}", skills_note.trim()) } else { String::new() },
+            if !assets_note.is_empty() { format!("\n- {}", assets_note.trim()) } else { String::new() },
         )
     };
 
@@ -52,12 +68,8 @@ pub fn build_messages(
              Usa texto plano. Separa listas con guiones. \
              Codigo en bloque con triple backtick.\n\n\
              ## Comportamiento conversacional\n\
-             {} \
-             {}{}\n\
-             Cuando uses un skill, menciona explícitamente cuál estás aplicando. \
-             Cuando consultes datos, menciona qué fuentes usaste. \
-             Cuando no encuentres información, sé específico sobre qué faltó.",
-            first_msg_instruction, skills_note, assets_note
+             {}\n",
+            conversational_block
         ),
     }));
 

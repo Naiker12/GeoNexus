@@ -158,7 +158,9 @@ pub async fn run_agent_pipeline(
     let mut mcp_result_lines: Vec<String> = Vec::new();
 
     for server in &servers {
+        if server.disabled { continue; }
         if !matches!(server.status, McpStatus::Online) { continue; }
+        if server.url.is_empty() { continue; }
 
         let tools: Vec<McpTool> = registry::list_tools(&state.db, &server.id)
             .await
@@ -182,7 +184,9 @@ pub async fn run_agent_pipeline(
                 agent_name: Some("mcp".to_string()),
             };
 
-            match executor::call_tool(&state.db, &server.url, payload).await {
+            let auth_token = server.auth_token.clone()
+                .or_else(|| server.auth_ref.clone());
+            match executor::call_tool(&state.db, &server.url, payload, auth_token.as_deref()).await {
                 Ok(result) if result.success => {
                     let msg = format!("{}/{}: OK ({}ms)", server.name, tool.name, result.duration_ms);
                     emit_event(&app_handle, "mcp", "done", &msg, result.data.clone());

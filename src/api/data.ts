@@ -9,6 +9,7 @@ import type {
   BackendGraphNode,
   BackendGraphEdge,
   DataLineage,
+  SearchGraphNodesResult,
 } from "@/types/data"
 import { defaultMetrics } from "@/features/workspace/data/data-data"
 import { invoke } from "@tauri-apps/api/core"
@@ -130,6 +131,16 @@ export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<Gr
     }))
   }
   return []
+}
+
+export async function searchGraphNodes(
+  projectId: string,
+  query: string,
+  kind?: string,
+  limit?: number,
+  offset?: number,
+): Promise<SearchGraphNodesResult> {
+  return invokeRequired<SearchGraphNodesResult>("search_graph_nodes", { projectId, query, kind, limit, offset })
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {

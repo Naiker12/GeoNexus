@@ -4,7 +4,7 @@ import { listMessages, sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { Message, SendMessageInput, KnowledgeLookupStep } from "@/types/chat"
+import type { Message, SendMessageInput, KnowledgeLookupStep, SessionSummary } from "@/types/chat"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 
 const DEFAULT_PROJECT_ID = "project-default"
@@ -74,6 +74,7 @@ export function useChatSession(
     () => loadWebSearchEnabled()
   )
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
+  const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -130,6 +131,7 @@ export function useChatSession(
     setConversationId(null)
     saveConversationId(null)
     setError(null)
+    setSessionSummary(null)
   }, [])
 
   const updateAssistantMessage = React.useCallback((
@@ -266,6 +268,9 @@ export function useChatSession(
         setConversationId(response.conversation_id)
         saveConversationId(response.conversation_id)
         setLoadingPhase("extracting")
+        if (response.session_summary) {
+          setSessionSummary(response.session_summary)
+        }
 
         if (researchTimerId) {
           clearInterval(researchTimerId)
@@ -363,6 +368,7 @@ export function useChatSession(
     webSearchEnabled,
     setWebSearchEnabled,
     submitTime,
+    sessionSummary,
     submit,
     regenerate,
     loadConversation,

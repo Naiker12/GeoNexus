@@ -17,36 +17,72 @@ const STATUS_CONFIG = {
   degraded: { dot: "bg-orange-500",  label: "degradado", badge: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800" },
 } as const
 
+const TRANSPORT_LABEL: Record<string, { icon: string; label: string }> = {
+  http:  { icon: "🌐", label: "HTTP" },
+  stdio: { icon: "⚡", label: "STDIO" },
+  sse:   { icon: "🔗", label: "SSE" },
+}
+
+function errorHint(error?: string): { icon: string; label: string } | null {
+  if (!error) return null
+  if (error.includes("Conexión fallida"))  return { icon: "⚠", label: "Servidor no iniciado" }
+  if (error.includes("Auth requerida") || error.includes("401")) return { icon: "🔑", label: "Token requerido" }
+  if (error.includes("Acceso denegado") || error.includes("403")) return { icon: "🔒", label: "Token sin permisos" }
+  if (error.includes("no encontrado") || error.includes("404"))   return { icon: "❓", label: "URL incorrecta" }
+  if (error.includes("415")) return { icon: "⚙", label: "Protocolo no compatible" }
+  if (error.includes("Timeout")) return { icon: "⏱", label: "Timeout — servidor lento" }
+  if (error.includes("Rate limit") || error.includes("429")) return { icon: "🔄", label: "Rate limit excedido" }
+  if (error.includes("Handshake OK")) return { icon: "⚠", label: "Online (sin tools/list)" }
+  if (error.includes("stdio")) return { icon: "⚡", label: "Servidor local (STDIO)" }
+  return null
+}
+
 export function McpServerCard({ server, isActive, onSelect, onPing, onEdit }: McpServerCardProps) {
   const [pinging, setPinging] = useState(false)
-  const cfg = STATUS_CONFIG[server.status]
+  const isDisabled = server.disabled
+  const cfg = isDisabled
+    ? { dot: "bg-gray-400", label: "desactivado", badge: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700" }
+    : STATUS_CONFIG[server.status]
+  const transport = TRANSPORT_LABEL[server.transport] ?? TRANSPORT_LABEL.http
+  const isStdio = server.transport === "stdio"
 
   const handlePing = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (isStdio) return
     setPinging(true)
     try { await onPing() }
     finally { setPinging(false) }
   }
+
+  const hint = server.status === "offline" ? errorHint(server.last_error ?? server.last_ping_at ?? undefined) : null
+  const toolsCount = server.tools?.length ?? server.tools_count
 
   return (
     <article
       onClick={onSelect}
       className={cn(
         "flex flex-col rounded-lg border bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur transition hover:border-primary/50 cursor-pointer",
-        isActive && "border-emerald-500/50 ring-1 ring-emerald-500/50"
+        isActive && "border-emerald-500/50 ring-1 ring-emerald-500/50",
+        server.disabled && "opacity-50"
       )}
     >
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 items-start gap-2.5">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-primary ring-1 ring-border">
-            <div className="size-3 text-center text-xs font-bold text-muted-foreground">
-              {server.name.charAt(0).toUpperCase()}
-            </div>
+          <div className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-md ring-1 ring-border text-[10px]",
+            isStdio ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" : "bg-muted text-primary"
+          )}>
+            {transport.icon}
           </div>
           <div className="min-w-0">
-            <h2 className="truncate text-xs font-semibold">{server.name}</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="truncate text-xs font-semibold">{server.name}</h2>
+              <span className="text-[9px] text-muted-foreground/60 uppercase">{transport.label}</span>
+            </div>
             <p className="mt-0.5 truncate font-mono text-[0.6rem] text-muted-foreground">
-              {server.url}
+              {isStdio
+                ? (server.command ? `${server.command} ${(server.args ?? []).slice(0, 2).join(" ")}...` : "comando local")
+                : server.url}
             </p>
           </div>
         </div>
@@ -63,23 +99,32 @@ export function McpServerCard({ server, isActive, onSelect, onPing, onEdit }: Mc
       )}
 
       <div className="mt-2 grid grid-cols-3 gap-2">
-        <MetricCol label="TOOLS" value={server.tools?.length?.toString() ?? (server.id ? "—" : "0")} accent />
-        <MetricCol label="LATENCIA" value={server.latency_ms ? `${server.latency_ms}ms` : "—"}
+        <MetricCol label="TOOLS" value={toolsCount?.toString() ?? "—"} accent />
+        <MetricCol label="LATENCIA" value={server.latency_ms ? `${server.latency_ms}ms` : (isStdio ? "N/A" : "—")}
           accent={!!server.latency_ms && server.latency_ms < 200} />
         <MetricCol label="ERRORES" value={server.error_count} warn={server.error_count > 0} />
       </div>
+
+      {hint && (
+        <p className="mt-1 flex items-center gap-1 text-[10px] text-destructive font-medium">
+          <span>{hint.icon}</span>
+          <span>{hint.label}</span>
+        </p>
+      )}
 
       <div className="mt-2 flex items-center gap-1.5">
         <button className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5" onClick={onSelect}>
           Ver tools
         </button>
-        <button
-          className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5"
-          onClick={handlePing}
-          disabled={pinging}
-        >
-          {pinging ? "Ping..." : "Ping"}
-        </button>
+        {!isStdio && (
+          <button
+            className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5"
+            onClick={handlePing}
+            disabled={pinging}
+          >
+            {pinging ? "Ping..." : "Ping"}
+          </button>
+        )}
         <button className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5 hidden xl:flex" onClick={onEdit}>
           Editar
         </button>

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::io::BufRead;
 use tauri::Emitter;
+use serde_json::json;
 
 pub fn run_sidecar(args: &[&str]) -> Result<String, String> {
     run_sidecar_with_env(args, None)
@@ -46,6 +47,7 @@ fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<
 pub fn run_sidecar_streaming(
     args: &[&str],
     app_handle: Option<&tauri::AppHandle>,
+    gen_event_id: Option<&str>,
 ) -> Result<String, String> {
     let root_path = project_root();
     let python_exe = python_executable(&root_path);
@@ -89,6 +91,13 @@ pub fn run_sidecar_streaming(
                     if let Some(content) = val["content"].as_str() {
                         if let Some(handle) = app_handle {
                             let _ = handle.emit("llm:token", content);
+                            if let Some(eid) = gen_event_id {
+                                let _ = handle.emit("chat:preview_chunk", json!({
+                                    "event_id": eid,
+                                    "chunk_type": "text",
+                                    "content": content,
+                                }));
+                            }
                         }
                     }
                 }
@@ -167,7 +176,8 @@ impl PythonSidecar {
         &self,
         args: &[&str],
         app_handle: Option<&tauri::AppHandle>,
+        gen_event_id: Option<&str>,
     ) -> Result<String, String> {
-        run_sidecar_streaming(args, app_handle)
+        run_sidecar_streaming(args, app_handle, gen_event_id)
     }
 }

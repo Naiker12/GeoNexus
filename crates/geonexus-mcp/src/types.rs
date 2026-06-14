@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AllowlistRule {
@@ -69,6 +70,33 @@ impl McpStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+pub enum McpTransport {
+    Http,
+    Stdio,
+    Sse,
+}
+
+impl McpTransport {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            McpTransport::Http => "http",
+            McpTransport::Stdio => "stdio",
+            McpTransport::Sse => "sse",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "http" => McpTransport::Http,
+            "stdio" => McpTransport::Stdio,
+            "sse" => McpTransport::Sse,
+            _ => McpTransport::Http,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum ToolStatus {
     Ready,
     Guarded,
@@ -99,11 +127,23 @@ pub struct McpServerRow {
     pub name: String,
     pub url: String,
     pub status: String,
+    pub transport: String,
     pub auth_type: Option<String>,
     pub auth_ref: Option<String>,
+    pub auth_token: Option<String>,
+    pub command: Option<String>,
+    pub args_json: Option<String>,
+    pub env_json: Option<String>,
+    pub headers_json: Option<String>,
+    pub disabled: i32,
+    pub auto_approve_json: Option<String>,
+    pub timeout_ms: Option<i32>,
     pub latency_ms: Option<i32>,
     pub error_count: i32,
     pub description: Option<String>,
+    pub tools_count: Option<i32>,
+    pub protocol_version: Option<String>,
+    pub last_error: Option<String>,
     pub last_ping_at: Option<String>,
 }
 
@@ -113,11 +153,27 @@ pub struct McpServer {
     pub name: String,
     pub url: String,
     pub status: McpStatus,
+    pub transport: McpTransport,
     pub auth_type: Option<String>,
     pub auth_ref: Option<String>,
+    pub auth_token: Option<String>,
+    pub command: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub env: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<serde_json::Value>,
+    pub disabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_approve: Option<Vec<String>>,
+    pub timeout_ms: Option<i32>,
     pub latency_ms: Option<i32>,
     pub error_count: i32,
     pub description: Option<String>,
+    pub tools_count: Option<i32>,
+    pub protocol_version: Option<String>,
+    pub last_error: Option<String>,
     pub last_ping_at: Option<String>,
 }
 
@@ -125,14 +181,26 @@ impl From<McpServerRow> for McpServer {
     fn from(row: McpServerRow) -> Self {
         McpServer {
             status: McpStatus::from_str(&row.status),
+            transport: McpTransport::from_str(&row.transport),
             id: row.id,
             name: row.name,
             url: row.url,
             auth_type: row.auth_type,
             auth_ref: row.auth_ref,
+            auth_token: row.auth_token,
+            command: row.command,
+            args: row.args_json.and_then(|s| serde_json::from_str(&s).ok()),
+            env: row.env_json.and_then(|s| serde_json::from_str(&s).ok()),
+            headers: row.headers_json.and_then(|s| serde_json::from_str(&s).ok()),
+            disabled: row.disabled != 0,
+            auto_approve: row.auto_approve_json.and_then(|s| serde_json::from_str(&s).ok()),
+            timeout_ms: row.timeout_ms,
             latency_ms: row.latency_ms,
             error_count: row.error_count,
             description: row.description,
+            tools_count: row.tools_count,
+            protocol_version: row.protocol_version,
+            last_error: row.last_error,
             last_ping_at: row.last_ping_at,
         }
     }
@@ -188,8 +256,17 @@ pub struct RegisterServerPayload {
     pub id: String,
     pub name: String,
     pub url: String,
+    pub transport: Option<String>,
     pub auth_type: Option<String>,
     pub auth_ref: Option<String>,
+    pub auth_token: Option<String>,
+    pub command: Option<String>,
+    pub args: Option<Vec<String>>,
+    pub env: Option<serde_json::Value>,
+    pub headers: Option<serde_json::Value>,
+    pub disabled: Option<bool>,
+    pub auto_approve: Option<Vec<String>>,
+    pub timeout_ms: Option<i32>,
     pub tools: Option<Vec<String>>,
 }
 
@@ -215,4 +292,38 @@ pub struct PingResult {
     pub online: bool,
     pub latency_ms: Option<u64>,
     pub error: Option<String>,
+    pub protocol_version: Option<String>,
+    pub tools_count: Option<usize>,
+    pub server_name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ImportResult {
+    pub imported: usize,
+    pub skipped: usize,
+    pub errors: Vec<String>,
+}
+
+// Claude Desktop config JSON structures
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpConfigFile {
+    pub mcp_servers: HashMap<String, McpServerDef>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerDef {
+    #[serde(rename = "type")]
+    pub server_type: Option<String>,
+    pub url: Option<String>,
+    pub headers: Option<serde_json::Value>,
+    pub command: Option<String>,
+    pub args: Option<Vec<String>>,
+    pub env: Option<serde_json::Value>,
+    pub disabled: Option<bool>,
+    pub auto_approve: Option<Vec<String>>,
+    pub timeout: Option<i32>,
+    pub name: Option<String>,
 }

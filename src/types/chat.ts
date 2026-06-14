@@ -198,7 +198,7 @@ export type ReasoningStep =
   | { type: "skills_injected"; skill_names: string[]; total_tokens: number }
   | { type: "mcp_tool_called"; server_id: string; tool_name: string; success: boolean; duration_ms: number }
   | { type: "graph_context_loaded"; nodes_count: number; edges_count: number }
-  | { type: "generating_response"; model: string; provider: string }
+  | { type: "generating_response"; model: string; provider: string; estimated_tokens?: number }
   | { type: "response_complete"; total_duration_ms: number; input_tokens: number; output_tokens: number; steps_executed: string[] }
 
 export interface ReasoningStepDisplay {

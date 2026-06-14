@@ -129,6 +129,11 @@ export interface GraphNode {
   is_ephemeral: boolean
 }
 
+export interface SearchGraphNodesResult {
+  total: number
+  nodes: BackendGraphNode[]
+}
+
 export interface GraphUpdatePayload {
   source_event: "chat" | "upload" | "sync" | "rag"
   event_id: string

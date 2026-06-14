@@ -5,7 +5,3 @@ export type ChatLoadingPhase =
   | "generating"
   | "extracting"
   | "done"
-
-export function ChatLoadingIndicator(_props: { phase: ChatLoadingPhase }) {
-  return null
-}

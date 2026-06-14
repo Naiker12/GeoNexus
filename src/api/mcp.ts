@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { McpServer, McpTool, RegisterServerPayload, CallToolPayload, CallToolResult, PingResult, AllowlistRule, UpsertAllowlistPayload } from "@/types/mcp"
+import type { McpServer, McpTool, RegisterServerPayload, CallToolPayload, CallToolResult, PingResult, ImportResult, AllowlistRule, UpsertAllowlistPayload } from "@/types/mcp"
 
 async function invokeRequired<T>(command: string, args: Record<string, unknown>): Promise<T> {
   return invoke<T>(command, args)
@@ -21,7 +21,8 @@ export function listMcpServers(): Promise<McpServer[]> {
 export function registerMcpServer(payload: RegisterServerPayload): Promise<McpServer> {
   if (!payload.id.trim()) throw new Error("ID requerido")
   if (!payload.name.trim()) throw new Error("Nombre requerido")
-  if (!payload.url.trim()) throw new Error("URL requerido")
+  const isHttp = payload.transport !== "stdio"
+  if (isHttp && !payload.url.trim()) throw new Error("URL requerido para servidores HTTP")
   return invokeRequired("register_mcp_server", { payload })
 }
 
@@ -56,4 +57,13 @@ export function deleteMcpAllowlist(ruleId: string): Promise<void> {
 export function deleteMcpServer(serverId: string): Promise<void> {
   if (!serverId.trim()) throw new Error("server_id requerido")
   return invokeRequired("delete_mcp_server", { serverId })
+}
+
+export function importMcpConfig(configJson: string): Promise<ImportResult> {
+  if (!configJson.trim()) throw new Error("config json requerido")
+  return invokeRequired("import_mcp_config", { configJson })
+}
+
+export function exportMcpConfig(): Promise<string> {
+  return invokeRequired("export_mcp_config", {})
 }

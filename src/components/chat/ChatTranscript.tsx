@@ -4,16 +4,13 @@ import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
-import { ThinkingInline } from "@/components/chat/ThinkingInline"
-import { StreamEventRenderer } from "@/features/workspace/chat/events/StreamEventRenderer"
-import { AgentEventRenderer } from "@/features/workspace/chat/events/AgentEventRenderer"
-import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
-import type { Message, MessageStats } from "@/types/chat"
+import { ReasoningPanel } from "@/components/chat/ReasoningPanel"
+import { useReasoningStream } from "@/components/chat/useReasoningStream"
+import type { Message } from "@/types/chat"
 
 type ChatTranscriptProps = {
   messages: Message[]
   pending: boolean
-  loadingPhase?: ChatLoadingPhase
   submitTime?: number | null
   onSendMessage?: (text: string) => void
   webSearchEnabled?: boolean
@@ -25,7 +22,6 @@ type ChatTranscriptProps = {
 export function ChatTranscript({
   messages,
   pending,
-  loadingPhase,
   submitTime,
   onSendMessage,
   webSearchEnabled,
@@ -34,6 +30,7 @@ export function ChatTranscript({
   useContext,
 }: ChatTranscriptProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const { steps, isReasoning } = useReasoningStream()
 
   const lastAssistantIndex = React.useMemo(() => {
     let idx = -1
@@ -114,13 +111,11 @@ export function ChatTranscript({
             <GeoAgentsIcon className="size-4" variant="nexus" />
           </div>
           <div className="flex flex-col gap-2 pt-1.5 w-full">
-            <ThinkingInline
-              phase={loadingPhase ?? "classifying"}
+            <ReasoningPanel
+              steps={steps}
+              isRunning={isReasoning}
               startTime={submitTime ?? null}
-              query={lastUserMessage}
             />
-            <StreamEventRenderer />
-            <AgentEventRenderer />
           </div>
         </div>
       ) : null}

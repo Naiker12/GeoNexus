@@ -27,7 +27,8 @@ import { ModelSelector } from "@/components/chat/ModelSelector"
 import { CommandPalette } from "@/components/chat/CommandPalette"
 import { MentionPicker } from "@/components/chat/MentionPicker"
 import { SkillActivationBadge } from "@/features/workspace/skills/SkillActivationBadge"
-import type { SkillInfo } from "@/types/chat"
+import { ConversationMemoryBadge } from "@/components/chat/ConversationMemoryBadge"
+import type { SkillInfo, SessionSummary } from "@/types/chat"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +77,7 @@ export type ChatComposerProps = {
   onReindex?: () => void
   activeSkills?: SkillInfo[]
   onRemoveSkill?: (id: string) => void
+  sessionSummary?: SessionSummary | null
 }
 
 type Chip = {
@@ -103,6 +105,7 @@ export function ChatComposer({
   onReindex,
   activeSkills,
   onRemoveSkill,
+  sessionSummary,
 }: ChatComposerProps) {
   // Slash command state
   const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
@@ -374,6 +377,8 @@ export function ChatComposer({
 
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border bg-background px-4 py-3 sm:px-5">
+      {sessionSummary && <ConversationMemoryBadge summary={sessionSummary} />}
+
       <form
         className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
         onSubmit={handleSubmit}

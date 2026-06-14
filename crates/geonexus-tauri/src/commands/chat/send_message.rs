@@ -35,6 +35,52 @@ fn emit_reasoning_done(handle: Option<&tauri::AppHandle>, summary: &SessionSumma
     }
 }
 
+fn emit_tool_call(handle: Option<&tauri::AppHandle>, tool_name: &str, tool_call_id: &str, args: &serde_json::Value) {
+    if let Some(h) = handle {
+        let _ = h.emit("llm:tool_call", json!({
+            "tool_name": tool_name,
+            "tool_call_id": tool_call_id,
+            "args": args,
+        }));
+    }
+}
+
+fn emit_tool_result(handle: Option<&tauri::AppHandle>, tool_name: &str, success: bool, duration_ms: u64) {
+    if let Some(h) = handle {
+        let _ = h.emit("llm:tool_result", json!({
+            "tool_name": tool_name,
+            "success": success,
+            "duration_ms": duration_ms,
+        }));
+    }
+}
+
+fn emit_llm_done(handle: Option<&tauri::AppHandle>, content_len: usize, model: &str) {
+    if let Some(h) = handle {
+        let _ = h.emit("llm:done", json!({
+            "content_length": content_len,
+            "model": model,
+        }));
+    }
+}
+
+fn emit_stream_event(handle: Option<&tauri::AppHandle>, event: &serde_json::Value) {
+    if let Some(h) = handle {
+        let _ = h.emit("chat:stream_event", event);
+    }
+}
+
+fn emit_preview_chunk(handle: Option<&tauri::AppHandle>, chunk: &serde_json::Value) {
+    if let Some(h) = handle {
+        let _ = h.emit("chat:preview_chunk", chunk);
+    }
+}
+
+fn stream_event_id() -> String {
+    let uuid = Uuid::new_v4().to_string();
+    uuid[..8].to_string()
+}
+
 #[derive(Debug, sqlx::FromRow)]
 struct EdgeRow {
     source_label: String,
@@ -53,30 +99,6 @@ pub async fn send_message(
     let trace_id = Uuid::new_v4().to_string();
     let conversation_id = ensure_conversation(&state, &input).await?;
 
-    let user_msg = Message {
-        id: Uuid::new_v4().to_string(),
-        conversation_id: conversation_id.clone(),
-        role: MessageRole::User,
-        content: input.content.trim().to_string(),
-        provider: None,
-        model: None,
-        trace_id: trace_id.clone(),
-        chunks_used: vec![],
-        nodes_used: vec![],
-        tool_calls: vec![],
-        sources: vec![],
-        created_at: unix_now(),
-        research_sources: None,
-        stats: None,
-    };
-
-    chat_repo::insert_message(&state.db, &user_msg).await?;
-
-    if input.conversation_id.is_none() {
-        let title = super::title_from_message(&input.content);
-        let _ = chat_repo::update_conversation_title(&state.db, &conversation_id, &title).await;
-    }
-
     // === Intent Classification ===
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
@@ -88,7 +110,7 @@ pub async fn send_message(
 
     // === Graph nodes + edges for enhanced context ===
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
-        "SELECT name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
+        "SELECT id, name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
     )
     .bind(&input.project_id)
     .fetch_all(&state.db)
@@ -115,13 +137,37 @@ pub async fn send_message(
     })
     .collect();
 
-    let graph_context = build_graph_context(&graph_nodes, &graph_edges, &intent);
+    let (graph_context, graph_node_ids) = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
-    if !graph_nodes.is_empty() {
+    if !graph_node_ids.is_empty() {
         let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GraphContextLoaded {
-            nodes_count: graph_nodes.len(),
+            nodes_count: graph_node_ids.len(),
             edges_count: graph_edges.len(),
         });
+    }
+
+    let user_msg = Message {
+        id: Uuid::new_v4().to_string(),
+        conversation_id: conversation_id.clone(),
+        role: MessageRole::User,
+        content: input.content.trim().to_string(),
+        provider: None,
+        model: None,
+        trace_id: trace_id.clone(),
+        chunks_used: vec![],
+        nodes_used: graph_node_ids.clone(),
+        tool_calls: vec![],
+        sources: vec![],
+        created_at: unix_now(),
+        research_sources: None,
+        stats: None,
+    };
+
+    chat_repo::insert_message(&state.db, &user_msg).await?;
+
+    if input.conversation_id.is_none() {
+        let title = super::title_from_message(&input.content);
+        let _ = chat_repo::update_conversation_title(&state.db, &conversation_id, &title).await;
     }
 
     // === RAG context ===
@@ -200,6 +246,7 @@ pub async fn send_message(
     let rag_context = if recall_chunks.is_empty() {
         String::new()
     } else {
+        let rag_event_id = format!("rag-{}", stream_event_id());
         let context_text = recall_chunks
             .iter()
             .enumerate()
@@ -213,6 +260,22 @@ pub async fn send_message(
             assets_queried,
             top_relevance,
         });
+        let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+            "type": "knowledge_lookup",
+            "event_id": rag_event_id,
+            "conversation_id": conversation_id,
+            "status": "complete",
+            "docs_count": recall_chunks.len(),
+        }));
+        for chunk in &recall_chunks {
+            let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
+                "event_id": rag_event_id,
+                "chunk_type": "rag_doc",
+                "content": chunk.text,
+                "source": chunk.asset_id,
+                "score": chunk.score,
+            }));
+        }
         format!(
             "Contexto relevante del proyecto (documentos indexados):\n{}\n\n\
              Usa este contexto para responder. Cita el numero de fuente cuando uses informacion de el.",
@@ -304,7 +367,15 @@ pub async fn send_message(
 
     // === Web search ===
     let search_query = extract_search_query(&input.content);
+    let web_event_id = format!("deep-{}", stream_event_id());
     let research_sources: Vec<ResearchSource> = if input.web_search {
+        emit_stream_event(state.app_handle.as_ref(), &json!({
+            "type": "deep_research",
+            "event_id": web_event_id,
+            "conversation_id": conversation_id,
+            "status": "searching",
+            "display_query": search_query,
+        }));
         let result = run_sidecar_json::<Vec<ResearchSource>>(&[
             "--action",
             "search_web",
@@ -319,9 +390,41 @@ pub async fn send_message(
                     query: search_query.clone(),
                     sources_found: srcs.len(),
                 });
+                emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "deep_research",
+                    "event_id": web_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "complete",
+                    "display_query": search_query,
+                    "sources_count": srcs.len(),
+                    "sources": srcs.iter().map(|s| json!({
+                        "title": s.title,
+                        "url": s.url,
+                        "domain": s.url.replace("https://", "").replace("http://", "").split('/').next().unwrap_or(""),
+                        "snippet": s.snippet,
+                    })).collect::<Vec<_>>(),
+                }));
+                for src in srcs {
+                    let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
+                        "event_id": web_event_id,
+                        "chunk_type": "source",
+                        "content": src.title,
+                        "title": src.title,
+                        "url": src.url,
+                        "snippet": src.snippet,
+                    }));
+                }
                 eprintln!("[DEBUG] search_web OK: {} sources", srcs.len());
             },
-            Err(e) => eprintln!("[DEBUG] search_web error: {e}"),
+            Err(e) => {
+                let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "deep_research",
+                    "event_id": web_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "error",
+                }));
+                eprintln!("[DEBUG] search_web error: {e}");
+            }
         }
         result.unwrap_or_default()
     } else {
@@ -408,10 +511,22 @@ pub async fn send_message(
             );
         }
 
+        let estimated_input_tokens = serde_json::to_string(&messages)
+            .map(|s| s.len() / 4)
+            .unwrap_or(0);
         let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GeneratingResponse {
             model: input.model.clone(),
             provider: input.provider.clone(),
+            estimated_tokens: Some(estimated_input_tokens),
         });
+
+        let gen_event_id = format!("gen-{}", stream_event_id());
+        let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+            "type": "generating",
+            "event_id": gen_event_id,
+            "conversation_id": conversation_id,
+            "status": "running",
+        }));
 
         let mut sidecar_args: Vec<String> = vec![
             "--action".into(),
@@ -448,6 +563,7 @@ pub async fn send_message(
         let output = run_sidecar_streaming(
             &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
             state.app_handle.as_ref(),
+            Some(&gen_event_id),
         );
 
         // Limpiar archivos temporales
@@ -473,6 +589,7 @@ pub async fn send_message(
             }));
 
             for tc in &tool_calls {
+                let tool_event_id = format!("tool-{}", stream_event_id());
                 let tool_call_id = tc["id"]
                     .as_str()
                     .unwrap_or("call_unknown")
@@ -481,9 +598,64 @@ pub async fn send_message(
                     .and_then(|f| f.get("name"))
                     .and_then(|n| n.as_str())
                     .unwrap_or("unknown");
+                let tool_args = tc.get("function")
+                    .and_then(|f| f.get("arguments"))
+                    .cloned()
+                    .unwrap_or(json!(null));
+
+                let display_name = match tool_name {
+                    "read_file" => "Leer archivo",
+                    "list_directory" => "Listar directorio",
+                    "search_code" => "Buscar en código",
+                    "glob_files" => "Glob de archivos",
+                    _ => tool_name,
+                };
+                let subtitle: Option<String> = tc.get("function")
+                    .and_then(|f| f.get("arguments"))
+                    .and_then(|a| a.as_str())
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok())
+                    .and_then(|v| {
+                        v.get("path")
+                            .or_else(|| v.get("pattern"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    });
+
+                let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "tool_call",
+                    "event_id": tool_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "running",
+                    "tool_name": tool_name,
+                    "display_name": display_name,
+                    "subtitle": subtitle,
+                }));
+
+                emit_tool_call(state.app_handle.as_ref(), tool_name, &tool_call_id, &tool_args);
+
                 let t_start = Instant::now();
                 let result = execute_tool_call(tc);
                 let t_dur = t_start.elapsed().as_millis() as u64;
+
+                // Emit tool_call complete
+                let lines_read = if tool_name == "read_file" {
+                    result.lines().count()
+                } else {
+                    0
+                };
+                let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "tool_call",
+                    "event_id": tool_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "complete",
+                    "tool_name": tool_name,
+                    "display_name": display_name,
+                    "subtitle": subtitle,
+                    "lines_read": lines_read,
+                }));
+
+                emit_tool_result(state.app_handle.as_ref(), tool_name, true, t_dur);
+
                 let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::McpToolCalled {
                     server_id: "filesystem".into(),
                     tool_name: tool_name.to_string(),
@@ -506,6 +678,13 @@ pub async fn send_message(
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
 
+        let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+            "type": "generating",
+            "event_id": gen_event_id,
+            "conversation_id": conversation_id,
+            "status": "complete",
+        }));
+        emit_llm_done(state.app_handle.as_ref(), content.len(), &input.model);
         break (content, Some(sidecar));
     };
 
@@ -575,7 +754,7 @@ pub async fn send_message(
         model: Some(response_model),
         trace_id: trace_id.clone(),
         chunks_used: vec![],
-        nodes_used: vec![],
+        nodes_used: graph_node_ids,
         tool_calls: vec![],
         sources,
         created_at: unix_now(),

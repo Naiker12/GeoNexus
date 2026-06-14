@@ -102,6 +102,7 @@ pub struct ContextAsset {
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct ContextNode {
+    pub id: String,
     pub label: String,
     pub kind: String,
 }
@@ -216,7 +217,7 @@ pub async fn get_project_context(
     .map_err(|e| format!("Error consultando assets indexados: {e}"))?;
 
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
-        "SELECT name AS label, kind FROM graph_nodes
+        "SELECT id, name AS label, kind FROM graph_nodes
          WHERE project_id = ?
          LIMIT 8"
     )

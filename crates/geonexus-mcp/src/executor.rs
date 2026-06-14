@@ -1,13 +1,84 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use sqlx::SqlitePool;
-use uuid::Uuid;
 use crate::types::*;
 use crate::registry;
+use reqwest::Client;
+use serde_json::{json, Value};
+
+fn build_client() -> reqwest::Result<Client> {
+    Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+}
+
+fn build_headers(request: reqwest::RequestBuilder, auth_token: Option<&str>) -> reqwest::RequestBuilder {
+    let request = request
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/event-stream");
+    if let Some(token) = auth_token {
+        request.header("Authorization", format!("Bearer {}", token))
+    } else {
+        request
+    }
+}
+
+async fn do_handshake(client: &Client, endpoint: &str, auth_token: Option<&str>) -> Result<(), String> {
+    // PASO 1: initialize
+    let init_payload = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": { "tools": {} },
+            "clientInfo": {
+                "name": "geonexus",
+                "version": "1.0.0"
+            }
+        }
+    });
+
+    let init_resp = build_headers(client.post(endpoint), auth_token)
+        .json(&init_payload)
+        .send()
+        .await
+        .map_err(|e| format!("Error en initialize: {e}"))?;
+
+    if !init_resp.status().is_success() {
+        return Err(format!("initialize falló: HTTP {}", init_resp.status()));
+    }
+
+    let init_body: Value = init_resp.json().await
+        .map_err(|e| format!("Respuesta initialize inválida: {e}"))?;
+
+    if let Some(err) = init_body.get("error") {
+        return Err(
+            err.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Error JSON-RPC en initialize")
+                .to_string()
+        );
+    }
+
+    // PASO 2: notifications/initialized
+    let notif_payload = json!({
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+    });
+
+    let _ = build_headers(client.post(endpoint), auth_token)
+        .json(&notif_payload)
+        .send()
+        .await;
+
+    Ok(())
+}
 
 pub async fn call_tool(
     pool: &SqlitePool,
     server_url: &str,
     payload: CallToolPayload,
+    auth_token: Option<&str>,
 ) -> Result<CallToolResult, String> {
     let allowed = registry::check_allowlist(pool, &payload.server_id, &payload.tool)
         .await
@@ -24,11 +95,15 @@ pub async fn call_tool(
 
     let endpoint = server_url.trim_end_matches('/');
     let start = Instant::now();
-    let client = reqwest::Client::new();
+    let client = build_client().map_err(|e| format!("Error creando cliente HTTP: {e}"))?;
 
-    let request = serde_json::json!({
+    // Handshake completo (stateless — necesario por request)
+    do_handshake(&client, endpoint, auth_token).await?;
+
+    // tools/call — la llamada real
+    let call_payload = json!({
         "jsonrpc": "2.0",
-        "id": Uuid::new_v4().to_string(),
+        "id": 2,
         "method": "tools/call",
         "params": {
             "name": payload.tool,
@@ -36,9 +111,8 @@ pub async fn call_tool(
         }
     });
 
-    let response = client
-        .post(endpoint)
-        .json(&request)
+    let response = build_headers(client.post(endpoint), auth_token)
+        .json(&call_payload)
         .send()
         .await;
 
@@ -46,7 +120,7 @@ pub async fn call_tool(
 
     let result = match response {
         Ok(resp) if resp.status().is_success() => {
-            match resp.json::<serde_json::Value>().await {
+            match resp.json::<Value>().await {
                 Ok(json) => {
                     if let Some(err) = json.get("error") {
                         CallToolResult {

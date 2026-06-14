@@ -7,6 +7,7 @@ import {
 
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { Button } from "@/components/ui/Button"
+import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
 import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
 import { ChatComposer } from "@/components/chat/ChatComposer"
@@ -17,6 +18,7 @@ import { useConnectors } from "@/contexts/ConnectorsContext"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
+import { useReasoningStream } from "@/components/chat/useReasoningStream"
 
 const PROJECT_ID = "project-default"
 
@@ -28,6 +30,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { toast } = useToast()
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
+  const { steps, isReasoning } = useReasoningStream()
   const {
     activeProvider,
     conversationId,
@@ -41,6 +44,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     webSearchEnabled,
     setWebSearchEnabled,
     submitTime,
+    sessionSummary,
     submit,
     regenerate,
     loadConversation,
@@ -160,6 +164,14 @@ export function ChatPanel(_props: ChatPanelProps) {
       {/* Main chat area */}
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
 
+        {/* Agent life indicator */}
+        <div className="flex shrink-0 items-center border-b border-border/30 bg-muted/20 px-3 h-7">
+          <AgentLifeIndicator
+            status={pending ? (steps.some(s => s.type === "web_searching") ? "searching" : steps.some(s => s.type === "skills_injected") ? "using_skill" : "thinking") : "idle"}
+            conversationCount={messages.filter(m => m.role === "user").length}
+          />
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {loadingHistory ? (
             <div className="flex min-h-full items-center justify-center pb-16 pt-10">
@@ -172,7 +184,6 @@ export function ChatPanel(_props: ChatPanelProps) {
             <ChatTranscript
               messages={messages}
               pending={pending}
-              loadingPhase={loadingPhase}
               submitTime={submitTime}
               onSendMessage={submit}
               webSearchEnabled={webSearchEnabled}
@@ -193,6 +204,7 @@ export function ChatPanel(_props: ChatPanelProps) {
           error={error}
           pending={pending}
           activeSkills={activeSkills}
+          sessionSummary={sessionSummary}
           onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
           onSubmit={(content, mentions) => {
             setComposerValue("")

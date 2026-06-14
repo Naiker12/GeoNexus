@@ -33,6 +33,7 @@ pub struct McpServerDef {
     pub url: String,
     pub auth_type: Option<String>,
     pub auth_ref: Option<String>,
+    pub auth_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +88,7 @@ impl Default for McpConfig {
                     url: "http://localhost:3001".into(),
                     auth_type: None,
                     auth_ref: None,
+                    auth_token: None,
                 },
                 McpServerDef {
                     id: "qgis-mcp".into(),
@@ -94,6 +96,7 @@ impl Default for McpConfig {
                     url: "http://localhost:3002".into(),
                     auth_type: None,
                     auth_ref: None,
+                    auth_token: None,
                 },
             ],
             ping_interval_secs: 60,

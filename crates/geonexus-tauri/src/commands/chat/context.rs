@@ -9,7 +9,8 @@ pub struct ContextEdge {
     pub relation: String,
 }
 
-pub fn build_graph_context(nodes: &[ContextNode], edges: &[ContextEdge], intent: &QueryIntent) -> String {
+/// Returns (context_string, filtered_node_ids).
+pub fn build_graph_context(nodes: &[ContextNode], edges: &[ContextEdge], intent: &QueryIntent) -> (String, Vec<String>) {
     let filtered: Vec<&ContextNode> = match intent {
         QueryIntent::ConsultaNormativa => {
             nodes.iter().filter(|n| n.kind == "norma" || n.kind == "article").collect()
@@ -48,9 +49,11 @@ pub fn build_graph_context(nodes: &[ContextNode], edges: &[ContextEdge], intent:
         }
     }
 
+    let ids: Vec<String> = filtered.iter().map(|n| n.id.clone()).collect();
+
     if parts.is_empty() {
-        String::new()
+        (String::new(), ids)
     } else {
-        parts.join("\n")
+        (parts.join("\n"), ids)
     }
 }

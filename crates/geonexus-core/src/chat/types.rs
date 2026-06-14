@@ -35,6 +35,7 @@ pub enum ReasoningStepEvent {
     GeneratingResponse {
         model: String,
         provider: String,
+        estimated_tokens: Option<usize>,
     },
     ResponseComplete {
         total_duration_ms: u64,

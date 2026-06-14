@@ -1,7 +1,17 @@
 use tauri::State;
+use serde_json::{json, Value};
 use crate::AppState;
 use geonexus_mcp::types::*;
 use geonexus_mcp::{registry, pinger};
+
+fn get_auth_token(server: &McpServer) -> Option<String> {
+    server.auth_token.clone()
+        .or_else(|| server.auth_ref.clone())
+}
+
+fn is_http_server(server: &McpServer) -> bool {
+    server.transport == McpTransport::Http || server.transport == McpTransport::Sse
+}
 
 #[tauri::command]
 pub async fn list_mcp_servers(
@@ -15,8 +25,12 @@ pub async fn register_mcp_server(
     state: State<'_, AppState>,
     payload: RegisterServerPayload,
 ) -> Result<McpServer, String> {
-    if payload.id.trim().is_empty() || payload.name.trim().is_empty() || payload.url.trim().is_empty() {
-        return Err("id, name y url son obligatorios".into());
+    if payload.id.trim().is_empty() || payload.name.trim().is_empty() {
+        return Err("id y name son obligatorios".into());
+    }
+    let transport = payload.transport.as_deref().unwrap_or("http");
+    if transport == "http" && payload.url.trim().is_empty() {
+        return Err("url es obligatoria para servidores HTTP".into());
     }
     registry::register_server(&state.db, payload).await.map_err(|e| e.to_string())
 }
@@ -41,16 +55,30 @@ pub async fn ping_mcp_server(
         return Err("server_id requerido".into());
     }
 
-    let url: String = sqlx::query_scalar("SELECT url FROM mcp_servers WHERE id = ?1")
-        .bind(&server_id)
-        .fetch_one(&state.db)
+    let server = registry::get_server(&state.db, &server_id)
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
 
-    let result = pinger::ping_server(&url).await;
+    // Saltar ping para servidores stdio (no tienen URL HTTP)
+    if !is_http_server(&server) || server.url.is_empty() {
+        return Ok(PingResult {
+            online: false,
+            latency_ms: None,
+            error: Some("Servidor stdio — no se puede hacer ping HTTP".into()),
+            protocol_version: None,
+            tools_count: None,
+            server_name: None,
+        });
+    }
 
-    let _ = registry::update_server_status(
+    let auth_token = get_auth_token(&server);
+    let result = pinger::ping_server_with_auth(&server.url, auth_token.as_deref()).await;
+
+    let _ = registry::update_server_ping_result(
         &state.db, &server_id, result.online, result.latency_ms,
+        result.tools_count.map(|c| c as i32),
+        result.protocol_version.as_deref(),
+        result.error.as_deref(),
     ).await;
 
     let err_count: i32 = sqlx::query_scalar("SELECT error_count FROM mcp_servers WHERE id = ?1")
@@ -66,7 +94,10 @@ pub async fn ping_mcp_server(
     ).await;
 
     if result.online {
-        let _ = registry::auto_discover_tools(&state.db, &url, &server_id).await;
+        let auth = get_auth_token(&server);
+        let _ = registry::auto_discover_tools(
+            &state.db, &server.url, &server_id, auth.as_deref(),
+        ).await;
     }
 
     Ok(result)
@@ -102,14 +133,134 @@ pub async fn call_mcp_tool(
         return Err("server_id y tool son obligatorios".into());
     }
 
-    let url: String = sqlx::query_scalar("SELECT url FROM mcp_servers WHERE id = ?1")
-        .bind(&payload.server_id)
-        .fetch_one(&state.db)
+    let server = registry::get_server(&state.db, &payload.server_id)
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
 
-    geonexus_mcp::executor::call_tool(&state.db, &url, payload).await
+    if !is_http_server(&server) || server.url.is_empty() {
+        return Err("No se puede llamar tools en servidores stdio a través de HTTP".into());
+    }
+
+    let auth_token = get_auth_token(&server);
+    geonexus_mcp::executor::call_tool(&state.db, &server.url, payload, auth_token.as_deref()).await
 }
+
+// ── Import / Export ──────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn import_mcp_config(
+    state: State<'_, AppState>,
+    config_json: String,
+) -> Result<ImportResult, String> {
+    let config: McpConfigFile = serde_json::from_str(&config_json)
+        .map_err(|e| format!("JSON inválido: {e}"))?;
+
+    let mut imported = 0usize;
+    let mut skipped = 0usize;
+    let mut errors = vec![];
+
+    for (server_key, server_def) in config.mcp_servers {
+        let id = server_key.clone();
+        let transport = match server_def.server_type.as_deref() {
+            Some("http") | Some("sse") => server_def.server_type.unwrap(),
+            _ => "stdio".to_string(),
+        };
+
+        let payload = RegisterServerPayload {
+            id: id.clone(),
+            name: server_def.name.unwrap_or_else(|| server_key.clone()),
+            url: server_def.url.unwrap_or_default(),
+            transport: Some(transport),
+            auth_type: None,
+            auth_ref: None,
+            auth_token: server_def.headers
+                .as_ref()
+                .and_then(|h| h.get("Authorization"))
+                .and_then(|v| v.as_str())
+                .and_then(|s| s.strip_prefix("Bearer "))
+                .map(|s| s.to_string()),
+            command: server_def.command,
+            args: server_def.args,
+            env: server_def.env,
+            headers: server_def.headers,
+            disabled: server_def.disabled,
+            auto_approve: server_def.auto_approve,
+            timeout_ms: server_def.timeout,
+            tools: None,
+        };
+
+        match registry::register_server(&state.db, payload).await {
+            Ok(_) => imported += 1,
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("UNIQUE") {
+                    skipped += 1;
+                } else {
+                    errors.push(format!("{}: {}", id, msg));
+                }
+            }
+        }
+    }
+
+    Ok(ImportResult { imported, skipped, errors })
+}
+
+#[tauri::command]
+pub async fn export_mcp_config(
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let servers = registry::list_servers(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut mcp_servers = serde_json::Map::new();
+
+    for server in servers {
+        let mut entry = serde_json::Map::new();
+
+        match server.transport {
+            McpTransport::Http | McpTransport::Sse => {
+                entry.insert("type".into(), json!("http"));
+                if !server.url.is_empty() {
+                    entry.insert("url".into(), json!(server.url));
+                }
+                if let Some(ref headers) = server.headers {
+                    entry.insert("headers".into(), headers.clone());
+                }
+            }
+            McpTransport::Stdio => {
+                if let Some(ref cmd) = server.command {
+                    entry.insert("command".into(), json!(cmd));
+                }
+                if let Some(ref args) = server.args {
+                    entry.insert("args".into(), json!(args));
+                }
+                if let Some(ref env) = server.env {
+                    entry.insert("env".into(), env.clone());
+                }
+            }
+        }
+
+        if server.disabled {
+            entry.insert("disabled".into(), json!(true));
+        }
+        if let Some(timeout) = server.timeout_ms {
+            entry.insert("timeout".into(), json!(timeout));
+        }
+        if let Some(ref approve) = server.auto_approve {
+            if !approve.is_empty() {
+                entry.insert("autoApprove".into(), json!(approve));
+            }
+        }
+
+        mcp_servers.insert(server.id, Value::Object(entry));
+    }
+
+    let config = json!({ "mcpServers": mcp_servers });
+    serde_json::to_string_pretty(&config).map_err(|e| e.to_string())
+}
+
+// ── Allowlist ────────────────────────────────────────────────────
 
 #[tauri::command]
 pub async fn list_mcp_allowlist(

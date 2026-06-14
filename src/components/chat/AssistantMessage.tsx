@@ -4,6 +4,7 @@ import { ConnectCard } from "@/components/chat/ConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { CitationsBlock } from "@/components/chat/CitationsBlock"
+import { McpToolCallCard } from "@/components/chat/McpToolCallCard"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
@@ -71,6 +72,13 @@ export function AssistantMessage({
             )}
             {message.chunk_references && message.chunk_references.length > 0 && (
               <CitationsBlock chunks={message.chunk_references} />
+            )}
+            {message.tool_calls && (message.tool_calls as Array<{tool_name: string}>).length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-1">
+                {(message.tool_calls as Array<{tool_name: string; server_id?: string; args?: string; result?: string; duration_ms?: number}>).map((tc, i) => (
+                  <McpToolCallCard key={`${tc.tool_name}-${i}`} tool={tc} />
+                ))}
+              </div>
             )}
             <ActionSuggestions
               suggestions={suggestions}
