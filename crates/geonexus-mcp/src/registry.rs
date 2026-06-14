@@ -26,15 +26,15 @@ pub async fn register_server(pool: &SqlitePool, payload: RegisterServerPayload) 
     sqlx::query(
         "INSERT INTO mcp_servers \
          (id, name, url, status, transport, auth_type, auth_ref, auth_token, \
-          command, args_json, env_json, headers_json, disabled, auto_approve_json, timeout_ms, description) \
-         VALUES (?1, ?2, ?3, 'pending', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15) \
+          command, args_json, env_json, headers_json, disabled, auto_approve_json, timeout_ms) \
+         VALUES (?1, ?2, ?3, 'pending', ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14) \
          ON CONFLICT(id) DO UPDATE SET \
            name = excluded.name, url = excluded.url, transport = excluded.transport, \
            auth_type = excluded.auth_type, auth_ref = excluded.auth_ref, auth_token = excluded.auth_token, \
            command = excluded.command, args_json = excluded.args_json, env_json = excluded.env_json, \
            headers_json = excluded.headers_json, disabled = excluded.disabled, \
            auto_approve_json = excluded.auto_approve_json, timeout_ms = excluded.timeout_ms, \
-           description = excluded.description, updated_at = datetime('now')"
+           updated_at = datetime('now')"
     )
     .bind(&payload.id)
     .bind(&payload.name)
@@ -50,7 +50,6 @@ pub async fn register_server(pool: &SqlitePool, payload: RegisterServerPayload) 
     .bind(disabled)
     .bind(&auto_approve_json)
     .bind(payload.timeout_ms)
-    .bind(&payload.name)
     .execute(pool)
     .await?;
 
@@ -363,7 +362,7 @@ pub async fn sync_tools_from_ping(
     Ok(count)
 }
 
-fn infer_tool_category(name: &str, description: &str) -> String {
+pub fn infer_tool_category(name: &str, description: &str) -> String {
     let lower = format!("{} {}", name, description).to_lowercase();
     if lower.contains("gis") || lower.contains("geo") || lower.contains("map")
         || lower.contains("spatial") || lower.contains("coordinate")

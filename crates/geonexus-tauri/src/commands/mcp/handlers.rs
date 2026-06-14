@@ -81,6 +81,15 @@ pub async fn ping_mcp_server(
         result.error.as_deref(),
     ).await;
 
+    if !result.online {
+        let _ = sqlx::query(
+            "UPDATE mcp_servers SET error_count = error_count + 1 WHERE id = ?1"
+        )
+        .bind(&server_id)
+        .execute(&state.db)
+        .await;
+    }
+
     let err_count: i32 = sqlx::query_scalar("SELECT error_count FROM mcp_servers WHERE id = ?1")
         .bind(&server_id)
         .fetch_one(&state.db)
@@ -258,6 +267,57 @@ pub async fn export_mcp_config(
 
     let config = json!({ "mcpServers": mcp_servers });
     serde_json::to_string_pretty(&config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn discover_stdio_tools(
+    state: State<'_, AppState>,
+    server_id: String,
+) -> Result<usize, String> {
+    if server_id.trim().is_empty() {
+        return Err("server_id requerido".into());
+    }
+
+    let server = registry::get_server(&state.db, &server_id)
+        .await
+        .map_err(|e| format!("Servidor no encontrado: {e}"))?;
+
+    if server.transport != McpTransport::Stdio {
+        return Err("Solo servidores STDIO pueden descubrir tools localmente".into());
+    }
+
+    let cmd = server.command.ok_or("El servidor STDIO no tiene comando definido")?;
+    let args = server.args.unwrap_or_default();
+    let timeout = server.timeout_ms.unwrap_or(30000) as u64;
+
+    let tools = geonexus_mcp::stdio::discover_tools(
+        &cmd, &args, server.env.as_ref().and_then(|v| v.as_object()), timeout,
+    ).await?;
+
+    if tools.is_empty() {
+        return Err("El servidor no reportó tools".into());
+    }
+
+    let discovered = tools.len();
+    for tool in &tools {
+        let category = registry::infer_tool_category(&tool.name, &tool.description);
+        let args_json = tool.input_schema.as_ref()
+            .map(|s| serde_json::to_string(s).unwrap_or_default())
+            .unwrap_or_default();
+        let _ = registry::upsert_tool(
+            &state.db, &server_id, &tool.name, &category,
+            &tool.description, &args_json, "",
+        ).await;
+    }
+
+    // Actualizar tools_count
+    let _ = sqlx::query("UPDATE mcp_servers SET tools_count = ?1 WHERE id = ?2")
+        .bind(discovered as i32)
+        .bind(&server_id)
+        .execute(&state.db)
+        .await;
+
+    Ok(discovered)
 }
 
 // ── Allowlist ────────────────────────────────────────────────────

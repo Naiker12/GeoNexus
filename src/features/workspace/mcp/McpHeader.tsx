@@ -18,7 +18,7 @@ export function McpHeader({ servers, pingProgress, onRegister, onPingAll, onOpen
   const pingingAll = pingProgress !== null
   const activeCount = servers.filter(s => s.status === "online").length
   const notDisabledCount = servers.filter(s => !s.disabled).length
-  const toolCount = servers.reduce((acc, s) => acc + (s.tools?.length ?? 0), 0)
+  const toolCount = servers.reduce((acc, s) => acc + (s.tools_count ?? 0), 0)
 
   useEffect(() => {
     getSetting("mcp.rate_limit_rpm").then(val => {

@@ -81,24 +81,7 @@ fn default_language() -> String {
 impl Default for McpConfig {
     fn default() -> Self {
         Self {
-            default_servers: vec![
-                McpServerDef {
-                    id: "memory-mcp".into(),
-                    name: "Memory MCP".into(),
-                    url: "http://localhost:3001".into(),
-                    auth_type: None,
-                    auth_ref: None,
-                    auth_token: None,
-                },
-                McpServerDef {
-                    id: "qgis-mcp".into(),
-                    name: "QGIS MCP".into(),
-                    url: "http://localhost:3002".into(),
-                    auth_type: None,
-                    auth_ref: None,
-                    auth_token: None,
-                },
-            ],
+            default_servers: vec![],
             ping_interval_secs: 60,
         }
     }

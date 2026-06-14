@@ -42,6 +42,24 @@ fn main() {
             })?;
 
             let db = repo.pool.clone();
+
+            // Fallback: asegurar columnas de migraciones recientes (por si el binario está desactualizado)
+            tauri::async_runtime::block_on(async {
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN transport TEXT NOT NULL DEFAULT 'http'").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN command TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN args_json TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN env_json TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN headers_json TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN auto_approve_json TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN timeout_ms INTEGER DEFAULT 5000").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN tools_count INTEGER").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN protocol_version TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN last_error TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN auth_token TEXT").execute(&db).await;
+                let _ = sqlx::query("ALTER TABLE mcp_tools ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))").execute(&db).await;
+            });
+
             let db_path_str = db_path.to_string_lossy().to_string();
 
             // Guardar la ruta de la base de datos en la variable de entorno global para procesos hijos
@@ -121,6 +139,14 @@ fn main() {
                             result.protocol_version.as_deref(),
                             result.error.as_deref(),
                         ).await;
+                        if !result.online {
+                            let _ = sqlx::query(
+                                "UPDATE mcp_servers SET error_count = error_count + 1 WHERE id = ?1"
+                            )
+                            .bind(&sid)
+                            .execute(&bg_db)
+                            .await;
+                        }
                         if result.online {
                             let auth = server.auth_token.clone()
                                 .or_else(|| server.auth_ref.clone());
@@ -235,6 +261,7 @@ fn main() {
             commands::mcp::delete_mcp_allowlist,
             commands::mcp::import_mcp_config,
             commands::mcp::export_mcp_config,
+            commands::mcp::discover_stdio_tools,
 
             // Settings
             commands::settings::get_setting,

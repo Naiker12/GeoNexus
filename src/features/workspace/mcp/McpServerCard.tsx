@@ -8,6 +8,7 @@ interface McpServerCardProps {
   onSelect: () => void
   onPing: () => Promise<unknown>
   onEdit: () => void
+  onDiscoverTools: () => Promise<void>
 }
 
 const STATUS_CONFIG = {
@@ -37,8 +38,9 @@ function errorHint(error?: string): { icon: string; label: string } | null {
   return null
 }
 
-export function McpServerCard({ server, isActive, onSelect, onPing, onEdit }: McpServerCardProps) {
+export function McpServerCard({ server, isActive, onSelect, onPing, onEdit, onDiscoverTools }: McpServerCardProps) {
   const [pinging, setPinging] = useState(false)
+  const [discovering, setDiscovering] = useState(false)
   const isDisabled = server.disabled
   const cfg = isDisabled
     ? { dot: "bg-gray-400", label: "desactivado", badge: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700" }
@@ -116,7 +118,15 @@ export function McpServerCard({ server, isActive, onSelect, onPing, onEdit }: Mc
         <button className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5" onClick={onSelect}>
           Ver tools
         </button>
-        {!isStdio && (
+        {isStdio ? (
+          <button
+            className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5"
+            onClick={async () => { setDiscovering(true); try { await onDiscoverTools() } finally { setDiscovering(false) } }}
+            disabled={discovering}
+          >
+            {discovering ? "Descubriendo..." : "Descubrir tools"}
+          </button>
+        ) : (
           <button
             className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5"
             onClick={handlePing}
@@ -125,7 +135,7 @@ export function McpServerCard({ server, isActive, onSelect, onPing, onEdit }: Mc
             {pinging ? "Ping..." : "Ping"}
           </button>
         )}
-        <button className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5 hidden xl:flex" onClick={onEdit}>
+        <button className="btn-ghost flex-1 h-6.5 text-[11px] px-1.5" onClick={onEdit}>
           Editar
         </button>
       </div>

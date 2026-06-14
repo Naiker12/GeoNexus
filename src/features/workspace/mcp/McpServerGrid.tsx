@@ -7,6 +7,7 @@ interface McpServerGridProps {
   onSelectServer: (serverId: string) => void
   onPingServer: (serverId: string) => Promise<unknown>
   onEditServer: (serverId: string) => void
+  onDiscoverTools: (serverId: string) => Promise<void>
 }
 
 export function McpServerGrid({
@@ -15,6 +16,7 @@ export function McpServerGrid({
   onSelectServer,
   onPingServer,
   onEditServer,
+  onDiscoverTools,
 }: McpServerGridProps) {
   if (servers.length === 0) {
     return (
@@ -35,6 +37,7 @@ export function McpServerGrid({
           onSelect={() => onSelectServer(server.id)}
           onPing={() => onPingServer(server.id)}
           onEdit={() => onEditServer(server.id)}
+          onDiscoverTools={() => onDiscoverTools(server.id)}
         />
       ))}
     </section>

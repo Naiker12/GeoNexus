@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   AlertCircleIcon, BracesIcon, CheckCircle2Icon, FileUpIcon,
   KeyRoundIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, XIcon,
@@ -10,8 +10,8 @@ import {
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import { cn } from "@/lib/utils"
-import { pingMcpServer } from "@/api/mcp"
-import type { RegisterServerPayload } from "@/types/mcp"
+import { pingMcpUrl } from "@/api/mcp"
+import type { McpServer, RegisterServerPayload } from "@/types/mcp"
 
 /** Tokeniza una línea de comandos respetando comillas dobles y simples. */
 function tokenizeArgs(input: string): string[] {
@@ -40,6 +40,7 @@ interface McpRegisterDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onRegistered: (payload: RegisterServerPayload) => Promise<void>
+  editing?: McpServer | null
 }
 
 const INITIAL: RegisterServerPayload = {
@@ -64,6 +65,30 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
     setStatus("idle")
     setStatusMsg("")
   }
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        id: editing.id,
+        name: editing.name,
+        url: editing.url,
+        transport: editing.transport,
+        auth_type: editing.auth_type,
+        auth_ref: editing.auth_ref,
+        auth_token: editing.auth_token,
+        command: editing.command,
+        args: editing.args,
+        env: editing.env,
+        headers: editing.headers,
+        disabled: editing.disabled,
+        auto_approve: editing.auto_approve,
+        timeout_ms: editing.timeout_ms,
+        tools: undefined,
+      })
+      setToolsRaw("")
+      setConfigJson("")
+    }
+  }, [editing])
 
   const buildPayload = (): RegisterServerPayload => ({
     ...form,
@@ -114,7 +139,7 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
     setStatus("pinging")
     setStatusMsg("")
     try {
-      const result = await pingMcpServer(form.id || "temp-ping")
+      const result = await pingMcpUrl(form.url)
       if (result.online) {
         setStatusMsg(`✓ Online · ${result.latency_ms}ms`)
         setStatus("idle")
@@ -122,9 +147,9 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
         setStatusMsg(`✗ Sin respuesta: ${result.error}`)
         setStatus("error")
       }
-    } catch {
-      setStatusMsg("Probando conexión directa... (el ping real requiere servidor registrado)")
-      setStatus("idle")
+    } catch (e) {
+      setStatusMsg(`Error de conexión: ${e}`)
+      setStatus("error")
     }
   }
 
@@ -136,7 +161,7 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
       return
     }
     if (!payload.id) payload.id = payload.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
-    if (!payload.url) { setStatusMsg("URL requerida"); setStatus("error"); return }
+    if (payload.transport !== "stdio" && !payload.url) { setStatusMsg("URL requerida para HTTP"); setStatus("error"); return }
 
     setStatus("registering")
     try {
@@ -162,9 +187,9 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
               <PlugZapIcon className="size-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold">Registrar servidor MCP</DialogTitle>
+              <DialogTitle className="text-base font-semibold">{editing ? "Editar servidor MCP" : "Registrar servidor MCP"}</DialogTitle>
               <DialogDescription className="mt-1 text-xs leading-5">
-                Agrega un servidor manualmente o carga un archivo JSON. Se persiste en SQLite vía Tauri.
+                {editing ? "Modifica los datos del servidor existente." : "Agrega un servidor manualmente o carga un archivo JSON."}
               </DialogDescription>
             </div>
           </div>
@@ -275,7 +300,7 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
               <Button size="sm" type="button" className="h-8 text-xs px-3 bg-primary hover:bg-primary/90"
                 onClick={handleRegister} disabled={status === "registering"}>
                 <PlugZapIcon className="mr-1.5 size-3.5" />
-                {status === "registering" ? "Registrando..." : "Agregar MCP"}
+                {status === "registering" ? "Guardando..." : editing ? "Guardar cambios" : "Agregar MCP"}
               </Button>
             </div>
           </div>

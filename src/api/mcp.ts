@@ -5,17 +5,8 @@ async function invokeRequired<T>(command: string, args: Record<string, unknown>)
   return invoke<T>(command, args)
 }
 
-async function invokeOrFallback<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
-  try {
-    return await invoke<T>(command, args)
-  } catch (err) {
-    console.error(`Tauri command ${command} failed:`, err)
-    return fallback
-  }
-}
-
 export function listMcpServers(): Promise<McpServer[]> {
-  return invokeOrFallback("list_mcp_servers", {}, [])
+  return invokeRequired("list_mcp_servers", {})
 }
 
 export function registerMcpServer(payload: RegisterServerPayload): Promise<McpServer> {
@@ -31,8 +22,13 @@ export function pingMcpServer(serverId: string): Promise<PingResult> {
   return invokeRequired("ping_mcp_server", { serverId })
 }
 
+export function pingMcpUrl(url: string): Promise<PingResult> {
+  if (!url.trim()) throw new Error("URL requerida")
+  return invokeRequired("ping_mcp_server_url", { url })
+}
+
 export function listMcpTools(serverId: string): Promise<McpTool[]> {
-  return invokeOrFallback("list_mcp_tools", { serverId }, [])
+  return invokeRequired("list_mcp_tools", { serverId })
 }
 
 export function callMcpTool(payload: CallToolPayload): Promise<CallToolResult> {
@@ -41,7 +37,7 @@ export function callMcpTool(payload: CallToolPayload): Promise<CallToolResult> {
 
 export function listMcpAllowlist(serverId: string): Promise<AllowlistRule[]> {
   if (!serverId.trim()) throw new Error("server_id requerido")
-  return invokeOrFallback("list_mcp_allowlist", { serverId }, [])
+  return invokeRequired("list_mcp_allowlist", { serverId })
 }
 
 export function upsertMcpAllowlist(payload: UpsertAllowlistPayload): Promise<AllowlistRule> {
@@ -66,4 +62,9 @@ export function importMcpConfig(configJson: string): Promise<ImportResult> {
 
 export function exportMcpConfig(): Promise<string> {
   return invokeRequired("export_mcp_config", {})
+}
+
+export function discoverStdioTools(serverId: string): Promise<number> {
+  if (!serverId.trim()) throw new Error("server_id requerido")
+  return invokeRequired("discover_stdio_tools", { serverId })
 }

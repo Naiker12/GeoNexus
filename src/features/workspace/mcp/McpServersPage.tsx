@@ -8,14 +8,17 @@ import { McpToolsViewer } from "@/features/workspace/mcp/McpToolsViewer"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
 import { useMcpTools } from "@/features/workspace/mcp/hooks/useMcpTools"
 import { useToast } from "@/components/ui/toast"
+import { discoverStdioTools } from "@/api/mcp"
+import type { McpServer } from "@/types/mcp"
 
 export function McpServersPage() {
-  const { servers, register, ping, refresh } = useMcpServers()
+  const { servers, error, register, ping, refresh } = useMcpServers()
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
   const [registerOpen, setRegisterOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
+  const [editingServer, setEditingServer] = useState<McpServer | null>(null)
   const [pingProgress, setPingProgress] = useState<{ current: number; total: number } | null>(null)
-  const { tools } = useMcpTools(selectedServerId)
+  const { tools, error: toolsError, refresh: refreshTools } = useMcpTools(selectedServerId)
   const toast = useToast()
 
   const handlePingAll = async () => {
@@ -49,6 +52,17 @@ export function McpServersPage() {
     }
   }
 
+  const handleDiscoverTools = async (serverId: string) => {
+    try {
+      const count = await discoverStdioTools(serverId)
+      toast.toast({ title: `${count} tools descubiertas para el servidor STDIO`, variant: "success" })
+      setSelectedServerId(serverId)
+      refreshTools()
+    } catch (e) {
+      toast.toast({ title: `Error descubriendo tools: ${e}`, variant: "error" })
+    }
+  }
+
   return (
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-auto px-3 py-3 sm:px-5 sm:py-4">
       <div className="mx-auto grid w-full max-w-[110rem] gap-5">
@@ -60,12 +74,25 @@ export function McpServersPage() {
           onOpenConfig={() => setConfigOpen(true)}
         />
         <div className="grid gap-5">
+          {error && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] text-destructive flex items-start gap-2">
+              <span className="size-1.5 mt-0.5 rounded-full bg-destructive shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          {toolsError && selectedServerId && (
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-[11px] text-destructive flex items-start gap-2">
+              <span className="size-1.5 mt-0.5 rounded-full bg-destructive shrink-0" />
+              <span>Tools: {toolsError}</span>
+            </div>
+          )}
           <McpServerGrid
             servers={servers}
             activeServerId={selectedServerId}
             onSelectServer={setSelectedServerId}
             onPingServer={ping}
-            onEditServer={console.log}
+            onEditServer={(id: string) => { const s = servers.find(s => s.id === id); if (s) { setEditingServer(s); setRegisterOpen(true) } }}
+            onDiscoverTools={handleDiscoverTools}
           />
           <McpToolsViewer serverId={selectedServerId} tools={tools} />
           <McpConsole />
@@ -73,8 +100,9 @@ export function McpServersPage() {
       </div>
       <McpRegisterDialog
         open={registerOpen}
-        onOpenChange={setRegisterOpen}
-        onRegistered={async (p) => { await register(p) }}
+        onOpenChange={(v) => { if (!v) setEditingServer(null); setRegisterOpen(v) }}
+        onRegistered={async (p) => { await register(p); setEditingServer(null) }}
+        editing={editingServer}
       />
       <McpConfigEditor
         open={configOpen}
