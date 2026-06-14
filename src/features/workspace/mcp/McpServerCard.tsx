@@ -24,17 +24,19 @@ const TRANSPORT_LABEL: Record<string, { icon: string; label: string }> = {
   sse:   { icon: "🔗", label: "SSE" },
 }
 
-function errorHint(error?: string): { icon: string; label: string } | null {
+type ErrorHintData = { icon: string; label: string; action: string; actionLabel: string }
+
+function errorHint(error?: string): ErrorHintData | null {
   if (!error) return null
-  if (error.includes("Conexión fallida"))  return { icon: "⚠", label: "Servidor no iniciado" }
-  if (error.includes("Auth requerida") || error.includes("401")) return { icon: "🔑", label: "Token requerido" }
-  if (error.includes("Acceso denegado") || error.includes("403")) return { icon: "🔒", label: "Token sin permisos" }
-  if (error.includes("no encontrado") || error.includes("404"))   return { icon: "❓", label: "URL incorrecta" }
-  if (error.includes("415")) return { icon: "⚙", label: "Protocolo no compatible" }
-  if (error.includes("Timeout")) return { icon: "⏱", label: "Timeout — servidor lento" }
-  if (error.includes("Rate limit") || error.includes("429")) return { icon: "🔄", label: "Rate limit excedido" }
-  if (error.includes("Handshake OK")) return { icon: "⚠", label: "Online (sin tools/list)" }
-  if (error.includes("stdio")) return { icon: "⚡", label: "Servidor local (STDIO)" }
+  if (error.includes("Conexión fallida"))  return { icon: "⚠", label: "Servidor no iniciado", action: "instructions", actionLabel: "Ver instrucciones" }
+  if (error.includes("Auth requerida") || error.includes("401")) return { icon: "🔑", label: "Token requerido", action: "configure", actionLabel: "Agregar token" }
+  if (error.includes("Acceso denegado") || error.includes("403")) return { icon: "🔒", label: "Token sin permisos", action: "configure", actionLabel: "Cambiar token" }
+  if (error.includes("no encontrado") || error.includes("404"))   return { icon: "❓", label: "URL incorrecta", action: "edit", actionLabel: "Verificar URL" }
+  if (error.includes("415")) return { icon: "⚙", label: "Protocolo no compatible", action: "edit", actionLabel: "Verificar config" }
+  if (error.includes("Timeout")) return { icon: "⏱", label: "Timeout — servidor lento", action: "ping", actionLabel: "Reintentar" }
+  if (error.includes("Rate limit") || error.includes("429")) return { icon: "🔄", label: "Rate limit excedido", action: "ping", actionLabel: "Reintentar" }
+  if (error.includes("Handshake OK")) return { icon: "⚠", label: "Online (sin tools/list)", action: "discover", actionLabel: "Descubrir tools" }
+  if (error.includes("stdio")) return { icon: "⚡", label: "Servidor local (STDIO)", action: "discover", actionLabel: "Descubrir tools" }
   return null
 }
 
@@ -58,6 +60,27 @@ export function McpServerCard({ server, isActive, onSelect, onPing, onEdit, onDi
 
   const hint = server.status === "offline" ? errorHint(server.last_error ?? server.last_ping_at ?? undefined) : null
   const toolsCount = server.tools?.length ?? server.tools_count
+
+  const handleHintAction = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!hint) return
+    switch (hint.action) {
+      case "configure":
+      case "edit":
+        onEdit()
+        break
+      case "ping":
+        handlePing(e)
+        break
+      case "discover":
+        setDiscovering(true)
+        onDiscoverTools().finally(() => setDiscovering(false))
+        break
+      case "instructions":
+        onEdit()
+        break
+    }
+  }
 
   return (
     <article
@@ -108,10 +131,17 @@ export function McpServerCard({ server, isActive, onSelect, onPing, onEdit, onDi
       </div>
 
       {hint && (
-        <p className="mt-1 flex items-center gap-1 text-[10px] text-destructive font-medium">
-          <span>{hint.icon}</span>
-          <span>{hint.label}</span>
-        </p>
+        <div className="mt-1.5 flex items-center gap-1.5 rounded-md bg-destructive/5 border border-destructive/15 px-2 py-1">
+          <span className="text-[10px]">{hint.icon}</span>
+          <span className="text-[10px] text-destructive font-medium flex-1">{hint.label}</span>
+          <button
+            type="button"
+            className="text-[9px] font-semibold text-destructive hover:text-destructive/80 underline underline-offset-2 shrink-0"
+            onClick={handleHintAction}
+          >
+            {hint.actionLabel}
+          </button>
+        </div>
       )}
 
       <div className="mt-2 flex items-center gap-1.5">

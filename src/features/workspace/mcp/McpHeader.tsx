@@ -1,19 +1,42 @@
 import { useEffect, useState } from "react"
-import { FileUpIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, ServerIcon } from "lucide-react"
+import { FileUpIcon, Grid3X3Icon, ListIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, ServerIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 import { getSetting } from "@/api/settings"
 import type { McpServer } from "@/types/mcp"
+import type { McpViewMode } from "@/features/workspace/mcp/McpServerGrid"
 
 interface McpHeaderProps {
   servers: McpServer[]
   pingProgress: { current: number; total: number } | null
+  viewMode: McpViewMode
+  statusFilter: string
+  transportFilter: string
+  searchQuery: string
   onRegister: () => void
   onPingAll: () => Promise<void>
   onOpenConfig: () => void
+  onViewModeChange: (mode: McpViewMode) => void
+  onStatusFilterChange: (status: string) => void
+  onTransportFilterChange: (transport: string) => void
+  onSearchQueryChange: (query: string) => void
 }
 
-export function McpHeader({ servers, pingProgress, onRegister, onPingAll, onOpenConfig }: McpHeaderProps) {
+export function McpHeader({
+  servers,
+  pingProgress,
+  viewMode,
+  statusFilter,
+  transportFilter,
+  searchQuery,
+  onRegister,
+  onPingAll,
+  onOpenConfig,
+  onViewModeChange,
+  onStatusFilterChange,
+  onTransportFilterChange,
+  onSearchQueryChange,
+}: McpHeaderProps) {
   const [rateLimit, setRateLimit] = useState(60)
   const pingingAll = pingProgress !== null
   const activeCount = servers.filter(s => s.status === "online").length
@@ -70,6 +93,8 @@ export function McpHeader({ servers, pingProgress, onRegister, onPingAll, onOpen
           </Button>
         </div>
       </div>
+
+      {/* Stats bar */}
       <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
         <MetricBox label="Servidores" value={servers.length}
           suffix="registrados" />
@@ -79,6 +104,68 @@ export function McpHeader({ servers, pingProgress, onRegister, onPingAll, onOpen
           suffix="expuestas al chat" />
         <MetricBox label="Rate limit" value={rateLimit}
           suffix="req/min global" />
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 border-t border-border px-4 py-2">
+        {/* View toggle */}
+        <div className="flex items-center rounded-md border border-border overflow-hidden">
+          <button
+            type="button"
+            className={cn(
+              "flex items-center justify-center size-7 transition-colors",
+              viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onViewModeChange("grid")}
+            title="Vista grid"
+          >
+            <Grid3X3Icon className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "flex items-center justify-center size-7 transition-colors",
+              viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onViewModeChange("list")}
+            title="Vista lista"
+          >
+            <ListIcon className="size-3.5" />
+          </button>
+        </div>
+
+        {/* Status filter */}
+        <select
+          className="h-7 rounded-md border border-border bg-transparent px-2 text-xs text-muted-foreground focus:text-foreground outline-none cursor-pointer"
+          value={statusFilter}
+          onChange={(e) => onStatusFilterChange(e.target.value)}
+        >
+          <option value="all">Todos</option>
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+          <option value="disabled">Desactivados</option>
+        </select>
+
+        {/* Transport filter */}
+        <select
+          className="h-7 rounded-md border border-border bg-transparent px-2 text-xs text-muted-foreground focus:text-foreground outline-none cursor-pointer"
+          value={transportFilter}
+          onChange={(e) => onTransportFilterChange(e.target.value)}
+        >
+          <option value="all">HTTP + STDIO</option>
+          <option value="http">HTTP</option>
+          <option value="stdio">STDIO</option>
+          <option value="sse">SSE</option>
+        </select>
+
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="Buscar servidor..."
+          className="h-7 flex-1 min-w-0 max-w-[200px] rounded-md border border-border bg-transparent px-2.5 text-xs placeholder:text-muted-foreground/50 outline-none focus:border-primary/50"
+          value={searchQuery}
+          onChange={(e) => onSearchQueryChange(e.target.value)}
+        />
       </div>
     </header>
   )
