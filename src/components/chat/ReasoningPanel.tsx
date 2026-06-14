@@ -14,9 +14,11 @@ interface ReasoningPanelProps {
   isRunning: boolean
   startTime?: number | null
   sourceCount?: number
+  intent?: string
+  userQuery?: string
 }
 
-export function ReasoningPanel({ steps, isRunning, startTime, sourceCount }: ReasoningPanelProps) {
+export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, intent, userQuery }: ReasoningPanelProps) {
   const [open, setOpen] = React.useState(true)
   const [elapsed, setElapsed] = React.useState(0)
 
@@ -40,9 +42,19 @@ export function ReasoningPanel({ steps, isRunning, startTime, sourceCount }: Rea
   const lastStep = steps[steps.length - 1]
   const toolCallCount = steps.filter(s => s.type === "mcp_tool_called" && s.status === "done").length
   const skillsCount = steps.filter(s => s.type === "skills_injected").length
+  const stepsCount = steps.filter(s => s.status === "done").length
+
+  const INTENT_HEADERS: Record<string, string> = {
+    consulta_general: "Respondido",
+    consulta_normativa: "Análisis normativo",
+    analisis_espacial: "Análisis espacial",
+    descubrimiento_datos: "Datos encontrados",
+    memoria_proyecto: "Contexto recuperado",
+    generacion_entregable: "Entregable generado",
+  }
 
   const summary = allDone
-    ? `${steps.length} pasos · ${elapsed.toFixed(1)}s${sourceCount ? ` · ${sourceCount} fuentes` : ""}`
+    ? `${INTENT_HEADERS[intent ?? ""] ?? "Completado"} · ${stepsCount} pasos · ${elapsed.toFixed(1)}s${sourceCount ? ` · ${sourceCount} fuentes` : ""}`
     : lastStep
       ? `${lastStep.label} · ${elapsed.toFixed(1)}s`
       : `Analizando · ${elapsed.toFixed(1)}s`

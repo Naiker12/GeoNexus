@@ -75,6 +75,7 @@ export function useChatSession(
   )
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
   const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
+  const [lastIntent, setLastIntent] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -132,6 +133,7 @@ export function useChatSession(
     saveConversationId(null)
     setError(null)
     setSessionSummary(null)
+    setLastIntent(null)
   }, [])
 
   const updateAssistantMessage = React.useCallback((
@@ -271,6 +273,9 @@ export function useChatSession(
         if (response.session_summary) {
           setSessionSummary(response.session_summary)
         }
+        if (response.intent) {
+          setLastIntent(response.intent)
+        }
 
         if (researchTimerId) {
           clearInterval(researchTimerId)
@@ -369,6 +374,7 @@ export function useChatSession(
     setWebSearchEnabled,
     submitTime,
     sessionSummary,
+    lastIntent,
     submit,
     regenerate,
     loadConversation,

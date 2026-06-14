@@ -382,7 +382,9 @@ pub async fn send_message(
             "--query",
             &search_query,
             "--max_results",
-            "5",
+            "20",
+            "--search_depth",
+            "deep",
         ]);
         match &result {
             Ok(srcs) => {

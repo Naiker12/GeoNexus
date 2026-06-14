@@ -17,6 +17,7 @@ type ChatTranscriptProps = {
   onEditLastUserMessage?: () => void
   onRegenerateLastMessage?: () => void
   useContext?: boolean
+  lastIntent?: string
 }
 
 export function ChatTranscript({
@@ -28,9 +29,24 @@ export function ChatTranscript({
   onEditLastUserMessage,
   onRegenerateLastMessage,
   useContext,
+  lastIntent,
 }: ChatTranscriptProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const containerRef = React.useRef<HTMLDivElement>(null)
   const { steps, isReasoning } = useReasoningStream()
+
+  // --- Smart scroll: detect if user scrolled up manually ---
+  const [userScrolledUp, setUserScrolledUp] = React.useState(false)
+  const [showScrollBtn, setShowScrollBtn] = React.useState(false)
+
+  const handleScroll = React.useCallback(() => {
+    const el = containerRef.current
+    if (!el) return
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+    const isUp = dist > 100
+    setUserScrolledUp(isUp)
+    setShowScrollBtn(isUp && pending)
+  }, [pending])
 
   const lastAssistantIndex = React.useMemo(() => {
     let idx = -1
@@ -72,12 +88,33 @@ export function ChatTranscript({
     return ""
   }, [messages])
 
+  // Auto-scroll ONLY if user hasn't scrolled up
   React.useEffect(() => {
+    if (!userScrolledUp && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [messages, pending, userScrolledUp])
+
+  // Reset scroll lock when response completes
+  React.useEffect(() => {
+    if (!pending) {
+      setUserScrolledUp(false)
+      setShowScrollBtn(false)
+    }
+  }, [pending])
+
+  const scrollToBottom = React.useCallback(() => {
+    setUserScrolledUp(false)
+    setShowScrollBtn(false)
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, pending])
+  }, [])
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 md:px-8">
+    <div
+      ref={containerRef}
+      className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5 md:px-8 relative"
+      onScroll={handleScroll}
+    >
       {messages.map((message, index) =>
         message.role === "user" ? (
           <div key={message.id} className="group flex flex-col items-end">
@@ -95,17 +132,36 @@ export function ChatTranscript({
             </div>
           </div>
         ) : (
-          <AssistantMessage
-            key={message.id}
-            message={message}
-            isStreaming={false}
-            onSendMessage={onSendMessage}
-            cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
-          />
+          <div key={message.id} className="flex flex-col gap-1">
+            {/* Reasoning ABOVE the assistant response for the last message while pending */}
+            {index === lastAssistantIndex && pending && (
+              <div className="flex items-start gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
+                  <GeoAgentsIcon className="size-4" variant="nexus" />
+                </div>
+                <div className="flex flex-col gap-2 pt-1.5 w-full">
+                  <ReasoningPanel
+                    steps={steps}
+                    isRunning={isReasoning}
+                    startTime={submitTime ?? null}
+                    intent={lastIntent}
+                    userQuery={lastUserMessage}
+                  />
+                </div>
+              </div>
+            )}
+            <AssistantMessage
+              message={message}
+              isStreaming={index === lastAssistantIndex && pending}
+              onSendMessage={onSendMessage}
+              cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
+            />
+          </div>
         )
       )}
 
-      {pending ? (
+      {/* If pending but no assistant message placeholder yet, show reasoning standalone */}
+      {pending && lastAssistantIndex === -1 && (
         <div className="flex items-start gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
             <GeoAgentsIcon className="size-4" variant="nexus" />
@@ -115,12 +171,25 @@ export function ChatTranscript({
               steps={steps}
               isRunning={isReasoning}
               startTime={submitTime ?? null}
+              intent={lastIntent}
+              userQuery={lastUserMessage}
             />
           </div>
         </div>
-      ) : null}
+      )}
 
       <div ref={messagesEndRef} />
+
+      {/* Floating "back to bottom" button when user scrolled up during generation */}
+      {showScrollBtn && (
+        <button
+          type="button"
+          className="scroll-to-bottom-btn"
+          onClick={scrollToBottom}
+        >
+          ↓ Respuesta en progreso
+        </button>
+      )}
     </div>
   )
 }

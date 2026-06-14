@@ -145,7 +145,7 @@ export interface SlashCommand {
 
 // ── Mention Sources ──
 
-export type MentionKind = "connector" | "asset" | "graph_node" | "agent_source" | "skill"
+export type MentionKind = "connector" | "asset" | "graph_node" | "agent_source" | "skill" | "mcp_server"
 
 export interface MentionSource {
   id: string

@@ -90,10 +90,14 @@ def _list_models(args) -> None:
 
 
 def _search_web(args) -> None:
-    from web_search import search_web
-    results = search_web(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
+    if getattr(args, 'search_depth', 'standard') == 'deep':
+        from web_search import search_web_deep
+        results = search_web_deep(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
+    else:
+        from web_search import search_web
+        results = search_web(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
     import sys
-    print(f"[DEBUG] search_web returned {len(results)} results", file=sys.stderr)
+    print(f"[DEBUG] search_web returned {len(results)} results (depth={getattr(args, 'search_depth', 'standard')})", file=sys.stderr)
     _print(results)
 
 
@@ -155,7 +159,8 @@ def main() -> None:
     p.add_argument("--collection", default="project_memory")
     p.add_argument("--search_provider", default="duckduckgo")
     p.add_argument("--cse_id", default="")
-    p.add_argument("--max_results", type=int, default=5)
+    p.add_argument("--max_results", type=int, default=10)
+    p.add_argument("--search_depth", default="standard", choices=["standard", "deep"])
     args = p.parse_args()
 
     dispatch = {

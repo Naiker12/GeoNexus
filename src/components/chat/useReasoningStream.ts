@@ -28,11 +28,11 @@ const STEP_LABELS: Record<string, (meta: Record<string, unknown>) => string> = {
   skills_injected: (m) =>
     `Aplicando skills: ${(m.skill_names as string[]).join(", ")}`,
   mcp_tool_called: (m) =>
-    `Ejecutando ${m.tool_name} (${m.duration_ms}ms)`,
+    `Ejecutando ${m.tool_name}`,
   graph_context_loaded: (m) =>
     `Cargando grafo: ${m.nodes_count} nodos, ${m.edges_count} conexiones`,
-  generating_response: (m) =>
-    `Generando con ${m.model}`,
+  generating_response: () =>
+    `Generando respuesta...`,
   response_complete: (m) =>
     `Completado en ${((m.total_duration_ms as number) / 1000).toFixed(1)}s · ${m.output_tokens} tokens`,
 }
@@ -63,19 +63,19 @@ function mapEventToStep(event: ReasoningStep, index: number): ReasoningStepDispl
       detail = `${event.chunks_found} fragmentos en ${event.assets_queried.join(", ")}`
       break
     case "web_searching":
-      detail = `${event.sources_found} resultados para "${event.query}"`
+      detail = `"${event.query}"`
       break
     case "skills_injected":
       detail = event.skill_names.join(", ")
       break
     case "mcp_tool_called":
-      detail = `${event.tool_name} (${event.duration_ms}ms, ${event.success ? "éxito" : "fallo"})`
+      detail = event.success ? "éxito" : "fallo"
       break
     case "graph_context_loaded":
       detail = `${event.nodes_count} nodos, ${event.edges_count} aristas`
       break
     case "generating_response":
-      detail = `Modelo: ${event.model}`
+      detail = ""
       break
     case "response_complete":
       detail = `${event.total_duration_ms}ms total, ${event.output_tokens} tokens generados`
@@ -97,7 +97,7 @@ function makeToolCallStep(payload: ToolCallPayload, index: number): ReasoningSte
     id: `mcp_tool_called-${index}`,
     type: "mcp_tool_called",
     label: `Ejecutando ${payload.tool_name}...`,
-    detail: `Herramienta: ${payload.tool_name}`,
+    detail: "",
     durationMs: undefined,
     status: "running",
   }
@@ -107,8 +107,8 @@ function makeToolResultStep(payload: ToolCallPayload & ToolResultPayload, index:
   return {
     id: `mcp_tool_called-${index}`,
     type: "mcp_tool_called",
-    label: `Ejecutando ${payload.tool_name} (${payload.duration_ms}ms)`,
-    detail: `Herramienta: ${payload.tool_name} · ${payload.duration_ms}ms · ${payload.success ? "éxito" : "fallo"}`,
+    label: `Ejecutando ${payload.tool_name}`,
+    detail: payload.success ? "éxito" : "fallo",
     durationMs: payload.duration_ms,
     status: "done",
   }
@@ -200,8 +200,8 @@ export function useReasoningStream() {
               updated[updated.length - 1] = {
                 ...last,
                 status: "done",
-                label: `Ejecutando ${payload.tool_name} (${payload.duration_ms}ms)`,
-                detail: `${payload.tool_name} · ${payload.duration_ms}ms · ${payload.success ? "éxito" : "fallo"}`,
+                label: `Ejecutando ${payload.tool_name}`,
+                detail: payload.success ? "éxito" : "fallo",
                 durationMs: payload.duration_ms,
               }
               return updated

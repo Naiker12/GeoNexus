@@ -45,6 +45,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     setWebSearchEnabled,
     submitTime,
     sessionSummary,
+    lastIntent,
     submit,
     regenerate,
     loadConversation,
@@ -190,6 +191,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               onEditLastUserMessage={handleEditLastUserMessage}
               onRegenerateLastMessage={handleRegenerate}
               useContext={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
+              lastIntent={lastIntent ?? undefined}
             />
           ) : (
             <EmptyChatState />

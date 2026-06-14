@@ -356,3 +356,41 @@
 .animate-graph-node-in {
   animation: graph-node-in 0.5s ease-out both;
 }
+
+/* Scroll-to-bottom floating button during chat generation */
+.scroll-to-bottom-btn {
+  position: sticky;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: white;
+  background: oklch(0.64 0.16 155);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px oklch(0.64 0.16 155 / 30%);
+  z-index: 10;
+  animation: fadeInUp 0.2s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.scroll-to-bottom-btn:hover {
+  background: oklch(0.58 0.16 155);
+  box-shadow: 0 4px 16px oklch(0.58 0.16 155 / 40%);
+}
+.dark .scroll-to-bottom-btn {
+  background: oklch(0.55 0.14 155);
+  box-shadow: 0 2px 12px oklch(0 0 0 / 40%);
+}
+.dark .scroll-to-bottom-btn:hover {
+  background: oklch(0.6 0.15 155);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 DDG_MAX_RETRIES = 2
 
-def _search_duckduckgo(query: str, max_results: int = 5) -> list[dict[str, Any]]:
+def _search_duckduckgo(query: str, max_results: int = 10) -> list[dict[str, Any]]:
     from ddgs import DDGS
 
     for attempt in range(DDG_MAX_RETRIES):
@@ -31,7 +31,7 @@ def _search_duckduckgo(query: str, max_results: int = 5) -> list[dict[str, Any]]
                 return _search_duckduckgo_lite(query, max_results)
 
 
-def _search_duckduckgo_lite(query: str, max_results: int = 5) -> list[dict[str, Any]]:
+def _search_duckduckgo_lite(query: str, max_results: int = 10) -> list[dict[str, Any]]:
     try:
         params = {"q": query, "format": "json", "no_html": "1", "skip_disambig": "1"}
         resp = requests.get(
@@ -70,7 +70,7 @@ def _search_duckduckgo_lite(query: str, max_results: int = 5) -> list[dict[str, 
         return []
 
 
-def _search_google(query: str, api_key: str, cse_id: str, max_results: int = 5) -> list[dict[str, Any]]:
+def _search_google(query: str, api_key: str, cse_id: str, max_results: int = 10) -> list[dict[str, Any]]:
     try:
         resp = requests.get(
             "https://www.googleapis.com/customsearch/v1",
@@ -98,7 +98,7 @@ def _search_google(query: str, api_key: str, cse_id: str, max_results: int = 5) 
         raise
 
 
-def _search_bing(query: str, api_key: str, max_results: int = 5) -> list[dict[str, Any]]:
+def _search_bing(query: str, api_key: str, max_results: int = 10) -> list[dict[str, Any]]:
     try:
         resp = requests.get(
             "https://api.bing.microsoft.com/v7.0/search",
@@ -122,7 +122,7 @@ def _search_bing(query: str, api_key: str, max_results: int = 5) -> list[dict[st
         raise
 
 
-def _search_serpapi(query: str, api_key: str, max_results: int = 5) -> list[dict[str, Any]]:
+def _search_serpapi(query: str, api_key: str, max_results: int = 10) -> list[dict[str, Any]]:
     try:
         resp = requests.get(
             "https://serpapi.com/search",
@@ -165,7 +165,7 @@ def search_web(
     provider: str = DEFAULT_PROVIDER,
     api_key: str | None = None,
     cse_id: str | None = None,
-    max_results: int = 5,
+    max_results: int = 10,
 ) -> list[dict[str, Any]]:
     provider = provider or DEFAULT_PROVIDER
 
@@ -199,3 +199,34 @@ def search_web(
         return search_web(query, provider=DEFAULT_PROVIDER, max_results=max_results)
 
     return []
+
+
+def search_web_deep(
+    query: str,
+    provider: str = DEFAULT_PROVIDER,
+    api_key: str | None = None,
+    cse_id: str | None = None,
+    max_results: int = 20,
+) -> list[dict[str, Any]]:
+    """Multi-query deep search — runs multiple related queries and deduplicates by URL."""
+    queries = [
+        query,
+        f"{query} tutorial guía",
+        f"{query} documentación oficial",
+    ]
+    all_results: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+    per_query = max(max_results // len(queries), 5)
+
+    for q in queries:
+        try:
+            results = search_web(q, provider=provider, api_key=api_key, cse_id=cse_id, max_results=per_query)
+            for r in results:
+                url = r.get("url", "")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    all_results.append(r)
+        except Exception as e:
+            logger.warning("Deep search sub-query failed for '%s': %s", q, e)
+
+    return all_results[:max_results]
