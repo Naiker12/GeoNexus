@@ -11,7 +11,6 @@ import {
   GlobeIcon,
   HexagonIcon,
   Loader2,
-  MapPinIcon,
   MenuIcon,
   MicIcon,
   PlusIcon,
@@ -52,7 +51,6 @@ import { Textarea } from "@/components/ui/Textarea"
 import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
 import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
 import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
-import { ShapefileConnectorDialog } from "@/components/chat/ShapefileConnectorDialog"
 import { getMentionableSources } from "@/api/chat"
 import { listSkills } from "@/api/skills"
 import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand, MentionKind } from "@/types/chat"
@@ -573,7 +571,33 @@ function ToolMenu({
 }) {
   const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
   const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
-  const [showShapefileDialog, setShowShapefileDialog] = React.useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
+  const moreMenuTriggerRef = React.useRef<HTMLDivElement>(null)
+  const moreMenuContentRef = React.useRef<HTMLDivElement>(null)
+  const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  // Limpiamos el timer cuando el componente se desmonta
+  React.useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    }
+  }, [])
+
+  // Función para abrir el submenú con delay
+  const handleMouseEnter = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = setTimeout(() => {
+      setMoreMenuOpen(true)
+    }, 150)
+  }
+
+  // Función para cerrar el submenú con delay
+  const handleMouseLeave = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = setTimeout(() => {
+      setMoreMenuOpen(false)
+    }, 150)
+  }
 
   return (
     <>
@@ -581,6 +605,7 @@ function ToolMenu({
       onOpenChange={(open) => {
         if (!open) {
           setExpandedConnector(null)
+          setMoreMenuOpen(false)
         }
       }}
     >
@@ -638,20 +663,6 @@ function ToolMenu({
             </span>
             <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
               LOCAL
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="min-h-8 gap-2 px-2.5 py-1.5"
-            onSelect={() => {
-              setShowShapefileDialog(true)
-            }}
-          >
-            <MapPinIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">
-              Shapefile
-            </span>
-            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
-              SHP
             </DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -725,26 +736,42 @@ function ToolMenu({
               aria-label="Activar busqueda en internet"
             />
           </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
-              <PlusIcon className="size-4" />
-              Mas
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 rounded-xl p-2">
-              <DropdownMenuItem>
-                <FileSearchIcon className="size-3.5 mr-2" />
-                Consultar norma POT
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HexagonIcon className="size-3.5 mr-2" />
-                Ejecutar buffer
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Share2Icon className="size-3.5 mr-2" />
-                Exportar analisis
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+          {/* Submenú "Más" con hover */}
+          <div
+            ref={moreMenuTriggerRef}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            className="relative"
+          >
+            <DropdownMenuSub open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+              <DropdownMenuSubTrigger
+                className="gap-3 px-3 py-2 cursor-default"
+                onPointerDown={(e) => e.preventDefault()} // Evita que se cierre al hacer click
+              >
+                <PlusIcon className="size-4" />
+                Más
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent
+                ref={moreMenuContentRef}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                className="w-56 rounded-xl p-2"
+              >
+                <DropdownMenuItem>
+                  <CpuIcon className="size-3.5 mr-2" />
+                  Conectar contenedor
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <CpuIcon className="size-3.5 mr-2" />
+                  Ver contenedores activos
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <PlusIcon className="size-3.5 mr-2" />
+                  Agregar nuevo contenedor
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </div>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -766,26 +793,6 @@ function ToolMenu({
         }}
       />
     )}
-    <ShapefileConnectorDialog
-      connector={{
-        id: "shapefile-connector",
-        kind: "connector",
-        label: "Shapefile",
-        sublabel: "Archivo .shp local",
-        icon: "MapPin",
-        color: "#F59E0B",
-        status: "disconnected",
-        last_synced: null,
-        asset_count: null,
-        provider: null,
-      }}
-      open={showShapefileDialog}
-      onOpenChange={setShowShapefileDialog}
-      onConnected={() => {
-        setShowShapefileDialog(false)
-        refreshSources()
-      }}
-    />
     </>
   )
 }

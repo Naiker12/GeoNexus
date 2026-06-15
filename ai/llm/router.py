@@ -212,9 +212,17 @@ def chat_llm_provider(
     if tools:
         body["tools"] = tools
 
+    # Limites para reducir uso de RAM en proveedores locales
+    LOCAL_CONTEXT_WINDOW = 3072  # ~3k tokens, como pediste
+    LOCAL_MAX_TOKENS = 1024     # Max tokens generados
+
     try:
         if provider == "ollama":
             body["stream"] = False
+            body["options"] = {
+                "num_ctx": LOCAL_CONTEXT_WINDOW,
+                "num_predict": LOCAL_MAX_TOKENS,
+            }
             response = requests.post(
                 f"{url}/api/chat",
                 json=body,
@@ -254,10 +262,14 @@ def chat_llm_provider(
             return _make_chat_response(provider, model, raw, usage)
 
         if provider in OPENAI_COMPATIBLE_PROVIDERS:
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key_val = api_key or os.getenv("OPENAI_API_KEY")
             headers = {"content-type": "application/json"}
-            if api_key:
-                headers["authorization"] = f"Bearer {api_key}"
+            if api_key_val:
+                headers["authorization"] = f"Bearer {api_key_val}"
+
+            # Solo ponemos max_tokens para proveedores locales (lmstudio)
+            if provider == "lmstudio":
+                body["max_tokens"] = LOCAL_MAX_TOKENS
 
             response = requests.post(
                 f"{url}/chat/completions",
@@ -328,8 +340,16 @@ def chat_llm_provider_stream(
     if tools:
         body["tools"] = tools
 
+    # Limites para reducir uso de RAM en proveedores locales
+    LOCAL_CONTEXT_WINDOW = 3072  # ~3k tokens, como pediste
+    LOCAL_MAX_TOKENS = 1024     # Max tokens generados
+
     try:
         if provider == "ollama":
+            body["options"] = {
+                "num_ctx": LOCAL_CONTEXT_WINDOW,
+                "num_predict": LOCAL_MAX_TOKENS,
+            }
             response = requests.post(f"{url}/api/chat", json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
@@ -423,6 +443,11 @@ def chat_llm_provider_stream(
             headers = {"content-type": "application/json"}
             if api_key_val:
                 headers["authorization"] = f"Bearer {api_key_val}"
+
+            # Solo ponemos max_tokens para proveedores locales (lmstudio)
+            if provider == "lmstudio":
+                body["max_tokens"] = LOCAL_MAX_TOKENS
+
             response = requests.post(f"{url}/chat/completions", headers=headers, json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""

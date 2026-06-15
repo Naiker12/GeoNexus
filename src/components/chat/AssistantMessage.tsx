@@ -1,6 +1,7 @@
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { ConnectCard } from "@/components/chat/ConnectCard"
+import { McpConnectCard } from "@/components/chat/McpConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { ReasoningPanel } from "@/components/chat/ReasoningPanel"
@@ -10,8 +11,8 @@ import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
-import { parseContent, type ConnectCardData } from "@/utils/parseContent"
-import type { Message, ReasoningStepDisplay } from "@/types/chat"
+import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
+import type { Message, ReasoningStepDisplay, ToolCallDisplay } from "@/types/chat"
 
 interface AssistantMessageProps {
   message: Message
@@ -23,6 +24,8 @@ interface AssistantMessageProps {
   reasoningStartTime?: number | null
   intent?: string
   userQuery?: string
+  thinkingText?: string
+  toolCalls?: ToolCallDisplay[]
 }
 
 export function AssistantMessage({
@@ -35,6 +38,8 @@ export function AssistantMessage({
   reasoningStartTime,
   intent,
   userQuery,
+  thinkingText,
+  toolCalls,
 }: AssistantMessageProps) {
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
@@ -55,13 +60,20 @@ export function AssistantMessage({
               Geo Agents
             </span>
           </div>
-        {(reasoningSteps && reasoningSteps.length > 0) || isReasoning ? (
+        {isStreaming && (
+        (reasoningSteps && reasoningSteps.length > 0) || 
+        isReasoning || 
+        (thinkingText && thinkingText.length > 0) || 
+        (toolCalls && toolCalls.length > 0)
+    ) ? (
           <ReasoningPanel
             steps={reasoningSteps ?? []}
             isRunning={isReasoning ?? false}
             startTime={reasoningStartTime ?? null}
             intent={intent}
             userQuery={userQuery}
+            thinkingText={thinkingText}
+            toolCalls={toolCalls}
           />
         ) : null}
         {isStreaming && message.content.length === 0 ? (
@@ -82,6 +94,21 @@ export function AssistantMessage({
                   key={`card-${i}`}
                   connectorId={(seg.value as ConnectCardData).connectorId}
                   reason={(seg.value as ConnectCardData).reason}
+                />
+              ) : seg.kind === "mcp_connect_card" ? (
+                <McpConnectCard
+                  key={`mcp-card-${i}`}
+                  serverId={(seg.value as McpConnectCardData).serverId}
+                  serverName={(seg.value as McpConnectCardData).serverName}
+                  serverUrl={(seg.value as McpConnectCardData).serverUrl}
+                  reason={(seg.value as McpConnectCardData).reason}
+                  onConnect={() => {
+                    // Trigger opening MCP register dialog
+                    const event = new CustomEvent("geonexus:open-mcp-register", {
+                      detail: seg.value,
+                    })
+                    window.dispatchEvent(event)
+                  }}
                 />
               ) : (
                 <MarkdownContent key={`text-${i}`} content={seg.value as string} isStreaming={isStreaming && i === segments.length - 1} />

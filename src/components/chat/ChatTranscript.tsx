@@ -18,6 +18,10 @@ type ChatTranscriptProps = {
   onRegenerateLastMessage?: () => void
   useContext?: boolean
   lastIntent?: string
+  steps?: any[]
+  isReasoning?: boolean
+  thinkingText?: string
+  toolCalls?: any[]
 }
 
 export function ChatTranscript({
@@ -30,10 +34,16 @@ export function ChatTranscript({
   onRegenerateLastMessage,
   useContext,
   lastIntent,
+  steps: propSteps,
+  isReasoning: propIsReasoning,
+  thinkingText,
+  toolCalls,
 }: ChatTranscriptProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const { steps, isReasoning } = useReasoningStream()
+  const { steps: streamSteps, isReasoning: streamIsReasoning } = useReasoningStream()
+  const steps = propSteps || streamSteps
+  const isReasoning = propIsReasoning !== undefined ? propIsReasoning : streamIsReasoning
 
   // --- Smart scroll: detect if user scrolled up manually ---
   const [userScrolledUp, setUserScrolledUp] = React.useState(false)
@@ -138,11 +148,13 @@ export function ChatTranscript({
               isStreaming={index === lastAssistantIndex && pending}
               onSendMessage={onSendMessage}
               cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
-              reasoningSteps={steps}
-              isReasoning={isReasoning}
-              reasoningStartTime={submitTime ?? null}
-              intent={lastIntent}
-              userQuery={lastUserMessage}
+              reasoningSteps={index === lastAssistantIndex ? steps : undefined}
+              isReasoning={index === lastAssistantIndex ? isReasoning : undefined}
+              reasoningStartTime={index === lastAssistantIndex ? (submitTime ?? null) : undefined}
+              intent={index === lastAssistantIndex ? lastIntent : undefined}
+              userQuery={index === lastAssistantIndex ? lastUserMessage : undefined}
+              thinkingText={index === lastAssistantIndex ? thinkingText : undefined}
+              toolCalls={index === lastAssistantIndex ? toolCalls : undefined}
             />
           </div>
         )
@@ -161,6 +173,8 @@ export function ChatTranscript({
               startTime={submitTime ?? null}
               intent={lastIntent}
               userQuery={lastUserMessage}
+              thinkingText={thinkingText}
+              toolCalls={toolCalls}
             />
           </div>
         </div>

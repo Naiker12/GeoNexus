@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { McpConfigEditor } from "@/features/workspace/mcp/McpConfigEditor"
 import { McpConsole } from "@/features/workspace/mcp/McpConsole"
 import { McpHeader } from "@/features/workspace/mcp/McpHeader"
@@ -11,7 +11,8 @@ import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
 import { useMcpTools } from "@/features/workspace/mcp/hooks/useMcpTools"
 import { useToast } from "@/components/ui/toast"
 import { discoverMcpTools, deleteMcpServer } from "@/api/mcp"
-import type { McpServer } from "@/types/mcp"
+import type { McpServer, RegisterServerPayload } from "@/types/mcp"
+import type { McpConnectCardData } from "@/utils/parseContent"
 
 export function McpServersPage() {
   const { servers, error, register, ping, refresh } = useMcpServers()
@@ -19,6 +20,7 @@ export function McpServersPage() {
   const [registerOpen, setRegisterOpen] = useState(false)
   const [configOpen, setConfigOpen] = useState(false)
   const [editingServer, setEditingServer] = useState<McpServer | null>(null)
+  const [prefillData, setPrefillData] = useState<Partial<RegisterServerPayload> | null>(null)
   const [pingProgress, setPingProgress] = useState<{ current: number; total: number } | null>(null)
   const [viewMode, setViewMode] = useState<McpViewMode>("grid")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -26,6 +28,20 @@ export function McpServersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const { tools, error: toolsError, refresh: refreshTools } = useMcpTools(selectedServerId)
   const toast = useToast()
+
+  useEffect(() => {
+    const handleOpenRegister = (e: Event) => {
+      const detail = (e as CustomEvent).detail as McpConnectCardData
+      setPrefillData({
+        id: detail.serverId,
+        name: detail.serverName,
+        url: detail.serverUrl,
+      })
+      setRegisterOpen(true)
+    }
+    window.addEventListener("geonexus:open-mcp-register", handleOpenRegister)
+    return () => window.removeEventListener("geonexus:open-mcp-register", handleOpenRegister)
+  }, [])
 
   const filteredServers = useMemo(() => {
     let result = servers
@@ -151,9 +167,10 @@ export function McpServersPage() {
       </div>
       <McpRegisterDialog
         open={registerOpen}
-        onOpenChange={(v) => { if (!v) setEditingServer(null); setRegisterOpen(v) }}
-        onRegistered={async (p) => { await register(p); setEditingServer(null) }}
+        onOpenChange={(v) => { if (!v) { setEditingServer(null); setPrefillData(null) } setRegisterOpen(v) }}
+        onRegistered={async (p) => { await register(p); setEditingServer(null); setPrefillData(null) }}
         editing={editingServer}
+        prefill={prefillData}
       />
       <McpConfigEditor
         open={configOpen}

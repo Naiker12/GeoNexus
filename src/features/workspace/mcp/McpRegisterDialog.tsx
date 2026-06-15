@@ -50,7 +50,7 @@ const INITIAL: RegisterServerPayload = {
   auto_approve: undefined, timeout_ms: undefined, tools: [],
 }
 
-export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing }: McpRegisterDialogProps) {
+export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, prefill }: McpRegisterDialogProps & { prefill?: Partial<RegisterServerPayload> | null }) {
   const [form, setForm] = useState<RegisterServerPayload>(INITIAL)
   const [toolsRaw, setToolsRaw] = useState("")
   const [configJson, setConfigJson] = useState("")
@@ -96,8 +96,16 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing }:
       setConfigJson("")
       setDiscoveredTools([])
       setSelectedToolNames(new Set())
+    } else if (prefill) {
+      setForm({ ...INITIAL, ...prefill })
+      setToolsRaw("")
+      setConfigJson("")
+      setDiscoveredTools([])
+      setSelectedToolNames(new Set())
+    } else {
+      reset()
     }
-  }, [editing])
+  }, [editing, prefill, open])
 
   const buildPayload = (): RegisterServerPayload => ({
     ...form,
@@ -225,8 +233,16 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing }:
     }
   }
 
-  const updateForm = (key: keyof RegisterServerPayload, value: unknown) =>
-    setForm(prev => ({ ...prev, [key]: value || undefined }))
+  const updateForm = (key: keyof RegisterServerPayload, value: unknown) => {
+    if (key === "url" && typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed && !trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+        setForm(prev => ({ ...prev, [key]: `http://${trimmed}` }));
+        return;
+      }
+    }
+    setForm(prev => ({ ...prev, [key]: value }));
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>

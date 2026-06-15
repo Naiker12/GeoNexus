@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
@@ -18,11 +19,7 @@ type GeoAgentsWorkspaceProps = {
   onConfigOpenChange: (open: boolean) => void
 }
 
-export function GeoAgentsWorkspace({
-  activeRoute,
-  configOpen,
-  onConfigOpenChange,
-}: GeoAgentsWorkspaceProps) {
+export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange }: GeoAgentsWorkspaceProps) {
   const { connectors, activeConnectorId } = useConnectors()
   const activeConnector =
     connectors.find((c) => c.id === activeConnectorId) ?? {
@@ -39,6 +36,16 @@ export function GeoAgentsWorkspace({
   const isAgents = activeRoute.startsWith("#agentes")
   const isMcp = activeRoute.startsWith("#mcp")
   const isSkills = activeRoute.startsWith("#skills")
+
+  useEffect(() => {
+    const handleOpenRegister = () => {
+      if (!activeRoute.startsWith("#mcp")) {
+        window.location.hash = "#mcp"
+      }
+    }
+    window.addEventListener("geonexus:open-mcp-register", handleOpenRegister)
+    return () => window.removeEventListener("geonexus:open-mcp-register", handleOpenRegister)
+  }, [activeRoute])
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">

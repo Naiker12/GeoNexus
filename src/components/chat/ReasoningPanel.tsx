@@ -7,7 +7,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { ReasoningStepItem } from "@/components/chat/ReasoningStepItem"
-import type { ReasoningStepDisplay } from "@/types/chat"
+import { ThinkingTextBlock } from "@/components/chat/ThinkingTextBlock"
+import { ToolCallItem } from "@/components/chat/ToolCallItem"
+import type { ReasoningStepDisplay, ToolCallDisplay } from "@/types/chat"
 
 interface ReasoningPanelProps {
   steps: ReasoningStepDisplay[]
@@ -16,15 +18,26 @@ interface ReasoningPanelProps {
   sourceCount?: number
   intent?: string
   userQuery?: string
+  thinkingText?: string
+  toolCalls?: ToolCallDisplay[]
 }
 
-export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, intent, userQuery }: ReasoningPanelProps) {
+export function ReasoningPanel({ 
+  steps, 
+  isRunning, 
+  startTime, 
+  sourceCount, 
+  intent, 
+  userQuery,
+  thinkingText = "",
+  toolCalls = []
+}: ReasoningPanelProps) {
   const [open, setOpen] = React.useState(true)
   const [elapsed, setElapsed] = React.useState(0)
 
   React.useEffect(() => {
     if (!startTime) return
-    if (!isRunning && steps.length > 0) {
+    if (!isRunning && (steps.length > 0 || thinkingText.length > 0 || toolCalls.length > 0)) {
       setElapsed((Date.now() - startTime) / 1000)
       const t = setTimeout(() => setOpen(false), 800)
       return () => clearTimeout(t)
@@ -34,13 +47,14 @@ export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, inten
       setElapsed((Date.now() - startTime) / 1000)
     }, 100)
     return () => clearInterval(id)
-  }, [startTime, isRunning, steps.length])
+  }, [startTime, isRunning, steps.length, thinkingText.length, toolCalls.length])
 
-  if (steps.length === 0 && !isRunning) return null
+  const hasContent = steps.length > 0 || thinkingText.length > 0 || toolCalls.length > 0 || isRunning
+  if (!hasContent) return null
 
-  const allDone = !isRunning && steps.length > 0
+  const allDone = !isRunning && hasContent
   const lastStep = steps[steps.length - 1]
-  const toolCallCount = steps.filter(s => s.type === "mcp_tool_called" && s.status === "done").length
+  const toolCallDoneCount = toolCalls.filter(t => t.status === "success" || t.status === "error").length
   const skillsCount = steps.filter(s => s.type === "skills_injected").length
   const stepsCount = steps.filter(s => s.status === "done").length
 
@@ -58,6 +72,11 @@ export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, inten
     : lastStep
       ? `${lastStep.label} · ${elapsed.toFixed(1)}s`
       : `Analizando · ${elapsed.toFixed(1)}s`
+
+  const hasSteps = steps.length > 0
+  const hasThinking = thinkingText.length > 0
+  const hasTools = toolCalls.length > 0
+  const hasDivider = hasSteps && hasThinking
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -83,9 +102,9 @@ export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, inten
           <span className="text-xs font-medium text-muted-foreground/80 truncate">
             {summary}
           </span>
-          {toolCallCount > 0 && allDone && (
+          {toolCallDoneCount > 0 && allDone && (
             <span className="text-[10px] text-muted-foreground/40 shrink-0">
-              · {toolCallCount} tool{toolCallCount !== 1 ? "s" : ""}
+              · {toolCallDoneCount} tool{toolCallDoneCount !== 1 ? "s" : ""}
             </span>
           )}
           {skillsCount > 0 && allDone && (
@@ -103,11 +122,37 @@ export function ReasoningPanel({ steps, isRunning, startTime, sourceCount, inten
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="relative ml-0 mt-1 flex flex-col gap-0 rounded-lg bg-muted/30 px-3 py-2">
-          <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-emerald-500/50" />
-          {steps.map((step, i) => (
-            <ReasoningStepItem key={step.id} step={step} />
-          ))}
+        <div className={cn(
+          "relative ml-0 mt-1 flex flex-col gap-1 px-3 py-1",
+          isRunning ? "border-l-2 border-indigo-500/50" : "border-l-2 border-border/30"
+        )}>
+          {/* Structured Steps */}
+          {hasSteps && (
+            <div className="flex flex-col gap-0">
+              {steps.map((step, i) => (
+                <ReasoningStepItem key={step.id} step={step} />
+              ))}
+            </div>
+          )}
+
+          {/* Divider */}
+          {hasDivider && (
+            <div className="h-px bg-border/30 my-1 opacity-70" />
+          )}
+
+          {/* Thinking Text Scratchpad */}
+          {hasThinking && (
+            <ThinkingTextBlock text={thinkingText} isStreaming={isRunning} />
+          )}
+
+          {/* Tool Calls */}
+          {hasTools && (
+            <div className="flex flex-col gap-0 pt-1">
+              {toolCalls.map((tool) => (
+                <ToolCallItem key={tool.id} tool={tool} />
+              ))}
+            </div>
+          )}
         </div>
       </CollapsibleContent>
     </Collapsible>

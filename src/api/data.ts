@@ -26,6 +26,9 @@ async function invokeOrFallback<T>(
   args: Record<string, unknown>,
   fallback: T
 ): Promise<T> {
+  if (!isTauriAvailable()) {
+    return fallback
+  }
   try {
     return await invoke<T>(command, args)
   } catch {
@@ -112,18 +115,18 @@ export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]>
 export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<GraphNode[]> {
   const nodes = await invokeOrFallback<BackendGraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
   if (nodes) {
-    return nodes.map(n => ({
-      id: n.id,
-      project_id: n.project_id,
-      workspace_id: n.workspace_id,
-      label: n.name,
-      type: n.kind as any,
-      description: n.description,
-      evidence: n.evidence,
-      x: n.x,
-      y: n.y,
-      weight: n.weight,
-      created_at: n.created_at,
+    return nodes.map((n, idx) => ({
+      id: n.id ?? `fallback-node-${idx}-${Date.now()}`,
+      project_id: n.project_id ?? projectId,
+      workspace_id: n.workspace_id ?? null,
+      label: n.name ?? "Nodo",
+      type: (n.kind as any) ?? "concepto",
+      description: n.description ?? "",
+      evidence: n.evidence ?? "",
+      x: n.x ?? 50,
+      y: n.y ?? 50,
+      weight: n.weight ?? 1,
+      created_at: n.created_at ?? Date.now(),
       source_event: n.source_event ?? "",
       event_id: n.event_id ?? "",
       icon: n.icon ?? "",
@@ -151,16 +154,20 @@ export async function searchGraphNodes(
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
-  const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
-  if (edges) {
-    return edges.map(e => ({
-      source: e.source,
-      target: e.target,
-      relation: e.relation,
-      strength: e.strength
-    }))
-  }
-  return []
+    console.log("🔍 [listGraphEdges] Fetching edges for project:", projectId)
+    const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
+    if (edges) {
+        console.log("✅ [listGraphEdges] Got edges:", edges.length, edges)
+        return edges.map((e, idx) => ({
+            id: e.id ?? `edge-${idx}-${Date.now()}`, // Add fallback ID
+            source: e.source ?? "unknown",
+            target: e.target ?? "unknown",
+            relation: e.relation ?? "related",
+            strength: e.strength ?? 100
+        }))
+    }
+    console.log("ℹ️ [listGraphEdges] No edges found, returning empty array")
+    return []
 }
 
 export async function rebuildKnowledgeGraph(projectId = DEFAULT_PROJECT_ID): Promise<void> {

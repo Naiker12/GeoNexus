@@ -1,12 +1,50 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#07111F"/>
-  <path d="M256 72C188.07 72 133 127.07 133 195C133 290.5 256 440 256 440C256 440 379 290.5 379 195C379 127.07 323.93 72 256 72Z" fill="#10B981"/>
-  <path d="M256 116C212.37 116 177 151.37 177 195C177 238.63 212.37 274 256 274C299.63 274 335 238.63 335 195C335 151.37 299.63 116 256 116Z" fill="#EAF8F1"/>
+  <!-- Background with subtle gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111F"/>
+      <stop offset="1" stop-color="#0B1B2E"/>
+    </linearGradient>
+    <linearGradient id="nexusGrad" x1="133" y1="72" x2="379" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10B981"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="256" cy="195" r="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF8F1"/>
+    </radialGradient>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="1" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Nexus Terrain -->
+  <path d="M256 72C188.07 72 133 127.07 133 195C133 290.5 256 440 256 440C256 440 379 290.5 379 195C379 127.07 323.93 72 256 72Z" fill="url(#nexusGrad)"/>
+  
+  <!-- Center Circle -->
+  <path d="M256 116C212.37 116 177 151.37 177 195C177 238.63 212.37 274 256 274C299.63 274 335 238.63 335 195C335 151.37 299.63 116 256 116Z" fill="url(#centerGlow)"/>
+  
+  <!-- Terrain Base -->
   <path d="M180 333L107 383L192 407L256 376L320 407L405 383L332 333L256 360L180 333Z" fill="#0B1B2E"/>
-  <path d="M180 333L256 360L332 333" stroke="#7DD3FC" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Terrain Outline -->
+  <path d="M180 333L256 360L332 333" stroke="url(#skyGrad)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Nexus Cross -->
   <path d="M208 195H304M256 147V243" stroke="#07111F" stroke-width="26" stroke-linecap="round"/>
-  <circle cx="256" cy="195" r="23" fill="#10B981" stroke="#07111F" stroke-width="12"/>
-  <circle cx="178" cy="333" r="18" fill="#7DD3FC" stroke="#07111F" stroke-width="10"/>
-  <circle cx="334" cy="333" r="18" fill="#7DD3FC" stroke="#07111F" stroke-width="10"/>
-  <circle cx="256" cy="360" r="20" fill="#F59E0B" stroke="#07111F" stroke-width="10"/>
+  <circle cx="256" cy="195" r="23" fill="url(#nexusGrad)" stroke="#07111F" stroke-width="12"/>
+  
+  <!-- Nodes (Terrain Points) -->
+  <circle cx="178" cy="333" r="18" fill="#7DD3FC" stroke="#07111F" stroke-width="10">
+    <animate attributeName="r" values="18;20;18" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="334" cy="333" r="18" fill="#7DD3FC" stroke="#07111F" stroke-width="10">
+    <animate attributeName="r" values="18;20;18" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="256" cy="360" r="20" fill="#F59E0B" stroke="#07111F" stroke-width="10">
+    <animate attributeName="r" values="20;22;20" dur="2s" begin="1s" repeatCount="indefinite"/>
+  </circle>
 </svg>

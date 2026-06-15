@@ -55,7 +55,12 @@ export function GraphCanvas({
 
   // Initialize simulation
   React.useEffect(() => {
-    if (nodes.length === 0) return
+    console.log("🎨 [GraphCanvas] Initializing simulation, nodes count:", nodes.length)
+    if (nodes.length === 0) {
+      // Even if there are no nodes, set ready so canvas setup runs
+      setReady(true)
+      return
+    }
 
     const simNodes = nodes.map((n) => ({ ...n, x: n.x, y: n.y }))
     const simLinks = edges.map((e) => ({
@@ -91,6 +96,7 @@ export function GraphCanvas({
 
     simRef.current = simulation
     setReady(true)
+    console.log("✅ [GraphCanvas] Simulation initialized, ready = true")
 
     return () => {
       simulation.stop()

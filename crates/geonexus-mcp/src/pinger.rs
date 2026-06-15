@@ -65,13 +65,13 @@ pub async fn ping_server_with_auth(url: &str, auth_token: Option<&str>) -> PingR
     };
     let start = Instant::now();
 
-    // PASO 1: initialize
+    // initialize
     let init_payload = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "initialize",
         "params": {
-            "protocolVersion": "2025-06-18",
+            "protocolVersion": "2025-03-26",
             "capabilities": { "tools": {} },
             "clientInfo": {
                 "name": "geonexus-mcp-router",
@@ -159,7 +159,7 @@ pub async fn ping_server_with_auth(url: &str, auth_token: Option<&str>) -> PingR
         .as_str()
         .map(|s| s.to_string());
 
-    // PASO 2: notifications/initialized (sin id — no espera respuesta)
+    //notifications/initialized (sin id — no espera respuesta)
     let notif_payload = json!({
         "jsonrpc": "2.0",
         "method": "notifications/initialized"
@@ -170,7 +170,7 @@ pub async fn ping_server_with_auth(url: &str, auth_token: Option<&str>) -> PingR
         .send()
         .await;
 
-    // PASO 3: tools/list — descubrir tools disponibles
+    //tools/list — descubrir tools disponibles
     let tools_payload = json!({
         "jsonrpc": "2.0",
         "id": 2,

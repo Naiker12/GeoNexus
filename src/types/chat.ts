@@ -210,6 +210,27 @@ export interface ReasoningStepDisplay {
   status: "pending" | "running" | "done" | "skipped"
 }
 
+// New types for Claude-style reasoning
+export type ToolCallDisplay = {
+  id: string
+  toolName: string
+  args: Record<string, unknown>
+  status: "running" | "success" | "error"
+  durationMs?: number
+  result?: unknown
+}
+
+export interface ReasoningPanelState {
+  steps: ReasoningStepDisplay[]
+  thinkingText: string
+  toolCalls: ToolCallDisplay[]
+  isRunning: boolean
+  startTime?: number | null
+  sourceCount?: number
+  intent?: string
+  userQuery?: string
+}
+
 // ── Event Preview Streaming ─────────────────────────────────────
 
 export type PreviewChunkType = "text" | "source" | "line" | "rag_doc"

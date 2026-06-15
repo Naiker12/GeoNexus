@@ -1,0 +1,135 @@
+# ANÁLISIS COMPLETO FLUJO DE SUBIDA DE ARCHIVOS Y IMÁGENES
+# Proyecto: GeoNexus / Geo Agents
+# Fecha de análisis: 2026-06-15
+
+================================================================================
+1. ARQUITECTURA GENERAL ACTUAL
+================================================================================
+- Frontend: React 18 + TypeScript + Vite + Tauri 2
+- Backend: Rust (4 crates, incluyendo geonexus-tauri)
+- Almacenamiento: SQLite + ChromaDB (vectores para RAG)
+- Tauri Commands invocados desde el frontend
+
+================================================================================
+2. ESTRUCTURA DE COMPONENTES
+================================================================================
+Ubicación: src/features/workspace/documents/
+ - DocumentsPage.tsx          (Página principal, maneja toda la UI de documentos)
+ - UploadDialog.tsx           (Modal para confirmar subida de archivos seleccionados)
+ - useDocuments.ts            (Hook principal para lógica de documentos/subida/indexación)
+ - DocumentAssetIcon.tsx      (Iconos para tipos de archivos)
+ - documents-data.ts          (Datos iniciales, fuentes de documentos)
+
+================================================================================
+3. FLUJO PASO A PASO DE SUBIDA DE ARCHIVOS
+================================================================================
+
+a) SELECCIÓN DE ARCHIVOS (DocumentsPage.tsx:98-107, 241-350)
+--------------------------------------------------------------
+- Input tipo file oculto (sr-only, en SourceStrip, línea 340-347)
+- Accept: ".pdf,.doc,.docx,.txt,.zip,.dxf,.geojson,.shp,.csv,.xlsx"
+- Permite múltiples archivos (multiple)
+- Al hacer clic en "Subir archivos", se abre el explorador nativo
+- Cuando el usuario selecciona archivos, se crea un array de "pendingFiles" (id único + File)
+- fileIdCounter (useRef) genera ids únicos para cada archivo pendiente
+
+b) CONFIRMACIÓN EN MODAL (UploadDialog.tsx)
+--------------------------------------------
+- UploadDialog se abre cuando pendingFiles.length > 0
+- Muestra lista de archivos con nombre, tamaño, botón para quitar
+- Cuando el usuario hace clic en "Subir X archivo(s)", invoca handleUploadConfirmed (DocumentsPage.tsx:113-143)
+
+c) SUBIDA AL BACKEND VÍA Tauri (useDocuments.ts:38-56)
+-------------------------------------------------------
+- Por cada archivo, se llama a uploadDocument(file)
+- Paso 1: Lee el archivo como ArrayBuffer (file.arrayBuffer())
+- Paso 2: Convierte ArrayBuffer a Array<number> (de Uint8Array, para que Tauri/Rust lo procese)
+- Paso 3: Invoca comando Rust "upload_asset_file" con params:
+   {
+     projectId: "project-default",
+     workspaceId: "workspace-main",
+     connectorId: "local-upload",
+     fileName: file.name,
+     bytes: [ ... ] // Array de bytes
+   }
+- Paso 4: Si todo sale bien, devuelve assetId; si no, error
+- Paso 5: Se refresca la lista de assets llamando a fetchAssets()
+
+d) INDEXACIÓN DE DOCUMENTOS (useDocuments.ts:78-89, DocumentsPage.tsx:145-159)
+-------------------------------------------------------------------------------
+- NO es automática: el usuario tiene que hacer clic manualmente en "Indexar" o "Reindexar"
+- handleIndex() invoca comando "index_document" (via indexDocument() de @/api/data.ts)
+- Mientras indexa, se establece indexingAssetId para ese asset y muestra loader
+
+================================================================================
+4. OTRAS FUENTES DE DOCUMENTOS
+================================================================================
+a) Carpeta local (DocumentsPage.tsx:58-91, useDocuments.ts:58-76)
+------------------------------------------------------------------
+- Invoca open_folder_picker (comando Rust)
+- Registra un conector local via registerLocalConnector()
+- Sincroniza via syncLocalConnector()
+- Filtra archivos por extensiones: .pdf,.docx,.doc,.xlsx,.csv,.geojson,.shp,.dxf
+- Límite de tamaño: 500 MB (por archivo)
+
+b) OneDrive (DocumentsPage.tsx:576-651)
+-----------------------------------------
+- Usa OAuth 2.0 para conectarse a OneDrive
+- Genera code_verifier y code_challenge PKCE
+- Usa openUrl de @tauri-apps/plugin-opener para abrir URL de autenticación en navegador
+- (Actualmente la lógica posterior a autenticación OAuth no está completa)
+
+c) URL / SharePoint (SourceStrip:264-266)
+-----------------------------------------
+- Actualmente solo muestra alert("Funcionalidad proximamente")
+
+================================================================================
+5. TIPOS DE DATOS / INTERFACES (src/types/data.ts probablemente)
+================================================================================
+DataAsset (Documento):
+- id: string
+- name: string
+- kind: string ("document" | "word" | "excel" | "other" | "shapefile" | "layer" | "csv" | "raster")
+- source: string (fuente, ej: "local-upload", "Carpeta Windows")
+- location: string (ruta al archivo en filesystem)
+- size_bytes: number (tamaño en bytes)
+- chunks: number (número de trozos para RAG)
+- status: "pending" | "indexing" | "ready" | "error"
+- updated_at: number (timestamp)
+- created_at: number (timestamp)
+
+================================================================================
+6. LÍMITES ACTUALES
+================================================================================
+a) No hay soporte para imágenes aún (.jpg, .png, etc.)
+b) No hay previsualización de archivos seleccionados
+c) No hay límite global de espacio de almacenamiento
+d) Indexación solo manual
+e) No hay drag & drop de archivos en la página
+f) No hay barra de progreso de subida (solo "Subiendo..." texto)
+
+================================================================================
+7. PUNTOS A MEJORAR / PENDIENTES
+================================================================================
+- Soporte para imágenes (agregar .jpg,.jpeg,.png,.webp, etc. al input accept)
+- Agregar previsualización de archivos en UploadDialog
+- Drag & drop área en SourceStrip para archivos
+- Barra de progreso para subida
+- Opción de indexación automática después de subir
+- Soporte para más formatos de imágenes y GIS
+- Completar el flujo OAuth de OneDrive
+- Compartir archivos entre proyectos (si es necesario)
+- Almacenamiento en la nube para imágenes (opcional)
+
+================================================================================
+8. ARCHIVOS RUST / Tauri COMANDOS
+================================================================================
+(Inferidos desde los invocados en frontend):
+- upload_asset_file: sube un archivo al backend
+- open_folder_picker: abre el explorador de carpetas nativo
+- read_file_base64: lee un archivo como base64 para descarga
+- index_document: indexa un documento para RAG
+- list_data_assets: lista todos los assets de datos del proyecto
+- delete_data_asset: elimina un asset
+- register_local_connector / sync_local_connector: maneja carpetas locales
+

@@ -4,7 +4,8 @@ import type { GraphNode, GraphEdge } from "@/types/data"
 const BASE_NODE_RADIUS = 5
 
 export function getNodeRadius(node: GraphNode): number {
-  const weightFactor = Math.log(Math.max(node.weight, 1) + 1) / 5
+  const weight = node.weight ?? 1
+  const weightFactor = Math.log(Math.max(weight, 1) + 1) / 5
   return BASE_NODE_RADIUS + Math.min(weightFactor * 3, 6)
 }
 
@@ -13,7 +14,9 @@ export function getNodeVisuals(node: GraphNode): {
   opacity: number
   glow: boolean
 } {
-  const score = (node as any).memory_score ?? node.weight
+  const memoryScore = (node as any).memory_score ?? 1
+  const weight = node.weight ?? 1
+  const score = memoryScore ?? weight
   return {
     radius: 3 + Math.min(score * 1.5, 7),
     opacity: Math.max(0.2, Math.min(score / 5, 1.0)),

@@ -30,7 +30,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { toast } = useToast()
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
-  const { steps, isReasoning } = useReasoningStream()
+  const { steps, isReasoning, thinkingText, toolCalls, reset } = useReasoningStream()
   const {
     activeProvider,
     conversationId,
@@ -51,6 +51,19 @@ export function ChatPanel(_props: ChatPanelProps) {
     loadConversation,
     newConversation,
   } = useChatSession(activeConnectorId, connectors)
+
+  // Reset reasoning stream when pending becomes false (response completes)
+  React.useEffect(() => {
+    if (!pending) {
+      reset()
+    }
+  }, [pending, reset])
+
+  // Reset reasoning stream when starting a new conversation
+  const handleNewConversation = React.useCallback(() => {
+    reset()
+    newConversation()
+  }, [reset, newConversation])
 
   const [sidebarOpen, setSidebarOpen] = React.useState(() => {
     if (typeof window !== "undefined") {
@@ -129,7 +142,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => { newConversation() }}
+                onClick={handleNewConversation}
                 aria-label="Nueva conversacion"
               >
                 <MessageSquarePlusIcon className="size-4" />
@@ -140,7 +153,7 @@ export function ChatPanel(_props: ChatPanelProps) {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => { newConversation() }}
+              onClick={handleNewConversation}
               aria-label="Nueva conversacion"
               className="shrink-0 ml-0.5"
             >
@@ -192,6 +205,10 @@ export function ChatPanel(_props: ChatPanelProps) {
               onRegenerateLastMessage={handleRegenerate}
               useContext={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
               lastIntent={lastIntent ?? undefined}
+              steps={steps}
+              isReasoning={isReasoning}
+              thinkingText={thinkingText}
+              toolCalls={toolCalls}
             />
           ) : (
             <EmptyChatState />

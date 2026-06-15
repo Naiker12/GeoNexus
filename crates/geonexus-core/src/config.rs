@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-/// Estructura principal de configuración de GeoNexus
+/// Estructura principal de configuración
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeoNexusConfig {
     #[serde(default)]
@@ -131,10 +131,7 @@ pub const DEFAULT_CONFIG_TOML: &str = r##"# GeoNexus Configuration
 
 [mcp]
 # Servidores MCP que se registran automáticamente al iniciar
-default_servers = [
-  { id = "memory-mcp", name = "Memory MCP", url = "http://localhost:3001" },
-  { id = "qgis-mcp",   name = "QGIS MCP",   url = "http://localhost:3002" },
-]
+default_servers = []
 ping_interval_secs = 60
 
 [skills]

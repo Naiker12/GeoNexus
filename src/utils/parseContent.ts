@@ -4,14 +4,22 @@ export interface ConnectCardData {
   reason?: string
 }
 
+export interface McpConnectCardData {
+  type: "mcp_connect_card"
+  serverId?: string
+  serverName?: string
+  serverUrl?: string
+  reason?: string
+}
+
 export interface ContentSegment {
-  kind: "text" | "connect_card"
-  value: string | ConnectCardData
+  kind: "text" | "connect_card" | "mcp_connect_card"
+  value: string | ConnectCardData | McpConnectCardData
 }
 
 export function parseContent(content: string): ContentSegment[] {
   const segments: ContentSegment[] = []
-  const regex = /\{"type":"connect_card"[^}]+\}/g
+  const regex = /\{"type":"(connect_card|mcp_connect_card)"[^}]+\}/g
   let lastIndex = 0
   let match: RegExpExecArray | null
 
@@ -20,9 +28,11 @@ export function parseContent(content: string): ContentSegment[] {
       segments.push({ kind: "text", value: content.slice(lastIndex, match.index) })
     }
     try {
-      const data = JSON.parse(match[0]) as ConnectCardData
+      const data = JSON.parse(match[0]) as ConnectCardData | McpConnectCardData
       if (data.type === "connect_card") {
         segments.push({ kind: "connect_card", value: data })
+      } else if (data.type === "mcp_connect_card") {
+        segments.push({ kind: "mcp_connect_card", value: data as McpConnectCardData })
       }
     } catch {
       segments.push({ kind: "text", value: match[0] })
