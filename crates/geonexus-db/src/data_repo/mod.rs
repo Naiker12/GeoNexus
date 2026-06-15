@@ -124,6 +124,9 @@ pub(crate) fn row_to_node(row: &sqlx::sqlite::SqliteRow) -> Result<GraphNode, St
         origin_kind: row.get("origin_kind"),
         pinned: row.get::<i64, _>("pinned") != 0,
         deleted_at: row.get("deleted_at"),
+        use_count: row.get("use_count"),
+        last_used_at: row.get("last_used_at"),
+        memory_score: row.get("memory_score"),
     })
 }
 

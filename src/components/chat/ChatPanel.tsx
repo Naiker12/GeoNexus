@@ -5,7 +5,7 @@ import {
   PanelLeftOpenIcon,
 } from "lucide-react"
 
-import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
+import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import { Button } from "@/components/ui/Button"
 import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
@@ -270,12 +270,9 @@ function EmptyChatState() {
   return (
     <div className="flex min-h-full items-center justify-center pb-16 pt-10">
       <div className="w-full max-w-3xl text-center">
-        <div className="mx-auto flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <GeoAgentsIcon className="size-6" variant="nexus" />
+        <div className="mx-auto mb-6 flex justify-center">
+          <GeoAgentsLogo variant="full" className="w-auto h-14 sm:h-20 animate-in fade-in zoom-in-95 duration-700" />
         </div>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-          Geo Agents
-        </h1>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           Consulta normas POT, analiza capas GIS, sube archivos o graba una
           nota de campo. El resultado aparece aqui cuando empieces a escribir.

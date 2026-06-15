@@ -1,3 +1,4 @@
+use serde::Serialize;
 use tauri::State;
 use sqlx::Row;
 use geonexus_core::GraphNode;
@@ -32,6 +33,9 @@ fn map_row_to_node(row: &sqlx::sqlite::SqliteRow) -> GraphNode {
         origin_kind: row.get("origin_kind"),
         pinned: row.get::<i64, _>("pinned") != 0,
         deleted_at: row.get("deleted_at"),
+        use_count: row.get("use_count"),
+        last_used_at: row.get("last_used_at"),
+        memory_score: row.get("memory_score"),
     }
 }
 
@@ -251,5 +255,75 @@ pub async fn merge_nodes(
         .await
         .map_err(|e| format!("Error confirmando transacción de fusión: {e}"))?;
 
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct NodeMemoryStats {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub weight: i64,
+    pub use_count: i64,
+    pub memory_score: f64,
+    pub pinned: bool,
+    pub last_used_at: Option<String>,
+    pub created_at: i64,
+}
+
+#[tauri::command]
+pub async fn get_node_memory_stats(
+    project_id: String,
+    workspace_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<NodeMemoryStats>, String> {
+    let pool = &state.db;
+    let rows = sqlx::query(
+        "SELECT id, name, kind, weight, use_count, memory_score, pinned, last_used_at, created_at
+         FROM graph_nodes
+         WHERE project_id = ?1
+           AND (?2 IS NULL OR workspace_id = ?2)
+           AND deleted_at IS NULL
+         ORDER BY memory_score ASC"
+    )
+    .bind(&project_id)
+    .bind(&workspace_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Error fetching memory stats: {e}"))?;
+
+    let stats = rows.iter().map(|row| NodeMemoryStats {
+        id: row.get("id"),
+        name: row.get("name"),
+        kind: row.get("kind"),
+        weight: row.get("weight"),
+        use_count: row.get("use_count"),
+        memory_score: row.get("memory_score"),
+        pinned: row.get::<i64, _>("pinned") != 0,
+        last_used_at: row.get("last_used_at"),
+        created_at: row.get("created_at"),
+    }).collect();
+
+    Ok(stats)
+}
+
+pub async fn bump_use_count(
+    db: &sqlx::SqlitePool,
+    node_ids: &[String],
+) -> Result<(), String> {
+    if node_ids.is_empty() {
+        return Ok(());
+    }
+    let now = unix_now().to_string();
+    for id in node_ids {
+        sqlx::query(
+            "UPDATE graph_nodes SET use_count = use_count + 1, last_used_at = ?1 WHERE id = ?2 AND deleted_at IS NULL",
+        )
+        .bind(&now)
+        .bind(id)
+        .execute(db)
+        .await
+        .map_err(|e| format!("Error bumping use_count for node {id}: {e}"))?;
+    }
     Ok(())
 }

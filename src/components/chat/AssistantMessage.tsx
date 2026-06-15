@@ -3,6 +3,7 @@ import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { ConnectCard } from "@/components/chat/ConnectCard"
 import { CopyButton, TokenStatsBadge } from "@/components/chat/MessageActions"
 import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
+import { ReasoningPanel } from "@/components/chat/ReasoningPanel"
 import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { McpToolCallCard } from "@/components/chat/McpToolCallCard"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
@@ -10,13 +11,18 @@ import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData } from "@/utils/parseContent"
-import type { Message } from "@/types/chat"
+import type { Message, ReasoningStepDisplay } from "@/types/chat"
 
 interface AssistantMessageProps {
   message: Message
   isStreaming?: boolean
   onSendMessage?: (text: string) => void
   cumulativeContext?: { totalTokens: number; contextWindow: number }
+  reasoningSteps?: ReasoningStepDisplay[]
+  isReasoning?: boolean
+  reasoningStartTime?: number | null
+  intent?: string
+  userQuery?: string
 }
 
 export function AssistantMessage({
@@ -24,6 +30,11 @@ export function AssistantMessage({
   isStreaming,
   onSendMessage,
   cumulativeContext,
+  reasoningSteps,
+  isReasoning,
+  reasoningStartTime,
+  intent,
+  userQuery,
 }: AssistantMessageProps) {
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
@@ -44,6 +55,15 @@ export function AssistantMessage({
               Geo Agents
             </span>
           </div>
+        {(reasoningSteps && reasoningSteps.length > 0) || isReasoning ? (
+          <ReasoningPanel
+            steps={reasoningSteps ?? []}
+            isRunning={isReasoning ?? false}
+            startTime={reasoningStartTime ?? null}
+            intent={intent}
+            userQuery={userQuery}
+          />
+        ) : null}
         {isStreaming && message.content.length === 0 ? (
           <TypingDots />
         ) : (

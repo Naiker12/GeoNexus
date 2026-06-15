@@ -109,6 +109,13 @@ export interface BackendGraphNode {
   event_id: string
   icon: string
   is_ephemeral: boolean
+  pinned: boolean
+  origin_kind: string
+  source_asset_id: string | null
+  source_chat_id: string | null
+  use_count: number
+  last_used_at: string | null
+  memory_score: number
 }
 
 export interface GraphNode {
@@ -127,6 +134,13 @@ export interface GraphNode {
   event_id: string
   icon: string
   is_ephemeral: boolean
+  pinned: boolean
+  origin_kind: string
+  source_asset_id: string | null
+  source_chat_id: string | null
+  use_count: number
+  last_used_at: string | null
+  memory_score: number
 }
 
 export interface SearchGraphNodesResult {

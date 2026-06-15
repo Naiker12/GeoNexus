@@ -1,59 +1,112 @@
-"""Posicionamiento inteligente de nodos por tipo en el canvas.
+"""Posicionamiento radial de nodos por clusters semanticos.
 
-Divide el canvas en regiones semanticas segun el tipo de nodo,
-distribuye uniformemente con pequeño jitter aleatorio.
+Coloca clusters (tipos de nodo) en anillos concéntricos y distribuye
+los nodos de cada cluster en un arco circular dentro de su anillo.
 """
 
+import math
 import random
-from typing import Dict
+from collections import defaultdict
+from typing import Any
 
-
-# Contadores por tipo para distribucion uniforme
-_kind_counters: dict[str, int] = {}
+# Orden canónico de anillos (de adentro hacia afuera)
+_RING_ORDER = [
+    "concepto",     # centro — conceptos generales
+    "norma",        # normativa
+    "zona",         # zonas geográficas
+    "capa",         # capas SIG
+    "documento",    # documentos fuente
+    "chat_turn",    # conversaciones
+    "web_search",   # búsquedas web
+    "upload",       # subidas
+    "connector",    # conectores externos
+    "rag_recall",   # RAG recall
+]
 
 
 def reset_counters() -> None:
-    """Reinicia contadores (llamar al inicio de cada extraccion)."""
-    _kind_counters.clear()
+    """No-op en el layout radial (los contadores no son necesarios)."""
+    pass
+
+
+def compute_node_positions(
+    nodes: list[dict[str, Any]],
+    edges: list[dict[str, Any]] | None = None,
+    center_x: float = 50.0,
+    center_y: float = 50.0,
+    max_radius: float = 45.0,
+    jitter: float = 1.5,
+) -> dict[str, dict[str, float]]:
+    """Asigna posiciones (x, y) usando layout radial por clusters.
+
+    Args:
+        nodes: lista de dicts con al menos 'id' y 'kind'.
+        edges: lista de aristas (opcional, para detectar nodos aislados).
+        center_x, center_y: centro del canvas (porcentaje 0-100).
+        max_radius: radio máximo desde el centro.
+        jitter: desplazamiento aleatorio máximo para evitar solapamiento.
+
+    Returns:
+        dict { node_id: {x, y} } en coordenadas porcentuales (0-100).
+    """
+    clusters: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for n in nodes:
+        clusters[n.get("kind", "concepto")].append(n)
+
+    # Determinar radio por cluster según orden canónico
+    kind_radius: dict[str, float] = {}
+    used = set()
+    total_kinds = sum(1 for k in _RING_ORDER if k in clusters)
+    remaining_kinds = [k for k in clusters if k not in _RING_ORDER]
+
+    for idx, kind in enumerate(_RING_ORDER):
+        if kind in clusters:
+            frac = (idx + 1) / (total_kinds + 1) if total_kinds > 0 else 0.5
+            kind_radius[kind] = max(8.0, frac * max_radius)
+            used.add(kind)
+
+    idx = total_kinds
+    for kind in remaining_kinds:
+        idx += 1
+        frac = (idx + 1) / (idx + 1)
+        kind_radius[kind] = min(max_radius, 15.0 + idx * 6.0)
+
+    positions: dict[str, dict[str, float]] = {}
+    for kind, kind_nodes in clusters.items():
+        n = len(kind_nodes)
+        if n == 0:
+            continue
+        radius = kind_radius.get(kind, 30.0)
+
+        for i, node in enumerate(kind_nodes):
+            angle_offset = random.uniform(-0.05, 0.05)
+            angle = (2.0 * math.pi * i / max(n, 1)) + angle_offset
+
+            r = radius + random.uniform(-jitter, jitter)
+            x = center_x + r * math.cos(angle)
+            y = center_y + r * math.sin(angle)
+
+            positions[node["id"]] = {
+                "x": round(max(0.0, min(100.0, x)), 2),
+                "y": round(max(0.0, min(100.0, y)), 2),
+            }
+
+    return positions
 
 
 def node_position_by_kind(
     kind: str,
-    regions: Dict[str, Dict[str, tuple[float, float]]],
+    regions: dict[str, dict[str, tuple[float, float]]] | None = None,
 ) -> tuple[float, float]:
-    """Asigna posicion dentro de la region del tipo, distribuyendo uniformemente.
+    """Asigna posicion por tipo usando layout radial simple."""
+    ring_radius = {
+        "concepto": 10, "norma": 18, "zona": 25, "capa": 32,
+        "documento": 38, "chat_turn": 42, "web_search": 45,
+        "upload": 45, "connector": 45, "rag_recall": 45,
+    }.get(kind, 30.0)
 
-    Args:
-        kind: tipo de nodo ("norma", "zona", "concepto", "documento", "capa")
-        regions: dict con x_range y y_range por tipo
-
-    Returns:
-        (x, y) coordenadas en porcentaje (0-100)
-    """
-    _kind_counters[kind] = _kind_counters.get(kind, 0) + 1
-    idx = _kind_counters[kind]
-
-    region = regions.get(kind, {"x_range": (20, 80), "y_range": (20, 80)})
-    x_min, x_max = region["x_range"]
-    y_min, y_max = region["y_range"]
-
-    x_span = x_max - x_min
-    y_span = y_max - y_min
-
-    cols = max(1, int((x_span / y_span) * 3)) if y_span > 0 else 3
-    total = idx
-
-    row = (total - 1) // cols
-    col = (total - 1) % cols
-
-    cell_w = x_span / max(cols, 1)
-    cell_h = y_span / max(cols, 1)
-
-    x = x_min + col * cell_w + cell_w * 0.5 + random.uniform(-2, 2)
-    y = y_min + row * cell_h + cell_h * 0.5 + random.uniform(-2, 2)
-
-    return (round(clamp(x, x_min, x_max), 2), round(clamp(y, y_min, y_max), 2))
-
-
-def clamp(val: float, lo: float, hi: float) -> float:
-    return max(lo, min(hi, val))
+    # Ángulo pseudo-aleatorio determinista basado en kind
+    angle = hash(kind) % 360 * math.pi / 180.0
+    x = 50.0 + ring_radius * math.cos(angle)
+    y = 50.0 + ring_radius * math.sin(angle)
+    return (round(x, 2), round(y, 2))

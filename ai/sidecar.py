@@ -136,9 +136,49 @@ def _extract_keywords(args) -> None:
     _print(extract_keywords(args.query, max_keywords=args.top_k))
 
 
+def _update_memory_scores(args) -> None:
+    import sqlite3
+    from datetime import datetime
+    from graph.memory import compute_memory_score
+
+    db_path = os.getenv("GEONEXUS_DB_PATH", "")
+    if not db_path:
+        _err("GEONEXUS_DB_PATH no esta definido")
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+
+    now = datetime.utcnow()
+    threshold = max(0.1, min(args.threshold or 0.3, 10.0))
+
+    rows = conn.execute("""
+        SELECT * FROM graph_nodes
+        WHERE deleted_at IS NULL
+    """).fetchall()
+
+    updated = 0
+    for row in rows:
+        node = dict(row)
+        score = compute_memory_score(node, now=now)
+        should_show = score >= threshold or node.get("pinned")
+
+        conn.execute(
+            "UPDATE graph_nodes SET memory_score = ? WHERE id = ?",
+            (score, node["id"]),
+        )
+        updated += 1
+
+    conn.commit()
+    conn.close()
+    _print({
+        "status": "success",
+        "updated": updated,
+        "threshold": threshold,
+    })
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Geo Agents AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords", "update_memory_scores"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -161,6 +201,7 @@ def main() -> None:
     p.add_argument("--cse_id", default="")
     p.add_argument("--max_results", type=int, default=10)
     p.add_argument("--search_depth", default="standard", choices=["standard", "deep"])
+    p.add_argument("--threshold", type=float, default=0.3)
     args = p.parse_args()
 
     dispatch = {
@@ -177,6 +218,7 @@ def main() -> None:
         "index": _index,
         "extract_shapefile": _extract_shapefile,
         "extract_keywords": _extract_keywords,
+        "update_memory_scores": _update_memory_scores,
     }
 
     handler = dispatch.get(args.action)

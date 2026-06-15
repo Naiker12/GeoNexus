@@ -305,6 +305,9 @@ pub async fn sync_local_connector(
             origin_kind: "connector".into(),
             pinned: false,
             deleted_at: None,
+            use_count: 0,
+            last_used_at: None,
+            memory_score: 1.0,
         };
         let payload = GraphUpdatePayload {
             source_event: "sync".into(),

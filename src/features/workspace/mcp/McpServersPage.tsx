@@ -1,14 +1,16 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { McpConfigEditor } from "@/features/workspace/mcp/McpConfigEditor"
 import { McpConsole } from "@/features/workspace/mcp/McpConsole"
 import { McpHeader } from "@/features/workspace/mcp/McpHeader"
 import { McpRegisterDialog } from "@/features/workspace/mcp/McpRegisterDialog"
 import { McpServerGrid } from "@/features/workspace/mcp/McpServerGrid"
+
+import type { McpViewMode } from "@/features/workspace/mcp/McpServerGrid"
 import { McpToolsViewer } from "@/features/workspace/mcp/McpToolsViewer"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
 import { useMcpTools } from "@/features/workspace/mcp/hooks/useMcpTools"
 import { useToast } from "@/components/ui/toast"
-import { discoverStdioTools } from "@/api/mcp"
+import { discoverMcpTools, deleteMcpServer } from "@/api/mcp"
 import type { McpServer } from "@/types/mcp"
 
 export function McpServersPage() {
@@ -18,8 +20,36 @@ export function McpServersPage() {
   const [configOpen, setConfigOpen] = useState(false)
   const [editingServer, setEditingServer] = useState<McpServer | null>(null)
   const [pingProgress, setPingProgress] = useState<{ current: number; total: number } | null>(null)
+  const [viewMode, setViewMode] = useState<McpViewMode>("grid")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [transportFilter, setTransportFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
   const { tools, error: toolsError, refresh: refreshTools } = useMcpTools(selectedServerId)
   const toast = useToast()
+
+  const filteredServers = useMemo(() => {
+    let result = servers
+    if (statusFilter !== "all") {
+      result = result.filter(s => {
+        if (statusFilter === "disabled") return s.disabled
+        if (statusFilter === "online") return !s.disabled && s.status === "online"
+        if (statusFilter === "offline") return !s.disabled && s.status === "offline"
+        return true
+      })
+    }
+    if (transportFilter !== "all") {
+      result = result.filter(s => s.transport === transportFilter)
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(s =>
+        s.name.toLowerCase().includes(q) ||
+        (s.url ?? "").toLowerCase().includes(q) ||
+        (s.command ?? "").toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [servers, statusFilter, transportFilter, searchQuery])
 
   const handlePingAll = async () => {
     const active = servers.filter(s => !s.disabled)
@@ -54,12 +84,23 @@ export function McpServersPage() {
 
   const handleDiscoverTools = async (serverId: string) => {
     try {
-      const count = await discoverStdioTools(serverId)
-      toast.toast({ title: `${count} tools descubiertas para el servidor STDIO`, variant: "success" })
+      const count = await discoverMcpTools(serverId)
+      toast.toast({ title: `${count} tools descubiertas`, variant: "success" })
       setSelectedServerId(serverId)
       refreshTools()
     } catch (e) {
       toast.toast({ title: `Error descubriendo tools: ${e}`, variant: "error" })
+    }
+  }
+
+  const handleDelete = async (serverId: string) => {
+    try {
+      await deleteMcpServer(serverId)
+      toast.toast({ title: "Servidor eliminado", variant: "success" })
+      setSelectedServerId(null)
+      await refresh()
+    } catch (e) {
+      toast.toast({ title: `Error eliminando servidor: ${e}`, variant: "error" })
     }
   }
 
@@ -69,9 +110,17 @@ export function McpServersPage() {
         <McpHeader
           servers={servers}
           pingProgress={pingProgress}
+          viewMode={viewMode}
+          statusFilter={statusFilter}
+          transportFilter={transportFilter}
+          searchQuery={searchQuery}
           onRegister={() => setRegisterOpen(true)}
           onPingAll={handlePingAll}
           onOpenConfig={() => setConfigOpen(true)}
+          onViewModeChange={setViewMode}
+          onStatusFilterChange={setStatusFilter}
+          onTransportFilterChange={setTransportFilter}
+          onSearchQueryChange={setSearchQuery}
         />
         <div className="grid gap-5">
           {error && (
@@ -87,11 +136,13 @@ export function McpServersPage() {
             </div>
           )}
           <McpServerGrid
-            servers={servers}
+            servers={filteredServers}
             activeServerId={selectedServerId}
+            viewMode={viewMode}
             onSelectServer={setSelectedServerId}
             onPingServer={ping}
             onEditServer={(id: string) => { const s = servers.find(s => s.id === id); if (s) { setEditingServer(s); setRegisterOpen(true) } }}
+            onDeleteServer={handleDelete}
             onDiscoverTools={handleDiscoverTools}
           />
           <McpToolsViewer serverId={selectedServerId} tools={tools} />

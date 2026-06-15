@@ -64,7 +64,21 @@ export function exportMcpConfig(): Promise<string> {
   return invokeRequired("export_mcp_config", {})
 }
 
-export function discoverStdioTools(serverId: string): Promise<number> {
+export function discoverMcpTools(serverId: string): Promise<number> {
   if (!serverId.trim()) throw new Error("server_id requerido")
-  return invokeRequired("discover_stdio_tools", { serverId })
+  return invokeRequired("discover_mcp_tools", { serverId })
+}
+
+export interface PreviewTool {
+  name: string
+  description: string
+}
+
+export function previewMcpTools(params: {
+  url?: string
+  command?: string
+  args?: string[]
+  auth_token?: string
+}): Promise<PreviewTool[]> {
+  return invokeRequired("preview_mcp_tools", params)
 }

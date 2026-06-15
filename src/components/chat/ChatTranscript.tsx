@@ -133,28 +133,16 @@ export function ChatTranscript({
           </div>
         ) : (
           <div key={message.id} className="flex flex-col gap-1">
-            {/* Reasoning ABOVE the assistant response for the last message while pending */}
-            {index === lastAssistantIndex && pending && (
-              <div className="flex items-start gap-3">
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
-                  <GeoAgentsIcon className="size-4" variant="nexus" />
-                </div>
-                <div className="flex flex-col gap-2 pt-1.5 w-full">
-                  <ReasoningPanel
-                    steps={steps}
-                    isRunning={isReasoning}
-                    startTime={submitTime ?? null}
-                    intent={lastIntent}
-                    userQuery={lastUserMessage}
-                  />
-                </div>
-              </div>
-            )}
             <AssistantMessage
               message={message}
               isStreaming={index === lastAssistantIndex && pending}
               onSendMessage={onSendMessage}
               cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
+              reasoningSteps={steps}
+              isReasoning={isReasoning}
+              reasoningStartTime={submitTime ?? null}
+              intent={lastIntent}
+              userQuery={lastUserMessage}
             />
           </div>
         )

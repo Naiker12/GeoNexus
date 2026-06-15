@@ -2,7 +2,8 @@ import { FilterIcon, XIcon } from "lucide-react"
 import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { nodeDotColor, nodeTypeLabel } from "./NodeSheet"
+import { nodeDotColor } from "./NodeSheet"
+import { nodeTypeLabel } from "./graph-colors"
 import type { GraphNodeType } from "@/types/data"
 
 export type KindFilter = "all" | GraphNodeType

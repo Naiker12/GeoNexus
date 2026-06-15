@@ -12,6 +12,8 @@ interface GraphEventsState {
   pulsingEdgeKeys: Set<string>
   refresh: () => Promise<void>
   clearEphemeral: () => Promise<void>
+  setNodes: React.Dispatch<React.SetStateAction<GraphNode[]>>
+  setEdges: React.Dispatch<React.SetStateAction<GraphEdge[]>>
 }
 
 export function useGraphEvents(
@@ -110,5 +112,7 @@ export function useGraphEvents(
     pulsingEdgeKeys,
     refresh,
     clearEphemeral: clearEphemeralFn,
+    setNodes,
+    setEdges,
   }
 }

@@ -13,6 +13,7 @@ use tauri::Emitter;
 use uuid::Uuid;
 
 use super::classifier::classify_intent;
+use crate::commands::agent_identity::load_identity_context;
 use super::context::{build_graph_context, ContextEdge};
 use super::messages::build_messages;
 use super::search::extract_search_query;
@@ -20,6 +21,7 @@ use super::stats::extract_message_stats;
 use super::tools::{execute_tool_call, get_tool_definitions};
 use super::validator::validate_response;
 use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
+use crate::commands::graph::crud::bump_use_count;
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
 
@@ -144,6 +146,7 @@ pub async fn send_message(
             nodes_count: graph_node_ids.len(),
             edges_count: graph_edges.len(),
         });
+        let _ = bump_use_count(&state.db, &graph_node_ids).await;
     }
 
     let user_msg = Message {
@@ -497,11 +500,14 @@ pub async fn send_message(
         }
     }
 
+    // === Agent Identity ===
+    let identity_context = load_identity_context(&state);
+
     // === Build messages array ===
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
     let asset_count = chunks_used.iter().map(|c| &c.asset_id).collect::<std::collections::HashSet<_>>().len();
     let mut messages =
-        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &input.content, &input.skill_names, asset_count);
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &input.content, &input.skill_names, asset_count);
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
@@ -809,6 +815,9 @@ pub async fn send_message(
                     origin_kind: "chat".into(),
                     pinned: false,
                     deleted_at: None,
+                    use_count: 0,
+                    last_used_at: None,
+                    memory_score: 1.0,
                 };
                 extracted_nodes.push(gn.clone());
             }
@@ -864,6 +873,9 @@ pub async fn send_message(
                     origin_kind: "chat".into(),
                     pinned: false,
                     deleted_at: None,
+                    use_count: 0,
+                    last_used_at: None,
+                    memory_score: 1.0,
                 });
                 if let Some(first_node) = extracted_nodes.first() {
                     web_edges.push(GraphEdge {

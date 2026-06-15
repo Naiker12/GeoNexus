@@ -8,6 +8,7 @@ pub mod chat;
 pub mod oauth;
 pub mod filesystem;
 pub mod agent;
+pub mod agent_identity;
 pub mod graph_events;
 pub mod graph;
 pub mod mcp;

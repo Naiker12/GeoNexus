@@ -240,6 +240,9 @@ fn main() {
             commands::agent::list_agents,
             commands::agent::toggle_agent,
             commands::agent::run_agent_pipeline,
+            // Agent Identity
+            commands::agent_identity::read_identity_file,
+            commands::agent_identity::write_identity_file,
             // Graph Events
             commands::graph_events::clear_ephemeral_nodes,
             commands::graph_events::get_recent_graph_events,
@@ -261,7 +264,8 @@ fn main() {
             commands::mcp::delete_mcp_allowlist,
             commands::mcp::import_mcp_config,
             commands::mcp::export_mcp_config,
-            commands::mcp::discover_stdio_tools,
+            commands::mcp::discover_mcp_tools,
+            commands::mcp::preview_mcp_tools,
 
             // Settings
             commands::settings::get_setting,
@@ -273,6 +277,7 @@ fn main() {
             commands::graph::restore_graph_node,
             commands::graph::list_orphan_nodes,
             commands::graph::merge_nodes,
+            commands::graph::get_node_memory_stats,
 
             // Skills
             commands::skills::list_skills,

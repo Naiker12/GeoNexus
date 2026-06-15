@@ -44,7 +44,7 @@ pub async fn discover_tools(
         "id": 1,
         "method": "initialize",
         "params": {
-            "protocolVersion": "2025-06-18",
+            "protocolVersion": "2025-03-26",
             "capabilities": { "tools": {} },
             "clientInfo": {
                 "name": "geonexus-mcp-router",
@@ -111,17 +111,39 @@ async fn write_json_line(stdin: &mut tokio::process::ChildStdin, json: &Value) -
 }
 
 async fn read_json_line(reader: &mut BufReader<tokio::process::ChildStdout>, timeout: Duration) -> Result<Value, String> {
-    let mut line = String::new();
-    tokio::time::timeout(timeout, reader.read_line(&mut line))
-        .await
-        .map_err(|_| "Timeout esperando respuesta del proceso".to_string())?
-        .map_err(|e| format!("Error leyendo stdout: {e}"))?;
+    let deadline = tokio::time::Instant::now() + timeout;
 
-    if line.is_empty() {
-        return Err("El proceso cerró stdout sin enviar respuesta".to_string());
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            return Err("Timeout esperando respuesta JSON del proceso".to_string());
+        }
+
+        let mut line = String::new();
+        let remaining = deadline - tokio::time::Instant::now();
+        tokio::time::timeout(remaining, reader.read_line(&mut line))
+            .await
+            .map_err(|_| "Timeout esperando respuesta del proceso".to_string())?
+            .map_err(|e| format!("Error leyendo stdout: {e}"))?;
+
+        if line.is_empty() {
+            return Err("El proceso cerró stdout sin enviar respuesta".to_string());
+        }
+
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        // Saltar líneas que no parecen JSON (logs, debug output)
+        if !trimmed.starts_with('{') && !trimmed.starts_with('[') {
+            continue;
+        }
+
+        match serde_json::from_str::<Value>(trimmed) {
+            Ok(val) => return Ok(val),
+            Err(_) => continue, // Intentar siguiente línea
+        }
     }
-
-    serde_json::from_str(&line).map_err(|e| format!("Error parseando respuesta JSON: {e}"))
 }
 
 fn check_error(response: &Value) -> Result<(), String> {

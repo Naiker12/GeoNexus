@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
 import { openUrl } from "@tauri-apps/plugin-opener"
-import { ChevronDown, ChevronUp, ExternalLink, Loader2, Check, CheckCircle2 } from "lucide-react"
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Check, CheckCircle2, Globe } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { ResearchSource } from "@/types/chat"
+
+const INITIAL_SHOWN = 6
 
 type TauriWindow = Window & { __TAURI__?: Record<string, unknown> }
 
@@ -40,13 +42,20 @@ export function DeepResearchPanel({
   elapsedSeconds,
 }: Props) {
   const [open, setOpen] = useState(true)
+  const [showAllSources, setShowAllSources] = useState(false)
 
   useEffect(() => {
     if (isSearching) setOpen(true)
   }, [isSearching])
 
+  useEffect(() => {
+    if (isSearching) setShowAllSources(false)
+  }, [isSearching])
+
   const doneSources = sources.filter((s) => s.status === "done")
   const loadingSources = sources.filter((s) => s.status === "loading")
+  const hasManySources = sources.length > INITIAL_SHOWN
+  const visibleSources = showAllSources ? sources : sources.slice(0, INITIAL_SHOWN)
 
   const progressLabel = isSearching
     ? loadingSources.length > 0
@@ -105,39 +114,69 @@ export function DeepResearchPanel({
             </div>
           )}
 
-          {sources.map((source, i) => (
-            <a
-              key={i}
-              href={source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => safeOpenUrl(e, source.url)}
-              className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-accent/50 transition-colors text-left w-full group
-                         border border-transparent hover:border-border/60 rounded-none"
-            >
-              <div className="mt-0.5 shrink-0">
-                {source.status === "loading" ? (
-                  <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />
-                ) : (
-                  <Check className="h-3.5 w-3.5 text-emerald-500" />
-                )}
+          {hasManySources && !showAllSources ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-2">
+                {visibleSources.map((source, i) => (
+                  <a
+                    key={i}
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => safeOpenUrl(e, source.url)}
+                    className="flex items-center gap-2 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2 hover:bg-accent/50 hover:border-border transition-colors min-w-0 group"
+                  >
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-medium truncate text-foreground/80 group-hover:text-foreground">
+                      {getDomain(source.url)}
+                    </span>
+                  </a>
+                ))}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 truncate">
-                  {getDomain(source.url)}
-                </p>
-                <p className="text-sm font-semibold text-foreground leading-snug mt-0.5 line-clamp-2">
-                  {source.title}
-                </p>
-                {source.snippet && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                    {source.snippet}
+              <button
+                type="button"
+                onClick={() => setShowAllSources(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors border-t border-border"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Ver las {sources.length} fuentes
+              </button>
+            </>
+          ) : (
+            sources.map((source, i) => (
+              <a
+                key={i}
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => safeOpenUrl(e, source.url)}
+                className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-accent/50 transition-colors text-left w-full group
+                           border border-transparent hover:border-border/60 rounded-none"
+              >
+                <div className="mt-0.5 shrink-0">
+                  {source.status === "loading" ? (
+                    <Loader2 className="h-3.5 w-3.5 text-blue-400 animate-spin" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 truncate">
+                    {getDomain(source.url)}
                   </p>
-                )}
-              </div>
-              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </a>
-          ))}
+                  <p className="text-sm font-semibold text-foreground leading-snug mt-0.5 line-clamp-2">
+                    {source.title}
+                  </p>
+                  {source.snippet && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                      {source.snippet}
+                    </p>
+                  )}
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </a>
+            ))
+          )}
 
           {sources.length === 0 && !isSearching && (
             <p className="px-3 py-2 text-[11px] text-muted-foreground">

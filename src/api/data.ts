@@ -128,6 +128,13 @@ export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<Gr
       event_id: n.event_id ?? "",
       icon: n.icon ?? "",
       is_ephemeral: n.is_ephemeral ?? false,
+      pinned: n.pinned ?? false,
+      origin_kind: n.origin_kind ?? "document",
+      source_asset_id: n.source_asset_id ?? null,
+      source_chat_id: n.source_chat_id ?? null,
+      use_count: n.use_count ?? 0,
+      last_used_at: n.last_used_at ?? null,
+      memory_score: n.memory_score ?? 1.0,
     }))
   }
   return []

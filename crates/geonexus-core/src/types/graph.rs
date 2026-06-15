@@ -36,6 +36,12 @@ pub struct GraphNode {
     pub pinned: bool,
     #[serde(default)]
     pub deleted_at: Option<String>,
+    #[serde(default)]
+    pub use_count: i64,
+    #[serde(default)]
+    pub last_used_at: Option<String>,
+    #[serde(default)]
+    pub memory_score: f64,
 }
 
 /// Relación/Arista en el grafo de conocimiento.

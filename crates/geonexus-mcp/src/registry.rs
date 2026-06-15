@@ -1,5 +1,6 @@
 use sqlx::SqlitePool;
 use uuid::Uuid;
+use crate::stdio::StdioDiscoveredTool;
 use crate::types::*;
 
 const SERVER_COLUMNS: &str = "id, name, url, status, transport, auth_type, auth_ref, auth_token, \
@@ -504,4 +505,116 @@ pub async fn audit_tool_call(
     .execute(pool)
     .await?;
     Ok(())
+}
+
+/// Descubre tools desde una URL HTTP sin persistir en DB (preview).
+pub async fn preview_http_tools(
+    server_url: &str,
+    auth_token: Option<&str>,
+) -> Result<Vec<StdioDiscoveredTool>, String> {
+    let endpoint = server_url.trim_end_matches('/');
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Error creando cliente HTTP: {e}"))?;
+
+    let init_payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": { "tools": {} },
+            "clientInfo": {
+                "name": "geonexus-mcp-router",
+                "version": "1.0.0"
+            }
+        }
+    });
+
+    let mut req = client.post(endpoint).json(&init_payload)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/event-stream");
+    if let Some(token) = auth_token {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+
+    let init_resp = req.send().await
+        .map_err(|e| format!("Error conectando al servidor MCP: {e}"))?;
+
+    if !init_resp.status().is_success() {
+        return Err(format!("initialize falló: HTTP {}", init_resp.status()));
+    }
+
+    let init_json: serde_json::Value = init_resp.json().await
+        .map_err(|e| format!("Error parsing initialize response: {e}"))?;
+
+    if let Some(err) = init_json.get("error") {
+        return Err(
+            err.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Error JSON-RPC en initialize")
+                .to_string()
+        );
+    }
+
+    let notif_payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "method": "notifications/initialized"
+    });
+
+    let _ = client.post(endpoint).json(&notif_payload)
+        .header("Content-Type", "application/json")
+        .send()
+        .await;
+
+    let tools_payload = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list"
+    });
+
+    let mut req = client.post(endpoint).json(&tools_payload)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json, text/event-stream");
+    if let Some(token) = auth_token {
+        req = req.header("Authorization", format!("Bearer {}", token));
+    }
+
+    let response = req.send().await
+        .map_err(|e| format!("Error en tools/list: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP {} en tools/list", response.status()));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Error parsing tools/list response: {e}"))?;
+
+    if let Some(err) = json.get("error") {
+        return Err(
+            err.get("message")
+                .and_then(|m| m.as_str())
+                .unwrap_or("Error JSON-RPC en tools/list")
+                .to_string()
+        );
+    }
+
+    let tools = json
+        .get("result")
+        .and_then(|r| r.get("tools"))
+        .and_then(|t| t.as_array())
+        .ok_or_else(|| "Respuesta tools/list inválida: falta result.tools".to_string())?;
+
+    let result = tools.iter().map(|tool| {
+        StdioDiscoveredTool {
+            name: tool.get("name").and_then(|n| n.as_str()).unwrap_or("unknown").to_string(),
+            description: tool.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string(),
+            input_schema: tool.get("inputSchema").cloned(),
+        }
+    }).collect();
+
+    Ok(result)
 }

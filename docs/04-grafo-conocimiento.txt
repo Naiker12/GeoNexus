@@ -1,86 +1,199 @@
-╔══════════════════════════════════════════════════════════════════╗
-║   GRAFO DE CONOCIMIENTO TERRITORIAL                            ║
-║   33+ archivos: TS, Rust, Python, SQL                          ║
-╚══════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════╗
+║   GRAFO DE CONOCIMIENTO TERRITORIAL — Estado Actual                       ║
+║   Revisión: Junio 2026 — 11 comandos Rust · 3 extractores Python ·        ║
+║   Frontend SVG interactivo + integración chat completa                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-  Stack: SQLite (graph_nodes + graph_edges) → Rust API →
-    Frontend SVG interactivo con d3-force. Sin Neo4j — todo en
-    SQLite con 9 índices en nodes, 3 en edges.
+═══ 1. ARQUITECTURA GENERAL ══════════════════════════════════════════════════
 
-  DB: graph_nodes (22 columnas tras 3 migraciones). Kinds reales:
-    norma, documento, capa, zona, concepto, chat_turn, web_search,
-    upload, connector, rag_recall
-    graph_edges (source, target, relation, strength) con CASCADE
-    Columnas adicionales: is_ephemeral, source_event, event_id,
-    icon, origin_kind (document|chat|manual|import|connector),
-    pinned, deleted_at (soft-delete), source_asset_id (FK assets),
-    source_chat_id (FK conversations)
+  SQLite (graph_nodes + graph_edges)
+      ↓
+  Rust: queries.rs + crud.rs (11 comandos Tauri registrados)
+      ↓
+  Frontend: GraphPage.tsx (641L) — SVG con d3-force
+      ↓
+  Python: extractor.py (documentos) + chat_extractor.py (chat)
+      ↓
+  DB: chat → LLM (injección de nodos en system prompt vía intent classifier)
 
-  Python extractor (ai/graph/extractor.py): regex para Art. N,
-    Zona/Sector, 20 conceptos hardcodeados + co-ocurrencia en
-    chunks → aristas semánticas (aplica_en, define, afecta, o
-    asociado_con por defecto). Strength=80.
-    Fallback: nodo "documento" si no hay entidades.
-    Sin NLP, sin deduplicación entre documentos.
+  Stack completo: SQLite → Rust API → Tauri IPC → React/TypeScript + SVG.
+  Sin Neo4j. Sin NLP semántico (solo regex en extractores).
 
-  chat_extractor.py: extrae desde texto del chat — 6 niveles:
-    1) definiciones (X es un...), 2) acrónimos 3-6 mayúsculas,
-    3) términos multi-word capitalizados, 4) 20 tech keywords
-    hardcodeados (Python, Rust, SQL, etc.), 5) match Art./Zona,
-    6) fallback nodo genérico. Todos regex, sin NLP.
-    Aristas strength=50 (NO 60 como decía doc anterior).
-    NO existe CHAT_TOPIC_MAP (doc anterior incorrecto).
+═══ 2. BASE DE DATOS ═════════════════════════════════════════════════════════
 
-  layout.py: posiciona por tipo con regiones semánticas + jitter
-    ±2px. Contadores por tipo para distribución uniforme.
+  Tabla: graph_nodes (23 columnas tras migraciones)
+    Columnas: id, project_id, workspace_id, name, kind, description,
+    evidence, x, y, weight, created_at, source_asset_id (FK assets),
+    source_chat_id (FK conversations), is_ephemeral, source_event,
+    event_id, icon, origin_kind (document|chat|manual|import|connector),
+    pinned, deleted_at (soft-delete), extra
 
-  Rust: 4 comandos Tauri registrados + 2 adicionales:
-    list_graph_nodes, list_graph_edges, rebuild_knowledge_graph,
-    update_node_position, clear_ephemeral_nodes,
-    get_recent_graph_events
-    5 comandos definidos pero NO registrados (work-in-progress):
-    delete_graph_node, pin_node, restore_graph_node,
-    list_orphan_nodes, merge_nodes
-    CRUD en data_repo.rs con INSERT ... ON CONFLICT DO UPDATE SET
-    (más robusto que el INSERT OR REPLACE del doc anterior).
-    weight se mergea con MAX(). soft-delete via deleted_at.
+  Kinds reales (10):
+    norma, documento, capa, zona, concepto,
+    chat_turn, web_search, upload, connector, rag_recall
 
-  Frontend: GraphPage.tsx (641L) — SVG con d3-force simulation
-    (forceLink, forceManyBody, forceCenter, forceCollide, forceX,
-    forceY). Burbujas arrastrables con persistencia de posición.
-    Partículas animateMotion, NodeSheet con detalle/evidencia/
-    relaciones/botón "Use in AI", GraphFilters con 11 opciones
-    (All + 10 tipos), GraphActivityPanel, GraphLegend con 10
-    colores, grid background con glow. Búsqueda client-side por
-    label (string match, SIN backend search_graph_nodes).
+  Tabla: graph_edges (source, target, relation, strength) con CASCADE
+    9 índices en nodes, 3 en edges.
 
-  Chat integración: ProjectContextPanel con toggle de grafo,
-    nodos (top 8) inyectados en prompt del LLM, extracción
-    automática tras cada mensaje con is_ephemeral=true, emisión
-    graph:updated event. Nodos web_search creados desde fuentes.
+═══ 3. EXTRACTORES PYTHON ═══════════════════════════════════════════════════
 
-  Limitaciones actuales:
-    ❌ backend search_graph_nodes NO existe (búsqueda solo
-       client-side por substring)
-    ❌ nodes_used nunca se popula en send_message.rs — campo
-       siempre vacío (vec![]), aunque frontend lo lee
-    ❌ 5 comandos CRUD (delete, pin, restore, orphans, merge)
-       definidos pero no registrados en main.rs
-    ❌ Sin deduplicación de nodos entre documentos (merge_nodes
-       existe pero desactivado)
-    ❌ Sin análisis con IA de la red (caminos, clústeres,
-       detección de comunidades)
-    ❌ Sin NLP semántico (solo regex en extractores)
-    ❌ GraphPage sin filtros combinados, sin zoom-to-fit,
-       sin exportar imagen
+  3a. ai/graph/extractor.py (159L) — Para documentos indexados
+      - Extrae Art. N (regex) → kind: "norma"
+      - Extrae Zona/Sector <Capitalized> → kind: "zona"
+      - 26 conceptos hardcodeados (retiro hidrico, zonificacion, etc.) → kind: "concepto"
+      - Co-ocurrencia en chunks → aristas semánticas
+      - Relaciones: "aplica en" (norma↔zona), "define" (norma↔concepto),
+        "afecta" (concepto↔zona), "asociado con" (default)
+      - Strength: 80
+      - Fallback: nodo "documento" si no hay entidades
+      - Sin NLP, sin deduplicación entre documentos
+      - Llamado desde: commands/document/rebuild.rs vía sidecar --action extract_graph_entities
 
-  Próximos pasos prioritarios:
-    1. Crear search_graph_nodes command (SQL con LIKE + kind
-       filter + paginación) y conectar frontend
-    2. Poblar nodes_used en send_message.rs (extraer los node IDs
-       del graph_context usado en el prompt)
-    3. Registrar los 5 comandos CRUD huérfanos en main.rs
-    4. Activar merge_nodes automático tras cada extracción
-    5. NLP semántico en extractor Python
-    6. Operaciones de grafo: caminos, BFS, clústeres
-    7. Zoom-to-fit, export SVG/PNG
+  3b. ai/graph/chat_extractor.py (180L) — Para extracción desde chat
+      5 niveles de extracción en texto pregunta+respuesta:
+        1. Patrones de definición ("X es un/una...", "se llama X") → weight=3
+        2. Acrónimos (3-6 mayúsculas standalone, con stop-list) → weight=2
+        3. Términos multi-word capitalizados (2-5 palabras) → weight=3
+        4. Tech keywords (20: Python, Rust, SQL, ML, etc.) → weight 2-3
+        5. Regex Art./Zona (compatibilidad con extractor.py) → weight 2-3
+      - Stop-words: "hola", "gracias", etc. + palabras interrogativas
+      - Aristas co-ocurrencia, strength=50
+      - Llamado desde: send_message.rs línea 785 vía sidecar --action extract_chat_entities
+      - Nodos creados con is_ephemeral=true
+
+  3c. ai/graph/layout.py (59L) — Posicionamiento por tipo
+      - Regiones semánticas (norma top-left, conceptos top-right, etc.)
+      - Distribución uniforme + jitter ±2px dentro de cada región
+      - reset_counters() para reiniciar contadores por tipo
+
+  3d. ai/graph/graph.py (5L) — Placeholder (stub sin uso real)
+
+═══ 4. RUST: COMANDOS TAURI (11 registrados) ═══════════════════════════════
+
+  4a. commands/graph/queries.rs (154L) — Consultas
+      - list_graph_nodes(project_id) → Vec<GraphNode>
+      - list_graph_edges(project_id) → Vec<GraphEdge>
+      - search_graph_nodes(project_id, query, kind?, limit?, offset?)
+          → SearchGraphNodesResult { total, nodes }
+          SQL: LIKE '%query%' en name, filtro kind opcional, paginación
+          (default limit 20, max 100, offset 0), orden weight DESC
+      - update_node_position(node_id, x, y) → persiste posición post-drag
+
+  4b. commands/graph/crud.rs (255L) — Operaciones CRUD
+      - delete_graph_node(id, force) → soft-delete (deleted_at), respeta pin
+      - pin_node(id, pinned) → toggle 1/0
+      - restore_graph_node(id) → deleted_at = NULL
+      - list_orphan_nodes(project_id) → nodos sin source_asset_id ni source_chat_id
+      - merge_nodes(ids, name) → fusiona N nodos:
+          agrega weight, concatena desc/evidence, promedia x/y,
+          redirige aristas, elimina duplicados
+
+  4c. commands/graph_events.rs — Eventos
+      - clear_ephemeral_nodes(project_id) → DELETE is_ephemeral=1
+      - get_recent_graph_events(project_id, source_event?, limit?)
+
+  4d. commands/document/rebuild.rs
+      - rebuild_knowledge_graph(project_id) → lanza extractor.py para
+        todos los chunks indexados del proyecto
+
+═══ 5. FRONTEND: GraphPage.tsx (641L) ═══════════════════════════════════════
+
+  Layout:
+    - SVG con viewBox="0 0 100 100", preserveAspectRatio="none"
+    - Sin zoom, sin pan, sin fit-to-screen
+
+  d3-force simulation:
+    - forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY
+    - Arrastre de burbujas con persistencia de posición (updateNodePosition)
+
+  Componentes:
+    - NodeSheet: detalle del nodo (weight, evidencia, relaciones, Use in AI)
+    - GraphFilters: 11 opciones (All + 10 tipos) + búsqueda por substring
+      * Ambos filtros se combinan (kind + search)
+    - GraphLegend: 10 colores por tipo
+    - GraphActivityPanel: últimos nodos, botón "Limpiar efímeros"
+    - Partículas animateMotion en edges
+    - Grid background con glow
+
+  Eventos en tiempo real:
+    - useGraphEvents.ts escucha eventos "graph:updated" de Tauri
+    - Animación escalonada de nodos nuevos (stagger)
+    - Pulsing en edges nuevos (3s timeout)
+
+═══ 6. INTEGRACIÓN CON CHAT ═════════════════════════════════════════════════
+
+  6a. ProjectContextPanel.tsx
+      - Toggle "Conocimiento territorial" (graph_nodes on/off)
+      - Muestra badges de nodos disponibles (label + kind chip)
+      - Estado enviado al backend como parte del request
+
+  6b. Inyección en prompt (send_message.rs)
+      1. Carga graph_nodes + graph_edges del proyecto desde DB
+      2. build_graph_context() filtra por intent del clasificador
+      3. Texto inyectado en system prompt del LLM
+      4. nodes_used: IDs de nodos seleccionados se guardan en DB
+         (JSON array en columna messages.nodes_used)
+      5. Ya NO es vec![] — se popula con IDs reales
+
+  6c. Extracción automática post-mensaje (send_message.rs:777-902)
+      - Concatena pregunta + respuesta
+      - Llama chat_extractor.py vía sidecar --action extract_chat_entities
+      - Inserta nodos extraídos con is_ephemeral=true
+      - Crea edges entre nodos extraídos
+      - Crea nodos web_search desde fuentes de research (is_ephemeral=true)
+      - Conecta web_search a nodos extraídos con edge "busqueda web"
+      - Emite GraphUpdatePayload vía evento "graph:updated"
+
+  6d. Tipos compartidos (src/types/data.ts)
+      - GraphNodeType: 10 kinds
+      - BackendGraphNode (raw Rust) → GraphNode (frontend: name→label, kind→type)
+      - GraphUpdatePayload: source_event + nodes + edges + timestamp
+      - SearchGraphNodesResult: { total, nodes }
+
+═══ 7. FLUJO DE DATOS COMPLETO ═══════════════════════════════════════════════
+
+  Documento:
+    Upload → Indexación (chunks) → rebuild_knowledge_graph
+      → extractor.py → nodos+edges → DB → GraphPage actualiza
+
+  Chat:
+    Mensaje → send_message.rs
+      → 1. Carga nodos del grafo → filtra por intent → inyecta en prompt
+      → 2. Respuesta LLM → guarda mensaje
+      → 3. Extrae entidades del chat (chat_extractor.py)
+      → 4. Crea nodos web_search desde fuentes
+      → 5. Inserta todo en DB con is_ephemeral
+      → 6. Emite "graph:updated" a frontend
+
+  GraphPage:
+    Carga inicial → list_graph_nodes + list_graph_edges
+    Escucha "graph:updated" → anima nodos nuevos
+    Usuario arrastra → update_node_position (persiste)
+    Usuario filtra/busca → client-side (kind + substring)
+
+═══ 8. LIMITACIONES ACTUALES ════════════════════════════════════════════════
+
+  ❌ Sin zoom, sin pan, sin fit-to-screen en GraphPage
+  ❌ Sin exportar SVG/PNG
+  ❌ Sin UI para pin/merge/delete desde GraphPage
+    (backend commands existen pero sin botones en frontend)
+  ❌ Sin multi-selección de nodos
+  ❌ Sin NLP semántico en extractores (solo regex)
+  ❌ Sin deduplicación automática entre documentos
+    (merge_nodes existe pero es manual)
+  ❌ search_graph_nodes existe en backend pero el frontend
+    solo hace búsqueda client-side por substring
+    (no usa el comando Tauri)
+  ❌ Sin análisis de red: caminos, BFS, clústeres, comunidades
+  ❌ layout.py genera posiciones iniciales, pero no evita colisiones
+    en el layout definitivo (d3-force las resuelve)
+
+═══ 9. PRÓXIMOS PASOS PRIORITARIOS ══════════════════════════════════════════
+
+  1. Conectar frontend search a search_graph_nodes (hoy es client-side)
+  2. UI para pin/merge/delete en NodeSheet
+  3. Zoom-to-fit + export SVG/PNG en GraphPage
+  4. NLP semántico en extractores Python (NER + embeddings)
+  5. Deduplicación automática post-extracción (auto-merge)
+  6. Análisis de red: caminos, BFS, clústeres, comunidades
+  7. Filtros combinados avanzados (kind + date + weight range)

@@ -231,6 +231,9 @@ pub async fn index_document(
             origin_kind: "document".into(),
             pinned: false,
             deleted_at: None,
+            use_count: 0,
+            last_used_at: None,
+            memory_score: 1.0,
         })
         .collect();
 

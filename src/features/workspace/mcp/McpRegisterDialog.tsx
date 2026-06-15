@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertCircleIcon, BracesIcon, CheckCircle2Icon, FileUpIcon,
-  KeyRoundIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, XIcon,
+  KeyRoundIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, SearchIcon, XIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
@@ -10,7 +10,8 @@ import {
 import { Input } from "@/components/ui/Input"
 import { Textarea } from "@/components/ui/Textarea"
 import { cn } from "@/lib/utils"
-import { pingMcpUrl } from "@/api/mcp"
+import { pingMcpUrl, previewMcpTools } from "@/api/mcp"
+import type { PreviewTool } from "@/api/mcp"
 import type { McpServer, RegisterServerPayload } from "@/types/mcp"
 
 /** Tokeniza una línea de comandos respetando comillas dobles y simples. */
@@ -49,13 +50,16 @@ const INITIAL: RegisterServerPayload = {
   auto_approve: undefined, timeout_ms: undefined, tools: [],
 }
 
-export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegisterDialogProps) {
+export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing }: McpRegisterDialogProps) {
   const [form, setForm] = useState<RegisterServerPayload>(INITIAL)
   const [toolsRaw, setToolsRaw] = useState("")
   const [configJson, setConfigJson] = useState("")
   const [fileName, setFileName] = useState<string | null>(null)
   const [status, setStatus] = useState<"idle" | "pinging" | "registering" | "done" | "error">("idle")
   const [statusMsg, setStatusMsg] = useState("")
+  const [discoveredTools, setDiscoveredTools] = useState<PreviewTool[]>([])
+  const [selectedToolNames, setSelectedToolNames] = useState<Set<string>>(new Set())
+  const [discovering, setDiscovering] = useState(false)
 
   const reset = () => {
     setForm(INITIAL)
@@ -64,6 +68,9 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
     setFileName(null)
     setStatus("idle")
     setStatusMsg("")
+    setDiscoveredTools([])
+    setSelectedToolNames(new Set())
+    setDiscovering(false)
   }
 
   useEffect(() => {
@@ -87,12 +94,14 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
       })
       setToolsRaw("")
       setConfigJson("")
+      setDiscoveredTools([])
+      setSelectedToolNames(new Set())
     }
   }, [editing])
 
   const buildPayload = (): RegisterServerPayload => ({
     ...form,
-    tools: toolsRaw ? toolsRaw.split(",").map(t => t.trim()).filter(Boolean) : [],
+    tools: selectedToolNames.size > 0 ? Array.from(selectedToolNames) : (toolsRaw ? toolsRaw.split(",").map(t => t.trim()).filter(Boolean) : []),
   })
 
   const handleJsonLoad = () => {
@@ -151,6 +160,47 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
       setStatusMsg(`Error de conexión: ${e}`)
       setStatus("error")
     }
+  }
+
+  const handleDiscoverTools = async () => {
+    setDiscovering(true)
+    setDiscoveredTools([])
+    setSelectedToolNames(new Set())
+    setStatusMsg("")
+    try {
+      const params: { url?: string; command?: string; args?: string[]; auth_token?: string } = {}
+      if (form.transport === "http") {
+        if (!form.url) { setStatusMsg("Ingresa una URL primero"); setStatus("error"); setDiscovering(false); return }
+        params.url = form.url
+        if (form.auth_token) params.auth_token = form.auth_token
+      } else {
+        if (!form.command) { setStatusMsg("Ingresa un comando primero"); setStatus("error"); setDiscovering(false); return }
+        params.command = form.command
+        params.args = form.args
+      }
+      const tools = await previewMcpTools(params)
+      setDiscoveredTools(tools)
+      if (tools.length === 0) {
+        setStatusMsg("No se encontraron tools en el servidor")
+        setStatus("error")
+      } else {
+        setStatusMsg(`✓ ${tools.length} tools descubiertas`)
+        setStatus("idle")
+      }
+    } catch (e) {
+      setStatusMsg(`Error: ${e instanceof Error ? e.message : String(e)}`)
+      setStatus("error")
+    } finally {
+      setDiscovering(false)
+    }
+  }
+
+  const toggleTool = (name: string) => {
+    setSelectedToolNames(prev => {
+      const next = new Set(prev)
+      if (next.has(name)) { next.delete(name) } else { next.add(name) }
+      return next
+    })
   }
 
   const handleRegister = async () => {
@@ -243,7 +293,47 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered }: McpRegis
               )}
               <FormInput label="Auth ref (opcional)" placeholder="oauth:auto o env:MCP_TOKEN" value={form.auth_ref ?? ""} onChange={v => updateForm("auth_ref", v)} />
               <FormInputPassword label="Token de autenticación (opcional)" placeholder="sbp_xxxx o api_key" value={form.auth_token ?? ""} onChange={v => updateForm("auth_token", v)} />
-              <FormInput label="Tools (opcional, coma separada)" placeholder="buffer, distance, load_layer" value={toolsRaw} onChange={setToolsRaw} />
+              {(form.url ?? "").toLowerCase().includes("supabase.com/mcp") && (
+                <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 px-3 py-2.5 text-xs">
+                  <p className="font-semibold text-green-800 dark:text-green-300 mb-1">Supabase requiere autenticación</p>
+                  <ol className="list-decimal list-inside text-green-700 dark:text-green-400 space-y-0.5">
+                    <li>Ve a <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer" className="underline font-medium">supabase.com/dashboard/account/tokens</a></li>
+                    <li>Genera un <strong>Personal Access Token</strong></li>
+                    <li>Pégalo en <strong>Token de autenticación</strong> arriba</li>
+                  </ol>
+                  <p className="mt-1.5 text-green-600 dark:text-green-500">URL correcta: <code className="text-[10px] bg-green-100 dark:bg-green-900/50 px-1 rounded">https://mcp.supabase.com/mcp</code></p>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <FormInput label="Tools (opcional)" placeholder={discoveredTools.length === 0 ? "buffer, distance, load_layer" : "Selecciona abajo"} value={toolsRaw} onChange={setToolsRaw} />
+                </div>
+                <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0"
+                  onClick={handleDiscoverTools} disabled={discovering}>
+                  {discovering ? <Loader2Icon className="size-3 animate-spin" /> : <SearchIcon className="size-3" />}
+                  {discovering ? "Descubriendo..." : "Descubrir tools"}
+                </Button>
+              </div>
+              {discoveredTools.length > 0 && (
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 bg-background/30 p-2 space-y-1">
+                  {discoveredTools.map(tool => (
+                    <label key={tool.name} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/50 cursor-pointer text-xs">
+                      <input type="checkbox" className="size-3.5 accent-primary"
+                        checked={selectedToolNames.has(tool.name)}
+                        onChange={() => toggleTool(tool.name)} />
+                      <span className="font-mono font-medium text-foreground">{tool.name}</span>
+                      {tool.description && (
+                        <span className="text-muted-foreground/60 truncate ml-1">{tool.description}</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedToolNames.size > 0 && (
+                <p className="text-[10px] text-emerald-500 font-medium">
+                  {selectedToolNames.size} tool{selectedToolNames.size !== 1 ? "s" : ""} seleccionada{selectedToolNames.size !== 1 ? "s" : ""}
+                </p>
+              )}
               <details className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
                 <summary className="cursor-pointer text-[10px] font-semibold text-muted-foreground">
                   Cómo iniciar servidores locales

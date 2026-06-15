@@ -3,11 +3,17 @@ import { Button } from "@/components/ui/Button"
 import { McpRegisterDialog } from "@/features/workspace/mcp/McpRegisterDialog"
 import { McpServerCard } from "@/features/workspace/mcp/McpServerCard"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
+import { deleteMcpServer, discoverMcpTools } from "@/api/mcp"
 
 export function McpRouterSection() {
   const { servers, loading, onlineCount, register, ping, refresh } = useMcpServers()
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null)
   const [registerOpen, setRegisterOpen] = useState(false)
+
+  const handleDelete = async (id: string) => {
+    await deleteMcpServer(id)
+    await refresh()
+  }
 
   return (
     <div className="grid gap-4">
@@ -27,6 +33,8 @@ export function McpRouterSection() {
             onSelect={() => setSelectedServerId(prev => prev === server.id ? null : server.id)}
             onPing={async () => { await ping(server.id) }}
             onEdit={() => console.log("Edit", server.id)}
+            onDelete={async () => { await handleDelete(server.id) }}
+            onDiscoverTools={async () => { await discoverMcpTools(server.id) }}
           />
         ))}
       </div>

@@ -2,7 +2,7 @@ use tauri::State;
 use serde_json::{json, Value};
 use crate::AppState;
 use geonexus_mcp::types::*;
-use geonexus_mcp::{registry, pinger};
+use geonexus_mcp::{registry, pinger, stdio};
 
 fn get_auth_token(server: &McpServer) -> Option<String> {
     server.auth_token.clone()
@@ -32,7 +32,40 @@ pub async fn register_mcp_server(
     if transport == "http" && payload.url.trim().is_empty() {
         return Err("url es obligatoria para servidores HTTP".into());
     }
-    registry::register_server(&state.db, payload).await.map_err(|e| e.to_string())
+    let server = registry::register_server(&state.db, payload).await.map_err(|e| e.to_string())?;
+
+    // Auto-descubrir tools si es STDIO
+    if server.transport == McpTransport::Stdio {
+        if let Some(ref cmd) = server.command {
+            let args = server.args.clone().unwrap_or_default();
+            let timeout = server.timeout_ms.unwrap_or(30000) as u64;
+            let env = server.env.as_ref().and_then(|v| v.as_object());
+            match stdio::discover_tools(cmd, &args, env, timeout).await {
+                Ok(tools) => {
+                    for tool in &tools {
+                        let category = registry::infer_tool_category(&tool.name, &tool.description);
+                        let args_json = tool.input_schema.as_ref()
+                            .map(|s| serde_json::to_string(s).unwrap_or_default())
+                            .unwrap_or_default();
+                        let _ = registry::upsert_tool(
+                            &state.db, &server.id, &tool.name, &category,
+                            &tool.description, &args_json, "",
+                        ).await;
+                    }
+                    let _ = sqlx::query("UPDATE mcp_servers SET tools_count = ?1 WHERE id = ?2")
+                        .bind(tools.len() as i32)
+                        .bind(&server.id)
+                        .execute(&state.db)
+                        .await;
+                }
+                Err(e) => {
+                    eprintln!("[mcp] Auto-discover de tools falló para {}: {}", server.id, e);
+                }
+            }
+        }
+    }
+
+    Ok(server)
 }
 
 #[tauri::command]
@@ -199,7 +232,34 @@ pub async fn import_mcp_config(
         };
 
         match registry::register_server(&state.db, payload).await {
-            Ok(_) => imported += 1,
+            Ok(server) => {
+                imported += 1;
+                // Auto-descubrir tools para STDIO
+                if server.transport == McpTransport::Stdio {
+                    if let Some(ref cmd) = server.command {
+                        let args = server.args.clone().unwrap_or_default();
+                        let timeout = server.timeout_ms.unwrap_or(30000) as u64;
+                        let env = server.env.as_ref().and_then(|v| v.as_object());
+                        if let Ok(tools) = stdio::discover_tools(cmd, &args, env, timeout).await {
+                            for tool in &tools {
+                                let category = registry::infer_tool_category(&tool.name, &tool.description);
+                                let args_json = tool.input_schema.as_ref()
+                                    .map(|s| serde_json::to_string(s).unwrap_or_default())
+                                    .unwrap_or_default();
+                                let _ = registry::upsert_tool(
+                                    &state.db, &server.id, &tool.name, &category,
+                                    &tool.description, &args_json, "",
+                                ).await;
+                            }
+                            let _ = sqlx::query("UPDATE mcp_servers SET tools_count = ?1 WHERE id = ?2")
+                                .bind(tools.len() as i32)
+                                .bind(&server.id)
+                                .execute(&state.db)
+                                .await;
+                        }
+                    }
+                }
+            }
             Err(e) => {
                 let msg = e.to_string();
                 if msg.contains("UNIQUE") {
@@ -270,7 +330,7 @@ pub async fn export_mcp_config(
 }
 
 #[tauri::command]
-pub async fn discover_stdio_tools(
+pub async fn discover_mcp_tools(
     state: State<'_, AppState>,
     server_id: String,
 ) -> Result<usize, String> {
@@ -282,32 +342,37 @@ pub async fn discover_stdio_tools(
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
 
-    if server.transport != McpTransport::Stdio {
-        return Err("Solo servidores STDIO pueden descubrir tools localmente".into());
-    }
+    let discovered = match server.transport {
+        McpTransport::Stdio => {
+            let cmd = server.command.clone()
+                .ok_or("El servidor STDIO no tiene comando definido")?;
+            let args = server.args.clone().unwrap_or_default();
+            let timeout = server.timeout_ms.unwrap_or(30000) as u64;
+            let env = server.env.as_ref().and_then(|v| v.as_object());
+            let tools = geonexus_mcp::stdio::discover_tools(&cmd, &args, env, timeout).await?;
+            let count = tools.len();
+            for tool in &tools {
+                let category = registry::infer_tool_category(&tool.name, &tool.description);
+                let args_json = tool.input_schema.as_ref()
+                    .map(|s| serde_json::to_string(s).unwrap_or_default())
+                    .unwrap_or_default();
+                let _ = registry::upsert_tool(
+                    &state.db, &server_id, &tool.name, &category,
+                    &tool.description, &args_json, "",
+                ).await;
+            }
+            count
+        }
+        McpTransport::Http | McpTransport::Sse => {
+            let auth_token = get_auth_token(&server);
+            registry::auto_discover_tools(
+                &state.db, &server.url, &server.id, auth_token.as_deref(),
+            ).await?
+        }
+    };
 
-    let cmd = server.command.ok_or("El servidor STDIO no tiene comando definido")?;
-    let args = server.args.unwrap_or_default();
-    let timeout = server.timeout_ms.unwrap_or(30000) as u64;
-
-    let tools = geonexus_mcp::stdio::discover_tools(
-        &cmd, &args, server.env.as_ref().and_then(|v| v.as_object()), timeout,
-    ).await?;
-
-    if tools.is_empty() {
+    if discovered == 0 {
         return Err("El servidor no reportó tools".into());
-    }
-
-    let discovered = tools.len();
-    for tool in &tools {
-        let category = registry::infer_tool_category(&tool.name, &tool.description);
-        let args_json = tool.input_schema.as_ref()
-            .map(|s| serde_json::to_string(s).unwrap_or_default())
-            .unwrap_or_default();
-        let _ = registry::upsert_tool(
-            &state.db, &server_id, &tool.name, &category,
-            &tool.description, &args_json, "",
-        ).await;
     }
 
     // Actualizar tools_count
@@ -353,4 +418,38 @@ pub async fn delete_mcp_allowlist(
         return Err("rule_id requerido".into());
     }
     registry::delete_allowlist_rule(&state.db, &rule_id).await.map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
+pub struct PreviewTool {
+    pub name: String,
+    pub description: String,
+}
+
+/// Descubre tools desde una URL HTTP o comando STDIO sin persistir (preview).
+#[tauri::command]
+pub async fn preview_mcp_tools(
+    url: Option<String>,
+    command: Option<String>,
+    args: Option<Vec<String>>,
+    auth_token: Option<String>,
+) -> Result<Vec<PreviewTool>, String> {
+    if let Some(url) = url.filter(|u| !u.is_empty()) {
+        let tools = registry::preview_http_tools(&url, auth_token.as_deref()).await?;
+        return Ok(tools.into_iter().map(|t| PreviewTool {
+            name: t.name,
+            description: t.description,
+        }).collect());
+    }
+
+    if let Some(cmd) = command.filter(|c| !c.is_empty()) {
+        let the_args = args.unwrap_or_default();
+        let tools = stdio::discover_tools(&cmd, &the_args, None, 15000).await?;
+        return Ok(tools.into_iter().map(|t| PreviewTool {
+            name: t.name,
+            description: t.description,
+        }).collect());
+    }
+
+    Err("Se requiere URL (HTTP) o comando (STDIO)".into())
 }

@@ -6,7 +6,7 @@ import {
   Settings2Icon,
 } from "lucide-react"
 
-import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
+import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +28,7 @@ import {
   type ThemePreset,
 } from "@/features/workspace/workspace-data"
 import { CreateProjectDialog } from "@/features/workspace/projects/CreateProjectDialog"
+import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
 import { cn } from "@/lib/utils"
 
 const cleanSidebarButton =
@@ -47,6 +48,7 @@ export function AppSidebar({
   onOpenConfig,
   ...props
 }: AppSidebarProps) {
+  const { onlineCount } = useMcpServers()
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -56,12 +58,12 @@ export function AppSidebar({
               size="lg"
               className={cn("font-semibold", cleanSidebarButton)}
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <GeoAgentsIcon className="size-5" variant="nexus" />
+              <div className="flex aspect-square size-10 items-center justify-center rounded-lg bg-primary/10">
+                <GeoAgentsLogo variant="icon" className="size-9 shrink-0" />
               </div>
-              <div className="grid flex-1 text-left leading-tight">
+              <div className="grid flex-1 text-left leading-tight group-data-[collapsed=true]:hidden">
                 <span className="truncate text-base font-semibold">
-                  Geo Agents
+                  GeoAgents
                 </span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
                   Plataforma de Agentes IA
@@ -188,9 +190,11 @@ export function AppSidebar({
                 <span>Servidores MCP</span>
               </a>
             </SidebarMenuButton>
-            <SidebarMenuBadge className="bg-primary/10 text-primary">
-              3
-            </SidebarMenuBadge>
+            {onlineCount > 0 && (
+              <SidebarMenuBadge className="bg-emerald-500/10 text-emerald-500">
+                {onlineCount}
+              </SidebarMenuBadge>
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
         <ThemeSettingsDialog

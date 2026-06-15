@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   BrainCircuitIcon,
   DatabaseIcon,
@@ -9,10 +10,13 @@ import {
   MapPinnedIcon,
   MessageSquareTextIcon,
   NetworkIcon,
+  PinIcon,
   SearchIcon,
   SparklesIcon,
+  Trash2Icon,
   UploadIcon,
 } from "lucide-react"
+import { invoke } from "@tauri-apps/api/core"
 import { Button } from "@/components/ui/Button"
 import {
   Sheet,
@@ -23,6 +27,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { nodeColor, nodeTailwind, nodeTypeLabel } from "./graph-colors"
 import type { GraphEdge, GraphNode, GraphNodeType } from "@/types/data"
 
 export function nodeIcon(type: GraphNodeType) {
@@ -40,34 +45,8 @@ export function nodeIcon(type: GraphNodeType) {
   }[type]
 }
 
-export function nodeTypeLabel(type: GraphNodeType) {
-  return {
-    norma: "Norma",
-    documento: "Documento",
-    capa: "Capa GIS",
-    zona: "Zona territorial",
-    concepto: "Concepto técnico",
-    chat_turn: "Chat",
-    web_search: "Búsqueda web",
-    upload: "Subida",
-    connector: "Conector",
-    rag_recall: "Recuperación RAG",
-  }[type]
-}
-
 export function nodeBubbleColor(type: GraphNodeType) {
-  return {
-    norma: "bg-primary",
-    documento: "bg-sky-500",
-    capa: "bg-emerald-500",
-    zona: "bg-orange-500",
-    concepto: "bg-violet-500",
-    chat_turn: "bg-pink-500",
-    web_search: "bg-cyan-500",
-    upload: "bg-amber-500",
-    connector: "bg-rose-500",
-    rag_recall: "bg-indigo-500",
-  }[type]
+  return nodeTailwind(type)
 }
 
 export function nodeDotColor(type: GraphNodeType) {
@@ -79,12 +58,19 @@ export function NodeSheet({
   relations,
   open,
   onOpenChange,
+  onNodeDelete,
+  onNodePin,
 }: {
   node?: GraphNode
   relations: Array<{ edge: GraphEdge; connectedNode: GraphNode }>
   open: boolean
   onOpenChange: (open: boolean) => void
+  onNodeDelete?: (nodeId: string) => void
+  onNodePin?: (nodeId: string, pinned: boolean) => void
 }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   if (!node) {
     return <Sheet open={open} onOpenChange={onOpenChange} />
   }
@@ -97,6 +83,29 @@ export function NodeSheet({
             relations.length
         )
       : 0
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await invoke("delete_graph_node", { id: node.id, force: false })
+      onNodeDelete?.(node.id)
+      onOpenChange(false)
+    } catch (err) {
+      console.error("Error deleting node:", err)
+    } finally {
+      setDeleting(false)
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  const handleTogglePin = async () => {
+    try {
+      await invoke("pin_node", { id: node.id, pinned: !node.pinned })
+      onNodePin?.(node.id, !node.pinned)
+    } catch (err) {
+      console.error("Error toggling pin:", err)
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -262,8 +271,57 @@ export function NodeSheet({
           )}
         </div>
 
+        {/* Delete confirmation */}
+        {showDeleteConfirm && (
+          <div className="mx-4 mb-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">
+              Eliminar <strong>"{node.label}"</strong> del conocimiento?
+            </p>
+            <p className="mt-1 text-xs text-red-500/80">
+              {node.pinned
+                ? "Nodo protegido — desancla primero para eliminar."
+                : "También se borrarán sus conexiones. Esta acción puede deshacerse (soft-delete)."}
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDelete}
+                disabled={deleting || node.pinned}
+              >
+                {deleting ? "Eliminando..." : "Sí, eliminar"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <SheetFooter className="border-t border-border bg-card/95 p-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePin}
+              className={cn(node.pinned && "border-primary/50 text-primary")}
+            >
+              <PinIcon className="size-4" />
+              {node.pinned ? "Anclado" : "Anclar"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-red-500 hover:text-red-600 hover:border-red-300"
+            >
+              <Trash2Icon className="size-4" />
+              Eliminar
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <a
                 href={`https://www.google.com/search?q=${encodeURIComponent(node.evidence)}`}
@@ -271,7 +329,7 @@ export function NodeSheet({
                 rel="noopener noreferrer"
               >
                 <SearchIcon className="size-4" />
-                Ver fuente
+                Fuente
               </a>
             </Button>
             <Button size="sm">

@@ -10,7 +10,8 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { nodeDotColor, nodeTypeLabel } from "./NodeSheet"
+import { nodeDotColor } from "./NodeSheet"
+import { nodeTypeLabel } from "./graph-colors"
 import type { GraphNode } from "@/types/data"
 
 function eventIcon(source_event: string) {

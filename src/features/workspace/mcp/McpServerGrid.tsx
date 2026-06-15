@@ -11,7 +11,7 @@ interface McpServerGridProps {
   onSelectServer: (serverId: string) => void
   onPingServer: (serverId: string) => Promise<unknown>
   onEditServer: (serverId: string) => void
-  onDeleteServer?: (serverId: string) => void
+  onDeleteServer?: (serverId: string) => Promise<void>
   onDiscoverTools: (serverId: string) => Promise<void>
 }
 
@@ -45,7 +45,7 @@ export function McpServerGrid({
             onSelect={() => onSelectServer(server.id)}
             onPing={() => onPingServer(server.id)}
             onEdit={() => onEditServer(server.id)}
-            onDelete={() => onDeleteServer?.(server.id)}
+onDelete={async () => { await onDeleteServer?.(server.id) }}
             onDiscoverTools={() => onDiscoverTools(server.id)}
           />
         ))}
@@ -63,6 +63,7 @@ export function McpServerGrid({
           onSelect={() => onSelectServer(server.id)}
           onPing={() => onPingServer(server.id)}
           onEdit={() => onEditServer(server.id)}
+          onDelete={async () => { await onDeleteServer?.(server.id) }}
           onDiscoverTools={() => onDiscoverTools(server.id)}
         />
       ))}
