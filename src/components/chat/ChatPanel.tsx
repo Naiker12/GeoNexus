@@ -50,6 +50,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     regenerate,
     loadConversation,
     newConversation,
+    stop,
   } = useChatSession(activeConnectorId, connectors)
 
   // Reset reasoning stream when pending becomes false (response completes)
@@ -225,13 +226,14 @@ export function ChatPanel(_props: ChatPanelProps) {
           activeSkills={activeSkills}
           sessionSummary={sessionSummary}
           onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
-          onSubmit={(content, mentions) => {
+          onSubmit={(content, mentions, attachments) => {
             setComposerValue("")
             const fromActive = activeSkills.map(s => s.name)
             const fromMention = mentions?.skillNames ?? []
             const allSkillNames = [...new Set([...fromActive, ...fromMention])]
-            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined)
+            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined, attachments)
           }}
+          onStop={stop}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
           webSearchEnabled={webSearchEnabled}

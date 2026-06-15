@@ -23,8 +23,8 @@ export function useSkills() {
 
   useEffect(() => { fetchSkills() }, [fetchSkills])
 
-  const installFromFile = useCallback(async () => {
-    const selected = await open({
+  const installFromFile = useCallback(async (path?: string) => {
+    const selected = path || await open({
       filters: [{ name: "Skill", extensions: ["md"] }],
       multiple: false,
     })

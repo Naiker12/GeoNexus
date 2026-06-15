@@ -12,6 +12,7 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     let tools = serde_json::to_string(&msg.tool_calls).unwrap_or_else(|_| "[]".into());
     let sources = serde_json::to_string(&msg.sources).unwrap_or_else(|_| "[]".into());
     let research_sources_ser = serde_json::to_string(&msg.research_sources).unwrap_or_else(|_| "[]".into());
+    let attachments_ser = serde_json::to_string(&msg.attachments).unwrap_or_else(|_| "[]".into());
 
     let (it, ot, tt, dur, tps, cost, cw, cup) = if let Some(ref s) = msg.stats {
         (Some(s.input_tokens as i64), Some(s.output_tokens as i64), Some(s.total_tokens as i64),
@@ -24,10 +25,10 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     sqlx::query(
         "INSERT INTO messages
             (id, conversation_id, role, content, provider, model,
-             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, created_at,
+             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, attachments_json, created_at,
              input_tokens, output_tokens, total_tokens, duration_ms,
              tokens_per_second, cost_usd, context_window, context_used_pct)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                  ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&msg.id)
@@ -42,6 +43,7 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     .bind(&tools)
     .bind(&sources)
     .bind(&research_sources_ser)
+    .bind(&attachments_ser)
     .bind(msg.created_at)
     .bind(it)
     .bind(ot)
@@ -66,7 +68,7 @@ pub async fn list_messages(
         "SELECT id, conversation_id, role, content, provider, model,
                 trace_id, chunks_used, nodes_used, tool_calls,
                 COALESCE(sources_json, '[]') AS sources_json,
-                research_sources, created_at,
+                research_sources, COALESCE(attachments_json, '[]') AS attachments_json, created_at,
                 input_tokens, output_tokens, total_tokens, duration_ms,
                 tokens_per_second, cost_usd, context_window, context_used_pct
          FROM messages

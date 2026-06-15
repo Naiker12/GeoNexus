@@ -39,6 +39,15 @@ export type KnowledgeLookupStep = {
   count?: number
 }
 
+export type FileAttachment = {
+  id: string
+  name: string
+  type: string
+  size: number
+  data?: string // base64 encoded for images
+  previewUrl?: string
+}
+
 export type Message = {
   id: string
   conversation_id: string
@@ -60,6 +69,7 @@ export type Message = {
   searchSteps?: SearchStep[]
   knowledgeSteps?: KnowledgeLookupStep[]
   stats?: MessageStats
+  attachments?: FileAttachment[]
 }
 
 export type RecallChunk = {
@@ -102,6 +112,7 @@ export type SendMessageInput = {
   mentioned_node_ids?: string[]
   mentioned_agent_sources?: string[]
   skill_names?: string[]
+  attachments?: FileAttachment[]
 }
 
 // ── Mentionable Sources (from Rust get_mentionable_sources) ──

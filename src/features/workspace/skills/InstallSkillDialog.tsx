@@ -6,7 +6,7 @@ import { previewSkillFile, normalizeGithubUrl } from "@/api/skills"
 interface InstallSkillDialogProps {
   open: boolean
   onClose: () => void
-  onInstallFromFile: () => Promise<unknown>
+  onInstallFromFile: (path?: string) => Promise<unknown>
   onInstallFromGithub: (url: string) => Promise<unknown>
 }
 
@@ -86,7 +86,7 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
     if (!pendingFile) return
     setStep("installing")
     try {
-      const skill = await onInstallFromFile()
+      const skill = await onInstallFromFile(pendingFile)
       if (skill) {
         setStep("done")
         setMsg("Skill instalado correctamente")

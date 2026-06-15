@@ -164,6 +164,7 @@ pub async fn send_message(
         created_at: unix_now(),
         research_sources: None,
         stats: None,
+        attachments: input.attachments.clone(),
     };
 
     chat_repo::insert_message(&state.db, &user_msg).await?;
@@ -507,7 +508,7 @@ pub async fn send_message(
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
     let asset_count = chunks_used.iter().map(|c| &c.asset_id).collect::<std::collections::HashSet<_>>().len();
     let mut messages =
-        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &input.content, &input.skill_names, asset_count);
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &input.content, &input.skill_names, asset_count, &input.attachments);
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
@@ -772,6 +773,7 @@ pub async fn send_message(
             Some(research_sources.clone())
         },
         stats: msg_stats.clone(),
+        attachments: vec![],
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;

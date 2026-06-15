@@ -1,5 +1,5 @@
 import * as React from "react"
-import { FileTextIcon, XCircleIcon, Loader2Icon, UploadCloudIcon } from "lucide-react"
+import { Loader2Icon, UploadCloudIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { UploadFilePreviewItem, PendingFileWithPreview } from "./UploadFilePreviewItem"
 
 interface PendingFile {
   file: File
@@ -23,6 +24,20 @@ interface UploadDialogProps {
   uploading: boolean
 }
 
+function isImage(file: File): boolean {
+  return file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(file.name)
+}
+
+function getPreviewType(file: File): 'image' | 'pdf' | 'shapefile' | 'csv' | 'geojson' | 'document' {
+  const name = file.name.toLowerCase()
+  if (isImage(file)) return 'image'
+  if (name.endsWith('.pdf')) return 'pdf'
+  if (name.endsWith('.shp') || name.endsWith('.zip')) return 'shapefile'
+  if (name.endsWith('.csv')) return 'csv'
+  if (name.endsWith('.geojson') || name.endsWith('.json')) return 'geojson'
+  return 'document'
+}
+
 export function UploadDialog({
   open,
   files,
@@ -31,6 +46,33 @@ export function UploadDialog({
   onUpload,
   uploading,
 }: UploadDialogProps) {
+  const [filesWithPreview, setFilesWithPreview] = React.useState<PendingFileWithPreview[]>([])
+  const [autoIndex, setAutoIndex] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!open) return
+
+    const enriched: PendingFileWithPreview[] = files.map(f => {
+      const previewType = getPreviewType(f.file)
+      return {
+        id: f.id,
+        file: f.file,
+        previewType,
+        previewUrl: previewType === 'image' ? URL.createObjectURL(f.file) : undefined,
+      }
+    })
+
+    setFilesWithPreview(enriched)
+
+    return () => {
+      enriched.forEach(f => {
+        if (f.previewUrl) {
+          URL.revokeObjectURL(f.previewUrl)
+        }
+      })
+    }
+  }, [files, open])
+
   const totalBytes = files.reduce((sum, f) => sum + f.file.size, 0)
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -49,27 +91,28 @@ export function UploadDialog({
         </DialogHeader>
 
         <div className="max-h-64 space-y-1 overflow-auto">
-          {files.map((pf) => (
-            <div
+          {filesWithPreview.map((pf) => (
+            <UploadFilePreviewItem
               key={pf.id}
-              className="flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-sm"
-            >
-              <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate">{pf.file.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {formatSize(pf.file.size)}
-              </span>
-              {!uploading && (
-                <button
-                  onClick={() => onRemoveFile(pf.id)}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label={`Quitar ${pf.file.name}`}
-                >
-                  <XCircleIcon className="size-4" />
-                </button>
-              )}
-            </div>
+              file={pf}
+              onRemove={() => onRemoveFile(pf.id)}
+              uploading={uploading}
+            />
           ))}
+        </div>
+
+        <div className="flex items-center gap-2 py-2">
+          <input
+            type="checkbox"
+            id="auto-index"
+            checked={autoIndex}
+            onChange={(e) => setAutoIndex(e.target.checked)}
+            disabled={uploading}
+            className="rounded-sm border-border"
+          />
+          <label htmlFor="auto-index" className="text-sm text-muted-foreground">
+            Indexar automáticamente después de subir
+          </label>
         </div>
 
         <div className="flex justify-end gap-2">

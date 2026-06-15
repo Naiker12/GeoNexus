@@ -1,4 +1,4 @@
-use geonexus_core::chat::{Message, MessageRole};
+use geonexus_core::chat::{FileAttachment, Message, MessageRole};
 use serde_json::json;
 
 /// Construye el array de mensajes para el LLM con contexto del proyecto, web search y RAG.
@@ -12,6 +12,7 @@ pub fn build_messages(
     user_content: &str,
     skill_names: &[String],
     asset_count: usize,
+    attachments: &[FileAttachment],
 ) -> Vec<serde_json::Value> {
     let mut messages = vec![];
 
@@ -120,20 +121,75 @@ pub fn build_messages(
             MessageRole::Tool => "tool",
             MessageRole::System => "system",
         };
-        let mut entry = json!({
-            "role": role,
-            "content": msg.content.trim(),
-        });
-        if !msg.tool_calls.is_empty() {
-            entry["tool_calls"] = serde_json::Value::Array(msg.tool_calls.clone());
+        
+        if !msg.attachments.is_empty() {
+            let mut content_parts = vec![json!({ "type": "text", "text": msg.content.trim() })];
+            for attachment in &msg.attachments {
+                if let Some(data) = &attachment.data {
+                    if attachment.r#type.starts_with("image/") || 
+                        attachment.name.to_lowercase().ends_with(".jpg") ||
+                        attachment.name.to_lowercase().ends_with(".jpeg") ||
+                        attachment.name.to_lowercase().ends_with(".png") ||
+                        attachment.name.to_lowercase().ends_with(".webp") ||
+                        attachment.name.to_lowercase().ends_with(".gif") {
+                        content_parts.push(json!({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": data
+                            }
+                        }));
+                    }
+                }
+            }
+            let mut entry = json!({
+                "role": role,
+                "content": content_parts,
+            });
+            if !msg.tool_calls.is_empty() {
+                entry["tool_calls"] = serde_json::Value::Array(msg.tool_calls.clone());
+            }
+            messages.push(entry);
+        } else {
+            let mut entry = json!({
+                "role": role,
+                "content": msg.content.trim(),
+            });
+            if !msg.tool_calls.is_empty() {
+                entry["tool_calls"] = serde_json::Value::Array(msg.tool_calls.clone());
+            }
+            messages.push(entry);
         }
-        messages.push(entry);
     }
 
-    messages.push(json!({
-        "role": "user",
-        "content": user_content.trim(),
-    }));
+    if !attachments.is_empty() {
+        let mut content_parts = vec![json!({ "type": "text", "text": user_content.trim() })];
+        for attachment in attachments {
+            if let Some(data) = &attachment.data {
+                if attachment.r#type.starts_with("image/") || 
+                    attachment.name.to_lowercase().ends_with(".jpg") ||
+                    attachment.name.to_lowercase().ends_with(".jpeg") ||
+                    attachment.name.to_lowercase().ends_with(".png") ||
+                    attachment.name.to_lowercase().ends_with(".webp") ||
+                    attachment.name.to_lowercase().ends_with(".gif") {
+                    content_parts.push(json!({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": data
+                        }
+                    }));
+                }
+            }
+        }
+        messages.push(json!({
+            "role": "user",
+            "content": content_parts,
+        }));
+    } else {
+        messages.push(json!({
+            "role": "user",
+            "content": user_content.trim(),
+        }));
+    }
 
     messages
 }

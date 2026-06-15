@@ -97,6 +97,19 @@ pub struct MessageStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileAttachment {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub r#type: String,
+    pub size: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>, // base64
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preview_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
     pub conversation_id: String,
@@ -114,6 +127,8 @@ pub struct Message {
     pub research_sources: Option<Vec<ResearchSource>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stats: Option<MessageStats>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<FileAttachment>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,6 +155,8 @@ pub struct SendMessageInput {
     pub mentioned_agent_sources: Vec<String>,
     #[serde(default)]
     pub skill_names: Vec<String>,
+    #[serde(default)]
+    pub attachments: Vec<FileAttachment>,
 }
 
 impl SendMessageInput {

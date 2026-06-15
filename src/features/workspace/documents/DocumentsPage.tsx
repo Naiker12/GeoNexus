@@ -341,7 +341,7 @@ function SourceStrip({
         ref={fileInputRef}
         className="sr-only"
         type="file"
-        accept=".pdf,.doc,.docx,.txt,.zip,.dxf,.geojson,.shp,.csv,.xlsx"
+        accept=".pdf,.doc,.docx,.txt,.zip,.dxf,.geojson,.shp,.csv,.xlsx,.jpg,.jpeg,.png,.webp,.gif,.bmp,.tiff"
         multiple
         onChange={onFileInput}
       />

@@ -1,4 +1,4 @@
-use geonexus_core::chat::{Message, MessageRole};
+use geonexus_core::chat::{FileAttachment, Message, MessageRole};
 use sqlx::Row;
 
 pub mod conversations;
@@ -21,8 +21,12 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
     let tools_raw: Option<String> = row.get("tool_calls");
     let sources_raw: Option<String> = row.get("sources_json");
     let research_raw: Option<String> = row.get("research_sources");
+    let attachments_raw: Option<String> = row.get("attachments_json");
     let research: Vec<geonexus_core::chat::ResearchSource> =
         serde_json::from_str(research_raw.as_deref().unwrap_or("[]"))
+            .unwrap_or_default();
+    let attachments: Vec<FileAttachment> = 
+        serde_json::from_str(attachments_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default();
 
     let it: Option<i64> = row.get("input_tokens");
@@ -56,6 +60,7 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
         created_at: row.get("created_at"),
         research_sources: if research.is_empty() { None } else { Some(research) },
         stats,
+        attachments,
     })
 }
 

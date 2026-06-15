@@ -1,4 +1,5 @@
 import * as React from "react"
+import { FileTextIcon } from "lucide-react"
 
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
@@ -128,6 +129,26 @@ export function ChatTranscript({
       {messages.map((message, index) =>
         message.role === "user" ? (
           <div key={message.id} className="group flex flex-col items-end">
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2 max-w-full">
+                {message.attachments.map((attachment) => (
+                  <div key={attachment.id} className="rounded-lg overflow-hidden border border-border">
+                    {attachment.data && attachment.type.startsWith("image/") ? (
+                      <img
+                        src={attachment.data}
+                        alt={attachment.name}
+                        className="max-h-48 max-w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2 text-sm">
+                        <FileTextIcon className="size-4 text-muted-foreground" />
+                        <span className="truncate max-w-xs">{attachment.name}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <MessageBubble role="user">
               <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
             </MessageBubble>

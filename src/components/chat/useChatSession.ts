@@ -4,7 +4,7 @@ import { listMessages, sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { Message, SendMessageInput, KnowledgeLookupStep, SessionSummary } from "@/types/chat"
+import type { Message, SendMessageInput, KnowledgeLookupStep, SessionSummary, FileAttachment } from "@/types/chat"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 
 const DEFAULT_PROJECT_ID = "project-default"
@@ -153,7 +153,7 @@ export function useChatSession(
   }, [])
 
   const submit = React.useCallback(
-    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[]) => {
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[]) => {
       const clean = content.trim()
       if (!clean || pending) return
       if (!activeProvider) {
@@ -177,6 +177,7 @@ export function useChatSession(
         tool_calls: [],
         sources: [],
         created_at: Math.floor(Date.now() / 1000),
+        attachments,
       }
 
       setError(null)
@@ -233,6 +234,7 @@ export function useChatSession(
         mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
         mentioned_agent_sources: mentions?.agentSources?.length ? mentions.agentSources : undefined,
         skill_names: skillNames && skillNames.length > 0 ? skillNames : undefined,
+        attachments,
       }
 
       if (webSearchEnabled) {
@@ -360,6 +362,15 @@ export function useChatSession(
     }
   }, [submit])
 
+  const stop = React.useCallback(() => {
+    if (researchTimerId) {
+      clearInterval(researchTimerId)
+      researchTimerId = null
+    }
+    setPending(false)
+    setLoadingPhase("idle")
+  }, [])
+
   return {
     activeProvider,
     conversationId,
@@ -379,5 +390,6 @@ export function useChatSession(
     regenerate,
     loadConversation,
     newConversation,
+    stop,
   }
 }

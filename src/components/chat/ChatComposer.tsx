@@ -19,6 +19,7 @@ import {
   Share2Icon,
   SparklesIcon,
   XIcon,
+  StopCircleIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
@@ -27,7 +28,8 @@ import { CommandPalette } from "@/components/chat/CommandPalette"
 import { MentionPicker } from "@/components/chat/MentionPicker"
 import { SkillActivationBadge } from "@/features/workspace/skills/SkillActivationBadge"
 import { ConversationMemoryBadge } from "@/components/chat/ConversationMemoryBadge"
-import type { SkillInfo, SessionSummary } from "@/types/chat"
+import { DropZone } from "@/components/chat/DropZone"
+import type { SkillInfo, SessionSummary, FileAttachment } from "@/types/chat"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +65,8 @@ export type ChatComposerProps = {
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
   pending: boolean
-  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }) => void
+  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }, attachments?: FileAttachment[]) => void
+  onStop?: () => void
   onToggleContext: () => void
   contextActive: boolean
   webSearchEnabled: boolean
@@ -83,6 +86,18 @@ type Chip = {
   kind: MentionSource["kind"]
   label: string
   color: string
+  file?: File
+  previewUrl?: string
+  base64Data?: string
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
 
 export function ChatComposer({
@@ -92,6 +107,7 @@ export function ChatComposer({
   error,
   pending,
   onSubmit,
+  onStop,
   onToggleContext,
   contextActive,
   webSearchEnabled,
@@ -215,7 +231,7 @@ export function ChatComposer({
     return result
   }, [rawSources])
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const clean = value.trim()
     if (!clean || pending) return
@@ -225,6 +241,7 @@ export function ChatComposer({
     const nodeIds: string[] = []
     const agentSources: AgentSourceType[] = []
     const skillNamesFromChips: string[] = []
+    const attachments: FileAttachment[] = []
 
     let finalContent = clean
     for (const chip of chips) {
@@ -232,7 +249,19 @@ export function ChatComposer({
         `@${chip.label}`,
         `@[${chip.label}](${chip.kind}:${chip.id})`
       )
-      if (chip.kind === "asset") assetIds.push(chip.id)
+      if (chip.kind === "asset") {
+        assetIds.push(chip.id)
+        if (chip.file) {
+          attachments.push({
+            id: chip.id,
+            name: chip.file.name,
+            type: chip.file.type,
+            size: chip.file.size,
+            data: chip.base64Data,
+            previewUrl: chip.previewUrl,
+          })
+        }
+      }
       else if (chip.kind === "connector") connectorIds.push(chip.id)
       else if (chip.kind === "graph_node") nodeIds.push(chip.id)
       else if (chip.kind === "agent_source") agentSources.push(chip.id as AgentSourceType)
@@ -249,7 +278,7 @@ export function ChatComposer({
     setSlashQuery(null)
 
     const allSkillNames = skillNamesFromChips.length > 0 ? skillNamesFromChips : undefined
-    onSubmit(finalContent, { assetIds, connectorIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames })
+    onSubmit(finalContent, { assetIds, connectorIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames }, attachments.length > 0 ? attachments : undefined)
   }
 
   const handleComposerChange = (newValue: string) => {
@@ -360,27 +389,54 @@ export function ChatComposer({
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files
     if (!fileList || fileList.length === 0) return
     const files = Array.from(fileList)
     for (const f of files) {
+      const isImage = f.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(f.name)
+      const previewUrl = isImage ? URL.createObjectURL(f) : undefined
+      const base64Data = isImage ? await readFileAsBase64(f) : undefined
       setChips((prev) => [
         ...prev,
-        { id: `file-${Date.now()}-${f.name}`, kind: "asset" as const, label: f.name, color: "#8B5CF6" },
+        { id: `file-${Date.now()}-${f.name}`, kind: "asset" as const, label: f.name, color: "#8B5CF6", file: f, previewUrl, base64Data },
       ])
     }
     e.target.value = ""
   }
 
+  // Clean up blob URLs when component unmounts or chips are removed
+  React.useEffect(() => {
+    return () => {
+      chips.forEach(chip => {
+        if (chip.previewUrl) {
+          URL.revokeObjectURL(chip.previewUrl)
+        }
+      })
+    }
+  }, [])
+
+  const handleDrop = React.useCallback(async (files: File[]) => {
+    for (const f of files) {
+      const isImage = f.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(f.name)
+      const previewUrl = isImage ? URL.createObjectURL(f) : undefined
+      const base64Data = isImage ? await readFileAsBase64(f) : undefined
+      setChips((prev) => [
+        ...prev,
+        { id: `file-${Date.now()}-${f.name}`, kind: "asset" as const, label: f.name, color: "#8B5CF6", file: f, previewUrl, base64Data },
+      ])
+    }
+  }, [])
+
   return (
     <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border bg-background px-4 py-3 sm:px-5">
       {sessionSummary && <ConversationMemoryBadge summary={sessionSummary} />}
 
-      <form
-        className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
-        onSubmit={handleSubmit}
-      >
+      <DropZone onDrop={handleDrop}>
+        <form
+          className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
+          onSubmit={handleSubmit}
+        >
         {activeSkills && activeSkills.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5 px-2">
             {activeSkills.map(skill => (
@@ -415,29 +471,72 @@ export function ChatComposer({
             <div className="relative w-full">
               {/* Chip bar */}
               {chips.length > 0 && (
-                <div className="mb-1 flex flex-wrap gap-1">
+                <div className="mb-2 flex flex-wrap gap-2">
                   {chips.map((chip) => {
                     const Icon = chip.kind === "graph_node" ? GitForkIcon : chip.kind === "asset" ? FileTextIcon : CloudIcon
                     return (
-                      <span
+                      <div
                         key={chip.id}
-                        className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[0.6rem] font-medium"
-                        style={{
-                          backgroundColor: `${chip.color}18`,
-                          border: `1px solid ${chip.color}44`,
-                          color: chip.color,
-                        }}
+                        className="group relative"
                       >
-                        <Icon className="size-2.5" />
-                        @{chip.label}
-                        <button
-                          type="button"
-                          onClick={() => removeChip(chip.id)}
-                          className="hover:opacity-70"
-                        >
-                          <XIcon className="size-2.5" />
-                        </button>
-                      </span>
+                        {chip.previewUrl ? (
+                          <div className="relative overflow-hidden rounded-lg border border-border bg-card/80">
+                            <img
+                              src={chip.previewUrl}
+                              alt={chip.label}
+                              className="w-24 h-24 object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (chip.previewUrl) {
+                                    URL.revokeObjectURL(chip.previewUrl)
+                                  }
+                                  removeChip(chip.id)
+                                }}
+                                className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white hover:bg-black/70"
+                              >
+                                <XIcon className="size-3" />
+                              </button>
+                              <p className="absolute bottom-1 left-2 right-2 text-[10px] text-white truncate">
+                                @{chip.label}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (chip.previewUrl) {
+                                  URL.revokeObjectURL(chip.previewUrl)
+                                }
+                                removeChip(chip.id)
+                              }}
+                              className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 opacity-100 group-hover:opacity-100"
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
+                            style={{
+                              backgroundColor: `${chip.color}18`,
+                              border: `1px solid ${chip.color}44`,
+                              color: chip.color,
+                            }}
+                          >
+                            <Icon className="size-4" />
+                            <span className="max-w-32 truncate">@{chip.label}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeChip(chip.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
+                            >
+                              <XIcon className="size-3" />
+                            </button>
+                          </span>
+                        )}
+                      </div>
                     )
                   })}
                 </div>
@@ -487,15 +586,27 @@ export function ChatComposer({
               <AudioLinesIcon className="size-4" />
             </Button>
 
-            <Button
-              type="submit"
-              size="icon"
-              className="rounded-xl"
-              aria-label="Enviar mensaje"
-              disabled={pending || !value.trim() || !activeProvider}
-            >
-              <SendIcon className="size-4" />
-            </Button>
+            {pending ? (
+              <Button
+                type="button"
+                size="icon"
+                className="rounded-xl bg-red-500 hover:bg-red-600 text-white"
+                aria-label="Detener análisis"
+                onClick={onStop}
+              >
+                <StopCircleIcon className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                size="icon"
+                className="rounded-xl"
+                aria-label="Enviar mensaje"
+                disabled={!value.trim() || !activeProvider}
+              >
+                <SendIcon className="size-4" />
+              </Button>
+            )}
           </InputGroupAddon>
         </InputGroup>
 
@@ -552,6 +663,7 @@ export function ChatComposer({
           </p>
         ) : null}
       </form>
+      </DropZone>
     </div>
   )
 }
@@ -571,33 +683,6 @@ function ToolMenu({
 }) {
   const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
   const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
-  const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
-  const moreMenuTriggerRef = React.useRef<HTMLDivElement>(null)
-  const moreMenuContentRef = React.useRef<HTMLDivElement>(null)
-  const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null)
-
-  // Limpiamos el timer cuando el componente se desmonta
-  React.useEffect(() => {
-    return () => {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-    }
-  }, [])
-
-  // Función para abrir el submenú con delay
-  const handleMouseEnter = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-    hoverTimerRef.current = setTimeout(() => {
-      setMoreMenuOpen(true)
-    }, 150)
-  }
-
-  // Función para cerrar el submenú con delay
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
-    hoverTimerRef.current = setTimeout(() => {
-      setMoreMenuOpen(false)
-    }, 150)
-  }
 
   return (
     <>
@@ -605,7 +690,6 @@ function ToolMenu({
       onOpenChange={(open) => {
         if (!open) {
           setExpandedConnector(null)
-          setMoreMenuOpen(false)
         }
       }}
     >
@@ -736,42 +820,27 @@ function ToolMenu({
               aria-label="Activar busqueda en internet"
             />
           </DropdownMenuItem>
-          {/* Submenú "Más" con hover */}
-          <div
-            ref={moreMenuTriggerRef}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-            className="relative"
-          >
-            <DropdownMenuSub open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
-              <DropdownMenuSubTrigger
-                className="gap-3 px-3 py-2 cursor-default"
-                onPointerDown={(e) => e.preventDefault()} // Evita que se cierre al hacer click
-              >
-                <PlusIcon className="size-4" />
-                Más
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
-                ref={moreMenuContentRef}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className="w-56 rounded-xl p-2"
-              >
-                <DropdownMenuItem>
-                  <CpuIcon className="size-3.5 mr-2" />
-                  Conectar contenedor
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CpuIcon className="size-3.5 mr-2" />
-                  Ver contenedores activos
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <PlusIcon className="size-3.5 mr-2" />
-                  Agregar nuevo contenedor
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </div>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
+              <PlusIcon className="size-4" />
+              Más
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-56 rounded-xl p-2">
+              {connectors.length > 0 ? (
+                connectors.map((c) => (
+                  <DropdownMenuItem key={c.id} className="gap-3 px-3 py-2">
+                    <CpuIcon className="size-3.5" />
+                    {c.label}
+                    {c.status && <ConnectorStatusBadge status={c.status} />}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                  No hay conectores activos
+                </div>
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
