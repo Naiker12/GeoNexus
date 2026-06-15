@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toast"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
+import { UpdateBanner } from "@/components/UpdateBanner"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
 import type { ToastPosition } from "@/types/notifications"
@@ -75,7 +76,8 @@ export default function App() {
         onThemeChange={setActiveTheme}
         onOpenConfig={() => setConfigOpen(true)}
       />
-      <SidebarInset className="overflow-hidden">
+      <SidebarInset className="overflow-hidden flex flex-col">
+        <UpdateBanner />
         <GeoAgentsWorkspace
           activeRoute={activeRoute}
           configOpen={configOpen}
