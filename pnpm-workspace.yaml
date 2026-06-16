@@ -1,4 +1,2 @@
-allowBuilds:
-  "*": true
-  core-js: set this to true or false
-  msw: set this to true or false
+packages:
+  - "crates/geonexus-tauri"
