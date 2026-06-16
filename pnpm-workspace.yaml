@@ -1,7 +1,8 @@
 packages:
-  - "crates/geonexus-tauri"
-onlyBuiltDependencies:
-  - core-js
+  - "."
+
+allowBuilds:
   - esbuild
+  - core-js
   - msw
   - "@tauri-apps/cli"
