@@ -19,6 +19,7 @@ import {
   SparklesIcon,
   TerminalIcon,
   WaypointsIcon,
+  LayoutIcon,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 

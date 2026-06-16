@@ -6,5 +6,6 @@ pub mod connector;
 pub mod reasoning;
 pub mod agent;
 pub mod types;
+pub mod telegram;
 
 pub use types::*;

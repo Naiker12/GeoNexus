@@ -1,5 +1,6 @@
 pub mod registry;
 pub mod task;
+pub mod coding;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

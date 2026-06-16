@@ -15,10 +15,13 @@ import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
+import { useCodingAgent } from "@/contexts/CodingAgentContext"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
 import { useReasoningStream } from "@/components/chat/useReasoningStream"
+
+import { CodingAgentPanel } from "@/components/chat/CodingAgentPanel"
 
 const PROJECT_ID = "project-default"
 
@@ -52,6 +55,8 @@ export function ChatPanel(_props: ChatPanelProps) {
     newConversation,
     stop,
   } = useChatSession(activeConnectorId, connectors)
+  
+  const codingAgent = useCodingAgent()
 
   // Reset reasoning stream when pending becomes false (response completes)
   React.useEffect(() => {
@@ -271,8 +276,12 @@ export function ChatPanel(_props: ChatPanelProps) {
           onReindex={() => {
             toast({ title: "Reindexando...", description: "Reindexación del catálogo de assets iniciada", variant: "info" })
           }}
+          onToggleCoding={codingAgent.toggleCodingMode}
         />
       </div>
+
+      {/* Coding Agent Panel */}
+      <CodingAgentPanel />
 
       <ProjectContextPanel
         projectId={PROJECT_ID}

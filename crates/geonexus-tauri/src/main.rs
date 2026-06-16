@@ -29,6 +29,12 @@ fn main() {
 
     builder
         .setup(|app| {
+            // Open dev tools in debug mode
+            #[cfg(debug_assertions)]
+            {
+                let window = app.get_webview_window("main").unwrap();
+                window.open_devtools();
+            }
             // Resolver la ruta del app data dir en Tauri v2
             let app_data_dir = app
                 .path()
@@ -286,6 +292,21 @@ fn main() {
             commands::skills::toggle_skill,
             commands::skills::read_skill_md,
             commands::skills::preview_skill_file,
+            
+            // Audio
+            commands::audio::audio_transcribe,
+            commands::audio::audio_synthesize,
+            
+            // Telegram
+            commands::telegram::telegram_save_config,
+            commands::telegram::telegram_load_config,
+            commands::telegram::telegram_start_polling,
+            commands::telegram::telegram_stop_polling,
+            commands::telegram::telegram_get_status,
+            commands::telegram::telegram_send_message,
+            
+            // Coding Agent
+            commands::telegram::coding_agent_start_generation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

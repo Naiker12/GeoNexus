@@ -1,25 +1,15 @@
 import * as React from "react"
 import {
-  AudioLinesIcon,
   CloudIcon,
   CpuIcon,
-  DownloadIcon,
-  FileSearchIcon,
   FileTextIcon,
-  FolderIcon,
   GitForkIcon,
   GlobeIcon,
-  HexagonIcon,
   Loader2,
-  MenuIcon,
-  MicIcon,
-  PlusIcon,
-  SearchIcon,
   SendIcon,
-  Share2Icon,
   SparklesIcon,
-  XIcon,
   StopCircleIcon,
+  XIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
@@ -29,35 +19,21 @@ import { MentionPicker } from "@/components/chat/MentionPicker"
 import { SkillActivationBadge } from "@/features/workspace/skills/SkillActivationBadge"
 import { ConversationMemoryBadge } from "@/components/chat/ConversationMemoryBadge"
 import { DropZone } from "@/components/chat/DropZone"
+import { AudioRecorder } from "@/components/chat/AudioRecorder"
 import type { SkillInfo, SessionSummary, FileAttachment } from "@/types/chat"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Switch } from "@/components/ui/switch"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupControl,
 } from "@/components/ui/input-group"
 import { Textarea } from "@/components/ui/Textarea"
-import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
-import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
-import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
 import { getMentionableSources } from "@/api/chat"
 import { listSkills } from "@/api/skills"
-import type { MentionSource, MentionableSourceItem, MentionableSourcesResponse, SlashCommand, MentionKind } from "@/types/chat"
+import type { MentionSource, MentionableSourcesResponse, SlashCommand, MentionKind } from "@/types/chat"
 import type { AgentSourceType } from "@/types/agents"
 import { parseMentions } from "@/features/workspace/chat/MentionPicker"
+import { ToolMenu } from "@/components/chat/ToolMenu"
+import { AttachmentChips, type Chip } from "@/components/chat/AttachmentChips"
 
 export type ChatComposerProps = {
   value: string
@@ -79,16 +55,7 @@ export type ChatComposerProps = {
   activeSkills?: SkillInfo[]
   onRemoveSkill?: (id: string) => void
   sessionSummary?: SessionSummary | null
-}
-
-type Chip = {
-  id: string
-  kind: MentionSource["kind"]
-  label: string
-  color: string
-  file?: File
-  previewUrl?: string
-  base64Data?: string
+  onToggleCoding?: () => void
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -120,6 +87,7 @@ export function ChatComposer({
   activeSkills,
   onRemoveSkill,
   sessionSummary,
+  onToggleCoding,
 }: ChatComposerProps) {
   // Slash command state
   const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
@@ -348,6 +316,9 @@ export function ChatComposer({
         // For now, just trigger context panel or file picker fallback
         fileInputRef.current?.click()
         break
+      case "toggle-coding":
+        onToggleCoding?.()
+        break
       case "new-chat":
         onNewChat?.()
         break
@@ -465,81 +436,17 @@ export function ChatComposer({
               connectors={rawSources?.connectors ?? []}
               refreshSources={refreshSources}
               onAttachFiles={() => fileInputRef.current?.click()}
+              onToggleCoding={onToggleCoding}
             />
           </InputGroupAddon>
           <InputGroupControl className="relative flex items-center">
             <div className="relative w-full">
               {/* Chip bar */}
               {chips.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {chips.map((chip) => {
-                    const Icon = chip.kind === "graph_node" ? GitForkIcon : chip.kind === "asset" ? FileTextIcon : CloudIcon
-                    return (
-                      <div
-                        key={chip.id}
-                        className="group relative"
-                      >
-                        {chip.previewUrl ? (
-                          <div className="relative overflow-hidden rounded-lg border border-border bg-card/80">
-                            <img
-                              src={chip.previewUrl}
-                              alt={chip.label}
-                              className="w-24 h-24 object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (chip.previewUrl) {
-                                    URL.revokeObjectURL(chip.previewUrl)
-                                  }
-                                  removeChip(chip.id)
-                                }}
-                                className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white hover:bg-black/70"
-                              >
-                                <XIcon className="size-3" />
-                              </button>
-                              <p className="absolute bottom-1 left-2 right-2 text-[10px] text-white truncate">
-                                @{chip.label}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (chip.previewUrl) {
-                                  URL.revokeObjectURL(chip.previewUrl)
-                                }
-                                removeChip(chip.id)
-                              }}
-                              className="absolute top-1 right-1 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 opacity-100 group-hover:opacity-100"
-                            >
-                              <XIcon className="size-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span
-                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
-                            style={{
-                              backgroundColor: `${chip.color}18`,
-                              border: `1px solid ${chip.color}44`,
-                              color: chip.color,
-                            }}
-                          >
-                            <Icon className="size-4" />
-                            <span className="max-w-32 truncate">@{chip.label}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeChip(chip.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
-                            >
-                              <XIcon className="size-3" />
-                            </button>
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+                <AttachmentChips
+                  chips={chips}
+                  onRemoveChip={removeChip}
+                />
               )}
 
               {/* Command Palette (/ popup) */}
@@ -579,12 +486,12 @@ export function ChatComposer({
             </div>
           </InputGroupControl>
           <InputGroupAddon className="items-center">
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Grabar audio">
-              <MicIcon className="size-4" />
-            </Button>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Modo voz">
-              <AudioLinesIcon className="size-4" />
-            </Button>
+            <AudioRecorder
+              onTranscription={(text) => {
+                onValueChange(value ? `${value} ${text}` : text)
+              }}
+              disabled={pending}
+            />
 
             {pending ? (
               <Button
@@ -665,203 +572,5 @@ export function ChatComposer({
       </form>
       </DropZone>
     </div>
-  )
-}
-
-function ToolMenu({
-  webSearchEnabled,
-  onToggleWebSearch,
-  connectors,
-  refreshSources,
-  onAttachFiles,
-}: {
-  webSearchEnabled: boolean
-  onToggleWebSearch: () => void
-  connectors: MentionableSourceItem[]
-  refreshSources: () => void
-  onAttachFiles: () => void
-}) {
-  const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
-  const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
-
-  return (
-    <>
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (!open) {
-          setExpandedConnector(null)
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="rounded-xl"
-          aria-label="Abrir herramientas"
-        >
-          <PlusIcon className="size-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        side="top"
-        sideOffset={10}
-        className="w-80 rounded-xl p-2"
-      >
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Proyecto</DropdownMenuLabel>
-          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <SparklesIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">Agregar proyecto</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="min-h-8 gap-2 px-2.5 py-1.5">
-            <MenuIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">Configurar proyecto</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Archivos y datos</DropdownMenuLabel>
-          <DropdownMenuItem
-            className="min-h-8 gap-2 px-2.5 py-1.5"
-            onSelect={() => {
-              setConnectingConnector({
-                id: "new-local",
-                kind: "connector",
-                label: "Carpeta local",
-                sublabel: "Nuevo conector",
-                icon: "Folder",
-                color: "#F59E0B",
-                status: "disconnected",
-                last_synced: null,
-                asset_count: null,
-                provider: "local",
-              })
-            }}
-          >
-            <FolderIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">
-              Carpeta local
-            </span>
-            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
-              LOCAL
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="min-h-8 gap-2 px-2.5 py-1.5"
-            onSelect={onAttachFiles}
-          >
-            <PlusIcon className="size-3.5 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">
-              Agregar fotos y archivos
-            </span>
-            <DropdownMenuShortcut className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium tracking-normal text-muted-foreground">
-              PDF/DXF
-            </DropdownMenuShortcut>
-          </DropdownMenuItem>
-          {connectors.map((c) => (
-            <React.Fragment key={c.id}>
-              <DropdownMenuItem
-                className="min-h-8 gap-2 px-2.5 py-1.5"
-                onSelect={(e) => {
-                  if (c.status === "connected" || c.status === "error") {
-                    e.preventDefault()
-                    setExpandedConnector(
-                      expandedConnector === c.id ? null : c.id
-                    )
-                  } else if (c.status === "disconnected") {
-                    setConnectingConnector(c)
-                  }
-                }}
-              >
-                <CpuIcon className="size-3.5 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate">{c.label}</span>
-                {c.status && <ConnectorStatusBadge status={c.status} />}
-              </DropdownMenuItem>
-              {expandedConnector === c.id && (
-                <ConnectorMiniPanel
-                  connector={c}
-                  onClose={() => setExpandedConnector(null)}
-                  onSync={
-                    c.status === "connected"
-                      ? () => {
-                          // TODO: trigger sync
-                          setExpandedConnector(null)
-                        }
-                      : undefined
-                  }
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Herramientas GIS</DropdownMenuLabel>
-          <DropdownMenuItem className="gap-3 px-3 py-2">
-            <SearchIcon className="size-4" />
-            Razonamiento GIS
-            <DropdownMenuShortcut>MCP</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex items-center justify-between gap-2 px-3 py-2"
-            onSelect={(e) => e.preventDefault()}
-          >
-            <div className="flex items-center gap-3">
-              <GlobeIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm">Buscar informacion</span>
-            </div>
-            <Switch
-              checked={webSearchEnabled}
-              onCheckedChange={onToggleWebSearch}
-              className="scale-75"
-              aria-label="Activar busqueda en internet"
-            />
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-3 px-3 py-2">
-              <PlusIcon className="size-4" />
-              Más
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="w-56 rounded-xl p-2">
-              {connectors.length > 0 ? (
-                connectors.map((c) => (
-                  <DropdownMenuItem key={c.id} className="gap-3 px-3 py-2">
-                    <CpuIcon className="size-3.5" />
-                    {c.label}
-                    {c.status && <ConnectorStatusBadge status={c.status} />}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                  No hay conectores activos
-                </div>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem className="gap-3 px-3 py-2">
-            <DownloadIcon className="size-4" />
-            Proyectos
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-    {connectingConnector && (
-      <ConnectorConnectionDialog
-        connector={connectingConnector}
-        open={!!connectingConnector}
-        onOpenChange={() => setConnectingConnector(null)}
-        onConnected={() => {
-          setConnectingConnector(null)
-          refreshSources()
-        }}
-      />
-    )}
-    </>
   )
 }

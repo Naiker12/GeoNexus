@@ -1,7 +1,11 @@
 import * as React from "react"
-import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { listGraphNodes, listGraphEdges, clearEphemeralNodes } from "@/api/data"
 import type { GraphNode, GraphEdge, GraphUpdatePayload } from "@/types/data"
+
+/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
+function isTauriAvailable(): boolean {
+  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
+}
 
 interface GraphEventsState {
   nodes: GraphNode[]
@@ -78,11 +82,15 @@ export function useGraphEvents(
 
   // Listen for graph:updated events from Rust backend
   React.useEffect(() => {
-    let unlisten: UnlistenFn | undefined
+    let unlisten: (() => void) | undefined
     let cancelled = false
 
     const setup = async () => {
+      if (!isTauriAvailable()) {
+        return
+      }
       try {
+        const { listen } = await import("@tauri-apps/api/event")
         unlisten = await listen<GraphUpdatePayload>("graph:updated", (event) => {
           if (cancelled) return
           const payload = event.payload

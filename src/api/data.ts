@@ -12,7 +12,6 @@ import type {
   SearchGraphNodesResult,
 } from "@/types/data"
 import { defaultMetrics } from "@/features/workspace/data/data-data"
-import { invoke } from "@tauri-apps/api/core"
 
 export const DEFAULT_PROJECT_ID = "project-default"
 
@@ -21,12 +20,25 @@ export function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
 }
 
+/** Obtains invoke function safely, returning null if Tauri isn't available */
+async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+  if (!isTauriAvailable()) return null
+  try {
+    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
+    return tauriInvoke
+  } catch (e) {
+    console.error('[getInvoke] Could not import invoke:', e)
+    return null
+  }
+}
+
 async function invokeOrFallback<T>(
   command: string,
   args: Record<string, unknown>,
   fallback: T
 ): Promise<T> {
-  if (!isTauriAvailable()) {
+  const invoke = await getInvoke()
+  if (!invoke) {
     console.debug(`[invokeOrFallback] Tauri no disponible, devolviendo fallback para ${command}`)
     return fallback
   }
@@ -42,6 +54,10 @@ async function invokeRequired<T>(
   command: string,
   args: Record<string, unknown>
 ): Promise<T> {
+  const invoke = await getInvoke()
+  if (!invoke) {
+    throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
+  }
   try {
     return await invoke<T>(command, args)
   } catch (e) {

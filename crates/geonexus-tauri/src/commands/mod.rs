@@ -16,3 +16,5 @@ pub mod notifications;
 pub mod notification_emitter;
 pub mod settings;
 pub mod skills;
+pub mod audio;
+pub mod telegram;

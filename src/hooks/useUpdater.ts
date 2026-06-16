@@ -1,5 +1,9 @@
-import { check } from '@tauri-apps/plugin-updater';
 import { useState, useEffect } from 'react';
+
+/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
+function isTauriAvailable(): boolean {
+  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
+}
 
 export interface UpdateInfo {
   available: boolean;
@@ -14,7 +18,11 @@ export function useUpdater() {
 
   useEffect(() => {
     const timer = setTimeout(async () => {
+      if (!isTauriAvailable()) {
+        return
+      }
       try {
+        const { check } = await import('@tauri-apps/plugin-updater');
         const update = await check();
         if (update?.available) {
           setUpdateInfo({
@@ -32,8 +40,12 @@ export function useUpdater() {
   }, []);
 
   const installUpdate = async () => {
+    if (!isTauriAvailable()) {
+      return
+    }
     try {
       setInstalling(true);
+      const { check } = await import('@tauri-apps/plugin-updater');
       const update = await check();
       if (update?.available) {
         await update.downloadAndInstall();

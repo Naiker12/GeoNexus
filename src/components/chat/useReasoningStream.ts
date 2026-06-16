@@ -1,6 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import type { ReasoningStep, ReasoningStepDisplay, SessionSummary, ToolCallDisplay } from "@/types/chat"
 
+/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
+function isTauriAvailable(): boolean {
+  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
+}
+
 interface ToolCallPayload {
   tool_name: string
   tool_call_id: string
@@ -170,138 +175,148 @@ export function useReasoningStream() {
     let mounted = true
 
     const setup = async () => {
-      const { listen } = await import("@tauri-apps/api/event")
-
-      // Reasoning steps from send_message pipeline
-      unlistenStep.current = await listen<ReasoningStep>("reasoning:step", ({ payload }) => {
-        if (!mounted) return
-
-        if (payload.type === "intent_classified") {
-          setSteps([{ ...mapEventToStep(payload, 0), status: "running" }])
-          setIsReasoning(true)
-          // Optional: add initial synthetic thinking text!
-          setThinkingText("Analizando la consulta del usuario...")
-          return
-        }
-
-        setSteps((prev) => {
-          const updated = prev.map((s) =>
-            s.status === "running" ? { ...s, status: "done" as const } : s
-          )
-          return [
-            ...updated,
-            {
-              ...mapEventToStep(payload, prev.length),
-              status: payload.type === "response_complete" ? ("done" as const) : ("running" as const),
-            },
-          ]
-        })
-
-        if (payload.type === "response_complete") {
-          setIsReasoning(false)
-        }
-
-        // Add some synthetic thinking text for demo!
-        if (payload.type === "knowledge_retrieved") {
-          setThinkingText(prev => prev + `\nEncontré ${(payload as any).chunks_found} fragmentos relevantes...`)
-        }
-        if (payload.type === "graph_context_loaded") {
-          const gPayload = payload as any
-          const nodesInfo = gPayload.nodes_selected ? `${gPayload.nodes_selected} de ${gPayload.nodes_total}` : `${gPayload.nodes_count}`
-          setThinkingText(prev => prev + `\nEl grafo tiene ${nodesInfo} nodos relevantes.`)
-        }
-      })
-
-      // Session summary
-      unlistenDone.current = await listen<SessionSummary>("reasoning:done", ({ payload }) => {
-        if (!mounted) return
-        setSummary(payload)
-      })
-
-      // Live tool call started
-      unlistenToolCall.current = await listen<ToolCallPayload>("llm:tool_call", ({ payload }) => {
-        if (!mounted) return
-        toolCallRef.current = payload
-        toolIndexRef.current += 1
-
-        setSteps((prev) => {
-          const updated = prev.map((s) =>
-            s.status === "running" ? { ...s, status: "done" as const } : s
-          )
-          return [...updated, makeToolCallStep(payload, prev.length)]
-        })
-
-        // Add to our new tool calls display!
-        setToolCalls(prev => [...prev, {
-          id: `tool-${toolIndexRef.current}`,
-          toolName: payload.tool_name,
-          args: payload.args,
-          status: "running",
-        }])
-      })
-
-      // Live tool call result
-      unlistenToolResult.current = await listen<ToolResultPayload>("llm:tool_result", ({ payload }) => {
-        if (!mounted) return
-        const toolCall = toolCallRef.current
-        toolCallRef.current = null
-
-        setSteps((prev) => {
-          if (prev.length === 0) return prev
-          if (!toolCall) {
-            const last = prev[prev.length - 1]
-            if (last.type === "mcp_tool_called" && last.status === "running") {
-              const updated = [...prev]
-              updated[updated.length - 1] = {
-                ...last,
-                status: "done",
-                label: `Ejecutando ${payload.tool_name}`,
-                detail: payload.success ? "éxito" : "fallo",
-                durationMs: payload.duration_ms,
-              }
-              return updated
-            }
-            return prev
-          }
-          const updated = [...prev]
-          const combinedPayload = { ...toolCall, ...payload }
-          updated[updated.length - 1] = makeToolResultStep(combinedPayload, prev.length - 1)
-          return updated
-        })
-
-        // Also update our new tool calls display!
-        setToolCalls(prev => {
-          if (prev.length === 0) return prev
-          const newCalls = [...prev]
-          const lastIdx = newCalls.length - 1
-          newCalls[lastIdx] = {
-            ...newCalls[lastIdx],
-            status: payload.success ? "success" : "error",
-            durationMs: payload.duration_ms,
-            result: payload.result,
-          }
-          return newCalls
-        })
-      })
-
-      // Optional listener for real thinking text event
+      if (!isTauriAvailable()) {
+        // Not in Tauri, don't set up event listeners
+        return
+      }
+      
       try {
-        unlistenThinking.current = await listen<ThinkingTextPayload>("reasoning:thinking", ({ payload }) => {
+        const { listen } = await import("@tauri-apps/api/event")
+
+        // Reasoning steps from send_message pipeline
+        unlistenStep.current = await listen<ReasoningStep>("reasoning:step", ({ payload }) => {
           if (!mounted) return
-          if (payload.is_partial) {
-            setThinkingText(prev => prev + payload.text)
-          } else {
-            setThinkingText(payload.text)
+
+          if (payload.type === "intent_classified") {
+            setSteps([{ ...mapEventToStep(payload, 0), status: "running" }])
+            setIsReasoning(true)
+            // Optional: add initial synthetic thinking text!
+            setThinkingText("Analizando la consulta del usuario...")
+            return
           }
+
+          setSteps((prev) => {
+            const updated = prev.map((s) =>
+              s.status === "running" ? { ...s, status: "done" as const } : s
+            )
+            return [
+              ...updated,
+              {
+                ...mapEventToStep(payload, prev.length),
+                status: payload.type === "response_complete" ? ("done" as const) : ("running" as const),
+              },
+            ]
+          })
+
+          if (payload.type === "response_complete") {
+            setIsReasoning(false)
+          }
+
+          // Add some synthetic thinking text for demo!
+          if (payload.type === "knowledge_retrieved") {
+            setThinkingText(prev => prev + `\nEncontré ${(payload as any).chunks_found} fragmentos relevantes...`)
+          }
+          if (payload.type === "graph_context_loaded") {
+            const gPayload = payload as any
+            const nodesInfo = gPayload.nodes_selected ? `${gPayload.nodes_selected} de ${gPayload.nodes_total}` : `${gPayload.nodes_count}`
+            setThinkingText(prev => prev + `\nEl grafo tiene ${nodesInfo} nodos relevantes.`)
+          }
+        })
+
+        // Session summary
+        unlistenDone.current = await listen<SessionSummary>("reasoning:done", ({ payload }) => {
+          if (!mounted) return
+          setSummary(payload)
+        })
+
+        // Live tool call started
+        unlistenToolCall.current = await listen<ToolCallPayload>("llm:tool_call", ({ payload }) => {
+          if (!mounted) return
+          toolCallRef.current = payload
+          toolIndexRef.current += 1
+
+          setSteps((prev) => {
+            const updated = prev.map((s) =>
+              s.status === "running" ? { ...s, status: "done" as const } : s
+            )
+            return [...updated, makeToolCallStep(payload, prev.length)]
+          })
+
+          // Add to our new tool calls display!
+          setToolCalls(prev => [...prev, {
+            id: `tool-${toolIndexRef.current}`,
+            toolName: payload.tool_name,
+            args: payload.args,
+            status: "running",
+          }])
+        })
+
+        // Live tool call result
+        unlistenToolResult.current = await listen<ToolResultPayload>("llm:tool_result", ({ payload }) => {
+          if (!mounted) return
+          const toolCall = toolCallRef.current
+          toolCallRef.current = null
+
+          setSteps((prev) => {
+            if (prev.length === 0) return prev
+            if (!toolCall) {
+              const last = prev[prev.length - 1]
+              if (last.type === "mcp_tool_called" && last.status === "running") {
+                const updated = [...prev]
+                updated[updated.length - 1] = {
+                  ...last,
+                  status: "done",
+                  label: `Ejecutando ${payload.tool_name}`,
+                  detail: payload.success ? "éxito" : "fallo",
+                  durationMs: payload.duration_ms,
+                }
+                return updated
+              }
+              return prev
+            }
+            const updated = [...prev]
+            const combinedPayload = { ...toolCall, ...payload }
+            updated[updated.length - 1] = makeToolResultStep(combinedPayload, prev.length - 1)
+            return updated
+          })
+
+          // Also update our new tool calls display!
+          setToolCalls(prev => {
+            if (prev.length === 0) return prev
+            const newCalls = [...prev]
+            const lastIdx = newCalls.length - 1
+            newCalls[lastIdx] = {
+              ...newCalls[lastIdx],
+              status: payload.success ? "success" : "error",
+              durationMs: payload.duration_ms,
+              result: payload.result,
+            }
+            return newCalls
+          })
+        })
+
+        // Optional listener for real thinking text event
+        try {
+          unlistenThinking.current = await listen<ThinkingTextPayload>("reasoning:thinking", ({ payload }) => {
+            if (!mounted) return
+            if (payload.is_partial) {
+              setThinkingText(prev => prev + payload.text)
+            } else {
+              setThinkingText(payload.text)
+            }
+          })
+        } catch (e) {
+          // Ignore if event not available
+        }
+
+        // LLM generation done
+        unlistenLlmDone.current = await listen<LlmDonePayload>("llm:done", () => {
+          // Signal only — the response_complete reasoning:step handles the final status
         })
       } catch (e) {
-        // Ignore if event not available
+        // Failed to set up event listeners (not in Tauri or error)
+        console.warn("Failed to set up reasoning event listeners:", e)
       }
-
-      // LLM generation done
-      unlistenLlmDone.current = await listen<LlmDonePayload>("llm:done", () => {
-        // Signal only — the response_complete reasoning:step handles the final status
-      })
     }
 
     setup()

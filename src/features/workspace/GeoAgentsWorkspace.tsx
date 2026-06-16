@@ -11,6 +11,7 @@ import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { AgentsPage } from "@/features/workspace/agents/AgentsPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
+
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
 type GeoAgentsWorkspaceProps = {

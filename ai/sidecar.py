@@ -176,9 +176,103 @@ def _update_memory_scores(args) -> None:
     })
 
 
+def _audio_transcribe(args) -> None:
+    """Transcribe audio a texto usando OpenAI Whisper API."""
+    import base64
+    import requests
+    import tempfile
+    import os
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        _err("OPENAI_API_KEY no esta configurado")
+
+    audio_base64 = args.audio_base64
+    mime_type = args.mime_type or "audio/webm"
+
+    # Decodificar base64 a bytes
+    try:
+        audio_bytes = base64.b64decode(audio_base64)
+    except Exception as e:
+        _err(f"Error decodificando audio: {e}")
+
+    # Guardar en archivo temporal
+    suffix = ".webm" if "webm" in mime_type else ".mp4" if "mp4" in mime_type else ".wav"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_file.write(audio_bytes)
+        temp_file_path = temp_file.name
+
+    try:
+        # Llamar a OpenAI Whisper API
+        with open(temp_file_path, "rb") as f:
+            response = requests.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                files={"file": f},
+                data={"model": "whisper-1"},
+                timeout=60
+            )
+
+        response.raise_for_status()
+        data = response.json()
+        _print({
+            "status": "ok",
+            "text": data.get("text", ""),
+            "language": data.get("language"),
+        })
+    except Exception as e:
+        _err(f"Error en transcripcion: {e}")
+    finally:
+        # Limpiar archivo temporal
+        try:
+            os.unlink(temp_file_path)
+        except:
+            pass
+
+
+def _audio_synthesize(args) -> None:
+    """Sintetiza texto a audio usando OpenAI TTS API."""
+    import base64
+    import requests
+    import os
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        _err("OPENAI_API_KEY no esta configurado")
+
+    text = args.text
+    voice = args.voice or "alloy"
+    speed = float(args.speed) if args.speed else 1.0
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/audio/speech",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": "tts-1",
+                "input": text,
+                "voice": voice,
+                "speed": speed,
+            },
+            timeout=60
+        )
+
+        response.raise_for_status()
+        audio_bytes = response.content
+        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        _print({
+            "status": "ok",
+            "audio_base64": audio_base64,
+            "mime_type": "audio/mpeg",
+        })
+    except Exception as e:
+        _err(f"Error en sintesis: {e}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Geo Agents AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords", "update_memory_scores"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords", "update_memory_scores", "audio_transcribe", "audio_synthesize"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -202,6 +296,12 @@ def main() -> None:
     p.add_argument("--max_results", type=int, default=10)
     p.add_argument("--search_depth", default="standard", choices=["standard", "deep"])
     p.add_argument("--threshold", type=float, default=0.3)
+    # Parametros para audio
+    p.add_argument("--audio_base64", default="")
+    p.add_argument("--mime_type", default="")
+    p.add_argument("--text", default="")
+    p.add_argument("--voice", default="")
+    p.add_argument("--speed", default="")
     args = p.parse_args()
 
     dispatch = {
@@ -219,6 +319,8 @@ def main() -> None:
         "extract_shapefile": _extract_shapefile,
         "extract_keywords": _extract_keywords,
         "update_memory_scores": _update_memory_scores,
+        "audio_transcribe": _audio_transcribe,
+        "audio_synthesize": _audio_synthesize,
     }
 
     handler = dispatch.get(args.action)

@@ -48,6 +48,7 @@ export function CommandPalette({ query, onSelect, onClose, containerRef }: Comma
     { id: "attach-file", group: "Contexto", label: "Adjuntar archivo", description: "Sube un documento para usar en esta conversación", icon: "Paperclip", shortcut: null, action: () => {} },
     { id: "attach-asset", group: "Contexto", label: "Adjuntar asset indexado", description: "Busca y adjunta un asset del catálogo", icon: "Database", shortcut: null, action: () => {} },
     { id: "use-graph", group: "Contexto", label: "Usar grafo como contexto", description: "Incluye nodos del grafo de conocimiento en el prompt", icon: "GitFork", shortcut: null, action: () => {} },
+    { id: "toggle-coding", group: "Modo", label: "Activar Coding Agent", description: "Activa el modo de creación de proyectos", icon: "Zap", shortcut: null, action: () => {} },
     { id: "new-chat", group: "Chat", label: "Nuevo chat", description: "Empieza una conversación nueva", icon: "Plus", shortcut: "N", action: () => {} },
     { id: "clear-chat", group: "Chat", label: "Limpiar conversación", description: "Borra los mensajes de esta sesión", icon: "Trash2", shortcut: null, action: () => {} },
     { id: "export-chat", group: "Chat", label: "Exportar conversación", description: "Descarga la conversación como Markdown", icon: "Download", shortcut: null, action: () => {} },

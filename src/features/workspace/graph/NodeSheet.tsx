@@ -16,7 +16,6 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react"
-import { invoke } from "@tauri-apps/api/core"
 import { Button } from "@/components/ui/Button"
 import {
   Sheet,
@@ -29,6 +28,22 @@ import {
 import { cn } from "@/lib/utils"
 import { nodeColor, nodeTailwind, nodeTypeLabel } from "./graph-colors"
 import type { GraphEdge, GraphNode, GraphNodeType } from "@/types/data"
+
+/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
+function isTauriAvailable(): boolean {
+  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
+}
+
+/** Obtains invoke function safely, returning null if Tauri isn't available */
+async function getInvoke() {
+  if (!isTauriAvailable()) return null
+  try {
+    const { invoke } = await import("@tauri-apps/api/core")
+    return invoke
+  } catch {
+    return null
+  }
+}
 
 export function nodeIcon(type: GraphNodeType) {
   return {
@@ -85,6 +100,11 @@ export function NodeSheet({
       : 0
 
   const handleDelete = async () => {
+    const invoke = await getInvoke()
+    if (!invoke) {
+      console.warn("Tauri not available, cannot delete node")
+      return
+    }
     setDeleting(true)
     try {
       await invoke("delete_graph_node", { id: node.id, force: false })
@@ -99,6 +119,11 @@ export function NodeSheet({
   }
 
   const handleTogglePin = async () => {
+    const invoke = await getInvoke()
+    if (!invoke) {
+      console.warn("Tauri not available, cannot toggle pin")
+      return
+    }
     try {
       await invoke("pin_node", { id: node.id, pinned: !node.pinned })
       onNodePin?.(node.id, !node.pinned)

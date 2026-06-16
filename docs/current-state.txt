@@ -1,0 +1,41 @@
+# GeoNexus Current Implementation Status - 2026-06-16
+
+## ✅ What We've Implemented So Far
+
+### 1. Project Structure Improvements
+- **Split large components**:
+  - Extracted `ToolMenu.tsx` from `ChatComposer.tsx`
+  - Extracted `AttachmentChips.tsx` from `ChatComposer.tsx`
+  - Both components are now independent and easier to maintain
+
+### 2. Workspace IDE Panel
+- (Removed from sidebar navigation, now replaced by Coding Agent Panel)
+
+### 3. Coding Agent Implementation - Complete
+- **Updated Type Definitions**: `src/types/coding-agent.ts` with:
+  - `CodingPhase` for managing agent state (idle/clarifying/planning/building/preview/error)
+  - `CodingStep` with label, status, duration, details
+  - `FileNode` with status (pending/creating/done/error)
+  - `CodingPlan` and `ClarifyingQuestion`
+- **Coding Agent Context**: `src/contexts/CodingAgentContext.tsx` cleaned up, mock data removed, proper state management
+- **New UI Components Created**:
+  - `CodingAgentTimeline.tsx`: Animated timeline displaying steps, statuses, details (Trae-style)
+  - `CodingAgentFileExplorer.tsx`: Interactive file tree with expand/collapse, file status indicators
+  - `CodingAgentCodeViewer.tsx`: Simple code viewer for selected file
+  - `CodingAgentPreview.tsx`: Preview panel with tabs, preview/code
+  - `CodingAgentPlanCard.tsx`: Plan card with confirm/edit actions
+  - `CodingAgentPanel.tsx`: Redesigned main panel combining all features
+- **Added UI Dependencies**:
+  - Installed `@radix-ui/react-tabs`
+  - Copied `tabs.tsx` and `card.tsx` from Geo-Agents
+  - Updated `src/components/ui/index.ts`
+- **Integrated**:
+  - Added Coding Agent toggle in ToolMenu (Herramientas GIS section)
+  - Added /toggle-coding slash command
+  - Added Coding Agent Panel on right in ChatPanel
+- **Removed**:
+  - Workspace IDE from sidebar
+  - Workspace IDE toggle from navigation
+  - Workspace IDE Panel
+  - /open-ide slash command
+  - Old unused files (CodingThoughtBubble.tsx, FileTreeExplorer.tsx, CodeFileEditor.tsx, RealTimePreview.tsx)

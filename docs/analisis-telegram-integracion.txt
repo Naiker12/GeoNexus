@@ -1,0 +1,71 @@
+
+================================================================================
+ANÁLISIS COMPLETO: INTEGRACIÓN DE TELEGRAM EN GEONEXUS
+================================================================================
+
+1. ARCHIVOS INVOLUCRADOS
+================================================================================
+- src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx
+- src/features/workspace/configuration/configuration-types.ts
+- src/features/workspace/configuration/configuration-data.ts
+- src/features/workspace/configuration/ConfigurationDialog.tsx
+- crates/geonexus-db/migrations/20260613000002_app_settings.sql
+
+2. ESTADO ACTUAL
+================================================================================
+✅ UI de configuración completa (TelegramIntegrationPanel):
+   - Campo para Bot Token
+   - Selector de modo de respuesta (text/sources/full)
+   - Lista de usuarios permitidos
+   - Prueba de conexión via API /getMe
+✅ Almacenamiento en localStorage (clave: "geonexus.telegram")
+✅ Tabla `app_settings` en DB lista para guardar config
+❌ SIN BACKEND IMPLEMENTADO (Rust/Tauri):
+   - No hay polling de updates de Telegram
+   - No hay manejo de mensajes entrantes
+   - No hay envío de respuestas al chat de Telegram
+❌ Sin integración con el motor de chat de GeoNexus
+❌ Configuración solo en localStorage, no en DB
+
+3. ARQUITECTURA PROPUESTA
+================================================================================
+
+Frontend (React):
+- Mover configuración de localStorage a DB (usar app_settings)
+- UI para ver estado del bot en tiempo real
+
+Backend (Rust/Tauri):
+- Tarea asincrónica para polling de Telegram API (getUpdates)
+- Manejo de autenticación de usuarios (allowedUsers)
+- Integración con el sistema de chat de GeoNexus (send_message)
+- Envío de respuestas a Telegram (sendMessage, sendPhoto, etc.)
+- Persistencia de configuración en DB (app_settings)
+
+4. ARCHIVOS A MODIFICAR/CREAR
+================================================================================
+Modificar:
+- src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx: usar DB en lugar de localStorage
+- crates/geonexus-tauri/src/commands/mod.rs: agregar comandos Telegram
+
+Crear:
+- crates/geonexus-tauri/src/commands/telegram.rs: comandos Rust para Telegram
+- crates/geonexus-core/src/telegram/mod.rs: lógica de negocio
+- src/api/telegram.ts: funciones API para frontend
+
+5. FLUJO DE USO
+================================================================================
+1. Usuario configura bot token en la UI
+2. Backend inicia polling de Telegram API
+3. Usuario envía mensaje al bot en Telegram
+4. Backend valida usuario → envía mensaje a GeoNexus
+5. GeoNexus genera respuesta → backend la envía a Telegram
+6. Usuario recibe respuesta en el chat
+
+6. TECNOLOGÍAS
+================================================================================
+- Rust: teloxide crate (SDK oficial para Telegram Bot API) / reqwest
+- Base de datos: tabla app_settings ya existente
+
+================================================================================
+FIN
+================================================================================

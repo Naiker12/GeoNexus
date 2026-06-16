@@ -1,10 +1,25 @@
 import * as React from "react"
-import { BotIcon, CheckIcon, Link2Icon, RefreshCwIcon, UserIcon, XCircleIcon } from "lucide-react"
+import {
+  BotIcon,
+  CheckIcon,
+  Link2Icon,
+  RefreshCwIcon,
+  XCircleIcon,
+  PlayIcon,
+  StopCircleIcon,
+} from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/Button"
 import { Field } from "@/features/workspace/configuration/settings-ui"
-
-const STORAGE_KEY = "geonexus.telegram"
+import {
+  saveTelegramConfig,
+  loadTelegramConfig,
+  startTelegramPolling,
+  stopTelegramPolling,
+  getTelegramStatus,
+  type TelegramConfig as ApiTelegramConfig,
+} from "@/api/telegram"
 
 type TelegramConfig = {
   botToken: string
@@ -13,6 +28,7 @@ type TelegramConfig = {
   allowedUsers: string
   status: "disconnected" | "connecting" | "active" | "error"
   botName: string
+  isPolling: boolean
 }
 
 const defaultConfig: TelegramConfig = {
@@ -22,35 +38,70 @@ const defaultConfig: TelegramConfig = {
   allowedUsers: "",
   status: "disconnected",
   botName: "",
-}
-
-function loadConfig(): TelegramConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return defaultConfig
-    return { ...defaultConfig, ...JSON.parse(raw) }
-  } catch {
-    return defaultConfig
-  }
-}
-
-function saveConfig(config: TelegramConfig) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
-  } catch {}
+  isPolling: false,
 }
 
 export function TelegramIntegrationPanel() {
-  const [config, setConfig] = React.useState<TelegramConfig>(loadConfig)
+  const [config, setConfig] = React.useState<TelegramConfig>(defaultConfig)
+  const [loading, setLoading] = React.useState(true)
   const [testing, setTesting] = React.useState(false)
   const [testError, setTestError] = React.useState<string | null>(null)
+  const [startingPolling, setStartingPolling] = React.useState(false)
+  const [stoppingPolling, setStoppingPolling] = React.useState(false)
 
-  const updateConfig = (patch: Partial<TelegramConfig>) => {
+  React.useEffect(() => {
+    loadData()
+  }, [])
+
+  async function loadData() {
+    try {
+      const savedConfig = await loadTelegramConfig()
+      if (savedConfig) {
+        setConfig({
+          ...defaultConfig,
+          botToken: savedConfig.botToken,
+          responseMode: savedConfig.responseMode as any,
+          allowedUsers: savedConfig.allowedUsers.join(", "),
+        })
+      }
+      const status = await getTelegramStatus()
+      if (status.botName) {
+        setConfig((prev) => ({
+          ...prev,
+          botName: status.botName,
+          status: status.isRunning ? "active" : "disconnected",
+          isPolling: status.isRunning,
+        }))
+      }
+    } catch (e) {
+      console.error("Error al cargar config de Telegram:", e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const updateConfig = async (patch: Partial<TelegramConfig>) => {
     setConfig((prev) => {
       const next = { ...prev, ...patch }
-      saveConfig(next)
+      saveToDb(next)
       return next
     })
+  }
+
+  async function saveToDb(cfg: TelegramConfig) {
+    try {
+      const allowedUsersArray = cfg.allowedUsers
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+      await saveTelegramConfig({
+        botToken: cfg.botToken,
+        allowedUsers: allowedUsersArray,
+        responseMode: cfg.responseMode,
+      })
+    } catch (e) {
+      console.error("Error al guardar config:", e)
+    }
   }
 
   const handleTest = async () => {
@@ -68,12 +119,14 @@ export function TelegramIntegrationPanel() {
       )
       const data = await res.json()
       if (data.ok) {
+        const botName = data.result.username
+          ? `@${data.result.username}`
+          : data.result.first_name
         updateConfig({
           status: "active",
-          botName: data.result.username
-            ? `@${data.result.username}`
-            : data.result.first_name,
+          botName,
         })
+        toast.success("Conexión exitosa!")
       } else {
         setTestError(data.description || "Token inválido")
         updateConfig({ status: "error" })
@@ -85,6 +138,53 @@ export function TelegramIntegrationPanel() {
     } finally {
       setTesting(false)
     }
+  }
+
+  const handleStartPolling = async () => {
+    setStartingPolling(true)
+    try {
+      const botName = await startTelegramPolling()
+      updateConfig({
+        isPolling: true,
+        botName: botName.startsWith("@") ? botName : `@${botName}`,
+        status: "active",
+      })
+      toast.success("Bot iniciado!")
+    } catch (e) {
+      toast.error("Error al iniciar el bot")
+      console.error(e)
+    } finally {
+      setStartingPolling(false)
+    }
+  }
+
+  const handleStopPolling = async () => {
+    setStoppingPolling(true)
+    try {
+      await stopTelegramPolling()
+      updateConfig({ isPolling: false, status: "disconnected" })
+      toast.success("Bot detenido")
+    } catch (e) {
+      toast.error("Error al detener el bot")
+      console.error(e)
+    } finally {
+      setStoppingPolling(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="grid gap-4">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Integración de Telegram
+          </h3>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground">
+            Cargando...
+          </p>
+        </div>
+      </div>
+    )
   }
 
   const statusColor = {
@@ -115,9 +215,11 @@ export function TelegramIntegrationPanel() {
 
       <div className="rounded-lg border border-border bg-background/75 p-3">
         <div className="mb-3 flex items-center gap-2">
-          <span className={`size-2.5 rounded-full ${statusColor[config.status]}`} />
-          <span className="text-sm font-medium">{statusLabel[config.status]}</span>
-          {config.status === "active" && config.botName && (
+          <span className={`size-2.5 rounded-full ${statusColor[config.isPolling ? "active" : config.status]}`} />
+          <span className="text-sm font-medium">
+            {config.isPolling ? "Ejecutándose" : statusLabel[config.status]}
+          </span>
+          {config.botName && (
             <span className="text-xs text-muted-foreground">
               · {config.botName}
             </span>
@@ -177,14 +279,20 @@ export function TelegramIntegrationPanel() {
             </div>
           )}
 
-          {config.status === "active" && (
+          {config.status === "active" && !config.isPolling && (
             <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
               <CheckIcon className="mt-0.5 size-4 shrink-0" />
               <span>Conectado como: {config.botName}</span>
             </div>
           )}
+          {config.isPolling && (
+            <div className="flex items-start gap-2 rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-600">
+              <CheckIcon className="mt-0.5 size-4 shrink-0" />
+              <span>Bot en ejecución: {config.botName}</span>
+            </div>
+          )}
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-1 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -198,6 +306,35 @@ export function TelegramIntegrationPanel() {
               )}
               {testing ? "Probando..." : "Probar conexión"}
             </Button>
+            {config.isPolling ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleStopPolling}
+                disabled={stoppingPolling}
+              >
+                {stoppingPolling ? (
+                  <RefreshCwIcon className="size-3.5 animate-spin" />
+                ) : (
+                  <StopIcon className="size-3.5" />
+                )}
+                {stoppingPolling ? "Deteniendo..." : "Detener bot"}
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleStartPolling}
+                disabled={startingPolling || config.status !== "active"}
+              >
+                {startingPolling ? (
+                  <RefreshCwIcon className="size-3.5 animate-spin" />
+                ) : (
+                  <PlayIcon className="size-3.5" />
+                )}
+                {startingPolling ? "Iniciando..." : "Iniciar bot"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
