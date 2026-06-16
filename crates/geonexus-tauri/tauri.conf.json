@@ -49,13 +49,13 @@
       "../../ai/requirements.txt",
       "../../ai/web_search.py",
       "../../ai/geonexus_ai/**/*.py",
-      "../../ai/context/**",
-      "../../ai/docs/**",
+      "../../ai/context/**/*",
+      "../../ai/docs/**/*",
       "../../ai/extractors/**/*.py",
-      "../../ai/gis/**",
+      "../../ai/gis/**/*",
       "../../ai/graph/**/*.py",
       "../../ai/llm/**/*.py",
-      "../../ai/memory/**",
+      "../../ai/memory/**/*",
       "../../ai/pipeline/**/*.py",
       "../../ai/recall/**/*.py"
     ]
