@@ -23,6 +23,11 @@ fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<
     command.arg(&sidecar_script).args(args).current_dir(&root_path);
     command.env("PYTHONIOENCODING", "utf-8");
     command.env("PYTHONUTF8", "1");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     if let Some((key, value)) = env_var {
         command.env(key, value);
     }
@@ -64,6 +69,11 @@ pub fn run_sidecar_streaming(
     command.arg(&sidecar_script).args(args).current_dir(&root_path);
     command.env("PYTHONIOENCODING", "utf-8");
     command.env("PYTHONUTF8", "1");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     command.stdout(std::process::Stdio::piped());
     command.stderr(std::process::Stdio::piped());
 

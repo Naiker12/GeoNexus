@@ -107,6 +107,11 @@ pub async fn rebuild_knowledge_graph(
         let _ = std::fs::write(&chunks_file, &chunks_str);
 
         let mut cmd = std::process::Command::new(&python_exe);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
         cmd.arg(&sidecar_script)
             .arg("--action")
             .arg("extract_graph_entities")

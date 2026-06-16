@@ -113,6 +113,11 @@ pub async fn index_document(
 
     // Invocar al sidecar de Python para indexar el archivo
     let mut cmd = std::process::Command::new(&python_exe);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     cmd.arg(&sidecar_script)
         .arg("--action")
         .arg("index")
