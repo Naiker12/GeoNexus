@@ -1,8 +1,8 @@
 packages:
   - "."
 
-allowBuilds:
-  - esbuild
+onlyBuiltDependencies:
   - core-js
+  - esbuild
   - msw
   - "@tauri-apps/cli"
