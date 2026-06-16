@@ -40,9 +40,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install frontend dependencies
-        run: |
-          pnpm install --ignore-scripts=false
-          pnpm approve-builds
+        run: pnpm install --ignore-scripts=false
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
