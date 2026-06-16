@@ -44,12 +44,49 @@ jobs:
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
+        id: tauri-build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'GeoNexus ${{ github.ref_name }}'
           releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false
+          releaseDraft: true
           prerelease: true
           args: ''
+
+      - name: Rename artifacts (remove version number)
+        if: steps.tauri-build.outputs.artifactPaths != ''
+        shell: bash
+        run: |
+          for file in ${{ steps.tauri-build.outputs.artifactPaths }}; do
+            # Extract filename and extension
+            filename=$(basename "$file")
+            dir=$(dirname "$file")
+            
+            # Rename logic for different file types
+            if [[ "$filename" =~ ^GeoNexus_.*_x64_en-US\.msi$ ]]; then
+              mv "$file" "$dir/GeoNexus_x64_en-US.msi"
+            elif [[ "$filename" =~ ^GeoNexus_.*_aarch64_en-US\.msi$ ]]; then
+              mv "$file" "$dir/GeoNexus_aarch64_en-US.msi"
+            elif [[ "$filename" =~ ^GeoNexus_.*_x64\.dmg$ ]]; then
+              mv "$file" "$dir/GeoNexus_x64.dmg"
+            elif [[ "$filename" =~ ^GeoNexus_.*_aarch64\.dmg$ ]]; then
+              mv "$file" "$dir/GeoNexus_aarch64.dmg"
+            elif [[ "$filename" =~ ^GeoNexus_.*_amd64\.AppImage$ ]]; then
+              mv "$file" "$dir/GeoNexus_amd64.AppImage"
+            fi
+          done
+
+      - name: Upload renamed artifacts
+        if: steps.tauri-build.outputs.artifactPaths != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.tauri-build.outputs.releaseUploadUrl }}
+          asset_path: |
+            ${{ steps.tauri-build.outputs.artifactPaths }}
+          asset_name: |
+            ${{ steps.tauri-build.outputs.artifactPaths }}
+          asset_content_type: application/octet-stream
