@@ -62,12 +62,15 @@ export function GraphCanvas({
       return
     }
 
+    const nodeIds = new Set(nodes.map((n) => n.id))
     const simNodes = nodes.map((n) => ({ ...n, x: n.x, y: n.y }))
-    const simLinks = edges.map((e) => ({
-      source: e.source as string,
-      target: e.target as string,
-      strength: e.strength / 100,
-    }))
+    const simLinks = edges
+      .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
+      .map((e) => ({
+        source: e.source,
+        target: e.target,
+        strength: e.strength / 100,
+      }))
 
     const simulation = forceSimulation(simNodes as any)
       .force(

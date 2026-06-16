@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { cn } from "@/lib/utils"
 import { updateNodePosition } from "@/api/data"
 import type { GraphNode, GraphEdge, GraphNodeType } from "@/types/data"
@@ -115,6 +116,7 @@ export function GraphPage() {
   }, [nodes])
 
   return (
+    <ErrorBoundary>
     <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-hidden px-3 py-3 sm:px-5 sm:py-4">
       <div className="mx-auto flex size-full max-w-[110rem] flex-col gap-3">
         <GraphHeader
@@ -254,6 +256,7 @@ export function GraphPage() {
         }}
       />
     </section>
+    </ErrorBoundary>
   )
 }
 

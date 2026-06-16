@@ -27,11 +27,13 @@ async function invokeOrFallback<T>(
   fallback: T
 ): Promise<T> {
   if (!isTauriAvailable()) {
+    console.debug(`[invokeOrFallback] Tauri no disponible, devolviendo fallback para ${command}`)
     return fallback
   }
   try {
     return await invoke<T>(command, args)
-  } catch {
+  } catch (e) {
+    console.error(`[invokeOrFallback] Error en ${command}:`, e)
     return fallback
   }
 }

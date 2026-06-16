@@ -93,8 +93,28 @@ impl DataRepository {
         Ok(())
     }
 
+    /// Elimina aristas cuyo source o target no existe o está soft-deleted.
+    pub async fn cleanup_orphan_edges(&self, project_id: &str) -> Result<u64, String> {
+        let result = sqlx::query(
+            "DELETE FROM graph_edges
+             WHERE project_id = ?
+             AND (source NOT IN (SELECT id FROM graph_nodes WHERE project_id = ? AND deleted_at IS NULL)
+               OR target NOT IN (SELECT id FROM graph_nodes WHERE project_id = ? AND deleted_at IS NULL))"
+        )
+        .bind(project_id)
+        .bind(project_id)
+        .bind(project_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Error limpiando aristas huérfanas: {e}"))?;
+        Ok(result.rows_affected())
+    }
+
     /// Obtiene todas las aristas/relaciones del grafo para un proyecto.
+    /// Limpia automáticamente aristas huérfanas antes de retornar.
     pub async fn list_graph_edges(&self, project_id: &str) -> Result<Vec<GraphEdge>, String> {
+        let _ = self.cleanup_orphan_edges(project_id).await;
+
         let rows = sqlx::query("SELECT * FROM graph_edges WHERE project_id = ?")
             .bind(project_id)
             .fetch_all(&self.pool)
@@ -108,8 +128,13 @@ impl DataRepository {
         Ok(list)
     }
 
-    /// Vacía todo el grafo de un proyecto (nodos y aristas asociados se eliminan por CASCADE).
+    /// Vacía todo el grafo de un proyecto (nodos y aristas).
     pub async fn clear_graph(&self, project_id: &str) -> Result<(), String> {
+        sqlx::query("DELETE FROM graph_edges WHERE project_id = ?")
+            .bind(project_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Error limpiando aristas: {e}"))?;
         sqlx::query("DELETE FROM graph_nodes WHERE project_id = ?")
             .bind(project_id)
             .execute(&self.pool)

@@ -30,6 +30,21 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["crates/geonexus-tauri/icons/icon.ico"]
+    "icon": ["crates/geonexus-tauri/icons/icon.ico"],
+    "resources": [
+      "ai/sidecar.py",
+      "ai/requirements.txt",
+      "ai/web_search.py",
+      "ai/geonexus_ai/**/*.py",
+      "ai/context/**",
+      "ai/docs/**",
+      "ai/extractors/**/*.py",
+      "ai/gis/**",
+      "ai/graph/**/*.py",
+      "ai/llm/**/*.py",
+      "ai/memory/**",
+      "ai/pipeline/**/*.py",
+      "ai/recall/**/*.py"
+    ]
   }
 }

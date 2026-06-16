@@ -125,6 +125,21 @@ pub fn run_sidecar_streaming(
 }
 
 pub fn project_root() -> PathBuf {
+    // 1) App instalada: los recursos empaquetados están en {exe_dir}/resources/
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let candidates = [
+                exe_dir.join("resources"),             // Tauri 2 bundle (Windows MSI)
+                exe_dir.to_path_buf(),                  // portable / desarrollo
+            ];
+            for base in &candidates {
+                if base.join("ai").join("sidecar.py").exists() {
+                    return base.clone();
+                }
+            }
+        }
+    }
+    // 2) Desarrollo: caminar hacia arriba desde el directorio actual
     let mut dir = std::env::current_dir().unwrap_or_default();
     loop {
         if dir.join("ai").join("sidecar.py").exists() {
