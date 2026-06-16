@@ -36,6 +36,9 @@ jobs:
           pnpm install --no-frozen-lockfile
           pnpm rebuild
 
+      - name: Build frontend
+        run: pnpm run build
+
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -47,4 +50,5 @@ jobs:
           releaseDraft: false
           prerelease: true
           projectPath: ./crates/geonexus-tauri
+          beforeBuildCommand: ''
           args: ''
