@@ -46,4 +46,5 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: true
+          projectPath: ./crates/geonexus-tauri
           args: ''
