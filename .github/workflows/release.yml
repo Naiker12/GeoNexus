@@ -33,8 +33,9 @@ jobs:
       - name: Install frontend dependencies
         run: |
           pnpm config set unsafe-perm true
+          pnpm install --no-frozen-lockfile || true
+          pnpm approve-builds core-js esbuild msw
           pnpm install --no-frozen-lockfile
-          pnpm rebuild
 
       - name: Build frontend
         run: pnpm run build
