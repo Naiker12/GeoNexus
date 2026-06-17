@@ -320,11 +320,13 @@ export function useChatSession(
           stats: response.message.stats,
           knowledgeSteps: finalKnowledgeSteps,
           chunk_references: response.chunks_used,
+          // Always include final content to avoid leaving partial streamed text
+          content: response.message?.content ?? "",
         }
+
         if (webSearchEnabled) {
           updateAssistantMessage(assistantMsgId, {
             ...baseUpdate,
-            content: response.message.content,
             isSearching: false,
             currentSearchQuery: response.search_query ?? clean,
             research_sources: (response.research_sources ?? []),
