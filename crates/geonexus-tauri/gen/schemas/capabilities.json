@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Permisos base para la ventana principal de Geo Agents.","local":true,"windows":["main"],"permissions":["core:default","dialog:default","opener:default"]}}
+{"default":{"identifier":"default","description":"Permisos base para la ventana principal de Geo Agents.","local":true,"windows":["main"],"permissions":["core:default","dialog:default","opener:default","updater:allow-check"]}}

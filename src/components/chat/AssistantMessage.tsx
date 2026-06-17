@@ -51,13 +51,13 @@ export function AssistantMessage({
   const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
   return (
-    <div className="group flex items-start gap-2 py-0.5">
+    <div className="group flex items-start gap-2 py-0.5 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
         <GeoAgentsIcon className="size-3.5" variant="nexus" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="mb-0.5">
-            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+            <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase opacity-70">
               Geo Agents
             </span>
           </div>

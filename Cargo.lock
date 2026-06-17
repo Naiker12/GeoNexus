@@ -1808,6 +1808,7 @@ dependencies = [
  "geonexus-mcp",
  "notify",
  "notify-rust",
+ "once_cell",
  "rand",
  "reqwest 0.12.28",
  "serde",

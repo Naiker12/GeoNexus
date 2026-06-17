@@ -15,16 +15,22 @@ export function CodingAgentPreview({
   activeFile,
 }: CodingAgentPreviewProps) {
   const [tab, setTab] = React.useState<"preview" | "code">("preview");
+  const [cacheBuster, setCacheBuster] = React.useState<number>(() => Date.now());
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
-  const handleRefresh = () => {
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
-  };
+  const handleRefresh = React.useCallback(() => {
+    setCacheBuster(Date.now());
+  }, []);
 
-  const handleOpenExternal = () => {
+  const handleOpenExternal = React.useCallback(() => {
     if (previewUrl) window.open(previewUrl, "_blank");
-  };
+  }, [previewUrl]);
+
+  const iframeSrc = React.useMemo(() => {
+    if (!previewUrl) return "";
+    const sep = previewUrl.includes("?") ? "&" : "?";
+    return `${previewUrl}${sep}cb=${cacheBuster}`;
+  }, [previewUrl, cacheBuster]);
 
   return (
     <div className="flex flex-col h-full">
@@ -49,10 +55,22 @@ export function CodingAgentPreview({
         <div className="flex items-center gap-1">
           {tab === "preview" && previewUrl && (
             <>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRefresh}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleRefresh}
+                title="Recargar preview"
+              >
                 <RefreshCw className="h-3 w-3" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleOpenExternal}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleOpenExternal}
+                title="Abrir en pestaña externa"
+              >
                 <ExternalLink className="h-3 w-3" />
               </Button>
             </>
@@ -64,10 +82,11 @@ export function CodingAgentPreview({
         <div className="w-full h-full bg-white dark:bg-gray-900">
           {previewUrl ? (
             <iframe
-              src={previewUrl}
+              ref={iframeRef}
+              src={iframeSrc}
               className="w-full h-full border-0"
-              title="App Preview"
-              sandbox="allow-scripts allow-same-origin"
+              title="GeoNexus Agent Preview"
+              sandbox="allow-scripts allow-same-origin allow-forms"
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8">

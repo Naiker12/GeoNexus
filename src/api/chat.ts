@@ -1,137 +1,64 @@
-import type {
-  Conversation,
-  MentionableSourcesResponse,
-  Message,
-  ProjectContext,
-  RecallChunk,
-  SendMessageInput,
-  SendMessageResponse,
-} from "@/types/chat"
+import type { Message, SendMessageInput, SendMessageResponse, Conversation, MentionableSourcesResponse } from "@/types/chat"
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
 function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
 }
 
-/** Obtains invoke function safely, returning null if Tauri isn't available */
-async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+async function getInvoke() {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
-    return tauriInvoke
-  } catch (e) {
-    console.error('[getInvoke] Could not import invoke:', e)
+    const { invoke } = await import("@tauri-apps/api/core")
+    return invoke
+  } catch {
     return null
   }
 }
 
-async function invokeOrFallback<T>(
-  command: string,
-  args: Record<string, unknown>,
-  fallback: T
-): Promise<T> {
+export async function sendMessage(input: SendMessageInput): Promise<SendMessageResponse> {
   const invoke = await getInvoke()
-  if (!invoke) {
-    console.debug(`[invokeOrFallback] Tauri no disponible, devolviendo fallback para ${command}`)
-    return fallback
-  }
-  try {
-    return await invoke<T>(command, args)
-  } catch (e) {
-    console.error(`[invokeOrFallback] Error en ${command}:`, e)
-    return fallback
-  }
+  if (!invoke) throw new Error("Tauri no disponible")
+  return invoke<SendMessageResponse>("send_message", { input })
 }
 
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
+export async function listConversations(projectId: string): Promise<Conversation[]> {
   const invoke = await getInvoke()
-  if (!invoke) {
-    throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
-  }
-  try {
-    return await invoke<T>(command, args)
-  } catch (e) {
-    throw new Error(`Error al ejecutar ${command}: ${e}`)
-  }
+  if (!invoke) return []
+  return invoke<Conversation[]>("list_conversations", { projectId })
 }
 
-export async function sendMessage(
-  input: SendMessageInput
-): Promise<SendMessageResponse> {
-  if (!input.project_id.trim()) throw new Error("project_id requerido")
-  if (!input.content.trim()) throw new Error("content requerido")
-  if (!input.provider.trim()) throw new Error("provider requerido")
-  if (!input.model.trim()) throw new Error("model requerido")
-  if (!input.endpoint.trim()) throw new Error("endpoint requerido")
-
-  return invokeOrFallback("send_message", { input }, {
-    conversation_id: "demo-conversation-id",
-    message: {
-      id: "demo-message-id",
-      conversation_id: "demo-conversation-id",
-      role: "assistant",
-      content: "Esto es una respuesta de demostración. Para usar la app completa, ejecútala en el runtime Tauri.",
-      provider: input.provider,
-      model: input.model,
-      timestamp: Date.now(),
-      trace_id: "demo-trace-id",
-      chunks_used: [],
-      nodes_used: [],
-      tool_calls: [],
-      sources: []
-    },
-    session_summary: null,
-    intent: null,
-    research_sources: [],
-    search_query: null
-  })
+export async function listMessages(conversationId: string): Promise<Message[]> {
+  const invoke = await getInvoke()
+  if (!invoke) return []
+  return invoke<Message[]>("list_messages", { conversationId })
 }
 
-export function deleteConversation(conversationId: string): Promise<void> {
-  if (!conversationId.trim()) throw new Error("conversation_id requerido")
-  return invokeOrFallback("delete_conversation", { conversationId }, undefined)
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const invoke = await getInvoke()
+  if (!invoke) return
+  return invoke("delete_conversation", { conversationId })
 }
 
-export function listConversations(projectId: string): Promise<Conversation[]> {
-  if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("list_conversations", { projectId }, [])
-}
-
-export function listMessages(conversationId: string): Promise<Message[]> {
-  if (!conversationId.trim()) throw new Error("conversation_id requerido")
-  return invokeOrFallback("list_messages", { conversationId }, [])
-}
-
-export function getProjectContext(projectId: string): Promise<ProjectContext> {
-  if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_project_context", { projectId }, {
-    toggles: { rag_chunks: true, indexed_assets: true, graph_nodes: true },
-    sources: [],
-    assets: []
-  })
-}
-
-export function recallChunks(
-  projectId: string,
-  query: string,
-  topK = 4
-): Promise<RecallChunk[]> {
-  return invokeOrFallback("recall_chunks", {
-    input: { project_id: projectId, query, top_k: topK },
-  }, [])
-}
-
-export function getMentionableSources(
+export async function getMentionableSources(
   projectId: string,
   query?: string
 ): Promise<MentionableSourcesResponse> {
-  if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_mentionable_sources", { projectId, query }, {
-    assets: [],
-    graph_nodes: [],
-    connectors: []
-  })
+  const invoke = await getInvoke()
+  if (!invoke) return { connectors: [], assets: [], graph_nodes: [] }
+  return invoke<MentionableSourcesResponse>("get_mentionable_sources", { projectId, query })
+}
+
+export async function recallChunks(
+  projectId: string,
+  query: string,
+  limit: number = 5
+): Promise<any[]> {
+  const invoke = await getInvoke()
+  if (!invoke) return []
+  return invoke<any[]>("recall_chunks", { projectId, query, limit })
+}
+
+export async function getProjectContext(projectId: string): Promise<string> {
+  const invoke = await getInvoke()
+  if (!invoke) return ""
+  return invoke<string>("get_project_context", { projectId })
 }

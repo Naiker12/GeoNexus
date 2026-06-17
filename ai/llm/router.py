@@ -15,7 +15,14 @@ OPENAI_COMPATIBLE_PROVIDERS = {
 
 def ping_llm_provider(provider_type: str, base_url: str, model: str = "") -> Dict:
     """Verifica conectividad basica contra un proveedor LLM configurado."""
-    import requests
+    try:
+        import requests
+    except ModuleNotFoundError:
+        yield {
+            "type": "error",
+            "message": "Faltan dependencias Python del sidecar. Ejecuta: pip install -r ai/requirements.txt",
+        }
+        return
 
     started = time.perf_counter()
     provider = provider_type.lower().strip()
@@ -312,6 +319,26 @@ def _normalize_usage(provider: str, data: dict) -> dict | None:
     return data.get("usage")
 
 
+def _stream_done_event(
+    provider: str,
+    model: str,
+    full_content: str,
+    usage: dict | None = None,
+    tool_calls_map: dict | None = None,
+) -> dict:
+    msg = {"role": "assistant", "content": full_content}
+    if tool_calls_map:
+        msg["tool_calls"] = [tool_calls_map[k] for k in sorted(tool_calls_map)]
+    return {
+        "type": "done",
+        "status": "ok",
+        "provider_type": provider,
+        "model": model,
+        "message": msg,
+        "usage": usage,
+    }
+
+
 def chat_llm_provider_stream(
     provider_type: str,
     base_url: str,
@@ -371,13 +398,14 @@ def chat_llm_provider_stream(
                             "total_tokens": (chunk.get("prompt_eval_count", 0) or 0) + (chunk.get("eval_count", 0) or 0),
                         }
                         tool_calls = chunk.get("message", {}).get("tool_calls")
-                        msg = {"role": "assistant", "content": full_content}
-                        if tool_calls:
-                            msg["tool_calls"] = tool_calls
-                        yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
+                        tool_calls_map = {idx: tc for idx, tc in enumerate(tool_calls)} if tool_calls else None
+                        yield _stream_done_event(provider, model, full_content, usage, tool_calls_map)
                         return
                 except json.JSONDecodeError:
                     continue
+            if full_content:
+                yield _stream_done_event(provider, model, full_content)
+                return
 
         elif provider == "openrouter":
             key = api_key or os.getenv("OPENROUTER_API_KEY")
@@ -403,7 +431,8 @@ def chat_llm_provider_stream(
                     continue
                 data_str = line[6:].strip()
                 if data_str == "[DONE]":
-                    continue
+                    yield _stream_done_event(provider, model, full_content, None, tool_calls_map)
+                    return
                 try:
                     chunk = json.loads(data_str)
                     choices = chunk.get("choices", [])
@@ -429,14 +458,14 @@ def chat_llm_provider_stream(
                                 tc_entry["function"]["arguments"] += tc["function"]["arguments"]
                     finish = choices[0].get("finish_reason")
                     if finish is not None:
-                        msg = {"role": "assistant", "content": full_content}
-                        if tool_calls_map:
-                            msg["tool_calls"] = [tool_calls_map[k] for k in sorted(tool_calls_map)]
                         usage = chunk.get("usage")
-                        yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
+                        yield _stream_done_event(provider, model, full_content, usage, tool_calls_map)
                         return
                 except json.JSONDecodeError:
                     continue
+            if full_content or tool_calls_map:
+                yield _stream_done_event(provider, model, full_content, None, tool_calls_map)
+                return
 
         elif provider in OPENAI_COMPATIBLE_PROVIDERS:
             api_key_val = api_key or os.getenv("OPENAI_API_KEY")
@@ -461,7 +490,8 @@ def chat_llm_provider_stream(
                     continue
                 data_str = line[6:].strip()
                 if data_str == "[DONE]":
-                    continue
+                    yield _stream_done_event(provider, model, full_content, None, tool_calls_map)
+                    return
                 try:
                     chunk = json.loads(data_str)
                     choices = chunk.get("choices", [])
@@ -487,14 +517,14 @@ def chat_llm_provider_stream(
                                 tc_entry["function"]["arguments"] += tc["function"]["arguments"]
                     finish = choices[0].get("finish_reason")
                     if finish is not None:
-                        msg = {"role": "assistant", "content": full_content}
-                        if tool_calls_map:
-                            msg["tool_calls"] = [tool_calls_map[k] for k in sorted(tool_calls_map)]
                         usage = chunk.get("usage")
-                        yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
+                        yield _stream_done_event(provider, model, full_content, usage, tool_calls_map)
                         return
                 except json.JSONDecodeError:
                     continue
+            if full_content or tool_calls_map:
+                yield _stream_done_event(provider, model, full_content, None, tool_calls_map)
+                return
 
         elif provider == "anthropic":
             api_key_val = api_key or os.getenv("ANTHROPIC_API_KEY")
@@ -528,11 +558,10 @@ def chat_llm_provider_stream(
                             yield {"type": "delta", "content": text}
                     elif chunk.get("type") == "message_delta":
                         usage = chunk.get("usage")
-                        msg = {"role": "assistant", "content": full_content}
                         stop_reason = chunk.get("delta", {}).get("stop_reason")
                         if stop_reason == "tool_use":
                             pass
-                        yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
+                        yield _stream_done_event(provider, model, full_content, usage)
                         return
                     elif chunk.get("type") == "message_start":
                         pass
@@ -542,6 +571,9 @@ def chat_llm_provider_stream(
                             pass
                 except json.JSONDecodeError:
                     continue
+            if full_content:
+                yield _stream_done_event(provider, model, full_content)
+                return
         else:
             yield {"type": "error", "message": f"Chat streaming no soportado para: {provider_type}"}
             return

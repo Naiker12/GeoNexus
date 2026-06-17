@@ -1,35 +1,232 @@
 use tauri::{AppHandle, Emitter, State};
-use crate::AppState;
-use geonexus_core::telegram::{
-    polling::start_polling_loop,
-    sender::{get_me, send_message},
-    TelegramConfig, Update,
-};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use once_cell::sync::Lazy;
 use std::sync::Mutex;
+use tauri::async_runtime::JoinHandle;
+use crate::AppState;
+use geonexus_core::telegram::polling::start_polling_loop;
+use geonexus_core::telegram::sender::{send_message, get_me};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TelegramStatus {
-    pub is_running: bool,
-    pub bot_name: Option<String>,
-    pub error: Option<String>,
+static TELEGRAM_TASK: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
+static BOT_INFO: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+static LAST_ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+const TELEGRAM_CONFIG_KEY: &str = "telegram_config";
+
+#[derive(Clone, Serialize, Deserialize)]
+struct FileCreatedPayload {
+    path: String,
+    content: String,
 }
 
-pub struct TelegramState {
-    pub polling_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
-    pub config: Mutex<Option<TelegramConfig>>,
-    pub is_running: Mutex<bool>,
+#[derive(Clone, Serialize, Deserialize)]
+struct AgentErrorPayload {
+    message: String,
 }
 
-impl Default for TelegramState {
-    fn default() -> Self {
-        Self {
-            polling_task: Mutex::new(None),
-            config: Mutex::new(None),
-            is_running: Mutex::new(false),
-        }
+fn sandbox_scaffold() -> Vec<(&'static str, &'static str)> {
+    vec![
+        (
+            "package.json",
+            r#"{
+  "name": "geonexus-sandbox",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5174 --strictPort"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}"#,
+        ),
+        (
+            "index.html",
+            r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoNexus Sandbox</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f0f13;
+      color: #e2e8f0;
+      font-family: 'Inter', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 1rem;
     }
+    h1 { color: #818cf8; font-size: 1.8rem; }
+    p  { color: #94a3b8; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>🎯 GeoNexus Sandbox</h1>
+  <p>Entorno de ejecución real vía proceso supervisor de Tauri.</p>
+  <p id="status">En espera de instrucciones...</p>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>"#,
+        ),
+        (
+            "src/main.js",
+            r#"document.getElementById('status').textContent = '✅ Servidor de desarrollo activo.';
+console.log('[GeoNexus] Sandbox environment running.');
+"#,
+        ),
+        (
+            "vite.config.js",
+            r#"import { defineConfig } from 'vite';
+
+export default defineConfig({
+  server: {
+    port: 5174,
+    strictPort: true,
+    headers: { 'X-Frame-Options': 'ALLOWALL' },
+  },
+});
+"#,
+        ),
+    ]
+}
+
+#[tauri::command]
+pub async fn coding_agent_start_generation(
+    description: String,
+    project_path: String,
+    app: AppHandle,
+) -> Result<String, String> {
+    use std::path::PathBuf;
+    use tokio::fs;
+    use tokio::process::Command as AsyncCommand;
+    use std::process::Stdio;
+
+    let root_path: PathBuf = if project_path.trim().is_empty() {
+        std::env::temp_dir().join("geonexus-sandbox")
+    } else {
+        PathBuf::from(&project_path)
+    };
+
+    app.emit("coding:generation_start", serde_json::json!({
+        "description": &description,
+        "project_path": root_path.to_string_lossy(),
+    })).ok();
+
+    let w = app.clone();
+    let desc = description.clone();
+    let root = root_path.clone();
+
+    tauri::async_runtime::spawn(async move {
+        w.emit("agent:step_start", serde_json::json!({
+            "step_id": "t1", "agent": "planner",
+            "label": format!("Analizando objetivo: {}", desc),
+        })).ok();
+        tokio::time::sleep(std::time::Duration::from_millis(900)).await;
+        w.emit("agent:item_added", serde_json::json!({
+            "step_id": "t1", "item": "Stack: Vite + Vanilla JS (sandbox)", "status": "done",
+        })).ok();
+        w.emit("agent:step_complete", serde_json::json!({"step_id": "t1", "status": "done"})).ok();
+
+        w.emit("agent:step_start", serde_json::json!({
+            "step_id": "t2", "agent": "workspace",
+            "label": "Creando estructura del proyecto en disco",
+        })).ok();
+        if let Err(e) = fs::create_dir_all(&root).await {
+            w.emit("agent:error", AgentErrorPayload {
+                message: format!("No se pudo crear el directorio raíz: {}", e),
+            }).ok();
+            return;
+        }
+        w.emit("agent:item_added", serde_json::json!({
+            "step_id": "t2", "item": root.to_string_lossy(), "status": "done",
+        })).ok();
+        w.emit("agent:step_complete", serde_json::json!({"step_id": "t2", "status": "done"})).ok();
+
+        w.emit("agent:step_start", serde_json::json!({
+            "step_id": "t3", "agent": "coding",
+            "label": "Escribiendo archivos del proyecto en el filesystem",
+        })).ok();
+
+        let scaffold = sandbox_scaffold();
+        for (rel_path, _) in &scaffold {
+            w.emit("agent:item_added", serde_json::json!({
+                "step_id": "t3", "item": rel_path, "status": "pending",
+            })).ok();
+        }
+
+        for (rel_path, content) in scaffold {
+            let full_path = root.join(rel_path);
+            if let Some(parent) = full_path.parent() {
+                let _ = fs::create_dir_all(parent).await;
+            }
+            if let Err(e) = fs::write(&full_path, content).await {
+                w.emit("agent:error", AgentErrorPayload {
+                    message: format!("Error al escribir '{}': {}", rel_path, e),
+                }).ok();
+                continue;
+            }
+            w.emit("coding:file_created", FileCreatedPayload {
+                path: rel_path.to_string(),
+                content: content.to_string(),
+            }).ok();
+            w.emit("agent:item_updated", serde_json::json!({
+                "step_id": "t3", "item_name": rel_path, "status": "done",
+            })).ok();
+            tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+        }
+        w.emit("agent:step_complete", serde_json::json!({"step_id": "t3", "status": "done"})).ok();
+
+        w.emit("agent:step_start", serde_json::json!({
+            "step_id": "t4", "agent": "dependencies",
+            "label": "Instalando dependencias via npm",
+        })).ok();
+
+        let npm_cmd = if cfg!(target_os = "windows") { "npm.cmd" } else { "npm" };
+        match AsyncCommand::new(npm_cmd)
+            .arg("install")
+            .current_dir(&root)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .await
+        {
+            Ok(s) if s.success() => {
+                w.emit("agent:item_added", serde_json::json!({
+                    "step_id": "t4", "item": "node_modules instalado", "status": "done",
+                })).ok();
+            }
+            _ => {}
+        }
+        w.emit("agent:step_complete", serde_json::json!({"step_id": "t4", "status": "done"})).ok();
+
+        w.emit("agent:step_start", serde_json::json!({
+            "step_id": "t5", "agent": "preview",
+            "label": "Levantando servidor de desarrollo Vite en puerto 5174",
+        })).ok();
+
+        let npx_cmd = if cfg!(target_os = "windows") { "npx.cmd" } else { "npx" };
+        if let Ok(_child) = AsyncCommand::new(npx_cmd)
+            .args(["vite", "--port", "5174", "--strictPort"])
+            .current_dir(&root)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+            w.emit("agent:item_added", serde_json::json!({
+                "step_id": "t5", "item": "→ Servidor activo en http://localhost:5174", "status": "done",
+            })).ok();
+            w.emit("agent:step_complete", serde_json::json!({"step_id": "t5", "status": "done"})).ok();
+            w.emit("agent:preview_ready", serde_json::json!({"url": "http://localhost:5174"})).ok();
+        }
+    });
+
+    Ok(format!("Pipeline de ejecución despachado para: {}", description))
 }
 
 #[tauri::command]
@@ -39,126 +236,140 @@ pub async fn telegram_save_config(
     allowed_users: Vec<String>,
     response_mode: String,
 ) -> Result<(), String> {
-    let config = TelegramConfig {
-        bot_token: token,
-        allowed_users,
-        response_mode,
-    };
-    
-    let config_json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
-    
+    let config = serde_json::json!({
+        "bot_token": token,
+        "allowed_users": allowed_users,
+        "response_mode": response_mode,
+    });
+    let config_str = config.to_string();
+
     sqlx::query(
         "INSERT INTO app_settings (key, value) VALUES (?1, ?2)
          ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')"
     )
-    .bind("telegram_config")
-    .bind(&config_json)
+    .bind(TELEGRAM_CONFIG_KEY)
+    .bind(&config_str)
     .execute(&state.db)
     .await
     .map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
 #[tauri::command]
-pub async fn telegram_load_config(state: State<'_, AppState>) -> Result<Option<TelegramConfig>, String> {
+pub async fn telegram_load_config(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let default_config = serde_json::json!({
+        "bot_token": "",
+        "allowed_users": Vec::<String>::new(),
+        "response_mode": "auto",
+    });
+
     let row: Option<(String,)> = sqlx::query_as("SELECT value FROM app_settings WHERE key = ?1")
-        .bind("telegram_config")
+        .bind(TELEGRAM_CONFIG_KEY)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| e.to_string())?;
-    
-    match row {
-        Some((value,)) if !value.is_empty() => {
-            let config: TelegramConfig = serde_json::from_str(&value).map_err(|e| e.to_string())?;
-            Ok(Some(config))
+
+    if let Some((json_str,)) = row {
+        if json_str.trim().is_empty() {
+            return Ok(default_config);
         }
-        _ => Ok(None),
+
+        let mut config = serde_json::from_str::<serde_json::Value>(&json_str).unwrap_or(default_config);
+        if config.get("bot_token").is_none() {
+            config["bot_token"] = serde_json::Value::String(String::new());
+        }
+        if config.get("allowed_users").is_none() {
+            config["allowed_users"] = serde_json::Value::Array(Vec::new());
+        }
+        if config.get("response_mode").is_none() {
+            config["response_mode"] = serde_json::Value::String("auto".into());
+        }
+        return Ok(config);
     }
+
+    Ok(default_config)
 }
 
 #[tauri::command]
 pub async fn telegram_start_polling(
     app: AppHandle,
     state: State<'_, AppState>,
-    tg_state: State<'_, TelegramState>,
 ) -> Result<String, String> {
-    let config = telegram_load_config(state).await?;
-    let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
-    
-    let client = Client::new();
-    let bot_info = get_me(&client, &config.bot_token).await?;
-    let bot_name = bot_info.username.clone().unwrap_or_else(|| bot_info.first_name.clone());
-    
-    {
-        let mut tg_config = tg_state.config.lock().unwrap();
-        *tg_config = Some(config.clone());
+    if TELEGRAM_TASK.lock().unwrap().is_some() {
+        return Ok("Polling ya está en ejecución".into());
     }
+
+    let config_val = telegram_load_config(state).await?;
+    let token = config_val["bot_token"].as_str().unwrap_or("").to_string();
     
-    let token_clone = config.bot_token.clone();
+    if token.is_empty() {
+        return Err("Se requiere un Bot Token para iniciar el polling".into());
+    }
+
+    let client = reqwest::Client::new();
+    match get_me(&client, &token).await {
+        Ok(me) => {
+            let mut info_guard = BOT_INFO.lock().unwrap();
+            *info_guard = Some(me.first_name.clone());
+        }
+        Err(e) => {
+            return Err(format!("Error conectando a Telegram: {}", e));
+        }
+    }
+
     let app_clone = app.clone();
-    
-    let allowed_users = config.allowed_users.clone();
-    
+    let token_clone = token.clone();
+
     let handle = tauri::async_runtime::spawn(async move {
-        start_polling_loop(token_clone, move |update: Update| {
+        start_polling_loop(token_clone, move |update| {
             let app = app_clone.clone();
-            let allowed_users = allowed_users.clone();
             async move {
-                handle_update(update, app, &allowed_users).await;
+                if let Some(msg) = update.message {
+                    app.emit("telegram:message_received", serde_json::json!({
+                        "id": msg.message_id,
+                        "chat_id": msg.chat.id,
+                        "from": msg.from.username.unwrap_or(msg.from.first_name),
+                        "text": msg.text,
+                        "date": msg.date,
+                    })).ok();
+                }
             }
-        })
-        .await;
+        }).await;
     });
-    
-    {
-        let mut task = tg_state.polling_task.lock().unwrap();
-        *task = Some(handle);
-        let mut is_running = tg_state.is_running.lock().unwrap();
-        *is_running = true;
+
+    let mut task_guard = TELEGRAM_TASK.lock().unwrap();
+    if task_guard.is_some() {
+        handle.abort();
+        return Ok("Polling ya está en ejecución".into());
     }
-    
-    Ok(bot_name)
+    *task_guard = Some(handle);
+    let mut error_guard = LAST_ERROR.lock().unwrap();
+    *error_guard = None;
+
+    Ok("Polling de Telegram iniciado".into())
 }
 
 #[tauri::command]
-pub async fn telegram_stop_polling(tg_state: State<'_, TelegramState>) -> Result<(), String> {
-    let mut task = tg_state.polling_task.lock().unwrap();
-    if let Some(handle) = task.take() {
+pub async fn telegram_stop_polling() -> Result<(), String> {
+    let mut task_guard = TELEGRAM_TASK.lock().unwrap();
+    if let Some(handle) = task_guard.take() {
         handle.abort();
     }
-    let mut is_running = tg_state.is_running.lock().unwrap();
-    *is_running = false;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn telegram_get_status(
-    state: State<'_, AppState>,
-    tg_state: State<'_, TelegramState>,
-) -> Result<TelegramStatus, String> {
-    // Leer is_running primero y soltar el lock antes del await
-    let is_running = {
-        let is_running = tg_state.is_running.lock().unwrap();
-        *is_running
-    };
-    
-    let config = telegram_load_config(state).await?;
-    let (bot_name, error) = if let Some(config) = config {
-        let client = Client::new();
-        match get_me(&client, &config.bot_token).await {
-            Ok(me) => (Some(me.username.unwrap_or(me.first_name)), None),
-            Err(e) => (None, Some(e)),
-        }
-    } else {
-        (None, Some("Config no encontrada".into()))
-    };
-    
-    Ok(TelegramStatus {
-        is_running,
-        bot_name,
-        error,
-    })
+pub async fn telegram_get_status() -> Result<serde_json::Value, String> {
+    let is_running = TELEGRAM_TASK.lock().unwrap().is_some();
+    let bot_name = BOT_INFO.lock().unwrap().clone();
+    let error = LAST_ERROR.lock().unwrap().clone();
+
+    Ok(serde_json::json!({
+        "is_running": is_running,
+        "bot_name": bot_name,
+        "error": error,
+    }))
 }
 
 #[tauri::command]
@@ -168,193 +379,14 @@ pub async fn telegram_send_message(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let config = telegram_load_config(state).await?;
-    let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
+    let token = config["bot_token"].as_str().unwrap_or("");
     
-    let client = Client::new();
-    send_message(&client, &config.bot_token, chat_id, &text, Some("MarkdownV2")).await?;
+    if token.is_empty() {
+        return Err("Bot Token no configurado".into());
+    }
+
+    let client = reqwest::Client::new();
+    send_message(&client, token, chat_id, &text, Some("Markdown")).await?;
     
     Ok(())
-}
-
-async fn handle_update(update: Update, app: AppHandle, allowed_users: &[String]) {
-    if let Some(message) = update.message {
-        let user_id = message.from.id.to_string();
-        let username = message.from.username.as_deref();
-        
-        let is_allowed = allowed_users.is_empty()
-            || allowed_users.contains(&user_id)
-            || username.map(|u| allowed_users.contains(&format!("@{}", u))).unwrap_or(false);
-        
-        if !is_allowed {
-            return;
-        }
-        
-        if let Some(text) = message.text {
-            let payload = serde_json::json!({
-                "chat_id": message.chat.id,
-                "user_id": message.from.id,
-                "username": message.from.username,
-                "text": text,
-            });
-            
-            let _ = app.emit("telegram:message", payload);
-        }
-    }
-}
-
-/// Comando Tauri: Iniciar generación de proyecto por parte del Coding Agent
-#[tauri::command]
-pub async fn coding_agent_start_generation(
-    description: String,
-    project_path: String,
-    app: AppHandle,
-) -> Result<String, String> {
-    // Emite evento: Comenzando generación
-    app.emit("coding:generation_start", serde_json::json!({
-        "description": &description,
-        "project_path": &project_path
-    })).ok();
-
-    // PASO 1: Planner
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t1",
-        "agent": "planner",
-        "label": "Analizando objetivo: App de Inventario"
-    })).ok();
-    tokio::time::sleep(std::time::Duration::from_millis(1200)).await;
-    app.emit("agent:item_added", serde_json::json!({
-        "step_id": "t1",
-        "item": "Stack: React + Tailwind + Zustand",
-        "status": "done"
-    })).ok();
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t1",
-        "status": "done"
-    })).ok();
-
-    // PASO 2: Workspace
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t2",
-        "agent": "workspace",
-        "label": "Creando estructura del proyecto"
-    })).ok();
-    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
-    app.emit("agent:item_added", serde_json::json!({
-        "step_id": "t2",
-        "item": &project_path,
-        "status": "done"
-    })).ok();
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t2",
-        "status": "done"
-    })).ok();
-
-    // PASO 3: Dependencies
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t3",
-        "agent": "dependencies",
-        "label": "Instalando dependencias"
-    })).ok();
-    let deps = vec!["react@18.3", "tailwindcss@3.4", "zustand@4.5", "lucide-react@0.383", "@tauri-apps/api@2.0"];
-    for dep in deps {
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        
-        // Split from the last '@' to handle scoped packages
-        let (package_name, package_version) = match dep.rsplit_once('@') {
-            Some((name, version)) => (if name.is_empty() { &dep[1..] } else { name }, version),
-            None => (dep, "latest"),
-        };
-        
-        app.emit("dep:installed", serde_json::json!({
-            "package": package_name,
-            "version": package_version
-        })).ok();
-        app.emit("agent:item_added", serde_json::json!({
-            "step_id": "t3",
-            "item": dep,
-            "status": "done"
-        })).ok();
-    }
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t3",
-        "status": "done"
-    })).ok();
-
-    // PASO 4: Coding
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t4",
-        "agent": "coding",
-        "label": "Generando componentes"
-    })).ok();
-    let files = vec![
-        "App.tsx",
-        "components/Layout.tsx",
-        "components/ProductTable.tsx",
-        "components/AddProductModal.tsx",
-        "store/inventory.ts",
-        "hooks/useInventory.ts"
-    ];
-    for file in &files {
-        app.emit("agent:item_added", serde_json::json!({
-            "step_id": "t4",
-            "item": file,
-            "status": "pending"
-        })).ok();
-    }
-    for file in files {
-        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
-        app.emit("coding:file_created", serde_json::json!({
-            "path": file,
-            "agent": "coding"
-        })).ok();
-        app.emit("agent:item_updated", serde_json::json!({
-            "step_id": "t4",
-            "item_name": file,
-            "status": "done"
-        })).ok();
-    }
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t4",
-        "status": "done"
-    })).ok();
-
-    // PASO 5: Database
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t5",
-        "agent": "database",
-        "label": "Configurando base de datos"
-    })).ok();
-    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-    let db_files = vec!["migrations/001_products.sql", "seed/sample_products.sql"];
-    for db_file in db_files {
-        app.emit("agent:item_added", serde_json::json!({
-            "step_id": "t5",
-            "item": db_file,
-            "status": "done"
-        })).ok();
-        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
-    }
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t5",
-        "status": "done"
-    })).ok();
-
-    // PASO 6: Preview
-    app.emit("agent:step_start", serde_json::json!({
-        "step_id": "t6",
-        "agent": "preview",
-        "label": "Lanzando preview"
-    })).ok();
-    tokio::time::sleep(std::time::Duration::from_millis(1200)).await;
-    app.emit("agent:item_added", serde_json::json!({
-        "step_id": "t6",
-        "item": "→ App corriendo en localhost:5174",
-        "status": "done"
-    })).ok();
-    app.emit("agent:step_complete", serde_json::json!({
-        "step_id": "t6",
-        "status": "done"
-    })).ok();
-
-    Ok(format!("Generación completada para: {}", description))
 }

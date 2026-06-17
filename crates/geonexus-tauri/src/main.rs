@@ -182,6 +182,7 @@ fn main() {
             commands::data::delete_data_asset,
             commands::data::get_data_lineage,
             commands::data::reindex_asset,
+            commands::data::get_mentionable_sources,
 
             // Fase 2
             commands::connector::register_local_connector,

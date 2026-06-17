@@ -1,0 +1,64 @@
+Resumen: Parte "Coding Agent" — archivos, responsabilidades y problemas
+
+1) Archivos relevantes (frontend)
+- src/components/chat/CodingAgentPanel.tsx  — panel principal UI del Coding Agent (tabs: timeline, archivos, preview).
+- src/components/chat/CodingAgentTimeline.tsx — muestra pasos/estado del agente (timeline).
+- src/components/chat/CodingAgentFileExplorer.tsx — explorador de árbol de archivos generado por el agente.
+- src/components/chat/CodingAgentCodeViewer.tsx — visor de código (read-only actualmente).
+- src/components/chat/CodingAgentPreview.tsx — panel de preview con iframe y pestaña de código.
+- src/contexts/CodingAgentContext.tsx — estado global y API (toggle, pasos, archivos, preview, etc.).
+- src/types/coding-agent.ts — definiciones de tipos (CodingPhase, CodingStep, FileNode, etc.).
+- src/features/workspace/ide/useReasoningTimeline.ts — lógica para timeline (simulación y escucha de eventos Tauri).
+- src/api/telegram.ts — wrapper para invocar comando Tauri `coding_agent_start_generation`.
+- src/components/chat/ToolMenu.tsx, ChatComposer.tsx, ChatPanel.tsx — integración del toggle UI y comandos (slash /toggle-coding).
+- docs/coding-agent-plan.txt, docs/current-state.txt — especificaciones y estado actual.
+
+2) Archivos relevantes (backend / Tauri)
+- crates/geonexus-tauri/src/commands/telegram.rs — comando Tauri `coding_agent_start_generation` que emite eventos (agent:step_start, agent:item_added, coding:file_created, dep:installed, agent:step_complete).
+- crates/geonexus-tauri/src/main.rs — registra el comando Tauri.
+
+3) Comportamiento observado
+- El frontend muestra un panel completo con timeline, explorador y preview.
+- El backend (Tauri) emite eventos secuenciales simulando la generación de un proyecto (pasos, paquetes, archivos, preview), pero NO escribe archivos en disco ni inicia un servidor de preview real.
+- El frontend escucha eventos Tauri (`agent:*`, `coding:file_created`, `dep:installed`) y actualiza el timeline; sin embargo algunos eventos de archivo no se usan para crear contenido interno persistente.
+
+4) Problemas detectados y riesgos (detalle)
+A. Backend (crates/geonexus-tauri)
+- Simulación en vez de ejecución: `coding_agent_start_generation` solo emite eventos y sleeps; no crea archivos en el filesystem ni ejecuta scripts (`npm install`, `vite dev`, etc.). Resultado: no hay artefactos para preview real.
+- No hay manejo de errores robusto: la función retorna Ok al final, pero las operaciones intermedias no verifican fallos de I/O o comandos reales.
+- Paths y contenido: emite `coding:file_created` con `path` pero sin `content`; frontend no recibe contenido para poblar `FileNode.content`.
+
+B. Frontend (React)
+- Preview: `CodingAgentPreview` carga `previewUrl` en un iframe; botón refresh usa `window.location.reload()` que recarga toda la app en lugar de recargar solo el iframe. Riesgo: UX degradada y pérdida de estado.
+- Manejo de creación de archivos: frontend ignora `coding:file_created` (comentario "Already handled by agent:item_updated"). Esto significa que no se generan `FileNode` con `content`, por lo que el explorador y el visor muestran archivos vacíos o no persistentes.
+- Estado al cerrar: `toggleCodingMode` al desactivar resetea a `initialState`, descartando historial y pasos; puede ser deseado pero provoca pérdida de información accidental.
+- Uso de `crypto.randomUUID()` en `addStep` — funciona en entornos modernos (Tauri/Chromium), pero podría necesitar polyfill si se ejecuta en entornos antiguos.
+- Comando / CommandPalette: la entrada de `CommandPalette` tiene `action: () => {}` para `toggle-coding` en algunos lugares (no ejecuta nada). Posible inconsistencia entre definición de comando y ejecución real.
+- Falta de persistencia: no hay código que escriba archivos generados al workspace real del proyecto (no persiste en FS ni en un repositorio temporal).
+- Listeners Tauri: `useReasoningTimeline` escucha correctamente eventos, pero asume forma de payload (por ejemplo `agent:item_added` con { item, status }). Si el backend cambia formato, habrá fallos silenciosos.
+
+C. Integración / UX
+- El backend indica "App corriendo en localhost:5174" pero no lanza `vite` ni ejecuta `npm install`; la URL puede no existir.
+- Seguridad/CORS: abrir `previewUrl` en iframe puede toparse con políticas de Same-Origin si el backend no configura correctamente el servidor de preview.
+- Race conditions: eventos emitidos por el backend y manejo en frontend pueden producir estados inconsistentes si el usuario cierra el panel antes de que finalicen los pasos.
+
+5) Recomendaciones (prioritarias)
+- Backend: implementar escritura real de archivos en un directorio temporal/proyecto (fs::write) cuando emita `coding:file_created` y opcionalmente retornar `content` en el evento.
+- Backend: iniciar un proceso dev server (por ejemplo `pnpm install && pnpm dev` o `vite`) o construir un preview estático y exponer una URL local; manejar errores y timeouts.
+- Frontend: consumir `coding:file_created` con `content` o solicitar contenido vía otra llamada a Tauri para poblar `FileNode.content`.
+- Frontend: cambiar `handleRefresh` en `CodingAgentPreview` para recargar solo el iframe (ej. actualizar `src` con timestamp), no `window.location.reload()`.
+- Frontend: evitar reset completo de estado en `toggleCodingMode(false)` — considerar preservar historial o pedir confirmación al cerrar.
+- Comandos: conectar `CommandPalette`/slash commands con la acción real (invocar `codingAgent.toggleCodingMode` o la llamada a Tauri según corresponda).
+- Robustecer payload handling: validar estructura de eventos Tauri y añadir logs/errores visibles en UI para fallos.
+- Pruebas: crear un flujo E2E que invoque `coding_agent_start_generation` y verifique archivos escritos y preview funcional.
+
+6) Pasos sugeridos inmediatos (pequeños cambios rápidos)
+- Cambiar `CodingAgentPreview.handleRefresh` para recargar iframe sin recargar app.
+- Hacer que `useReasoningTimeline` maneje `coding:file_created` extrayendo `path` y `content` si está disponible, creando un `FileNode` local.
+- Añadir manejo de errores al invocar `codingAgentStartGeneration` (try/catch) y mostrar toast si falla la invocación Tauri.
+
+7) Conclusión
+El componente UI del Coding Agent está bien avanzado y exhibe un flujo visual robusto. El principal gap es que el backend actualmente solo simula la generación (emite eventos) pero no produce artefactos reales ni inicia un server de preview. Para que la función sea plenamente utilizable hay que implementar la escritura de archivos, entregar contenido a la UI, y/o arrancar el proceso de desarrollo/preview en el backend, además de pequeños ajustes de UX (refresh del iframe, preservar historial, manejo de errores).
+
+---
+Si quieres, genero ahora un parche con los cambios rápidos propuestos (1) recargar solo iframe en `CodingAgentPreview`, (2) consumir `coding:file_created` para crear `FileNode` con path/content si viene, y (3) añadir manejo básico de errores al invocar `codingAgentStartGeneration`. ¿Lo hago?

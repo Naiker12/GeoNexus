@@ -32,6 +32,8 @@ export function ConfigurationFooter({ onCancel, onSave }: ConfigurationFooterPro
         description: "Los cambios se aplicaron correctamente.",
         variant: "success",
       })
+      // Cerrar el modal automáticamente al guardar con éxito
+      onCancel()
     } catch (err) {
       dismiss(loadingId)
       toast({

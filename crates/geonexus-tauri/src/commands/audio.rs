@@ -41,14 +41,10 @@ pub async fn audio_transcribe(
         request.mime_type,
     ];
 
-    // Convert to &str references for run_sidecar
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let stdout = run_sidecar(&args_ref)?;
 
-    let response: AudioTranscribeResponse = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Error parsing sidecar response: {}", e))?;
-
-    Ok(response)
+    serde_json::from_str(&stdout).map_err(|e| format!("Error parsing sidecar response: {}", e))
 }
 
 #[tauri::command]
@@ -72,12 +68,8 @@ pub async fn audio_synthesize(
         args.push(speed.to_string());
     }
 
-    // Convert to &str references for run_sidecar
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let stdout = run_sidecar(&args_ref)?;
 
-    let response: AudioSynthesizeResponse = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Error parsing sidecar response: {}", e))?;
-
-    Ok(response)
+    serde_json::from_str(&stdout).map_err(|e| format!("Error parsing sidecar response: {}", e))
 }

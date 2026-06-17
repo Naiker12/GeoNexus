@@ -394,3 +394,19 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes audio-wave {
+  0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+  50% { transform: scaleY(1.5); opacity: 1; }
+}
+
+.audio-wave-bar {
+  background-color: currentColor;
+  animation: audio-wave 1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.audio-wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.audio-wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.audio-wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.audio-wave-bar:nth-child(5) { animation-delay: 0.4s; }

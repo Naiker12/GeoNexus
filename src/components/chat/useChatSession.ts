@@ -36,6 +36,28 @@ function saveConversationId(id: string | null) {
   }
 }
 
+function getChatErrorMessage(err: unknown): string {
+  const raw = typeof err === "string"
+    ? err
+    : err instanceof Error
+      ? err.message
+      : String(err)
+
+  if (raw.includes("missing required key input") || raw.includes("invalid args `input`")) {
+    return "No se pudo enviar el mensaje por una incompatibilidad interna del chat. Actualiza la vista e intenta de nuevo."
+  }
+
+  if (raw.includes("provider requerido") || raw.includes("model requerido") || raw.includes("endpoint requerido")) {
+    return "Selecciona un proveedor, modelo y endpoint antes de enviar el mensaje."
+  }
+
+  if (raw.includes("content requerido")) {
+    return "Escribe un mensaje antes de enviarlo."
+  }
+
+  return raw
+}
+
 function loadWebSearchEnabled(): boolean {
   try {
     const stored = localStorage.getItem(WEB_SEARCH_KEY)
@@ -312,7 +334,7 @@ export function useChatSession(
           updateAssistantMessage(assistantMsgId, baseUpdate as Partial<Message>)
         }
 
-        toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })
+        toast({ title: "Respuesta recibida", description: "Geo Agents completó el análisis.", variant: "success" })
       } catch (err) {
         clearTimeout(searchingTimer)
 
@@ -325,11 +347,7 @@ export function useChatSession(
           current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
         )
 
-        const message = typeof err === "string"
-          ? err
-          : err instanceof Error
-            ? err.message
-            : String(err)
+        const message = getChatErrorMessage(err)
         setError(message)
         toast({ title: "Error en el chat", description: message, variant: "error" })
       } finally {

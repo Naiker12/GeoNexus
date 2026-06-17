@@ -83,7 +83,14 @@ export function MapEngineDialog({
           </div>
         </DialogHeader>
 
-        <form className="grid gap-3 p-4">
+        <form 
+          className="grid gap-3 p-4" 
+          onSubmit={(e) => {
+            e.preventDefault()
+            // Aquí se llamaría a la lógica de guardado
+            onOpenChange(false)
+          }}
+        >
           <div className="grid gap-2 sm:grid-cols-4">
             <SideMetric label="Perfil" value={settings.profile} />
             <SideMetric label="Renderer" value={settings.renderer} />

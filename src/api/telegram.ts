@@ -63,7 +63,6 @@ export async function sendTelegramMessage(chatId: number, text: string): Promise
   await invoke("telegram_send_message", { chatId, text });
 }
 
-// === Coding Agent API ===
 export async function codingAgentStartGeneration(
   description: string,
   projectPath: string

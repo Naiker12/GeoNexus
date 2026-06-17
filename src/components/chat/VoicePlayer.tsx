@@ -9,7 +9,7 @@ interface VoicePlayerProps {
   className?: string
 }
 
-export function VoicePlayer({ text, voiceId, className = '' }: VoicePlayerProps) {
+export function VoicePlayer({ text, voiceId = "shimmer", className = '' }: VoicePlayerProps) {
   const { status, play, stop, errorMessage } = useVoicePlayer({ text, voiceId })
 
   if (status === 'playing') {
