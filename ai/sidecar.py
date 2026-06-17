@@ -80,8 +80,24 @@ def _chat_stream(args) -> None:
     from llm.router import chat_llm_provider_stream
     messages = _load_json_arg(args.messages, args.messages_file) or []
     tools = _load_json_arg(args.tools, args.tools_file)
-    for chunk in chat_llm_provider_stream(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None):
-        _print(chunk)
+    saw_done = False
+    try:
+        for chunk in chat_llm_provider_stream(args.provider_type, args.base_url, args.model, messages, tools, api_key=args.api_key or None):
+            if isinstance(chunk, dict) and chunk.get("type") == "done":
+                saw_done = True
+            _print(chunk)
+    except Exception as e:
+        # Emit a structured error so callers always get a final message
+        _print({"type": "error", "message": f"Error while streaming: {e}"})
+        return
+
+    if not saw_done:
+        # The provider stream ended without an explicit 'done' event — emit a final sentinel
+        _print({
+            "type": "done",
+            "status": "error",
+            "message": "stream ended without final 'done' from provider",
+        })
 
 
 def _list_models(args) -> None:
