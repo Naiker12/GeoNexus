@@ -50,15 +50,11 @@ export function ChatPanel(_props: ChatPanelProps) {
     submitTime,
     sessionSummary,
     lastIntent,
-    autoVoice,
-    isSpeaking,
     submit,
     regenerate,
     loadConversation,
     newConversation,
     stop,
-    setAutoVoice,
-    stopSpeaking,
   } = useChatSession(activeConnectorId, connectors)
   
   const codingAgent = useCodingAgent()
@@ -235,8 +231,6 @@ export function ChatPanel(_props: ChatPanelProps) {
           pending={pending}
           activeSkills={activeSkills}
           sessionSummary={sessionSummary}
-          autoVoice={autoVoice}
-          isSpeaking={isSpeaking}
           onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
           onSubmit={(content, mentions, attachments) => {
             setComposerValue("")
@@ -246,8 +240,6 @@ export function ChatPanel(_props: ChatPanelProps) {
             submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined, attachments)
           }}
           onStop={stop}
-          onToggleVoice={() => setAutoVoice(!autoVoice)}
-          onStopSpeaking={stopSpeaking}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
           contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
           webSearchEnabled={webSearchEnabled}

@@ -3,30 +3,10 @@ export interface TranscribeOptions {
   mimeType: string
 }
 
-export interface SynthesizeOptions {
-  text: string
-  voice?: string
-  speed?: number
-  provider?: string
-  lang?: string
-}
-
-export interface SynthesizeResult {
-  audioBase64: string
-  mimeType: string
-  provider: string
-}
-
 interface TranscribeResponse {
   status: string
   text: string
   language?: string
-}
-
-interface SynthesizeResponse {
-  status: string
-  audio_base64: string
-  mime_type: string
 }
 
 function isTauriAvailable(): boolean {
@@ -70,13 +50,4 @@ export async function transcribeAudio(options: TranscribeOptions): Promise<strin
   return result.text
 }
 
-export async function synthesizeAudio(options: SynthesizeOptions): Promise<SynthesizeResult> {
-  if (!options.text.trim()) throw new Error('text is required')
 
-  const result = await invokeAudioCommand<SynthesizeResponse>('audio_synthesize', {
-    request: { text: options.text, voice: options.voice, speed: options.speed, provider: options.provider, lang: options.lang }
-  }, { status: 'ok', audio_base64: '', mime_type: 'audio/mpeg' })
-
-  if (result.status !== 'ok') throw new Error('Synthesis failed')
-  return { audioBase64: result.audio_base64, mimeType: result.mime_type, provider: result.provider ?? 'kokoro' }
-}

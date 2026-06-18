@@ -298,7 +298,6 @@ fn main() {
             
             // Audio
             commands::audio::audio_transcribe,
-            commands::audio::audio_synthesize,
             
             // Telegram
             commands::telegram::telegram_save_config,

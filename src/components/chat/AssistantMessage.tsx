@@ -10,7 +10,6 @@ import { McpToolCallCard } from "@/components/chat/McpToolCallCard"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { TypingDots } from "@/components/chat/TypingDots"
-import { VoicePlayer } from "@/components/chat/VoicePlayer"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
 import type { Message, ReasoningStepDisplay, ToolCallDisplay } from "@/types/chat"
@@ -143,7 +142,6 @@ export function AssistantMessage({
               cumulativeContext={cumulativeContext}
             />
           )}
-          <VoicePlayer text={message.content} />
           <CopyButton content={message.content} />
         </div>
       </div>

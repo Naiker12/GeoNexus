@@ -192,20 +192,6 @@ def _update_memory_scores(args) -> None:
     })
 
 
-# Singleton de Kokoro (lazy init, se reusa entre llamadas)
-_kokoro_instance = None
-
-def _get_kokoro():
-    global _kokoro_instance
-    if _kokoro_instance is None:
-        try:
-            from kokoro import Kokoro
-            _kokoro_instance = Kokoro()
-        except Exception as e:
-            _kokoro_instance = f"error:{e}"
-    return _kokoro_instance
-
-
 def _audio_transcribe(args) -> None:
     """Transcribe audio a texto usando faster-whisper (local, sin API key)."""
     import base64
@@ -244,88 +230,9 @@ def _audio_transcribe(args) -> None:
             pass
 
 
-def _audio_synthesize(args) -> None:
-    """Sintetiza texto a audio usando Kokoro (local) o gTTS (fallback). Sin API key."""
-    import base64
-    import io
-    import re
-
-    text = args.text
-    if not text:
-        _err("Texto vacio para sintesis")
-
-    # Limpiar puntuacion: el TTS no debe leer comas, puntos, etc.
-    clean = re.sub(r'[.,;:!?¿¡—–()\[\]{}<>"/\\\'’‘“”`]', ' ', text)
-    clean = re.sub(r'\s+', ' ', clean).strip()
-    if not clean:
-        clean = text
-
-    voice = args.voice or "am_michael"
-    provider = args.provider or "kokoro"
-    speed = float(args.speed) if args.speed else 1.2
-
-    # --- Kokoro TTS (local, sin internet, sin API key) ---
-    if provider == "kokoro":
-        kokoro = _get_kokoro()
-        if isinstance(kokoro, str) and kokoro.startswith("error:"):
-            import sys
-            print(f"[Kokoro] No disponible ({kokoro}), fallback a gTTS", file=sys.stderr)
-            provider = "gtts"
-        else:
-            try:
-                import numpy as np
-                import soundfile as sf
-
-                audio_array = kokoro.create(clean, voice=voice, speed=speed)
-                sample_rate = 24000
-
-                buffer = io.BytesIO()
-                sf.write(buffer, audio_array, sample_rate, format='WAV')
-                buffer.seek(0)
-                audio_bytes = buffer.read()
-
-                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-                _print({
-                    "status": "ok",
-                    "audio_base64": audio_b64,
-                    "mime_type": "audio/wav",
-                    "provider": "kokoro",
-                })
-                return
-            except Exception as e:
-                import sys
-                print(f"[Kokoro] Fallo en create(): {e}, fallback a gTTS", file=sys.stderr)
-                provider = "gtts"
-
-    # --- gTTS Fallback (Google, sin API key, requiere internet) ---
-    if provider == "gtts":
-        try:
-            from gtts import gTTS
-            lang = args.lang or "es"
-
-            buffer = io.BytesIO()
-            tts = gTTS(text=clean, lang=lang, slow=False)
-            tts.write_to_fp(buffer)
-            buffer.seek(0)
-            audio_bytes = buffer.read()
-
-            audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-            _print({
-                "status": "ok",
-                "audio_base64": audio_b64,
-                "mime_type": "audio/mpeg",
-                "provider": "gtts",
-            })
-            return
-        except Exception as e:
-            _err(f"gTTS fallo: {e}")
-
-    _err("No hay proveedor TTS disponible")
-
-
 def main() -> None:
     p = argparse.ArgumentParser(description="Geo Agents AI Sidecar CLI")
-    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords", "update_memory_scores", "audio_transcribe", "audio_synthesize"])
+    p.add_argument("--action", required=True, choices=["index", "extract", "ping_llm", "chat_llm", "chat_llm_stream", "list_llm_models", "recall_chunks", "build_project_context", "search_web", "extract_chat_entities", "extract_graph_entities", "extract_shapefile", "extract_keywords", "update_memory_scores", "audio_transcribe"])
     p.add_argument("--file", default="")
     p.add_argument("--project_id", default="project-default")
     p.add_argument("--workspace_id", default="workspace-default")
@@ -352,11 +259,6 @@ def main() -> None:
     # Parametros para audio
     p.add_argument("--audio_base64", default="")
     p.add_argument("--mime_type", default="")
-    p.add_argument("--text", default="")
-    p.add_argument("--voice", default="")
-    p.add_argument("--speed", default="")
-    p.add_argument("--provider", default="kokoro")
-    p.add_argument("--lang", default="es")
     args = p.parse_args()
 
     dispatch = {
@@ -375,7 +277,6 @@ def main() -> None:
         "extract_keywords": _extract_keywords,
         "update_memory_scores": _update_memory_scores,
         "audio_transcribe": _audio_transcribe,
-        "audio_synthesize": _audio_synthesize,
     }
 
     handler = dispatch.get(args.action)

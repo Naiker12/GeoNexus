@@ -2,17 +2,14 @@ import React from 'react'
 import { MicIcon, SquareIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
-import { cn } from '@/lib/utils'
-
 interface AudioRecorderProps {
   onTranscription: (text: string) => void
   disabled?: boolean
-  onAutoSend?: (text: string) => void
 }
 
-export function AudioRecorder({ onTranscription, disabled = false, onAutoSend }: AudioRecorderProps) {
+export function AudioRecorder({ onTranscription, disabled = false }: AudioRecorderProps) {
   const { status, startRecording, stopRecording, cancelRecording, errorMessage } = useAudioRecorder({
-    onTranscription: onAutoSend ?? onTranscription,
+    onTranscription,
   })
 
   if (status === 'recording' || status === 'requesting') {
