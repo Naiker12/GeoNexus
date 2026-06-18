@@ -1,43 +1,71 @@
 # GeoNexus
 
-**GeoNexus** es una plataforma desktop de agentes IA para análisis de documentos, consulta normativa y gestión de conocimiento territorial. Conversa con modelos locales o cloud, indexa documentos, explora un grafo de conocimiento y audita cada ejecución.
-
----
-
-## Objetivo
-
-Unificar la consulta de información territorial (normas, documentos técnicos, capas GIS, datos estructurados) en un solo entorno desktop donde el usuario conversa con agentes IA que orquestan herramientas, recuperan contexto vectorial (RAG) y producen respuestas trazables con referencias.
-
----
-
-## Funciones principales
-
-| Función | Descripción |
-|---------|-------------|
-| **Chat IA** | Conversación contextual con modelos locales (Ollama, LM Studio) o cloud (OpenAI, Anthropic, OpenRouter). Soporta tool-calling, web search y @menciones. |
-| **Indexación documental** | Sube PDFs, DOCX, TXT y archivos técnicos → extrae texto → chunkifica → genera embeddings → almacena en ChromaDB para búsqueda RAG. |
-| **Grafo de conocimiento** | Red de nodos (documentos, entidades, conceptos) y aristas que se construye automáticamente al chatear e indexar. Visualización interactiva con zoom/arrastre. |
-| **Conectores** | Fuentes de datos: carpetas locales, OneDrive (próximamente Google Drive, SharePoint, Dropbox, S3). Cachea archivos y los indexa. |
-| **Containers MCP** | Sistema de herramientas MCP para operar archivos: listar, buscar, sincronizar y subir documentos desde conectores registrados. |
-| **Análisis y métricas** | Dashboard de uso: tokens por modelo, consultas top, skills usadas, costo estimado y trazas de ejecución con paginación. |
-| **Agentes de IA** | 5 agentes preconfigurados (Indexador, Embedder, Grafo, Clasificador, Chat IA) activables desde Configuración. |
-| **Multi-LLM** | Cambia de proveedor IA en caliente: Ollama, LM Studio, OpenAI, OpenRouter, Anthropic. Detección automática de modelos. |
-| **Actividad reciente** | Panel de trazas con paginación que muestra eventos de sincronización, descubrimiento e indexación en tiempo real. |
-| **Notificaciones** | Sistema de notificaciones configurable por categoría y canal (toast, sistema, sonido). |
-
----
-
-## Capturas
+**GeoNexus** es una plataforma desktop de agentes IA para análisis de documentos, consulta normativa, gestión de conocimiento territorial y generación automatizada de proyectos de código. Integra múltiples proveedores de lenguaje (locales y cloud), indexación vectorial (RAG), grafos de conocimiento, un sistema de agentes de codigo con revisión de planes, y un sidecar Python para tareas de IA.
 
 ![GeoNexus](public/Geonexus.png)
 
 ---
 
-## Stack técnico
+## Funcionalidades
+
+### Chat IA Multi-Proveedor
+- Conversación contextual con modelos locales (Ollama, LM Studio) o cloud (OpenAI, Anthropic, OpenRouter).
+- Soporte para tool-calling, búsqueda web, y @menciones a skills y fuentes.
+- Cambio de proveedor en caliente sin reiniciar la aplicación.
+- Historial de conversaciones por sesión con almacenamiento local.
+
+### Sistema de Razonamiento (Reasoning)
+- Visualización en tiempo real del pipeline de razonamiento del LLM.
+- Bloques de pensamiento expandibles (ThinkingBlock), trazas de tool calls (ToolCallTrace), y trazas de pipeline completo (PipelineTrace).
+- Pill de estado de pensamiento con spinner animado (ThinkingPill).
+
+### Agente de Código (Coding Agent)
+- Generación automatizada de proyectos de código mediante prompts en lenguaje natural.
+- Llamada a LLM via sidecar Python para generar planes estructurados con resumen, archivos propuestos, nivel de riesgo y justificación.
+- **Flujo de revisión de plan:** el usuario revisa el plan propuesto (archivos, riesgo, descripción) antes de aprobar. Soporta edición de instrucciones y cancelación.
+- **Permisos por riesgo:** detecta archivos existentes y muestra un banner de advertencia con opciones Permitir/Denegar.
+- **Carga de proyectos existentes:** selector de carpeta nativo que analiza el proyecto, detecta lenguajes y muestra los archivos en un árbol con distinción de archivos originales vs generados.
+- Visualización de archivos lado a lado (árbol + contenido).
+- Fallback automático a un plan HTML básico cuando no hay LLM configurado.
+
+### Indexación Documental y RAG
+- Subida de PDFs, DOCX, TXT y archivos técnicos.
+- Extracción de texto → chunkificación → generación de embeddings → almacenamiento en ChromaDB.
+- Búsqueda RAG vectorial con recuperación de contexto para respuestas trazables.
+
+### Grafo de Conocimiento
+- Red de nodos (documentos, entidades, conceptos) y aristas construida automáticamente al chatear e indexar.
+- Visualización interactiva con zoom, arrastre y colores por tipo.
+- Extracción de entidades mediante NER (Python sidecar).
+
+### Conectores de Datos
+- Fuentes de datos: carpetas locales, OneDrive.
+- Cacheo de archivos e indexación automática.
+- Arquitectura extensible para futuros conectores (Google Drive, SharePoint, Dropbox, S3).
+
+### Containers MCP
+- Sistema de herramientas MCP para operar archivos: listar, buscar, sincronizar y subir documentos.
+- Arquitectura de servidores MCP extensible.
+
+### Dashboard de Análisis y Métricas
+- Uso de tokens por modelo, consultas top, skills utilizadas, costo estimado.
+- Trazas de ejecución con paginación y trazabilidad por `trace_id`.
+- Panel de actividad reciente con eventos en tiempo real.
+
+### Integración Telegram
+- Bot de Telegram para interactuar con la plataforma de forma remota.
+- Comandos personalizados para consultas y operaciones.
+
+### Notificaciones
+- Sistema configurable por categoría y canal (toast, sistema, sonido).
+
+---
+
+## Stack Técnico
 
 | Capa | Tecnología |
 |------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Radix UI, Lucide |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS 4, Radix UI, Lucide |
 | Desktop | Tauri 2 |
 | Backend Rust | geonexus-core, geonexus-db (SQLite), geonexus-mcp, geonexus-tauri |
 | Sidecar Python | ChromaDB, extracción de texto, embeddings, búsqueda web, NER |
@@ -47,12 +75,73 @@ Unificar la consulta de información territorial (normas, documentos técnicos, 
 
 ---
 
-## Descarga e instalación
+## Arquitectura
+
+```
+React Frontend (TypeScript)
+  ├── Chat / Agente de Código / Documentos / Grafo / Análisis
+  ├── Componentes de razonamiento (ThinkingBlock, ToolCallTrace, PipelineTrace)
+  ├── Componentes de agente (CodingAgentPanel, AgentFileTree, AgentProjectDropzone, AgentTimeline)
+  ├── API layer (src/api/*.ts → invoke Tauri)
+  └── Paneles: Trazas, Agentes, Notificaciones, Configuración
+        │
+ Tauri IPC (invoke / events)
+        │
+ Rust Backend (60+ commands)
+  ├── geonexus-core        → tipos, lógica de negocio
+  ├── geonexus-db          → repositorios SQLite (12 tablas)
+  ├── geonexus-mcp         → containers MCP (local, cloud)
+  ├── geonexus-tauri       → commands, eventos, AppState
+  │   ├── commands/coding_agent    → generación con LLM, plan-review, permisos, carga de proyectos
+  │   ├── commands/llm             → comunicación con sidecar Python
+  │   ├── commands/telegram        → integración con bot de Telegram
+  │   ├── commands/filesystem      → selector de carpetas, lectura de archivos
+  │   └── commands/documents       → gestión documental e indexación
+  └── events               → eventos agente: plan_ready, file_created, permission_required, etc.
+        │
+ Python Sidecar (ai/sidecar.py)
+  ├── index               → extracción + chunk + embedding
+  ├── recall_chunks       → RAG vectorial (ChromaDB)
+  ├── chat_llm            → comunicación con LLMs
+  ├── search_web          → búsqueda web
+  ├── extract_entities    → NER para grafo de conocimiento
+  └── ping_llm            → health check
+```
+
+### Flujo del Agente de Código
+
+```
+Usuario: "Crea una landing page responsiva"
+  │
+  ▼
+start_generation → LLM (sidecar) genera plan JSON
+  │
+  ▼
+Plan mostrado al usuario (resumen + archivos + riesgo)
+  │
+  ├── Editar instrucciones → reinicia generación con nuevo prompt
+  ├── Cancelar → vuelve a idle
+  └── Aprobar → approve_plan escribe archivos en disco
+       │
+       └── Si hay archivos existentes → banner de permiso (Permitir / Denegar)
+```
+
+### Principios del Sistema
+
+- **Offline-first:** Ollama + SQLite + ChromaDB permiten operar sin internet.
+- **Multi-LLM:** el proveedor de IA se cambia sin reiniciar.
+- **Trazabilidad:** cada operación conserva `trace_id` para auditoría.
+- **MCP-extensible:** nuevas herramientas se conectan como servidores MCP.
+- **Seguridad:** keys en keychain, allowlist localhost, tokens OAuth.
+
+---
+
+## Instalación
 
 ### Requisitos
 
 - **Windows 10/11** (64 bits)
-- **Git** (para clonar)
+- **Git**
 - **Node.js 18+** y **pnpm**
 - **Rust toolchain** (https://rustup.rs)
 - **Python 3.10+** con `pip`
@@ -90,42 +179,23 @@ pnpm dev
 
 ---
 
-## Arquitectura
+## Configuración de LLM
 
-```
-React Frontend (TypeScript)
-  ├── Chat / Documentos / Grafo / Análisis
-  ├── API layer (src/api/*.ts → invoke Tauri)
-  └── Paneles: Trazas, Agentes, Notificaciones, Configuración
-        │
- Tauri IPC (invoke / events)
-        │
-Rust Backend (56+ commands)
-  ├── geonexus-core     → tipos, lógica de negocio
-  ├── geonexus-db       → repositorios SQLite (12 tablas)
-  ├── geonexus-mcp      → containers MCP (local, cloud)
-  └── geonexus-tauri    → commands, eventos, AppState
-        │
- Python Sidecar (ai/sidecar.py)
-  ├── index             → extracción + chunk + embedding
-  ├── recall_chunks     → RAG vectorial (ChromaDB)
-  ├── chat_llm          → comunicación con LLMs
-  ├── search_web        → búsqueda web
-  ├── extract_entities  → NER para grafo de conocimiento
-  └── ping_llm          → health check
-```
+La aplicación detecta automáticamente los modelos disponibles de:
 
-Principios del sistema:
+| Proveedor | Tipo | URL por defecto |
+|-----------|------|----------------|
+| Ollama | Local | `http://localhost:11434` |
+| LM Studio | Local | `http://localhost:1234` |
+| OpenAI | Cloud | `https://api.openai.com/v1` |
+| Anthropic | Cloud | `https://api.anthropic.com` |
+| OpenRouter | Cloud | `https://openrouter.ai/api/v1` |
 
-- **Offline-first:** Ollama + SQLite + ChromaDB permiten operar sin internet.
-- **Multi-LLM:** el proveedor de IA se cambia sin reiniciar.
-- **Trazabilidad:** cada operación conserva `trace_id` para auditoría.
-- **MCP-extensible:** nuevas herramientas se conectan como servidores MCP.
-- **Seguridad:** keys en keychain, allowlist localhost, tokens OAuth.
+La configuración del proveedor activo se gestiona desde el panel de conectores en la interfaz y se persiste en `localStorage` (no en la base de datos).
 
 ---
 
-## Estado del proyecto
+## Estado del Proyecto
 
 | Fase | Estado |
 |------|--------|
@@ -138,8 +208,12 @@ Principios del sistema:
 | Chat con memoria (RAG, tools, grafo) | ✅ Completo |
 | Auto-detección de modelos | ✅ Completo |
 | RAG + contexto GIS | ✅ Completo |
+| Agente de código con plan-review | ✅ Completo |
+| Carga y análisis de proyectos existentes | ✅ Completo |
+| Sistema de razonamiento visual | ✅ Completo |
+| Integración Telegram | ✅ Completo |
 
-56+ comandos Tauri · 12 tablas SQLite · 81 tests Rust · 62 tests TypeScript
+60+ comandos Tauri · 12 tablas SQLite · 81 tests Rust · 62 tests TypeScript
 
 ---
 
