@@ -6,6 +6,50 @@ import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { Message, SendMessageInput, KnowledgeLookupStep, SessionSummary, FileAttachment } from "@/types/chat"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
+import type { PipelineState, PipelineStep, PipelineStepKind, ToolCallRecord } from "@/components/chat/reasoning"
+import { isTauriAvailable } from "@/api/data"
+
+const STATUS_TO_KIND: Record<string, PipelineStepKind> = {
+  classifying: "intent",
+  loading_graph: "graph",
+  recalling_chunks: "rag",
+  building_context: "context",
+  searching_web: "web_search",
+  calling_tool: "tool_call",
+  generating: "generating",
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  classifying: "Clasificando intención",
+  loading_graph: "Cargando grafo",
+  recalling_chunks: "Buscando fragmentos",
+  building_context: "Construyendo contexto",
+  searching_web: "Buscando en web",
+  calling_tool: "Ejecutando herramienta",
+  generating: "Generando respuesta",
+}
+
+const KIND_LABELS: Record<PipelineStepKind, string> = {
+  intent: "Clasificando intención",
+  graph: "Cargando grafo",
+  rag: "Buscando en documentos",
+  context: "Construyendo contexto",
+  web_search: "Buscando en la web",
+  tool_call: "Ejecutando herramienta",
+  generating: "Generando respuesta",
+}
+
+function buildMetadata(data: Record<string, unknown>): string {
+  const parts: string[] = []
+  if (data.intent) parts.push(String(data.intent))
+  if (data.confidence) parts.push(`${Math.round(Number(data.confidence) * 100)}%`)
+  if (data.node_count) parts.push(`${data.node_count} nodos`)
+  if (data.edge_count) parts.push(`${data.edge_count} aristas`)
+  if (data.chunk_count) parts.push(`${data.chunk_count} chunks`)
+  if (data.nodes_selected) parts.push(`${data.nodes_selected}/${data.nodes_total} nodos`)
+  if (data.sources_found) parts.push(`${data.sources_found} fuentes`)
+  return parts.join(" · ")
+}
 
 const DEFAULT_PROJECT_ID = "project-default"
 const DEFAULT_TOGGLES: ContextToggle = {
@@ -76,6 +120,12 @@ export function useChatSession(
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
   const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
   const [lastIntent, setLastIntent] = React.useState<string | null>(null)
+  const [pipeline, setPipeline] = React.useState<PipelineState | null>(null)
+  const pipelineStepsRef = React.useRef<Map<string, PipelineStep>>(new Map())
+  const pipelineOrderRef = React.useRef<string[]>([])
+  const [thinkingText, setThinkingText] = React.useState("")
+  const [toolCalls, setToolCalls] = React.useState<ToolCallRecord[]>([])
+  const toolCallRef = React.useRef<Partial<ToolCallRecord> | null>(null)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -134,6 +184,11 @@ export function useChatSession(
     setError(null)
     setSessionSummary(null)
     setLastIntent(null)
+    setPipeline(null)
+    setThinkingText("")
+    setToolCalls([])
+    pipelineStepsRef.current = new Map()
+    pipelineOrderRef.current = []
   }, [])
 
   const updateAssistantMessage = React.useCallback((
@@ -183,6 +238,11 @@ export function useChatSession(
       setError(null)
       setPending(true)
       setLoadingPhase("classifying")
+      setPipeline(null)
+      setThinkingText("")
+      setToolCalls([])
+      pipelineStepsRef.current = new Map()
+      pipelineOrderRef.current = []
       setMessages((current) => [...current, optimistic])
 
       const assistantMsgId = `assistant-${Date.now()}`
@@ -272,6 +332,17 @@ export function useChatSession(
         setConversationId(response.conversation_id)
         saveConversationId(response.conversation_id)
         setLoadingPhase("extracting")
+        setPipeline((prev) => {
+          if (!prev) return null
+          return {
+            ...prev,
+            status: "completed",
+            totalDurationMs: Date.now() - (submitTime ?? Date.now()),
+            steps: prev.steps.map((s) =>
+              s.status === "active" ? { ...s, status: "done" as const } : s,
+            ),
+          }
+        })
         if (response.session_summary) {
           setSessionSummary(response.session_summary)
         }
@@ -340,6 +411,143 @@ export function useChatSession(
     [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage]
   )
 
+  // ── Event listeners for pipeline, thinking, tool calls ──
+  React.useEffect(() => {
+    if (!isTauriAvailable()) return
+
+    let unlistenEvent: (() => void) | undefined
+    let unlistenThinking: (() => void) | undefined
+    let unlistenToolCall: (() => void) | undefined
+    let unlistenToolResult: (() => void) | undefined
+
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      listen<{ agent: string; status: string; message: string; timestamp: number; data?: Record<string, unknown> }>(
+        "agent:event",
+        { target: { kind: "Any" } },
+        (event) => {
+          const { status, message, data } = event.payload
+          const kind = STATUS_TO_KIND[status]
+          if (!kind) return
+
+          setPipeline((prev) => {
+            if (!prev) {
+              pipelineStepsRef.current = new Map()
+              pipelineOrderRef.current = []
+              pipelineStepsRef.current.set(kind, {
+                id: `pipeline-${kind}`,
+                kind,
+                label: message || STATUS_LABELS[status] || KIND_LABELS[kind],
+                metadata: data ? buildMetadata(data) : undefined,
+                status: "active",
+              })
+              pipelineOrderRef.current.push(kind)
+              return {
+                status: "running",
+                steps: [pipelineStepsRef.current.get(kind)!],
+              }
+            }
+
+            const existingIdx = prev.steps.findIndex((s) => s.kind === kind)
+
+            if (existingIdx === -1) {
+              const updated = prev.steps.map((s) =>
+                s.status === "active" ? { ...s, status: "done" as const, durationMs: Date.now() - (prev.totalDurationMs ? Date.now() - 0 : 0) } : s,
+              )
+              const newStep: PipelineStep = {
+                id: `pipeline-${kind}`,
+                kind,
+                label: message || STATUS_LABELS[status] || KIND_LABELS[kind],
+                metadata: data ? buildMetadata(data) : undefined,
+                status: "active",
+              }
+              pipelineStepsRef.current.set(kind, newStep)
+              pipelineOrderRef.current.push(kind)
+              return { ...prev, steps: [...updated, newStep] }
+            }
+
+            const stepDone = status === "response_complete" || status === "generating"
+            const newSteps = prev.steps.map((s, i) => {
+              if (i !== existingIdx) return s
+              return {
+                ...s,
+                metadata: data ? buildMetadata(data) : s.metadata,
+                status: stepDone ? ("done" as const) : ("active" as const),
+                durationMs: stepDone ? Date.now() - 0 : undefined,
+              }
+            }) as PipelineStep[]
+
+            return { ...prev, steps: newSteps }
+          })
+        },
+      ).then((u) => { unlistenEvent = u })
+
+      try {
+        listen<{ text: string; is_partial?: boolean }>(
+          "reasoning:thinking",
+          { target: { kind: "Any" } },
+          (event) => {
+            const { text, is_partial } = event.payload
+            setThinkingText((prev) => (is_partial ? prev + text : text))
+          },
+        ).then((u) => { unlistenThinking = u })
+      } catch { }
+
+      listen<{ tool_name: string; tool_call_id: string; args: Record<string, unknown> }>(
+        "llm:tool_call",
+        { target: { kind: "Any" } },
+        (event) => {
+          const { tool_name, args } = event.payload
+          const id = `tool-${Date.now()}`
+          toolCallRef.current = { id, toolName: tool_name, args, status: "pending" }
+          setToolCalls((prev) => [...prev, { id, toolName: tool_name, args, status: "pending" }])
+        },
+      ).then((u) => { unlistenToolCall = u })
+
+      listen<{ tool_name: string; success: boolean; duration_ms: number; result?: unknown }>(
+        "llm:tool_result",
+        { target: { kind: "Any" } },
+        (event) => {
+          const { tool_name, success, duration_ms, result } = event.payload
+          setToolCalls((prev) => {
+            const idx = prev.length - 1
+            if (idx < 0) return prev
+            const updated = [...prev]
+            const existing = updated[idx]
+            if (existing.toolName !== tool_name && existing.status === "pending") {
+              const ref = toolCallRef.current
+              if (ref && ref.toolName === tool_name) {
+                updated[idx] = {
+                  ...existing,
+                  toolName: tool_name,
+                  args: ref.args,
+                  resultSummary: typeof result === "string" ? result : success ? "Completado" : "Error",
+                  durationMs: duration_ms,
+                  status: success ? "done" : "error",
+                }
+              }
+              return updated
+            }
+            updated[idx] = {
+              ...existing,
+              resultSummary: typeof result === "string" ? result : success ? "Completado" : "Error",
+              durationMs: duration_ms,
+              status: success ? "done" : "error",
+            }
+            return updated
+          })
+          toolCallRef.current = null
+        },
+      ).then((u) => { unlistenToolResult = u })
+    })
+
+    return () => {
+      unlistenEvent?.()
+      unlistenThinking?.()
+      unlistenToolCall?.()
+      unlistenToolResult?.()
+    }
+  }, [])
+
   const regenerate = React.useCallback(() => {
     setError(null)
     let contentToSubmit = ""
@@ -386,6 +594,9 @@ export function useChatSession(
     submitTime,
     sessionSummary,
     lastIntent,
+    pipeline,
+    thinkingText,
+    toolCalls,
     submit,
     regenerate,
     loadConversation,

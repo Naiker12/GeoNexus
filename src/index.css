@@ -39,6 +39,16 @@
 :root {
   --radius: 0.5rem;
   --background: oklch(0.985 0.003 247.858);
+  --agent-accent: #D97706;
+  --agent-bg: #F5F2EC;
+  --agent-panel-bg: #FEFCF8;
+  --agent-text: #92400E;
+  --agent-border: #FDE68A;
+  --agent-hover: #FEF3C7;
+  --agent-step-done: #D97706;
+  --agent-step-active: #F59E0B;
+  --agent-step-pending: #D1D5DB;
+  --agent-step-error: #EF4444;
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -69,6 +79,16 @@
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
+  --agent-accent: #F59E0B;
+  --agent-bg: #1C1917;
+  --agent-panel-bg: #292524;
+  --agent-text: #FBBF24;
+  --agent-border: #78350F;
+  --agent-hover: #451A03;
+  --agent-step-done: #F59E0B;
+  --agent-step-active: #FBBF24;
+  --agent-step-pending: #525252;
+  --agent-step-error: #EF4444;
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);

@@ -23,11 +23,6 @@ export type PipelineStepItem = {
 
 export const documentSources: DocumentSource[] = [
   {
-    name: "OneDrive",
-    detail: "Sincroniza carpetas POT, licencias y anexos tecnicos.",
-    status: "Listo para conectar",
-  },
-  {
     name: "Carpeta Windows",
     detail: "Lee una ruta local y detecta cambios sin mover archivos.",
     status: "Local",

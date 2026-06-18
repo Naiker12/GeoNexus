@@ -34,7 +34,7 @@ function filterItems(items: ReturnType<typeof buildMentionItems>, query: string)
 
 const mockConnectors: AiConnector[] = [
   { id: "c1", name: "OneDrive", provider: "cloud", role: "chat", status: "online", model: "gpt4", models: ["gpt4"], endpoint: "https://", supportsTools: true, privacy: "keychain", latency: "50ms", description: "", icon: undefined as any },
-  { id: "c2", name: "Carpeta Local", provider: "local", role: "chat", status: "offline", model: "gpt4", models: ["gpt4"], endpoint: "file://", supportsTools: true, privacy: "local", latency: "1ms", description: "", icon: undefined as any },
+  { id: "c2", name: "Archivos Locales", provider: "local", role: "chat", status: "offline", model: "gpt4", models: ["gpt4"], endpoint: "file://", supportsTools: true, privacy: "local", latency: "1ms", description: "", icon: undefined as any },
   { id: "c3", name: "QGIS", provider: "local", role: "chat", status: "online", model: "gpt4", models: ["gpt4"], endpoint: "qgis://", supportsTools: true, privacy: "local", latency: "5ms", description: "", icon: undefined as any },
 ]
 
@@ -71,7 +71,7 @@ describe("MentionPicker filtering", () => {
   it("filters by query substring (case insensitive)", () => {
     const items = buildMentionItems(mockConnectors)
     expect(filterItems(items, "one")).toHaveLength(1)
-    expect(filterItems(items, "local")).toHaveLength(1)
+    expect(filterItems(items, "Archivos")).toHaveLength(1)
     expect(filterItems(items, "coleccion")).toHaveLength(2)
   })
 

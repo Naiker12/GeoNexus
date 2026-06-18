@@ -3,12 +3,6 @@ export interface TranscribeOptions {
   mimeType: string
 }
 
-export interface SynthesizeOptions {
-  text: string
-  voice?: string
-  speed?: number
-}
-
 /** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
 function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
@@ -75,25 +69,4 @@ export async function transcribeAudio(options: TranscribeOptions): Promise<strin
   }
 
   return result.text
-}
-
-export async function synthesizeAudio(options: SynthesizeOptions): Promise<{ audioBase64: string; mimeType: string }> {
-  if (!options.text.trim()) throw new Error('text is required')
-
-  const result = await invokeOrFallback<{ status: string; audio_base64: string; mime_type: string }>('audio_synthesize', {
-    request: {
-      text: options.text,
-      voice: options.voice,
-      speed: options.speed
-    }
-  }, { status: 'ok', audio_base64: '', mime_type: 'audio/mpeg' })
-
-  if (result.status !== 'ok') {
-    throw new Error('Synthesis failed')
-  }
-
-  return {
-    audioBase64: result.audio_base64,
-    mimeType: result.mime_type
-  }
 }

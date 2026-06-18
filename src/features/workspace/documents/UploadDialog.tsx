@@ -28,11 +28,10 @@ function isImage(file: File): boolean {
   return file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(file.name)
 }
 
-function getPreviewType(file: File): 'image' | 'pdf' | 'shapefile' | 'csv' | 'geojson' | 'document' {
+function getPreviewType(file: File): 'image' | 'pdf' | 'csv' | 'geojson' | 'document' {
   const name = file.name.toLowerCase()
   if (isImage(file)) return 'image'
   if (name.endsWith('.pdf')) return 'pdf'
-  if (name.endsWith('.shp') || name.endsWith('.zip')) return 'shapefile'
   if (name.endsWith('.csv')) return 'csv'
   if (name.endsWith('.geojson') || name.endsWith('.json')) return 'geojson'
   return 'document'

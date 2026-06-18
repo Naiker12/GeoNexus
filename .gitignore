@@ -48,6 +48,7 @@ __pycache__/
 *.db-wal
 *.db-shm
 chroma/
+chroma_db/
 ai/chroma/
 ai/.chroma/
 ai/data/

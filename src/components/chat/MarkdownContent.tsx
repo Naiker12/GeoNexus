@@ -1,10 +1,7 @@
 import { useState, useMemo, memo } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
-import { Check, Copy } from "lucide-react"
-
+import { CodeBlock } from "@/components/chat/CodeBlock"
 import { cn } from "@/lib/utils"
 import {
   looksLikeAsciiChart,
@@ -26,44 +23,6 @@ interface MarkdownContentProps {
 type Segment =
   | { type: "md"; text: string }
   | { type: "chart"; code: string }
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  js: "JavaScript",
-  jsx: "JSX",
-  ts: "TypeScript",
-  tsx: "TSX",
-  py: "Python",
-  rs: "Rust",
-  go: "Go",
-  rb: "Ruby",
-  java: "Java",
-  kt: "Kotlin",
-  swift: "Swift",
-  cpp: "C++",
-  c: "C",
-  cs: "C#",
-  php: "PHP",
-  html: "HTML",
-  css: "CSS",
-  scss: "SCSS",
-  json: "JSON",
-  yaml: "YAML",
-  yml: "YAML",
-  xml: "XML",
-  sql: "SQL",
-  sh: "Shell",
-  bash: "Bash",
-  zsh: "Zsh",
-  powershell: "PowerShell",
-  ps1: "PowerShell",
-  dockerfile: "Dockerfile",
-  diff: "Diff",
-  graphql: "GraphQL",
-  md: "Markdown",
-  txt: "Text",
-  env: ".env",
-  ignore: ".gitignore",
-}
 
 function splitContent(content: string): Segment[] {
   const segments: Segment[] = []
@@ -139,39 +98,75 @@ const RenderedContent = memo(function RenderedContent({
             key={i}
             remarkPlugins={[remarkGfm]}
             components={{
+              code({ className, children, inline }) {
+                return (
+                  <CodeBlock className={className} inline={inline}>
+                    {String(children)}
+                  </CodeBlock>
+                )
+              },
+              pre({ children }) {
+                return <>{children}</>
+              },
               p({ children }) {
-                return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
-              },
-              strong({ children }) {
-                return (
-                  <strong className="font-medium text-foreground">
-                    {children}
-                  </strong>
-                )
-              },
-              ul({ children }) {
-                return <ul className="mb-2 pl-5 list-disc space-y-0.5">{children}</ul>
-              },
-              ol({ children }) {
-                return (
-                  <ol className="mb-2 pl-5 list-decimal space-y-0.5">{children}</ol>
-                )
-              },
-              li({ children }) {
-                return <li className="leading-relaxed">{children}</li>
+                return <p className="text-[14px] text-stone-700 leading-[1.75] mb-3 last:mb-0">{children}</p>
               },
               h1({ children }) {
-                return (
-                  <h1 className="text-base font-medium mt-4 mb-2">{children}</h1>
-                )
+                return <h1 className="text-[18px] font-medium text-stone-800 mt-5 mb-2">{children}</h1>
               },
               h2({ children }) {
-                return (
-                  <h2 className="text-sm font-medium mt-3 mb-1.5">{children}</h2>
-                )
+                return <h2 className="text-[16px] font-medium text-stone-800 mt-4 mb-2">{children}</h2>
               },
               h3({ children }) {
-                return <h3 className="text-sm font-medium mt-2 mb-1">{children}</h3>
+                return <h3 className="text-[14px] font-medium text-stone-800 mt-3 mb-1.5">{children}</h3>
+              },
+              ul({ children }) {
+                return <ul className="list-none pl-0 mb-3 space-y-1">{children}</ul>
+              },
+              ol({ children }) {
+                return <ol className="list-decimal list-inside mb-3 space-y-1 text-[14px] text-stone-700">{children}</ol>
+              },
+              li({ children }) {
+                return (
+                  <li className="flex items-start gap-2 text-[14px] text-stone-700 leading-[1.7]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-stone-400 mt-[9px] flex-shrink-0" />
+                    <span>{children}</span>
+                  </li>
+                )
+              },
+              blockquote({ children }) {
+                return (
+                  <blockquote className="border-l-2 border-stone-300 pl-4 my-3 text-stone-500 italic text-[13px]">
+                    {children}
+                  </blockquote>
+                )
+              },
+              table({ children }) {
+                return (
+                  <div className="overflow-x-auto my-3">
+                    <table className="w-full text-[13px] border-collapse">{children}</table>
+                  </div>
+                )
+              },
+              thead({ children }) {
+                return <thead className="border-b border-stone-200">{children}</thead>
+              },
+              th({ children }) {
+                return (
+                  <th className="text-left px-3 py-2 text-[12px] font-medium text-stone-500 uppercase tracking-wide">
+                    {children}
+                  </th>
+                )
+              },
+              td({ children }) {
+                return (
+                  <td className="px-3 py-2 text-stone-700 border-b border-stone-100">
+                    {children}
+                  </td>
+                )
+              },
+              tr({ children }) {
+                return <tr className="hover:bg-stone-50 transition-colors">{children}</tr>
               },
               a({ href, children }) {
                 return (
@@ -179,58 +174,20 @@ const RenderedContent = memo(function RenderedContent({
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-600 no-underline hover:underline dark:text-emerald-400"
+                    className="text-amber-700 underline underline-offset-2 hover:text-amber-600 transition-colors"
                   >
                     {children}
                   </a>
                 )
               },
-              table({ children }) {
-                return (
-                  <div className="overflow-x-auto my-3">
-                    <table className="w-full border-collapse text-[13px]">
-                      {children}
-                    </table>
-                  </div>
-                )
+              hr() {
+                return <hr className="border-stone-200 my-4" />
               },
-              thead({ children }) {
-                return <thead className="bg-muted/50">{children}</thead>
+              strong({ children }) {
+                return <strong className="font-medium text-stone-800">{children}</strong>
               },
-              th({ children }) {
-                return (
-                  <th className="border border-border px-3 py-1.5 text-left font-medium text-[12px]">
-                    {children}
-                  </th>
-                )
-              },
-              td({ children }) {
-                return (
-                  <td className="border border-border px-3 py-1.5 text-[12px]">
-                    {children}
-                  </td>
-                )
-              },
-              tr({ children }) {
-                return <tr className="even:bg-muted/20">{children}</tr>
-              },
-              code({ className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || "")
-                const language = match?.[1] ?? ""
-                const codeString = String(children).replace(/\n$/, "")
-
-                if (!match) {
-                  return (
-                    <code
-                      className="rounded bg-muted px-1.5 py-0.5 text-[13px] font-normal text-foreground"
-                      {...props}
-                    >
-                      {children}
-                    </code>
-                  )
-                }
-
-                return <CodeBlock language={language} code={codeString} />
+              em({ children }) {
+                return <em className="italic text-stone-600">{children}</em>
               },
             }}
           >
@@ -247,11 +204,9 @@ export const MarkdownContent = memo(function MarkdownContent({
   isStreaming,
 }: MarkdownContentProps) {
   return (
-    <div
-      className={cn(
-        "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere"
-      )}
-    >
+    <div className={cn(
+      "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere",
+    )}>
       {isStreaming ? (
         <StreamingContent content={content} />
       ) : (
@@ -282,112 +237,4 @@ function ChartFromText({ code }: { code: string }) {
     return <BarChartBlock title={parsed.title} entries={parsed.entries} />
   }
   return null
-}
-
-function CodeBlock({
-  language,
-  code,
-}: {
-  language: string
-  code: string
-}) {
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // clipboard not available
-    }
-  }
-
-  if (looksLikeMatplotlibChart(code)) {
-    const parsed = parseMatplotlibChart(code)
-    if (parsed.type === "pie" && parsed.entries.length > 0) {
-      return <PieChartBlock title={parsed.title} entries={parsed.entries} />
-    }
-    if (parsed.type === "bar" && parsed.entries.length > 0) {
-      return <BarChartBlock title={parsed.title} entries={parsed.entries} />
-    }
-    if (parsed.type === "line" && parsed.series.length > 0) {
-      return <LineChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
-    }
-  }
-
-  if (looksLikeAsciiChart(code)) {
-    const parsed = parseAsciiChart(code)
-    if (parsed.type === "area" && parsed.series.length > 0) {
-      return <AreaChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
-    }
-    if (parsed.type === "radar" && parsed.entries.length > 0) {
-      return <RadarChartBlock title={parsed.title} entries={parsed.entries} />
-    }
-    if (parsed.type === "line" && parsed.series.length > 0) {
-      return <LineChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
-    }
-    if (parsed.type === "pie" && parsed.entries.length > 0) {
-      return <PieChartBlock title={parsed.title} entries={parsed.entries} />
-    }
-    if (parsed.entries.length > 0) {
-      return <BarChartBlock title={parsed.title} entries={parsed.entries} />
-    }
-  }
-
-  const label = LANGUAGE_LABELS[language] || language || "code"
-
-  return (
-    <div className="my-3 rounded-lg border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-1.5 bg-muted border-b border-border">
-        <div className="flex items-center gap-2">
-          <span className="flex gap-1">
-            <span className="size-2.5 rounded-full bg-red-500" />
-            <span className="size-2.5 rounded-full bg-yellow-500" />
-            <span className="size-2.5 rounded-full bg-green-500" />
-          </span>
-          <span className="text-[11px] font-mono text-muted-foreground">
-            {label}
-          </span>
-        </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Copiar código"
-        >
-          {copied ? (
-            <>
-              <Check className="size-3 text-emerald-500" />
-              <span className="text-emerald-500">Copiado</span>
-            </>
-          ) : (
-            <>
-              <Copy className="size-3" />
-              <span>Copiar</span>
-            </>
-          )}
-        </button>
-      </div>
-      <div className="overflow-x-auto">
-        <SyntaxHighlighter
-          language={language || "text"}
-          style={oneDark}
-          wrapLongLines={false}
-          customStyle={{
-            margin: 0,
-            padding: "1rem",
-            fontSize: "12.5px",
-            lineHeight: "1.6",
-            background: "var(--color-muted)",
-            whiteSpace: "pre",
-          }}
-          codeTagProps={{
-            style: { fontFamily: "var(--font-mono, inherit)" },
-          }}
-        >
-          {code}
-        </SyntaxHighlighter>
-      </div>
-    </div>
-  )
 }

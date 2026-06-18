@@ -5,9 +5,8 @@ import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
-import { ReasoningPanel } from "@/components/chat/ReasoningPanel"
-import { useReasoningStream } from "@/components/chat/useReasoningStream"
 import type { Message } from "@/types/chat"
+import type { PipelineState, ToolCallRecord } from "@/components/chat/reasoning"
 
 type ChatTranscriptProps = {
   messages: Message[]
@@ -18,11 +17,9 @@ type ChatTranscriptProps = {
   onEditLastUserMessage?: () => void
   onRegenerateLastMessage?: () => void
   useContext?: boolean
-  lastIntent?: string
-  steps?: any[]
-  isReasoning?: boolean
+  pipeline?: PipelineState | null
   thinkingText?: string
-  toolCalls?: any[]
+  toolCalls?: ToolCallRecord[]
 }
 
 export function ChatTranscript({
@@ -30,23 +27,15 @@ export function ChatTranscript({
   pending,
   submitTime,
   onSendMessage,
-  webSearchEnabled,
   onEditLastUserMessage,
   onRegenerateLastMessage,
-  useContext,
-  lastIntent,
-  steps: propSteps,
-  isReasoning: propIsReasoning,
+  pipeline,
   thinkingText,
   toolCalls,
 }: ChatTranscriptProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
-  const { steps: streamSteps, isReasoning: streamIsReasoning } = useReasoningStream()
-  const steps = propSteps || streamSteps
-  const isReasoning = propIsReasoning !== undefined ? propIsReasoning : streamIsReasoning
 
-  // --- Smart scroll: detect if user scrolled up manually ---
   const [userScrolledUp, setUserScrolledUp] = React.useState(false)
   const [showScrollBtn, setShowScrollBtn] = React.useState(false)
 
@@ -99,14 +88,12 @@ export function ChatTranscript({
     return ""
   }, [messages])
 
-  // Auto-scroll ONLY if user hasn't scrolled up
   React.useEffect(() => {
     if (!userScrolledUp && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages, pending, userScrolledUp])
 
-  // Reset scroll lock when response completes
   React.useEffect(() => {
     if (!pending) {
       setUserScrolledUp(false)
@@ -130,9 +117,9 @@ export function ChatTranscript({
         message.role === "user" ? (
           <div key={message.id} className="group flex flex-col items-end">
             {message.attachments && message.attachments.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-2 max-w-full">
+              <div className="mb-2 flex max-w-full flex-wrap gap-2">
                 {message.attachments.map((attachment) => (
-                  <div key={attachment.id} className="rounded-lg overflow-hidden border border-border">
+                  <div key={attachment.id} className="overflow-hidden rounded-lg border border-border">
                     {attachment.data && attachment.type.startsWith("image/") ? (
                       <img
                         src={attachment.data}
@@ -142,7 +129,7 @@ export function ChatTranscript({
                     ) : (
                       <div className="flex items-center gap-2 px-3 py-2 text-sm">
                         <FileTextIcon className="size-4 text-muted-foreground" />
-                        <span className="truncate max-w-xs">{attachment.name}</span>
+                        <span className="max-w-xs truncate">{attachment.name}</span>
                       </div>
                     )}
                   </div>
@@ -150,7 +137,7 @@ export function ChatTranscript({
               </div>
             )}
             <MessageBubble role="user">
-              <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.content}</p>
+              <p className="overflow-wrap-anywhere whitespace-pre-wrap break-words">{message.content}</p>
             </MessageBubble>
             <div className="flex items-center gap-0.5 pt-0.5">
               <CopyButton content={message.content} />
@@ -167,43 +154,50 @@ export function ChatTranscript({
             <AssistantMessage
               message={message}
               isStreaming={index === lastAssistantIndex && pending}
+              isPending={index === lastAssistantIndex && pending}
+              pipeline={index === lastAssistantIndex ? pipeline : null}
               onSendMessage={onSendMessage}
               cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
-              reasoningSteps={index === lastAssistantIndex ? steps : undefined}
-              isReasoning={index === lastAssistantIndex ? isReasoning : undefined}
-              reasoningStartTime={index === lastAssistantIndex ? (submitTime ?? null) : undefined}
-              intent={index === lastAssistantIndex ? lastIntent : undefined}
-              userQuery={index === lastAssistantIndex ? lastUserMessage : undefined}
               thinkingText={index === lastAssistantIndex ? thinkingText : undefined}
               toolCalls={index === lastAssistantIndex ? toolCalls : undefined}
             />
           </div>
-        )
+        ),
       )}
 
-      {/* If pending but no assistant message placeholder yet, show reasoning standalone */}
       {pending && lastAssistantIndex === -1 && (
         <div className="flex items-start gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/20">
             <GeoAgentsIcon className="size-4" variant="nexus" />
           </div>
-          <div className="flex flex-col gap-2 pt-1.5 w-full">
-            <ReasoningPanel
-              steps={steps}
-              isRunning={isReasoning}
-              startTime={submitTime ?? null}
-              intent={lastIntent}
-              userQuery={lastUserMessage}
-              thinkingText={thinkingText}
-              toolCalls={toolCalls}
-            />
+          <div className="flex w-full flex-col gap-2 pt-1.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-sm text-stone-500">
+              <div className="flex items-center gap-[3px]">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="h-[5px] w-[5px] rounded-full bg-stone-400"
+                    style={{
+                      animation: "gn-bounce 1.4s ease-in-out infinite",
+                      animationDelay: `${i * 0.16}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              <span>Pensando</span>
+              <style>{`
+                @keyframes gn-bounce {
+                  0%, 80%, 100% { transform: scale(1); opacity: 0.4; }
+                  40%            { transform: scale(1.35); opacity: 1; }
+                }
+              `}</style>
+            </div>
           </div>
         </div>
       )}
 
       <div ref={messagesEndRef} />
 
-      {/* Floating "back to bottom" button when user scrolled up during generation */}
       {showScrollBtn && (
         <button
           type="button"

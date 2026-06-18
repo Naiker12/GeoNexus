@@ -1,13 +1,11 @@
 import * as React from "react"
 import {
   CpuIcon,
-  FolderIcon,
   GlobeIcon,
   MenuIcon,
   PlusIcon,
   SearchIcon,
   SparklesIcon,
-  ZapIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
@@ -28,8 +26,10 @@ import { Switch } from "@/components/ui/switch"
 import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
 import { ConnectorMiniPanel } from "@/components/chat/ConnectorMiniPanel"
 import { ConnectorConnectionDialog } from "@/components/chat/ConnectorConnectionDialog"
+import { AgentModeToggle } from "@/components/chat/AgentModeToggle"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
 import type { MentionableSourceItem } from "@/types/chat"
+import type { AgentMode } from "@/types/coding-agent"
 
 export type ToolMenuProps = {
   webSearchEnabled: boolean
@@ -37,7 +37,6 @@ export type ToolMenuProps = {
   connectors: any[]
   refreshSources: () => void
   onAttachFiles: () => void
-  onToggleCoding?: () => void
 }
 
 export function ToolMenu({
@@ -46,9 +45,8 @@ export function ToolMenu({
   connectors,
   refreshSources,
   onAttachFiles,
-  onToggleCoding,
 }: ToolMenuProps) {
-  const codingAgent = useCodingAgent()
+  const { state, dispatch } = useCodingAgent()
   const [expandedConnector, setExpandedConnector] = React.useState<string | null>(null)
   const [connectingConnector, setConnectingConnector] = React.useState<MentionableSourceItem | null>(null)
 
@@ -142,6 +140,14 @@ export function ToolMenu({
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
+            <DropdownMenuLabel className="sr-only">Modo de trabajo</DropdownMenuLabel>
+            <AgentModeToggle
+              mode={state.mode}
+              onChange={(mode: AgentMode) => dispatch({ type: "SET_MODE", payload: mode })}
+            />
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
             <DropdownMenuLabel>Herramientas GIS</DropdownMenuLabel>
             <DropdownMenuItem className="gap-3 px-3 py-2">
               <SearchIcon className="size-4" />
@@ -161,21 +167,6 @@ export function ToolMenu({
                 onCheckedChange={onToggleWebSearch}
                 className="scale-75"
                 aria-label="Activar busqueda en internet"
-              />
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="flex items-center justify-between gap-2 px-3 py-2"
-              onSelect={(e) => e.preventDefault()}
-            >
-              <div className="flex items-center gap-3">
-                <ZapIcon className="size-4 text-muted-foreground" />
-                <span className="text-sm">Coding Agent</span>
-              </div>
-              <Switch
-                checked={codingAgent.state.isActive}
-                onCheckedChange={codingAgent.toggleCodingMode}
-                className="scale-75"
-                aria-label="Activar coding agent"
               />
             </DropdownMenuItem>
             <DropdownMenuSub>

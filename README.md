@@ -27,9 +27,9 @@ Unificar la consulta de información territorial (normas, documentos técnicos, 
 
 ---
 
-## Capturas (próximamente)
+## Capturas
 
-Interfaz principal con chat lateral, panel de trazas y dashboard de análisis.
+![GeoNexus](public/Geonexus.png)
 
 ---
 

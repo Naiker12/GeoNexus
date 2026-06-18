@@ -31,14 +31,11 @@ export function useGraphEvents(
   const [pulsingEdgeKeys, setPulsingEdgeKeys] = React.useState<Set<string>>(new Set())
 
   const refresh = React.useCallback(async () => {
-    console.log("🔄 [useGraphEvents] Refreshing graph data...")
     try {
       const [newNodes, newEdges] = await Promise.all([
         listGraphNodes(projectId),
         listGraphEdges(projectId),
       ])
-      console.log("📊 [useGraphEvents] Got nodes:", newNodes.length, newNodes)
-      console.log("🔗 [useGraphEvents] Got edges:", newEdges.length, newEdges)
       setNodes(newNodes)
       setEdges(newEdges)
     } catch (e) {

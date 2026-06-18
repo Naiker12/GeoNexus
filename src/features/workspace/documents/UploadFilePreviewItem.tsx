@@ -3,7 +3,6 @@ import {
   FileTextIcon,
   XCircleIcon,
   ImageIcon,
-  MapIcon,
   TableIcon,
   FileJsonIcon,
 } from "lucide-react"
@@ -13,7 +12,7 @@ export interface PendingFileWithPreview {
   id: string
   file: File
   previewUrl?: string
-  previewType: 'image' | 'pdf' | 'shapefile' | 'csv' | 'geojson' | 'document'
+  previewType: 'image' | 'pdf' | 'csv' | 'geojson' | 'document'
   progress?: number
 }
 
@@ -36,8 +35,6 @@ export function UploadFilePreviewItem({ file, onRemove, uploading }: UploadFileP
         return <ImageIcon className="size-5 text-muted-foreground" />
       case 'pdf':
         return <FileTextIcon className="size-5 text-muted-foreground" />
-      case 'shapefile':
-        return <MapIcon className="size-5 text-muted-foreground" />
       case 'csv':
         return <TableIcon className="size-5 text-muted-foreground" />
       case 'geojson':

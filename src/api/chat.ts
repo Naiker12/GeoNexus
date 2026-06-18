@@ -38,7 +38,9 @@ async function invokeOrFallback<T>(
   try {
     return await invoke<T>(command, args)
   } catch (e) {
-    console.error(`[invokeOrFallback] Error en ${command}:`, e)
+    if (import.meta.env.DEV) {
+      console.debug(`[invokeOrFallback] ${command} no disponible:`, e)
+    }
     return fallback
   }
 }

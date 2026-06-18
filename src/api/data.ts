@@ -172,10 +172,8 @@ export async function searchGraphNodes(
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
-    console.log("🔍 [listGraphEdges] Fetching edges for project:", projectId)
     const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
     if (edges) {
-        console.log("✅ [listGraphEdges] Got edges:", edges.length, edges)
         return edges.map((e, idx) => ({
             id: e.id ?? `edge-${idx}-${Date.now()}`, // Add fallback ID
             source: e.source ?? "unknown",
@@ -184,7 +182,6 @@ export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<Gr
             strength: e.strength ?? 100
         }))
     }
-    console.log("ℹ️ [listGraphEdges] No edges found, returning empty array")
     return []
 }
 

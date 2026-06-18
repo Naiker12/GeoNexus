@@ -16,7 +16,7 @@ export function useDocuments() {
     setLoading(true)
     try {
       const data = await listDataAssets(DEFAULT_PROJECT_ID)
-      const docTypes = ["document", "word", "excel", "other", "shapefile", "layer", "csv", "raster"]
+      const docTypes = ["document", "word", "excel", "other", "layer", "csv", "raster"]
       const filtered = data.filter((a) => docTypes.includes(a.kind))
       setAssets(filtered)
     } catch (err) {
