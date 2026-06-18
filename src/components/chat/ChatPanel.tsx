@@ -20,6 +20,7 @@ import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
 import { useReasoningStream } from "@/components/chat/useReasoningStream"
+import { invoke } from "@tauri-apps/api/core"
 
 import { CodingAgentPanel } from "@/components/chat/CodingAgentPanel"
 

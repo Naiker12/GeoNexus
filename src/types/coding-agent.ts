@@ -52,3 +52,9 @@ export interface CodingAgentState {
   activeFile: FileNode | null;
   clarifyingQuestions: ClarifyingQuestion[];
 }
+
+/** Payload del evento Tauri `coding:file_created`. */
+export interface FileCreatedPayload {
+  path: string;
+  content: string;
+}

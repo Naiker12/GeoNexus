@@ -1,7 +1,6 @@
 import * as React from "react"
 import {
   DownloadIcon,
-  ExternalLinkIcon,
   FileTextIcon,
   Loader2Icon,
   RefreshCwIcon,
@@ -27,18 +26,11 @@ import { documentSources } from "@/features/workspace/documents/documents-data"
 import { useDocuments } from "@/features/workspace/documents/useDocuments"
 import { UploadDialog } from "@/features/workspace/documents/UploadDialog"
 
-import {
-  generateCodeVerifier,
-  generateCodeChallenge,
-  buildAuthUrl,
-  ONEDRIVE_CONFIG,
-} from "@/config/oauth"
 import { cn } from "@/lib/utils"
 import type { DataAsset } from "@/types/data"
 
 export function DocumentsPage() {
   const { toast, loading: showLoading, dismiss } = useToast()
-  const [oneDriveOpen, setOneDriveOpen] = React.useState(false)
   const [uploading, setUploading] = React.useState(false)
   const [permFolder, setPermFolder] = React.useState<{ path: string; name: string } | null>(null)
   const [pendingFiles, setPendingFiles] = React.useState<{ file: File; id: string }[]>([])
@@ -167,7 +159,6 @@ export function DocumentsPage() {
           activeSources={activeSources}
         />
         <SourceStrip
-          onConnectOneDrive={() => setOneDriveOpen(true)}
           onChooseFolder={handleChooseFolderClick}
           onFileInput={handleFileInput}
           uploading={uploading}
@@ -181,7 +172,6 @@ export function DocumentsPage() {
         />
       </div>
 
-      <OneDriveDialog open={oneDriveOpen} onOpenChange={setOneDriveOpen} />
       <FolderPermissionDialog
         open={!!permFolder}
         folderPath={permFolder?.path ?? ""}
@@ -238,12 +228,10 @@ function DocumentHeader({
 }
 
 function SourceStrip({
-  onConnectOneDrive,
   onChooseFolder,
   onFileInput,
   uploading,
 }: {
-  onConnectOneDrive: () => void
   onChooseFolder: () => void
   onFileInput: (e: React.ChangeEvent<HTMLInputElement>) => void
   uploading: boolean
@@ -252,17 +240,11 @@ function SourceStrip({
 
   const handleAction = (name: string) => {
     switch (name) {
-      case "OneDrive":
-        onConnectOneDrive()
-        break
       case "Carpeta Windows":
         onChooseFolder()
         break
       case "Subir archivos":
         fileInputRef.current?.click()
-        break
-      case "URL / SharePoint":
-        alert("Funcionalidad proximamente")
         break
     }
   }
@@ -286,17 +268,12 @@ function SourceStrip({
         </Button>
       </div>
 
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2">
         {documentSources.map((source) => {
-          const isOneDrive = source.name === "OneDrive"
           const actionLabel =
-            source.name === "OneDrive"
-              ? "Conectar"
-              : source.name === "Carpeta Windows"
-                ? "Elegir"
-                : source.name === "Subir archivos"
-                  ? uploading ? "Subiendo..." : "Subir"
-                  : "Agregar URL"
+            source.name === "Carpeta Windows"
+              ? "Elegir"
+              : uploading ? "Subiendo..." : "Subir"
 
           return (
             <div
@@ -322,7 +299,7 @@ function SourceStrip({
                     {source.status}
                   </span>
                   <Button
-                    variant={isOneDrive ? "default" : "outline"}
+                    variant={source.name === "Subir archivos" ? "default" : "outline"}
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={() => handleAction(source.name)}
@@ -570,83 +547,6 @@ function DocumentRow({
             </Button>
           </div>
     </article>
-  )
-}
-
-function OneDriveDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
-  const { toast } = useToast()
-  const [connecting, setConnecting] = React.useState(false)
-
-  const handleConnect = async () => {
-    setConnecting(true)
-    try {
-      const { openUrl } = await import("@tauri-apps/plugin-opener")
-      const verifier = generateCodeVerifier()
-      const challenge = await generateCodeChallenge(verifier)
-      const authUrl = buildAuthUrl(ONEDRIVE_CONFIG, challenge)
-      await openUrl(authUrl)
-      toast({
-        title: "Navegador abierto",
-        description: "Completa el inicio de sesion en el navegador.",
-        variant: "success",
-      })
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: `No se pudo abrir el navegador: ${err}`,
-        variant: "error",
-      })
-    } finally {
-      setConnecting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(88vw,24rem)] rounded-lg p-0">
-        <DialogHeader className="mb-0 border-b border-border px-3 pb-2 pt-3">
-          <div className="flex items-center gap-2">
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <DocumentAssetIcon kind="OneDrive" variant="source" className="size-3.5" />
-            </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-sm">Conectar OneDrive</DialogTitle>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex flex-col items-center gap-3 p-4">
-          <div className="flex size-14 items-center justify-center rounded-2xl border-2 border-border bg-primary/5">
-            <DocumentAssetIcon kind="OneDrive" variant="source" className="size-7" />
-          </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Te enviaremos al navegador para iniciar sesion con tu cuenta Microsoft.
-          </p>
-          <Button
-            size="sm"
-            className="w-full gap-1.5"
-            onClick={handleConnect}
-            disabled={connecting}
-          >
-            {connecting ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <ExternalLinkIcon className="size-4" />
-            )}
-            {connecting ? "Abriendo..." : "Continuar con Microsoft"}
-          </Button>
-          <Button variant="ghost" size="sm" type="button" onClick={() => onOpenChange(false)} className="-mt-1 h-7 text-xs">
-            Cerrar
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   )
 }
 

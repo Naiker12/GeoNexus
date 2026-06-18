@@ -15,7 +15,6 @@ const DEFAULT_TOGGLES: ContextToggle = {
 }
 const CONVERSATION_ID_KEY = "geonexus.activeConversationId"
 const WEB_SEARCH_KEY = "geonexus.webSearchEnabled"
-
 function loadConversationId(): string | null {
   try {
     return localStorage.getItem(CONVERSATION_ID_KEY)
@@ -36,6 +35,28 @@ function saveConversationId(id: string | null) {
   }
 }
 
+function getChatErrorMessage(err: unknown): string {
+  const raw = typeof err === "string"
+    ? err
+    : err instanceof Error
+      ? err.message
+      : String(err)
+
+  if (raw.includes("missing required key input") || raw.includes("invalid args `input`")) {
+    return "No se pudo enviar el mensaje por una incompatibilidad interna del chat. Actualiza la vista e intenta de nuevo."
+  }
+
+  if (raw.includes("provider requerido") || raw.includes("model requerido") || raw.includes("endpoint requerido")) {
+    return "Selecciona un proveedor, modelo y endpoint antes de enviar el mensaje."
+  }
+
+  if (raw.includes("content requerido")) {
+    return "Escribe un mensaje antes de enviarlo."
+  }
+
+  return raw
+}
+
 function loadWebSearchEnabled(): boolean {
   try {
     const stored = localStorage.getItem(WEB_SEARCH_KEY)
@@ -53,9 +74,9 @@ function saveWebSearchEnabled(enabled: boolean) {
   }
 }
 
-let researchTimerId: ReturnType<typeof setInterval> | null = null
+  let researchTimerId: ReturnType<typeof setInterval> | null = null
 
-export function useChatSession(
+  export function useChatSession(
   activeConnectorId: string | null,
   allConnectors: AiConnector[]
 ) {
@@ -76,7 +97,6 @@ export function useChatSession(
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
   const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
   const [lastIntent, setLastIntent] = React.useState<string | null>(null)
-
   React.useEffect(() => {
     saveConversationId(conversationId)
   }, [conversationId])
@@ -298,11 +318,13 @@ export function useChatSession(
           stats: response.message.stats,
           knowledgeSteps: finalKnowledgeSteps,
           chunk_references: response.chunks_used,
+          // Always include final content to avoid leaving partial streamed text
+          content: response.message?.content ?? "",
         }
+
         if (webSearchEnabled) {
           updateAssistantMessage(assistantMsgId, {
             ...baseUpdate,
-            content: response.message.content,
             isSearching: false,
             currentSearchQuery: response.search_query ?? clean,
             research_sources: (response.research_sources ?? []),
@@ -325,11 +347,7 @@ export function useChatSession(
           current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
         )
 
-        const message = typeof err === "string"
-          ? err
-          : err instanceof Error
-            ? err.message
-            : String(err)
+        const message = getChatErrorMessage(err)
         setError(message)
         toast({ title: "Error en el chat", description: message, variant: "error" })
       } finally {
@@ -391,5 +409,6 @@ export function useChatSession(
     loadConversation,
     newConversation,
     stop,
+
   }
 }

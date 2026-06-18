@@ -124,11 +124,21 @@ pub fn run_sidecar_streaming(
         }
     }
 
-    let _ = child.wait();
-    let _stderr_output = std::io::read_to_string(&mut stderr).unwrap_or_default();
+    let status = child
+        .wait()
+        .map_err(|e| format!("Error esperando al sidecar Python: {e}"))?;
+    let stderr_output = std::io::read_to_string(&mut stderr).unwrap_or_default();
 
     if done_line.is_empty() {
-        return Err("El sidecer no emitió una respuesta final (done)".to_string());
+        let detail = stderr_output.trim();
+        if !detail.is_empty() {
+            return Err(format!(
+                "El sidecar no emitio una respuesta final (done). Estado: {status}. Detalle: {detail}"
+            ));
+        }
+        return Err(format!(
+            "El sidecar no emitio una respuesta final (done). Estado: {status}"
+        ));
     }
 
     Ok(done_line)
@@ -165,9 +175,13 @@ pub fn project_root() -> PathBuf {
 fn python_executable(root_path: &PathBuf) -> String {
     let candidates = [
         root_path.join("ai").join(".venv").join("Scripts").join("python.exe"),
+        root_path.join("ai").join("venv").join("Scripts").join("python.exe"),
         root_path.join(".venv").join("Scripts").join("python.exe"),
+        root_path.join("venv").join("Scripts").join("python.exe"),
         root_path.join("ai").join(".venv").join("bin").join("python"),
+        root_path.join("ai").join("venv").join("bin").join("python"),
         root_path.join(".venv").join("bin").join("python"),
+        root_path.join("venv").join("bin").join("python"),
     ];
 
     candidates

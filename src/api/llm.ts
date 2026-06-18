@@ -40,6 +40,7 @@ export type LlmChatRequest = {
   model: string
   endpoint: string
   prompt: string
+  api_key?: string | null
 }
 
 export type LlmChatResult = {

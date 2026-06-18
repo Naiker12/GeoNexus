@@ -1,40 +1,22 @@
-import type {
-  Conversation,
-  MentionableSourcesResponse,
-  Message,
-  ProjectContext,
-  RecallChunk,
-  SendMessageInput,
-  SendMessageResponse,
-} from "@/types/chat"
+import type { Message, SendMessageInput, SendMessageResponse, Conversation, MentionableSourcesResponse } from "@/types/chat"
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
 function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
 }
 
-/** Obtains invoke function safely, returning null if Tauri isn't available */
-async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+async function getInvoke() {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
-    return tauriInvoke
-  } catch (e) {
-    console.error('[getInvoke] Could not import invoke:', e)
+    const { invoke } = await import("@tauri-apps/api/core")
+    return invoke
+  } catch {
     return null
   }
 }
 
-async function invokeOrFallback<T>(
-  command: string,
-  args: Record<string, unknown>,
-  fallback: T
-): Promise<T> {
+async function invokeOrFallback<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
   const invoke = await getInvoke()
-  if (!invoke) {
-    console.debug(`[invokeOrFallback] Tauri no disponible, devolviendo fallback para ${command}`)
-    return fallback
-  }
+  if (!invoke) return fallback
   try {
     return await invoke<T>(command, args)
   } catch (e) {
@@ -43,24 +25,17 @@ async function invokeOrFallback<T>(
   }
 }
 
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
-  const invoke = await getInvoke()
-  if (!invoke) {
-    throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
-  }
-  try {
-    return await invoke<T>(command, args)
-  } catch (e) {
-    throw new Error(`Error al ejecutar ${command}: ${e}`)
-  }
+export async function listConversations(projectId: string): Promise<Conversation[]> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback("list_conversations", { projectId }, [])
 }
 
-export async function sendMessage(
-  input: SendMessageInput
-): Promise<SendMessageResponse> {
+export async function listMessages(conversationId: string): Promise<Message[]> {
+  if (!conversationId.trim()) throw new Error("conversation_id requerido")
+  return invokeOrFallback("list_messages", { conversationId }, [])
+}
+
+export async function sendMessage(input: SendMessageInput): Promise<SendMessageResponse> {
   if (!input.project_id.trim()) throw new Error("project_id requerido")
   if (!input.content.trim()) throw new Error("content requerido")
   if (!input.provider.trim()) throw new Error("provider requerido")
@@ -69,6 +44,8 @@ export async function sendMessage(
 
   return invokeOrFallback("send_message", { input }, {
     conversation_id: "demo-conversation-id",
+    chunks_used: [],
+    trace_id: "demo-trace-id",
     message: {
       id: "demo-message-id",
       conversation_id: "demo-conversation-id",
@@ -76,62 +53,41 @@ export async function sendMessage(
       content: "Esto es una respuesta de demostración. Para usar la app completa, ejecútala en el runtime Tauri.",
       provider: input.provider,
       model: input.model,
-      timestamp: Date.now(),
+      created_at: Date.now(),
       trace_id: "demo-trace-id",
       chunks_used: [],
       nodes_used: [],
       tool_calls: [],
       sources: []
     },
-    session_summary: null,
-    intent: null,
-    research_sources: [],
-    search_query: null
+    research_sources: []
   })
 }
 
-export function deleteConversation(conversationId: string): Promise<void> {
-  if (!conversationId.trim()) throw new Error("conversation_id requerido")
-  return invokeOrFallback("delete_conversation", { conversationId }, undefined)
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const invoke = await getInvoke()
+  if (!invoke) return
+  return invoke("delete_conversation", { conversationId })
 }
 
-export function listConversations(projectId: string): Promise<Conversation[]> {
-  if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("list_conversations", { projectId }, [])
-}
-
-export function listMessages(conversationId: string): Promise<Message[]> {
-  if (!conversationId.trim()) throw new Error("conversation_id requerido")
-  return invokeOrFallback("list_messages", { conversationId }, [])
-}
-
-export function getProjectContext(projectId: string): Promise<ProjectContext> {
+export async function getProjectContext(projectId: string): Promise<any> {
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invokeOrFallback("get_project_context", { projectId }, {
     toggles: { rag_chunks: true, indexed_assets: true, graph_nodes: true },
     sources: [],
-    assets: []
+    assets: [],
+    graph_nodes: []
   })
 }
 
-export function recallChunks(
-  projectId: string,
-  query: string,
-  topK = 4
-): Promise<RecallChunk[]> {
+export async function recallChunks(projectId: string, query: string, topK = 4): Promise<any[]> {
   return invokeOrFallback("recall_chunks", {
     input: { project_id: projectId, query, top_k: topK },
   }, [])
 }
 
-export function getMentionableSources(
-  projectId: string,
-  query?: string
-): Promise<MentionableSourcesResponse> {
-  if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_mentionable_sources", { projectId, query }, {
-    assets: [],
-    graph_nodes: [],
-    connectors: []
-  })
+export async function getMentionableSources(projectId: string, query?: string): Promise<MentionableSourcesResponse> {
+  const invoke = await getInvoke()
+  if (!invoke) return { connectors: [], assets: [], graph_nodes: [] }
+  return invoke<MentionableSourcesResponse>("get_mentionable_sources", { projectId, query })
 }

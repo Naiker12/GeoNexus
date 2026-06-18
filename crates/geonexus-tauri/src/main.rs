@@ -5,6 +5,7 @@ use geonexus_db::DataRepository;
 
 pub mod commands;
 mod builtin_skills;
+use commands::telegram::TelegramState;
 
 pub struct AppState {
     pub db: sqlx::SqlitePool,
@@ -74,6 +75,7 @@ fn main() {
             // Gestionar el estado global unificado de la aplicación
             let app_handle = app.handle().clone();
             app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle) });
+            app.manage(TelegramState::default());
 
             // Cargar o crear geonexus.config.toml
             let config_path = app_data_dir.join("geonexus.config.toml");
@@ -182,6 +184,7 @@ fn main() {
             commands::data::delete_data_asset,
             commands::data::get_data_lineage,
             commands::data::reindex_asset,
+            commands::data::get_mentionable_sources,
 
             // Fase 2
             commands::connector::register_local_connector,
@@ -295,7 +298,6 @@ fn main() {
             
             // Audio
             commands::audio::audio_transcribe,
-            commands::audio::audio_synthesize,
             
             // Telegram
             commands::telegram::telegram_save_config,
@@ -304,6 +306,8 @@ fn main() {
             commands::telegram::telegram_stop_polling,
             commands::telegram::telegram_get_status,
             commands::telegram::telegram_send_message,
+            commands::telegram::telegram_send_chat_action,
+            commands::telegram::telegram_send_response,
             
             // Coding Agent
             commands::telegram::coding_agent_start_generation,

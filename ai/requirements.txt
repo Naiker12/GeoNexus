@@ -11,3 +11,5 @@ uvicorn
 pypdf>=4.0.0
 python-docx>=1.0.0
 ddgs>=9.0.0
+# Transcripcion local (sin API key)
+faster-whisper>=1.0.0

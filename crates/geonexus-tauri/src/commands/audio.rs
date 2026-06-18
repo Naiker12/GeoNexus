@@ -14,20 +14,6 @@ pub struct AudioTranscribeResponse {
     pub language: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AudioSynthesizeRequest {
-    pub text: String,
-    pub voice: Option<String>,
-    pub speed: Option<f32>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AudioSynthesizeResponse {
-    pub status: String,
-    pub audio_base64: String,
-    pub mime_type: String,
-}
-
 #[tauri::command]
 pub async fn audio_transcribe(
     request: AudioTranscribeRequest,
@@ -41,43 +27,6 @@ pub async fn audio_transcribe(
         request.mime_type,
     ];
 
-    // Convert to &str references for run_sidecar
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let stdout = run_sidecar(&args_ref)?;
 
-    let response: AudioTranscribeResponse = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Error parsing sidecar response: {}", e))?;
-
-    Ok(response)
-}
-
-#[tauri::command]
-pub async fn audio_synthesize(
-    request: AudioSynthesizeRequest,
-) -> Result<AudioSynthesizeResponse, String> {
-    let mut args: Vec<String> = vec![
-        "--action".to_string(),
-        "audio_synthesize".to_string(),
-        "--text".to_string(),
-        request.text,
-    ];
-
-    if let Some(voice) = request.voice {
-        args.push("--voice".to_string());
-        args.push(voice);
-    }
-
-    if let Some(speed) = request.speed {
-        args.push("--speed".to_string());
-        args.push(speed.to_string());
-    }
-
-    // Convert to &str references for run_sidecar
-    let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    let stdout = run_sidecar(&args_ref)?;
-
-    let response: AudioSynthesizeResponse = serde_json::from_str(&stdout)
-        .map_err(|e| format!("Error parsing sidecar response: {}", e))?;
-
-    Ok(response)
-}

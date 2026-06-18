@@ -7,14 +7,14 @@ import type {
   CostSummary,
   TopQuery,
   Timeframe,
-} from "@/types/analysis"
+} from "../types/analysis"
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
+/** Detecta si estamos dentro del runtime Tauri o en navegador */
 function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
 }
 
-/** Obtains invoke function safely, returning null if Tauri isn't available */
+/** Obtiene la función invoke de Tauri de forma segura */
 async function getInvoke() {
   if (!isTauriAvailable()) return null
   try {
@@ -27,19 +27,19 @@ async function getInvoke() {
 
 const DEFAULT_PROJECT_ID = "project-default"
 
-// Create fallback values
+// Fallbacks que coinciden exactamente con las interfaces de src/types/analysis.ts
 const DEFAULT_ANALYSIS_METRICS: AnalysisMetrics = {
-  total_tokens: 0,
-  total_cost: 0,
-  total_queries: 0,
-  total_skills_used: 0,
-  unique_models: 0,
+  tokens_hoy: 0,
+  consultas_ia: 0,
+  costo_estimado: 0,
+  trazas_guardadas: 0,
 }
+
 const DEFAULT_COST_SUMMARY: CostSummary = {
-  today: 0,
-  week: 0,
-  month: 0,
-  total: 0,
+  cost_hoy: 0,
+  cost_7d: 0,
+  cost_total: 0,
+  avg_per_query: 0,
 }
 
 export async function getAnalysisMetrics(

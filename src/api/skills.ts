@@ -1,4 +1,4 @@
-import type { Skill } from "@/types/skills"
+import type { Skill } from "../types/skills"
 
 /** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
 function isTauriAvailable(): boolean {
