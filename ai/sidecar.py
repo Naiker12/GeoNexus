@@ -192,98 +192,135 @@ def _update_memory_scores(args) -> None:
     })
 
 
+# Singleton de Kokoro (lazy init, se reusa entre llamadas)
+_kokoro_instance = None
+
+def _get_kokoro():
+    global _kokoro_instance
+    if _kokoro_instance is None:
+        try:
+            from kokoro import Kokoro
+            _kokoro_instance = Kokoro()
+        except Exception as e:
+            _kokoro_instance = f"error:{e}"
+    return _kokoro_instance
+
+
 def _audio_transcribe(args) -> None:
-    """Transcribe audio a texto usando OpenAI Whisper API."""
+    """Transcribe audio a texto usando faster-whisper (local, sin API key)."""
     import base64
-    import requests
     import tempfile
     import os
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        _err("OPENAI_API_KEY no esta configurado")
 
     audio_base64 = args.audio_base64
     mime_type = args.mime_type or "audio/webm"
 
-    # Decodificar base64 a bytes
     try:
         audio_bytes = base64.b64decode(audio_base64)
     except Exception as e:
         _err(f"Error decodificando audio: {e}")
 
-    # Guardar en archivo temporal
     suffix = ".webm" if "webm" in mime_type else ".mp4" if "mp4" in mime_type else ".wav"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-        temp_file.write(audio_bytes)
-        temp_file_path = temp_file.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(audio_bytes)
+        tmp_path = tmp.name
 
     try:
-        # Llamar a OpenAI Whisper API
-        with open(temp_file_path, "rb") as f:
-            response = requests.post(
-                "https://api.openai.com/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                files={"file": f},
-                data={"model": "whisper-1"},
-                timeout=60
-            )
-
-        response.raise_for_status()
-        data = response.json()
+        from faster_whisper import WhisperModel
+        model = WhisperModel("base", device="cpu", compute_type="int8")
+        segments, info = model.transcribe(tmp_path, language="es")
+        text = " ".join(seg.text for seg in segments)
         _print({
             "status": "ok",
-            "text": data.get("text", ""),
-            "language": data.get("language"),
+            "text": text,
+            "language": info.language if info else "es",
         })
     except Exception as e:
         _err(f"Error en transcripcion: {e}")
     finally:
-        # Limpiar archivo temporal
         try:
-            os.unlink(temp_file_path)
+            os.unlink(tmp_path)
         except:
             pass
 
 
 def _audio_synthesize(args) -> None:
-    """Sintetiza texto a audio usando OpenAI TTS API."""
+    """Sintetiza texto a audio usando Kokoro (local) o gTTS (fallback). Sin API key."""
     import base64
-    import requests
-    import os
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        _err("OPENAI_API_KEY no esta configurado")
+    import io
+    import re
 
     text = args.text
-    voice = args.voice or "alloy"
-    speed = float(args.speed) if args.speed else 1.0
+    if not text:
+        _err("Texto vacio para sintesis")
 
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/audio/speech",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": "tts-1",
-                "input": text,
-                "voice": voice,
-                "speed": speed,
-            },
-            timeout=60
-        )
+    # Limpiar puntuacion: el TTS no debe leer comas, puntos, etc.
+    clean = re.sub(r'[.,;:!?¿¡—–()\[\]{}<>"/\\\'’‘“”`]', ' ', text)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+    if not clean:
+        clean = text
 
-        response.raise_for_status()
-        audio_bytes = response.content
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+    voice = args.voice or "am_michael"
+    provider = args.provider or "kokoro"
+    speed = float(args.speed) if args.speed else 1.2
 
-        _print({
-            "status": "ok",
-            "audio_base64": audio_base64,
-            "mime_type": "audio/mpeg",
-        })
-    except Exception as e:
-        _err(f"Error en sintesis: {e}")
+    # --- Kokoro TTS (local, sin internet, sin API key) ---
+    if provider == "kokoro":
+        kokoro = _get_kokoro()
+        if isinstance(kokoro, str) and kokoro.startswith("error:"):
+            import sys
+            print(f"[Kokoro] No disponible ({kokoro}), fallback a gTTS", file=sys.stderr)
+            provider = "gtts"
+        else:
+            try:
+                import numpy as np
+                import soundfile as sf
+
+                audio_array = kokoro.create(clean, voice=voice, speed=speed)
+                sample_rate = 24000
+
+                buffer = io.BytesIO()
+                sf.write(buffer, audio_array, sample_rate, format='WAV')
+                buffer.seek(0)
+                audio_bytes = buffer.read()
+
+                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+                _print({
+                    "status": "ok",
+                    "audio_base64": audio_b64,
+                    "mime_type": "audio/wav",
+                    "provider": "kokoro",
+                })
+                return
+            except Exception as e:
+                import sys
+                print(f"[Kokoro] Fallo en create(): {e}, fallback a gTTS", file=sys.stderr)
+                provider = "gtts"
+
+    # --- gTTS Fallback (Google, sin API key, requiere internet) ---
+    if provider == "gtts":
+        try:
+            from gtts import gTTS
+            lang = args.lang or "es"
+
+            buffer = io.BytesIO()
+            tts = gTTS(text=clean, lang=lang, slow=False)
+            tts.write_to_fp(buffer)
+            buffer.seek(0)
+            audio_bytes = buffer.read()
+
+            audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+            _print({
+                "status": "ok",
+                "audio_base64": audio_b64,
+                "mime_type": "audio/mpeg",
+                "provider": "gtts",
+            })
+            return
+        except Exception as e:
+            _err(f"gTTS fallo: {e}")
+
+    _err("No hay proveedor TTS disponible")
 
 
 def main() -> None:
@@ -318,6 +355,8 @@ def main() -> None:
     p.add_argument("--text", default="")
     p.add_argument("--voice", default="")
     p.add_argument("--speed", default="")
+    p.add_argument("--provider", default="kokoro")
+    p.add_argument("--lang", default="es")
     args = p.parse_args()
 
     dispatch = {

@@ -36,9 +36,17 @@ export async function loadTelegramConfig(): Promise<TelegramConfig | null> {
   };
 }
 
-export async function startTelegramPolling(): Promise<string> {
+export async function startTelegramPolling(config?: {
+  token: string;
+  allowedUsers: string[];
+  responseMode: string;
+}): Promise<string> {
   if (!isTauriAvailable()) throw new Error("Tauri not available");
-  return await invoke<string>("telegram_start_polling");
+  return await invoke<string>("telegram_start_polling", {
+    token: config?.token ?? null,
+    allowedUsers: config?.allowedUsers ?? null,
+    responseMode: config?.responseMode ?? null,
+  });
 }
 
 export async function stopTelegramPolling(): Promise<void> {

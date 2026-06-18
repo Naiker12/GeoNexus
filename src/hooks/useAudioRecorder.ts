@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { transcribeAudio } from '@/api/audio'
+import { toast } from 'sonner'
 
 type UseAudioRecorderOptions = {
   onTranscription: (text: string) => void
@@ -10,6 +11,7 @@ type UseAudioRecorderReturn = {
   status: 'idle' | 'requesting' | 'recording' | 'processing' | 'error'
   startRecording: () => Promise<void>
   stopRecording: () => void
+  cancelRecording: () => void
   errorMessage: string | null
   volume: number
 }
@@ -91,6 +93,9 @@ export function useAudioRecorder(options: UseAudioRecorderOptions): UseAudioReco
           const message = err instanceof Error ? err.message : 'Transcription failed'
           setErrorMessage(message)
           options.onError?.(message)
+          toast.error('Transcripcion fallida', {
+            description: message,
+          })
           setStatus('error')
         }
       }
@@ -100,5 +105,22 @@ export function useAudioRecorder(options: UseAudioRecorderOptions): UseAudioReco
     }
   }, [status, options])
 
-  return { status, startRecording, stopRecording, errorMessage, volume }
+  const cancelRecording = useCallback(() => {
+    if (mediaRecorderRef.current && status === 'recording') {
+      mediaRecorderRef.current.ondataavailable = null
+      mediaRecorderRef.current.onstop = null
+      mediaRecorderRef.current.stop()
+    }
+    streamRef.current?.getTracks().forEach(track => track.stop())
+    setStatus('idle')
+    setErrorMessage(null)
+  }, [status])
+
+  return {
+    status,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    errorMessage
+  }
 }

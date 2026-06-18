@@ -29,7 +29,7 @@ export function useUpdater() {
           });
         }
       } catch {
-        // Silently skip if updater plugin is not configured
+        // plugin no configurado — ignorar
       }
     }, 3000);
 

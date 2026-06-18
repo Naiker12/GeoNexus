@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { synthesizeAudio } from '@/api/audio'
+import { toast } from 'sonner'
 
 type UseVoicePlayerOptions = {
   text: string
@@ -30,8 +31,15 @@ export function useVoicePlayer(options: UseVoicePlayerOptions): UseVoicePlayerRe
 
       const { audioBase64, mimeType } = await synthesizeAudio({
         text: options.text,
-        voice: options.voiceId
+        voice: options.voiceId || 'am_michael',
+        provider: 'kokoro',
+        lang: 'es',
+        speed: 1.3,
       })
+
+      if (!audioBase64) {
+        throw new Error('Audio vacio recibido del sintetizador')
+      }
 
       const audioUrl = `data:${mimeType};base64,${audioBase64}`
       const audio = new Audio(audioUrl)
@@ -49,16 +57,23 @@ export function useVoicePlayer(options: UseVoicePlayerOptions): UseVoicePlayerRe
       }
 
       audio.onerror = () => {
-        setErrorMessage('Failed to play audio')
+        const msg = 'Error al reproducir el audio'
+        setErrorMessage(msg)
         setStatus('error')
+        toast.error('Reproduccion fallida', {
+          description: 'Verifica la configuracion del proveedor TTS',
+        })
       }
 
       await audio.play()
       setStatus('playing')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
+      const message = err instanceof Error ? err.message : 'Error desconocido'
       setErrorMessage(message)
       setStatus('error')
+      toast.error('Sintesis de voz fallida', {
+        description: message,
+      })
     }
   }, [options.text, options.voiceId])
 

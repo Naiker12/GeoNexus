@@ -68,7 +68,7 @@ export function TelegramIntegrationPanel() {
       if (status.botName) {
         setConfig((prev) => ({
           ...prev,
-          botName: status.botName,
+          botName: status.botName ?? prev.botName,
           status: status.isRunning ? "active" : "disconnected",
           isPolling: status.isRunning,
         }))
@@ -143,7 +143,15 @@ export function TelegramIntegrationPanel() {
   const handleStartPolling = async () => {
     setStartingPolling(true)
     try {
-      const botName = await startTelegramPolling()
+      const allowedUsersArray = config.allowedUsers
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+      const botName = await startTelegramPolling({
+        token: config.botToken.trim(),
+        allowedUsers: allowedUsersArray,
+        responseMode: config.responseMode,
+      })
       updateConfig({
         isPolling: true,
         botName: botName.startsWith("@") ? botName : `@${botName}`,
@@ -316,7 +324,7 @@ export function TelegramIntegrationPanel() {
                 {stoppingPolling ? (
                   <RefreshCwIcon className="size-3.5 animate-spin" />
                 ) : (
-                  <StopIcon className="size-3.5" />
+                  <StopCircleIcon className="size-3.5" />
                 )}
                 {stoppingPolling ? "Deteniendo..." : "Detener bot"}
               </Button>

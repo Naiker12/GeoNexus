@@ -11,3 +11,10 @@ uvicorn
 pypdf>=4.0.0
 python-docx>=1.0.0
 ddgs>=9.0.0
+# TTS local (sin API key) — Kokoro requiere Python <3.13 o compilador C
+# Si no compila, el sidecar usa gTTS automaticamente como fallback
+# kokoro>=0.7.0
+soundfile>=0.12.1
+gTTS>=2.5.0
+# Transcripcion local (sin API key)
+faster-whisper>=1.0.0

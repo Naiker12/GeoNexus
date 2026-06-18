@@ -19,6 +19,8 @@ pub struct AudioSynthesizeRequest {
     pub text: String,
     pub voice: Option<String>,
     pub speed: Option<f32>,
+    pub provider: Option<String>,
+    pub lang: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,6 +28,7 @@ pub struct AudioSynthesizeResponse {
     pub status: String,
     pub audio_base64: String,
     pub mime_type: String,
+    pub provider: Option<String>,
 }
 
 #[tauri::command]
@@ -68,6 +71,17 @@ pub async fn audio_synthesize(
         args.push(speed.to_string());
     }
 
+    if let Some(provider) = request.provider {
+        args.push("--provider".to_string());
+        args.push(provider);
+    }
+
+    if let Some(lang) = request.lang {
+        args.push("--lang".to_string());
+        args.push(lang);
+    }
+
+    // Convert to &str references for run_sidecar
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let stdout = run_sidecar(&args_ref)?;
 

@@ -44,7 +44,7 @@ pub async fn send_llm_message(request: LlmChatRequest) -> Result<LlmChatResult, 
         return Err("prompt requerido".into());
     }
 
-    let output = run_sidecar(&[
+    let mut args = vec![
         "--action",
         "chat_llm",
         "--provider_type",
@@ -55,10 +55,37 @@ pub async fn send_llm_message(request: LlmChatRequest) -> Result<LlmChatResult, 
         &request.model,
         "--prompt",
         &request.prompt,
-    ])?;
+    ];
+    if let Some(ref api_key) = request.api_key {
+        if !api_key.trim().is_empty() {
+            args.push("--api_key");
+            args.push(api_key);
+        }
+    }
 
-    serde_json::from_str(&output)
-        .map_err(|e| format!("Error deserializando chat LLM: {e}. Output: {output}"))
+    let output = run_sidecar(&args)?;
+
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Error parseando respuesta del sidecar: {e}. Output: {output}"))?;
+
+    let status = raw.get("status").and_then(|v| v.as_str()).unwrap_or("error").to_string();
+    let provider_type = raw.get("provider_type").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let model = raw.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+    // El sidecar devuelve message como objeto {role, content, tool_calls}
+    let content = raw
+        .get("message")
+        .and_then(|m| m.get("content"))
+        .and_then(|c| c.as_str())
+        .map(|s| s.to_string());
+
+    Ok(LlmChatResult {
+        status,
+        provider_type,
+        model,
+        text: content.clone(),
+        message: content,
+    })
 }
 
 /// Lista modelos disponibles desde Rust usando reqwest.

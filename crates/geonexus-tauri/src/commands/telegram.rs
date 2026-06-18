@@ -1,11 +1,16 @@
 use tauri::{AppHandle, Emitter, State};
+use crate::AppState;
+use crate::commands::llm::sidecar::run_sidecar;
+use geonexus_core::telegram::{
+    polling::start_polling_loop,
+    sender::{get_me, send_chat_action, send_message},
+    TelegramConfig, Update,
+};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use tauri::async_runtime::JoinHandle;
-use crate::AppState;
-use geonexus_core::telegram::polling::start_polling_loop;
-use geonexus_core::telegram::sender::{send_message, get_me};
 
 static TELEGRAM_TASK: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 static BOT_INFO: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
@@ -18,48 +23,29 @@ struct FileCreatedPayload {
     content: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-struct AgentErrorPayload {
-    message: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmProviderInfo {
+    pub provider_type: String,
+    pub model: String,
+    pub endpoint: String,
+    pub api_key: Option<String>,
 }
 
-fn sandbox_scaffold() -> Vec<(&'static str, &'static str)> {
-    vec![
-        (
-            "package.json",
-            r#"{
-  "name": "geonexus-sandbox",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --port 5174 --strictPort"
-  },
-  "devDependencies": {
-    "vite": "^5.0.0"
-  }
-}"#,
-        ),
-        (
-            "index.html",
-            r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeoNexus Sandbox</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: #0f0f13;
-      color: #e2e8f0;
-      font-family: 'Inter', system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      gap: 1rem;
+pub struct TelegramState {
+    pub polling_task: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    pub config: Mutex<Option<TelegramConfig>>,
+    pub llm_config: Mutex<Option<LlmProviderInfo>>,
+    pub is_running: Mutex<bool>,
+}
+
+impl Default for TelegramState {
+    fn default() -> Self {
+        Self {
+            polling_task: Mutex::new(None),
+            config: Mutex::new(None),
+            llm_config: Mutex::new(None),
+            is_running: Mutex::new(false),
+        }
     }
     h1 { color: #818cf8; font-size: 1.8rem; }
     p  { color: #94a3b8; font-size: 0.95rem; }
@@ -295,45 +281,85 @@ pub async fn telegram_load_config(state: State<'_, AppState>) -> Result<serde_js
 pub async fn telegram_start_polling(
     app: AppHandle,
     state: State<'_, AppState>,
+    tg_state: State<'_, TelegramState>,
+    token: Option<String>,
+    allowed_users: Option<Vec<String>>,
+    response_mode: Option<String>,
+    llm_provider_type: Option<String>,
+    llm_model: Option<String>,
+    llm_endpoint: Option<String>,
+    llm_api_key: Option<String>,
 ) -> Result<String, String> {
-    if TELEGRAM_TASK.lock().unwrap().is_some() {
-        return Ok("Polling ya está en ejecución".into());
+    // Detener polling anterior si existe (MutexGuard dropped antes del await)
+    let needs_abort = tg_state.polling_task.lock().unwrap().take();
+    if let Some(handle) = needs_abort {
+        handle.abort();
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 
-    let config_val = telegram_load_config(state).await?;
-    let token = config_val["bot_token"].as_str().unwrap_or("").to_string();
+    // Usar token del payload si se proporciona, o cargar de DB
+    let config = if let Some(ref t) = token {
+        let cfg = TelegramConfig {
+            bot_token: t.clone(),
+            allowed_users: allowed_users.unwrap_or_default(),
+            response_mode: response_mode.unwrap_or_else(|| "sources".to_string()),
+        };
+        // Persistir en DB
+        let config_json = serde_json::to_string(&cfg).map_err(|e| e.to_string())?;
+        sqlx::query(
+            "INSERT INTO app_settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')"
+        )
+        .bind("telegram_config")
+        .bind(&config_json)
+        .execute(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+        cfg
+    } else {
+        telegram_load_config(state).await?
+            .ok_or_else(|| "Config de Telegram no encontrada".to_string())?
+    };
+
+    // Guardar config del LLM en el estado (para telegram_send_response)
+    if let (Some(pt), Some(m), Some(e)) = (llm_provider_type.clone(), llm_model.clone(), llm_endpoint.clone()) {
+        let mut llm_cfg = tg_state.llm_config.lock().unwrap();
+        *llm_cfg = Some(LlmProviderInfo {
+            provider_type: pt.clone(),
+            model: m.clone(),
+            endpoint: e.clone(),
+            api_key: llm_api_key.clone(),
+        });
+    }
+
+    let client = Client::new();
+    let bot_info = get_me(&client, &config.bot_token).await?;
+    let bot_name = bot_info.username.clone().unwrap_or_else(|| bot_info.first_name.clone());
     
-    if token.is_empty() {
-        return Err("Se requiere un Bot Token para iniciar el polling".into());
+    {
+        let mut tg_config = tg_state.config.lock().unwrap();
+        *tg_config = Some(config.clone());
     }
 
-    let client = reqwest::Client::new();
-    match get_me(&client, &token).await {
-        Ok(me) => {
-            let mut info_guard = BOT_INFO.lock().unwrap();
-            *info_guard = Some(me.first_name.clone());
-        }
-        Err(e) => {
-            return Err(format!("Error conectando a Telegram: {}", e));
-        }
-    }
+    // Extraer configs ANTES de spawn (State no puede moverse al task)
+    let tg_cfg = config.clone();
+    let llm_info = LlmProviderInfo {
+        provider_type: llm_provider_type.unwrap_or_default(),
+        model: llm_model.unwrap_or_default(),
+        endpoint: llm_endpoint.unwrap_or_default(),
+        api_key: llm_api_key,
+    };
 
+    let token_clone = config.bot_token.clone();
     let app_clone = app.clone();
-    let token_clone = token.clone();
-
+    
     let handle = tauri::async_runtime::spawn(async move {
         start_polling_loop(token_clone, move |update| {
             let app = app_clone.clone();
+            let tg_cfg = tg_cfg.clone();
+            let llm_info = llm_info.clone();
             async move {
-                if let Some(msg) = update.message {
-                    app.emit("telegram:message_received", serde_json::json!({
-                        "id": msg.message_id,
-                        "chat_id": msg.chat.id,
-                        "from": msg.from.username.unwrap_or(msg.from.first_name),
-                        "text": msg.text,
-                        "date": msg.date,
-                    })).ok();
-                }
+                handle_update_llm(update, app, &tg_cfg, &llm_info).await;
             }
         }).await;
     });
@@ -389,4 +415,123 @@ pub async fn telegram_send_message(
     send_message(&client, token, chat_id, &text, Some("Markdown")).await?;
     
     Ok(())
+}
+
+#[tauri::command]
+pub async fn telegram_send_response(
+    chat_id: i64,
+    text: String,
+    tg_state: State<'_, TelegramState>,
+) -> Result<(), String> {
+    let config = {
+        let guard = tg_state.config.lock().unwrap();
+        guard.clone().ok_or_else(|| "Bot no iniciado — token no disponible".to_string())?
+    };
+
+    let client = Client::new();
+
+    // Dividir si excede 4000 caracteres (límite Telegram)
+    let chunks = chunk_telegram_text(&text, 4000);
+    let n = chunks.len();
+    for chunk in &chunks {
+        send_message(&client, &config.bot_token, chat_id, chunk, Some("MarkdownV2")).await?;
+        if n > 1 {
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
+    }
+
+    Ok(())
+}
+
+fn chunk_telegram_text(text: &str, max_len: usize) -> Vec<String> {
+    if text.len() <= max_len {
+        return vec![text.to_string()];
+    }
+    let mut chunks = Vec::new();
+    let mut remaining = text;
+    while remaining.len() > max_len {
+        let cut = remaining[..max_len]
+            .rfind('\n')
+            .or_else(|| remaining[..max_len].rfind(' '))
+            .unwrap_or(max_len);
+        chunks.push(remaining[..cut].trim().to_string());
+        remaining = remaining[cut..].trim_start();
+    }
+    if !remaining.is_empty() {
+        chunks.push(remaining.to_string());
+    }
+    chunks
+}
+
+#[tauri::command]
+pub async fn telegram_send_chat_action(
+    chat_id: i64,
+    action: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let config = telegram_load_config(state).await?;
+    let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
+
+    let client = Client::new();
+    send_chat_action(&client, &config.bot_token, chat_id, &action).await
+}
+
+async fn handle_update_llm(update: Update, app: AppHandle, config: &TelegramConfig, llm_info: &LlmProviderInfo) {
+    if let Some(message) = update.message {
+        let user_id = message.from.id.to_string();
+        let username = message.from.username.as_deref();
+        
+        let is_allowed = config.allowed_users.is_empty()
+            || config.allowed_users.contains(&user_id)
+            || username.map(|u| config.allowed_users.contains(&format!("@{}", u))).unwrap_or(false);
+        
+        if !is_allowed {
+            return;
+        }
+        
+        if let Some(text) = message.text {
+            let chat_id = message.chat.id;
+            
+            // Manejar comandos especiales sin pasar por el frontend
+            let client = reqwest::Client::new();
+            match text.as_str() {
+                "/start" => {
+                    let _ = send_message(
+                        &client, &config.bot_token, chat_id,
+                        "👋 *Bienvenido a GeoNexus*\n\nSoy el asistente GIS.\nEnvíame cualquier consulta sobre análisis territorial y te responderé con el conocimiento del proyecto activo.\n\n/help — Ver comandos",
+                        Some("MarkdownV2"),
+                    ).await;
+                    return;
+                }
+                "/help" => {
+                    let _ = send_message(
+                        &client, &config.bot_token, chat_id,
+                        "*Comandos disponibles*\n\n/start — Iniciar el bot\n/help — Ver esta ayuda\n/status — Estado del sistema\n\nEnvía tu consulta GIS directamente.",
+                        Some("MarkdownV2"),
+                    ).await;
+                    return;
+                }
+                "/status" => {
+                    let _ = send_message(
+                        &client, &config.bot_token, chat_id,
+                        "*GeoNexus* — Sistema activo\n\n✅ Bot conectado\n✅ Procesamiento de consultas habilitado",
+                        Some("MarkdownV2"),
+                    ).await;
+                    return;
+                }
+                _ => {}
+            }
+            
+            // Mensaje normal — emitir al frontend
+            let payload = serde_json::json!({
+                "chat_id": chat_id,
+                "user_id": message.from.id,
+                "username": message.from.username,
+                "text": text,
+                "message_id": message.message_id,
+            });
+            
+            let _ = app.emit("telegram:message", payload);
+        }
+    }
 }

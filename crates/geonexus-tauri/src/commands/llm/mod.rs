@@ -24,6 +24,7 @@ pub struct LlmChatRequest {
     pub model: String,
     pub endpoint: String,
     pub prompt: String,
+    pub api_key: Option<String>,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

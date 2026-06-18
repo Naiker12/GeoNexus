@@ -9,6 +9,9 @@ import {
   SendIcon,
   SparklesIcon,
   StopCircleIcon,
+  Volume2,
+  VolumeX,
+  Square,
   XIcon,
 } from "lucide-react"
 
@@ -43,6 +46,10 @@ export type ChatComposerProps = {
   pending: boolean
   onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }, attachments?: FileAttachment[]) => void
   onStop?: () => void
+  autoVoice?: boolean
+  isSpeaking?: boolean
+  onToggleVoice?: () => void
+  onStopSpeaking?: () => void
   onToggleContext: () => void
   contextActive: boolean
   webSearchEnabled: boolean
@@ -75,6 +82,10 @@ export function ChatComposer({
   pending,
   onSubmit,
   onStop,
+  autoVoice,
+  isSpeaking,
+  onToggleVoice,
+  onStopSpeaking,
   onToggleContext,
   contextActive,
   webSearchEnabled,
@@ -306,6 +317,27 @@ export function ChatComposer({
     return () => chips.forEach(c => c.previewUrl && URL.revokeObjectURL(c.previewUrl))
   }, [])
 
+  // Atajos de teclado: Space para grabar, Escape para cancelar
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || '').toLowerCase()
+      const isInput = tag === 'input' || tag === 'textarea' || tag === 'select'
+
+      // Escape: cancelar grabacion de audio
+      if (e.key === 'Escape' && !isInput) {
+        const recorder = document.querySelector('[data-audio-status]')
+        if (recorder?.getAttribute('data-audio-status') === 'recording') {
+          e.preventDefault()
+          // Click the mic button to cancel
+          const micBtn = document.querySelector('[aria-label="Stop recording"]')
+          if (micBtn) (micBtn as HTMLButtonElement).click()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   const handleDrop = React.useCallback(async (files: File[]) => {
     for (const f of files) {
       const isImage = f.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(f.name)
@@ -355,7 +387,44 @@ export function ChatComposer({
               </div>
             </InputGroupControl>
             <InputGroupAddon className="items-center">
-              <AudioRecorder onTranscription={(t) => onValueChange(value ? `${value} ${t}` : t)} disabled={pending} />
+              {isSpeaking && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10"
+                  aria-label="Detener reproduccion"
+                  onClick={onStopSpeaking}
+                >
+                  <Square className="size-4 fill-current" />
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-full transition-colors ${
+                  autoVoice
+                    ? "text-primary bg-primary/10 hover:bg-primary/20"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                aria-label={autoVoice ? "Desactivar respuesta por voz" : "Activar respuesta por voz"}
+                onClick={onToggleVoice}
+                disabled={pending}
+              >
+                {autoVoice ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+              </Button>
+              <AudioRecorder
+                onTranscription={(text) => {
+                  onValueChange(value ? `${value} ${text}` : text)
+                }}
+                onAutoSend={
+                  autoVoice && !value.trim()
+                    ? (text) => onSubmit(text)
+                    : undefined
+                }
+                disabled={pending}
+              />
               {pending ? (
                 <Button type="button" size="icon" className="rounded-xl bg-red-500 hover:bg-red-600 text-white" onClick={onStop}>
                   <StopCircleIcon className="size-4" />
@@ -385,6 +454,21 @@ export function ChatComposer({
             <div className="mt-2 flex items-center gap-1.5 px-2">
               <Loader2 className="size-3 text-blue-500 animate-spin" />
               <span className="text-[11px] text-blue-500 font-medium">Deep Research activo...</span>
+            </div>
+          )}
+          {isSpeaking && (
+            <div className="mt-2 flex items-center gap-1.5 px-2">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+              </span>
+              <span className="text-[11px] text-primary font-medium">Asistente hablando...</span>
+            </div>
+          )}
+          {autoVoice && !isSpeaking && (
+            <div className="mt-2 flex items-center gap-1.5 px-2">
+              <Volume2 className="size-3 text-primary/60" />
+              <span className="text-[11px] text-muted-foreground font-medium">Respuesta por voz activa</span>
             </div>
           )}
           {error && <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>}

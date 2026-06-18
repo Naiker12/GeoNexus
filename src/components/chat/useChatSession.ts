@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { listMessages, sendMessage } from "@/api/chat"
+import { synthesizeAudio } from "@/api/audio"
 import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
@@ -15,6 +16,7 @@ const DEFAULT_TOGGLES: ContextToggle = {
 }
 const CONVERSATION_ID_KEY = "geonexus.activeConversationId"
 const WEB_SEARCH_KEY = "geonexus.webSearchEnabled"
+const AUTO_VOICE_KEY = "geonexus.autoVoice"
 
 function loadConversationId(): string | null {
   try {
@@ -75,9 +77,26 @@ function saveWebSearchEnabled(enabled: boolean) {
   }
 }
 
-let researchTimerId: ReturnType<typeof setInterval> | null = null
+function loadAutoVoice(): boolean {
+  try {
+    const stored = localStorage.getItem(AUTO_VOICE_KEY)
+    return stored === "true"
+  } catch {
+    return false
+  }
+}
 
-export function useChatSession(
+function saveAutoVoice(enabled: boolean) {
+  try {
+    localStorage.setItem(AUTO_VOICE_KEY, enabled ? "true" : "false")
+  } catch {
+    // localStorage may be full or unavailable
+  }
+}
+
+  let researchTimerId: ReturnType<typeof setInterval> | null = null
+
+  export function useChatSession(
   activeConnectorId: string | null,
   allConnectors: AiConnector[]
 ) {
@@ -98,6 +117,11 @@ export function useChatSession(
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
   const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
   const [lastIntent, setLastIntent] = React.useState<string | null>(null)
+  const [autoVoice, setAutoVoiceState] = React.useState<boolean>(() => loadAutoVoice())
+  const [isSpeaking, setIsSpeaking] = React.useState(false)
+  const currentAudioRef = React.useRef<HTMLAudioElement | null>(null)
+  const ttsBusyRef = React.useRef(false)
+  const ttsCancelledRef = React.useRef(false)
 
   React.useEffect(() => {
     saveConversationId(conversationId)
@@ -110,6 +134,10 @@ export function useChatSession(
   React.useEffect(() => {
     saveWebSearchEnabled(webSearchEnabled)
   }, [webSearchEnabled])
+
+  React.useEffect(() => {
+    saveAutoVoice(autoVoice)
+  }, [autoVoice])
 
   const activeProvider = React.useMemo(() => {
     if (!activeConnectorId) return null
@@ -172,6 +200,24 @@ export function useChatSession(
           : msg
       )
     )
+  }, [])
+
+  const stopSpeaking = React.useCallback(() => {
+    ttsCancelledRef.current = true
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      currentAudioRef.current = null
+    }
+    setIsSpeaking(false)
+    ttsBusyRef.current = false
+  }, [])
+
+  const setAutoVoice = React.useCallback((enabled: boolean) => {
+    setAutoVoiceState(enabled)
+    if (!enabled) {
+      stopSpeaking()
+    }
   }, [])
 
   const submit = React.useCallback(
@@ -336,7 +382,65 @@ export function useChatSession(
           updateAssistantMessage(assistantMsgId, baseUpdate as Partial<Message>)
         }
 
-        toast({ title: "Respuesta recibida", description: "Geo Agents completó el análisis.", variant: "success" })
+        toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el analisis", variant: "success" })
+
+        // Auto-TTS: reproducir respuesta en voz alta si el toggle esta activo
+        if (autoVoice && response.message.content && !ttsBusyRef.current) {
+          ttsBusyRef.current = true
+          ttsCancelledRef.current = false
+          let playbackStarted = false
+          try {
+            stopSpeaking()
+            setIsSpeaking(true)
+
+            const result = await synthesizeAudio({
+              text: response.message.content,
+              provider: "kokoro",
+              lang: "es",
+              voice: "am_michael",
+              speed: 1.3,
+            })
+
+            if (ttsCancelledRef.current) {
+              setIsSpeaking(false)
+              return
+            }
+
+            if (!result.audioBase64) {
+              console.error("[AutoTTS] audio_base64 vacio")
+              setIsSpeaking(false)
+            } else {
+              const audioUrl = `data:${result.mimeType};base64,${result.audioBase64}`
+              const audio = new Audio(audioUrl)
+              currentAudioRef.current = audio
+
+              audio.onended = () => {
+                setIsSpeaking(false)
+                ttsBusyRef.current = false
+              }
+              audio.onerror = () => {
+                console.error("[AutoTTS] Error reproduciendo audio")
+                setIsSpeaking(false)
+                ttsBusyRef.current = false
+              }
+
+              await audio.play()
+              playbackStarted = true
+              // If cancelled during play() async resolution, stop immediately
+              if (ttsCancelledRef.current) {
+                stopSpeaking()
+              }
+            }
+          } catch (err) {
+            console.error("[AutoTTS] Error en sintesis:", err)
+            setIsSpeaking(false)
+            ttsBusyRef.current = false
+          } finally {
+            if (!playbackStarted) {
+              ttsBusyRef.current = false
+            }
+          }
+        }
       } catch (err) {
         clearTimeout(searchingTimer)
 
@@ -357,7 +461,7 @@ export function useChatSession(
         setLoadingPhase("idle")
       }
     },
-    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage]
+    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage, autoVoice, stopSpeaking]
   )
 
   const regenerate = React.useCallback(() => {
@@ -406,10 +510,14 @@ export function useChatSession(
     submitTime,
     sessionSummary,
     lastIntent,
+    autoVoice,
+    isSpeaking,
     submit,
     regenerate,
     loadConversation,
     newConversation,
     stop,
+    setAutoVoice,
+    stopSpeaking,
   }
 }
