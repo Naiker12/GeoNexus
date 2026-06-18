@@ -1,0 +1,181 @@
+========================================
+18 — ANÁLISIS: CODING AGENT
+========================================
+Creado: 2026-06-17
+Propósito: Documentar el sistema de Coding Agent
+             (frontend React + backend Rust/Tauri)
+
+========================================
+1.  INTRODUCCIÓN
+========================================
+El Coding Agent permite al usuario escribir prompts en lenguaje
+natural (ej: "crea un html con mi nombre Naiker") y que el sistema
+genere automáticamente archivos de proyecto, los visualice en
+tiempo real, y permita previsualizarlos.
+
+Flujo de alto nivel:
+  Usuario escribe prompt
+    → ChatPanel.onSubmit()
+    → agentState.mode === "agent"?
+    → startGeneration(prompt)
+    → Backend Rust (telegram.rs)
+    → Eventos Tauri en tiempo real
+    → useCodingAgentEvents() escucha 13 eventos
+    → CodingAgentContext actualiza estado
+    → CodingAgentPanel renderiza UI
+
+========================================
+2.  ARQUITECTURA DE ARCHIVOS
+========================================
+Tipos y estado:
+  src/types/coding-agent.ts          — 65 líneas, interfaces FileNode,
+                                       AgentEvent, CodingAgentState,
+                                       CleanupReport, AgentMode, AgentStatus
+
+Contexto (state manager):
+  src/contexts/CodingAgentContext.tsx — 135 líneas, Provider + reducer
+                                       con 13 acciones (ADD_EVENT,
+                                       ADD_FILE, SET_PREVIEW_URL, etc.)
+
+Hooks (lógica Tauri):
+  src/hooks/useCodingAgent.ts        — 312 líneas, 13 listeners Tauri
+                                       + función startGeneration()
+  src/hooks/useAgentCleanup.ts       — 59 líneas, analiza/limpia
+                                       proyectos generados
+
+Componentes UI:
+  src/components/chat/CodingAgentPanel.tsx   — Panel lateral con tabs
+  src/components/chat/AgentFileTree.tsx      — Árbol de archivos + visor
+  src/components/chat/AgentTimeline.tsx      — Timeline visual
+  src/components/chat/AgentPreview.tsx       — Preview en iframe
+  src/components/chat/AgentLifeIndicator.tsx — Barra superior animada
+  src/components/chat/AgentCleanupReport.tsx — Reporte de limpieza
+  src/components/chat/AgentModeToggle.tsx    — Toggle idle ↔ agent
+  src/components/chat/AgentCodeViewer.tsx    — Visor de código diff
+
+Integración con chat:
+  src/components/chat/ChatPanel.tsx          — Botón AGENTE, status bar
+  src/components/chat/ChatComposer.tsx       — Muestra errores del agente
+
+Backend Rust:
+  crates/geonexus-tauri/src/commands/telegram.rs — 191 líneas (205-395),
+                                                    genera archivos según
+                                                    keywords en description
+
+========================================
+3.  EVENTOS TAURI (13 LISTENERS)
+========================================
+Evento                   Payload                  Acción en reducer
+───────────────────────  ───────────────────────  ─────────────────
+agent:plan               { label, detail? }       SET_PLAN + status=planning
+agent:step_start         { id, label, detail? }   ADD_EVENT + status=coding
+agent:step_complete      { id, duration? }        UPDATE_EVENT → done
+agent:step_error         { id, detail? }          UPDATE_EVENT → error
+agent:file_created       { path, name, type,      ADD_FILE + ADD_EVENT
+                           content?, language? }
+agent:file_modified      { path, name }           UPDATE_FILE + ADD_EVENT
+agent:tool_call          { id, tool, args? }      ADD_EVENT (running)
+agent:tool_result        { id, result? }          UPDATE_EVENT (done)
+agent:thinking           { text }                 ADD_EVENT (thinking)
+agent:error              { message }              SET_ERROR + error
+agent:preview_ready      { url }                  SET_PREVIEW_URL + ADD_EVENT
+agent:cleanup_result     CleanupReport            SET_CLEANUP_REPORT
+agent:done               void                     SET_STATUS done
+
+========================================
+4.  ESTADOS DEL AGENTE
+========================================
+  idle → thinking → planning → coding → done
+                           ↘ error ↗
+
+========================================
+5.  DETECCIÓN DE INTENCIÓN (BACKEND)
+========================================
+El backend Rust analiza la description del prompt:
+
+  Keywords                    Archivo generado
+  ──────────────────────────  ────────────────
+  "html", "pagina", "sitio"   index.html
+  o empieza con "crea"/
+  "haz"/"genera"
+  "python", ".py", "script"   main.py
+  "rust", ".rs"               main.rs
+  default                     index.html
+
+========================================
+6.  CAMBIOS REALIZADOS (SESIÓN)
+========================================
+(a) Bug prompt vs description
+    — Backend espera campo "description", no "prompt"
+
+(b) Bug projectPath faltante
+    — Se añadió projectPath: "./agent-projects/default"
+
+(c) Error del agente no visible al usuario
+    — Se muestra agentState.error en ChatComposer
+
+(d) Eventos no coincidían con backend
+    — Se alinearon nombres y payloads de eventos Tauri
+
+(e) Scroll en timeline no funcionaba
+    — Se añadió min-h-0 en la cadena flex
+
+(f) Badge AGENTE no era clickeable
+    — Se agregó toggle del panel con agentPanelOpen
+
+(g) Paso actual no visible en barra superior
+    — Se muestra el último evento en tiempo real
+
+(h) FileTree sin orden ni visor
+    — Directorios primero, split panel con <pre>/<code>
+    — Visor de contenido al hacer click
+
+(i) Backend hardcoded (siempre React/MapView)
+    — Ahora usa description para decidir qué generar
+
+(j) Código duplicado y archivos huérfanos
+    — Se eliminaron CodingAgentCodeViewer.tsx,
+      CodingAgentFileExplorer.tsx, CodingAgentPlanCard.tsx,
+      CodingAgentPreview.tsx, CodingAgentTimeline.tsx
+    — Se eliminaron eventos antiguos en features/workspace/chat/events/
+    — Se eliminó useVoicePlayer.ts, useReasoningStream.ts, VoicePlayer.tsx
+
+========================================
+7.  PENDIENTE / OBSERVACIONES
+========================================
+- Los archivos generados se crean en agent-projects/default/
+  dentro del directorio de la aplicación Tauri.
+- El preview en iframe apunta a la URL generada por el backend.
+- El CleanupReport permite al usuario limpiar proyectos generados.
+- Hay archivos sin commit (modified + untracked).
+- chroma_db/ es un directorio generado, no tracked.
+- docs/coding-agent-plan.txt y docs/current-state.txt fueron eliminados.
+
+========================================
+8.  DIAGRAMA DE FLUJO (TEXTO)
+========================================
+  ChatPanel
+     │
+     ├─ onSubmit() → agent mode?
+     │               ↓
+     │  startGeneration(prompt)
+     │     ↓
+     │  invoke("coding_agent_start_generation",
+     │         { description, projectPath })
+     │     ↓
+     │  Backend Rust
+     │     ↓
+     │  Eventos Tauri (13 tipos)
+     │     ↓
+     │  useCodingAgent.ts (13 listeners)
+     │     ↓
+     │  dispatch() → CodingAgentContext
+     │     ↓
+     │  CodingAgentPanel.tsx
+     │     ├─ AgentLifeIndicator (barra superior)
+     │     ├─ Tabs: Timeline | Archivos | Preview
+     │     ├─ AgentTimeline (scrollable)
+     │     ├─ AgentFileTree (árbol + visor)
+     │     └─ AgentPreview (iframe)
+     │
+     └─ ChatComposer muestra error si mode === "agent"

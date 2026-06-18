@@ -33,6 +33,7 @@ import type { MentionSource, MentionableSourcesResponse, SlashCommand, MentionKi
 import type { AgentSourceType } from "@/types/agents"
 import { parseMentions } from "@/features/workspace/chat/MentionPicker"
 import { ToolMenu } from "@/components/chat/ToolMenu"
+import { useCodingAgent } from "@/contexts/CodingAgentContext"
 import { AttachmentChips, type Chip } from "@/components/chat/AttachmentChips"
 
 export type ChatComposerProps = {
@@ -55,7 +56,6 @@ export type ChatComposerProps = {
   activeSkills?: SkillInfo[]
   onRemoveSkill?: (id: string) => void
   sessionSummary?: SessionSummary | null
-  onToggleCoding?: () => void
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -87,9 +87,9 @@ export function ChatComposer({
   activeSkills,
   onRemoveSkill,
   sessionSummary,
-  onToggleCoding,
 }: ChatComposerProps) {
   // Slash command state
+  const { state: agentState, dispatch } = useCodingAgent()
   const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
   const slashContainerRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -316,8 +316,11 @@ export function ChatComposer({
         // For now, just trigger context panel or file picker fallback
         fileInputRef.current?.click()
         break
-      case "toggle-coding":
-        onToggleCoding?.()
+      case "toggle-agent":
+        dispatch({
+          type: "SET_MODE",
+          payload: agentState.mode === "agent" ? "chat" : "agent",
+        })
         break
       case "new-chat":
         onNewChat?.()
@@ -436,7 +439,6 @@ export function ChatComposer({
               connectors={rawSources?.connectors ?? []}
               refreshSources={refreshSources}
               onAttachFiles={() => fileInputRef.current?.click()}
-              onToggleCoding={onToggleCoding}
             />
           </InputGroupAddon>
           <InputGroupControl className="relative flex items-center">
@@ -479,7 +481,7 @@ export function ChatComposer({
                 value={value}
                 autoComplete="off"
                 className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
-                placeholder="Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"
+                placeholder={agentState.mode === "agent" ? (agentState.status === "planning_review" ? "Revisa el plan pendiente antes de continuar..." : "Describe la tarea que quieres que realice el agente...") : "Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"}
                 onChange={(event) => handleComposerChange(event.target.value)}
                 onKeyDown={handleKeyDown}
               />
@@ -564,9 +566,9 @@ export function ChatComposer({
           </div>
         )}
 
-        {error ? (
+        {(error || (agentState.mode === "agent" && agentState.error)) ? (
           <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
+            {agentState.mode === "agent" && agentState.error ? agentState.error : error}
           </p>
         ) : null}
       </form>

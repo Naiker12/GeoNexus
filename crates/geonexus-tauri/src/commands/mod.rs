@@ -18,3 +18,4 @@ pub mod settings;
 pub mod skills;
 pub mod audio;
 pub mod telegram;
+pub mod coding_agent;

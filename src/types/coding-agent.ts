@@ -1,54 +1,97 @@
-export type CodingPhase =
+export type AgentMode = "chat" | "agent"
+
+export type AgentStatus =
   | "idle"
-  | "clarifying"
+  | "thinking"
   | "planning"
-  | "building"
-  | "preview"
-  | "error";
+  | "planning_review"
+  | "coding"
+  | "error"
+  | "done"
 
-export type StepStatus = "pending" | "active" | "done" | "error";
+export type AgentEventType =
+  | "plan"
+  | "step_start"
+  | "step_complete"
+  | "step_error"
+  | "file_created"
+  | "file_modified"
+  | "tool_call"
+  | "tool_result"
+  | "thinking"
+  | "error"
+  | "cleanup_result"
+  | "preview_ready"
 
-export interface CodingStep {
-  id: string;
-  label: string;
-  status: StepStatus;
-  duration?: number;
-  details?: string[];
+export interface AgentEvent {
+  id: string
+  type: AgentEventType
+  label: string
+  detail?: string
+  status: "pending" | "running" | "done" | "error"
+  timestamp: number
+  duration?: number
 }
+
+export type FileStatus = "pending" | "creating" | "done" | "error"
 
 export interface FileNode {
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  status: "pending" | "creating" | "done" | "error";
-  content?: string;
-  language?: string;
-  children?: FileNode[];
-  path: string;
+  path: string
+  name: string
+  type: "file" | "directory"
+  status?: FileStatus
+  children?: FileNode[]
+  content?: string
+  language?: string
+  isOriginal?: boolean
 }
 
-export interface CodingPlan {
-  stack: string;
-  files: string[];
-  estimatedTime: string;
-  description: string;
+export interface CleanupReport {
+  totalFiles: number
+  removedFiles: number
+  unusedImports: number
+  deadCode: number
+  details: string[]
 }
 
-export interface ClarifyingQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  answered: boolean;
-  answer?: string;
+export interface AgentPlanFile {
+  path: string
+  language: string
+  shortDescription: string
+  content: string
+  risk: "low" | "high"
+  reason: string
+}
+
+export interface AgentPlan {
+  summary: string
+  files: AgentPlanFile[]
+}
+
+export interface PermissionRequest {
+  id: string
+  action: "overwrite" | "delete" | "write_outside_project"
+  targetPath: string
+  reason: string
+}
+
+export interface LoadedProject {
+  name: string
+  summary: string
+  files: FileNode[]
 }
 
 export interface CodingAgentState {
-  isActive: boolean;
-  phase: CodingPhase;
-  steps: CodingStep[];
-  files: FileNode[];
-  plan: CodingPlan | null;
-  previewUrl: string | null;
-  activeFile: FileNode | null;
-  clarifyingQuestions: ClarifyingQuestion[];
+  mode: AgentMode
+  status: AgentStatus
+  events: AgentEvent[]
+  files: FileNode[]
+  activeFile: FileNode | null
+  previewUrl: string | null
+  plan: string | null
+  error: string | null
+  cleanupReport: CleanupReport | null
+  currentPlan: AgentPlan | null
+  pendingPermissions: PermissionRequest[]
+  loadedProject: LoadedProject | null
 }

@@ -306,7 +306,10 @@ fn main() {
             commands::telegram::telegram_send_message,
             
             // Coding Agent
-            commands::telegram::coding_agent_start_generation,
+            commands::coding_agent::coding_agent_start_generation,
+            commands::coding_agent::coding_agent_approve_plan,
+            commands::coding_agent::coding_agent_resolve_permission,
+            commands::coding_agent::coding_agent_load_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

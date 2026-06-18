@@ -9,7 +9,6 @@ import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import { Button } from "@/components/ui/Button"
 import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
-import { ModelHeaderPopover } from "@/components/chat/ModelHeaderPopover"
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
@@ -19,9 +18,9 @@ import { useCodingAgent } from "@/contexts/CodingAgentContext"
 import type { AiConnector } from "@/features/workspace/workspace-data"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
-import { useReasoningStream } from "@/components/chat/useReasoningStream"
-
+import { useCodingAgentEvents } from "@/hooks/useCodingAgent"
 import { CodingAgentPanel } from "@/components/chat/CodingAgentPanel"
+
 
 const PROJECT_ID = "project-default"
 
@@ -33,7 +32,8 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { toast } = useToast()
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
-  const { steps, isReasoning, thinkingText, toolCalls, reset } = useReasoningStream()
+  const { state: agentState } = useCodingAgent()
+  const { startGeneration } = useCodingAgentEvents()
   const {
     activeProvider,
     conversationId,
@@ -49,28 +49,21 @@ export function ChatPanel(_props: ChatPanelProps) {
     submitTime,
     sessionSummary,
     lastIntent,
+    pipeline,
+    thinkingText,
+    toolCalls,
     submit,
     regenerate,
     loadConversation,
     newConversation,
     stop,
   } = useChatSession(activeConnectorId, connectors)
-  
-  const codingAgent = useCodingAgent()
 
-  // Reset reasoning stream when pending becomes false (response completes)
-  React.useEffect(() => {
-    if (!pending) {
-      reset()
-    }
-  }, [pending, reset])
-
-  // Reset reasoning stream when starting a new conversation
   const handleNewConversation = React.useCallback(() => {
-    reset()
     newConversation()
-  }, [reset, newConversation])
+  }, [newConversation])
 
+  const [agentPanelOpen, setAgentPanelOpen] = React.useState(true)
   const [sidebarOpen, setSidebarOpen] = React.useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("geonexus.sidebarOpen")
@@ -122,7 +115,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   }, [regenerate])
 
   return (
-    <section className="relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden">
+    <section className={`relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden ${agentState.mode === "agent" ? "border-l-2 border-amber-500" : ""}`}>
       {/* Sidebar */}
       <div
         className="shrink-0 flex flex-col border-r border-border bg-muted/30 transition-all duration-150 ease-in-out overflow-hidden"
@@ -185,11 +178,33 @@ export function ChatPanel(_props: ChatPanelProps) {
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
 
         {/* Agent life indicator */}
-        <div className="flex shrink-0 items-center border-b border-border/30 bg-muted/20 px-3 h-7">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/30 bg-muted/20 px-3 h-7">
+          {agentState.mode === "agent" && (
+            <button
+              type="button"
+              onClick={() => setAgentPanelOpen(v => !v)}
+              className="relative inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-200 transition-colors cursor-pointer"
+            >
+              {agentState.status === "idle" ? "⚡ AGENTE" : agentState.status === "done" ? "✅ AGENTE" : "⚡ AGENTE"}
+              {(agentState.status === "planning_review" || agentState.pendingPermissions.length > 0) && (
+                <span className="absolute -top-1 -right-1 flex size-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex size-3 rounded-full bg-red-500 text-[7px] font-bold text-white items-center justify-center">
+                    !
+                  </span>
+                </span>
+              )}
+            </button>
+          )}
           <AgentLifeIndicator
-            status={pending ? (steps.some(s => s.type === "web_searching") ? "searching" : steps.some(s => s.type === "skills_injected") ? "using_skill" : "thinking") : "idle"}
+            status={agentState.mode === "agent" ? (agentState.status === "idle" ? "idle" : agentState.status === "done" ? "done" : agentState.status === "error" ? "idle" : "thinking") : pending ? (pipeline?.steps.some(s => s.kind === "web_search") ? "searching" : pipeline?.steps.some(s => s.kind === "tool_call") ? "using_skill" : "thinking") : "idle"}
             conversationCount={messages.filter(m => m.role === "user").length}
           />
+          {agentState.mode === "agent" && agentState.status !== "idle" && agentState.status !== "done" && agentState.events.length > 0 && (
+            <span className="text-[11px] text-amber-600 truncate max-w-[200px]">
+              {agentState.events[agentState.events.length - 1]?.label}
+            </span>
+          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -209,10 +224,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               webSearchEnabled={webSearchEnabled}
               onEditLastUserMessage={handleEditLastUserMessage}
               onRegenerateLastMessage={handleRegenerate}
-              useContext={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
-              lastIntent={lastIntent ?? undefined}
-              steps={steps}
-              isReasoning={isReasoning}
+              pipeline={pipeline}
               thinkingText={thinkingText}
               toolCalls={toolCalls}
             />
@@ -233,6 +245,10 @@ export function ChatPanel(_props: ChatPanelProps) {
           onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
           onSubmit={(content, mentions, attachments) => {
             setComposerValue("")
+            if (agentState.mode === "agent") {
+              startGeneration(content)
+              return
+            }
             const fromActive = activeSkills.map(s => s.name)
             const fromMention = mentions?.skillNames ?? []
             const allSkillNames = [...new Set([...fromActive, ...fromMention])]
@@ -276,12 +292,12 @@ export function ChatPanel(_props: ChatPanelProps) {
           onReindex={() => {
             toast({ title: "Reindexando...", description: "Reindexación del catálogo de assets iniciada", variant: "info" })
           }}
-          onToggleCoding={codingAgent.toggleCodingMode}
         />
       </div>
 
-      {/* Coding Agent Panel */}
-      <CodingAgentPanel />
+      
+
+      {agentState.mode === "agent" && agentPanelOpen && <CodingAgentPanel />}
 
       <ProjectContextPanel
         projectId={PROJECT_ID}
