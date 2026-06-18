@@ -2,7 +2,7 @@ import * as React from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
-import type { AgentEvent, AgentStatus, FileNode, CleanupReport, AgentPlan, PermissionRequest, LoadedProject } from "@/types/coding-agent"
+import type { AgentEvent, AgentStatus, FileNode, CleanupReport, AgentPlan, PermissionRequest, LoadedProject, ClarifyingQuestion, WritingFile } from "@/types/coding-agent"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
 export function useCodingAgentEvents() {
@@ -24,10 +24,9 @@ export function useCodingAgentEvents() {
   }, [activeConnectorId, connectors])
 
   React.useEffect(() => {
-    if (state.mode !== "agent") {
-      return
-    }
+    if (state.mode !== "agent") return
 
+    let cancelled = false
     const unlisteners: UnlistenFn[] = []
 
     const setupListeners = async () => {
@@ -49,6 +48,63 @@ export function useCodingAgentEvents() {
         { target: { kind: "Any" } },
       )
       unlisteners.push(u1)
+
+      const uFileWritingStart = await listen<{ path: string; name: string; language: string }>(
+        "agent:file_writing_start",
+        (event) => {
+          if (cancelled) return
+          dispatch({
+            type: "SET_WRITING_FILE",
+            payload: { ...event.payload, accumulatedContent: "" },
+          })
+          // Also add as a regular event for the timeline
+          const agentEvent: AgentEvent = {
+            id: `write-${event.payload.path}-${Date.now()}`,
+            type: "step_start",
+            label: `Escribiendo ${event.payload.path}...`,
+            status: "running",
+            timestamp: Date.now(),
+          }
+          dispatch({ type: "ADD_EVENT", payload: agentEvent })
+        },
+        { target: { kind: "Any" } },
+      )
+      unlisteners.push(uFileWritingStart)
+
+      const uFileContentChunk = await listen<{ path: string; chunk: string }>(
+        "agent:file_content_chunk",
+        (event) => {
+          if (cancelled) return
+          dispatch({ type: "APPEND_FILE_CHUNK", payload: event.payload })
+        },
+        { target: { kind: "Any" } },
+      )
+      unlisteners.push(uFileContentChunk)
+
+      const uFileWritingDone = await listen<{ path: string; name: string; totalLines: number }>(
+        "agent:file_writing_done",
+        (event) => {
+          if (cancelled) return
+          dispatch({ type: "SET_WRITING_FILE", payload: null })
+          // Update the event status to done
+          dispatch({
+            type: "UPDATE_EVENT_STATUS",
+            payload: { id: `write-${event.payload.path}`, status: "done" },
+          })
+        },
+        { target: { kind: "Any" } },
+      )
+      unlisteners.push(uFileWritingDone)
+
+      const uClarifyingQuestions = await listen<{ questions: ClarifyingQuestion[] }>(
+        "agent:clarifying_questions",
+        (event) => {
+          if (cancelled) return
+          dispatch({ type: "SET_CLARIFYING_QUESTIONS", payload: event.payload.questions })
+        },
+        { target: { kind: "Any" } },
+      )
+      unlisteners.push(uClarifyingQuestions)
 
       const uPlanReady = await listen<AgentPlan>(
         "agent:plan_ready",
@@ -330,12 +386,17 @@ export function useCodingAgentEvents() {
         { target: { kind: "Any" } },
       )
       unlisteners.push(u13)
+
+      if (cancelled) {
+        unlisteners.forEach((fn) => fn())
+      }
     }
 
     setupListeners()
 
     return () => {
-      unlisteners.forEach((u) => u())
+      cancelled = true
+      unlisteners.forEach((fn) => fn())
     }
   }, [state.mode, dispatch])
 
@@ -415,6 +476,41 @@ export function useCodingAgentEvents() {
     [dispatch, state.loadedProject, activeProvider],
   )
 
+  const clarify = React.useCallback(
+    async (prompt: string) => {
+      dispatch({ type: "SET_STATUS", payload: "clarifying" })
+      dispatch({ type: "SET_ERROR", payload: null })
+
+      try {
+        await invoke("coding_agent_clarify", {
+          description: prompt,
+          providerType: activeProvider?.provider ?? "",
+          model: activeProvider?.model ?? "",
+          endpoint: activeProvider?.endpoint ?? "",
+          apiKey: activeProvider?.apiKey ?? null,
+        })
+      } catch (err) {
+        // Si falla la generacion de preguntas (ej. sin LLM), ir directo a plan
+        startGeneration(prompt)
+      }
+    },
+    [dispatch, activeProvider, startGeneration],
+  )
+
+  const submitClarification = React.useCallback(
+    async (originalPrompt: string, questions: ClarifyingQuestion[]) => {
+      dispatch({ type: "SET_CLARIFYING_QUESTIONS", payload: null })
+
+      const qaContext = questions
+        .map((q) => `Pregunta: ${q.question}\nRespuesta: ${q.answer}`)
+        .join("\n\n")
+
+      const enrichedPrompt = `${originalPrompt}\n\nContexto adicional:\n${qaContext}`
+      await startGeneration(enrichedPrompt)
+    },
+    [dispatch, startGeneration],
+  )
+
   const resolvePermission = React.useCallback(
     async (requestId: string, granted: boolean) => {
       try {
@@ -452,6 +548,8 @@ export function useCodingAgentEvents() {
   }, [dispatch])
 
   return {
+    clarify,
+    submitClarification,
     startGeneration,
     approvePlan,
     rejectPlan,

@@ -1,9 +1,29 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::oneshot;
 use crate::commands::llm::run_sidecar;
 
+pub struct PermissionState {
+    pub pending: Arc<std::sync::Mutex<HashMap<String, oneshot::Sender<bool>>>>,
+}
+
+impl PermissionState {
+    pub fn new() -> Self {
+        Self { pending: Arc::new(std::sync::Mutex::new(HashMap::new())) }
+    }
+}
+
+impl Default for PermissionState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct LLMPlanFile {
     path: String,
     language: String,
@@ -14,6 +34,7 @@ struct LLMPlanFile {
 }
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct LLMPlan {
     summary: String,
     files: Vec<LLMPlanFile>,
@@ -44,6 +65,17 @@ async fn call_llm_for_plan(
 Contexto del proyecto actual:
 {}
 
+Principio fundamental: MINIMO CODIGO NECESARIO.
+Antes de proponer cualquier archivo, recorre esta escalera:
+  1. ?Esto necesita construirse? Si es especulativo, no lo incluyas.
+  2. ?La libreria estandar ya lo hace? Usala (CSS nativo, HTML semantico, JS vanilla).
+  3. ?Una caracteristica nativa de HTML/CSS cubre esto? Preferila (ej: <input type="date"> en vez de date picker externo).
+  4. ?Puede ser una linea? Que sea una linea.
+  5. Solo entonces: escribe el minimo codigo que funcione.
+
+Sin abstracciones no solicitadas, sin dependencias nuevas evitables,
+sin boilerplate que nadie pidio. Prefiere borrar sobre anadir.
+
 Reglas:
 1. Devuelve SOLO JSON valido, sin explicaciones ni markdown adicional.
 2. El JSON debe tener esta estructura exacta:
@@ -53,13 +85,21 @@ Reglas:
     {{
       "path": "ruta/del/archivo",
       "language": "html|css|js|ts|py|rs|json|md|etc",
-      "short_description": "que hace este archivo",
+      "shortDescription": "que hace este archivo",
       "content": "contenido completo del archivo",
       "risk": "low" si es un archivo nuevo en agent-projects, "high" si sobrescribe algo existente,
       "reason": "por que se crea o modifica este archivo"
     }}
   ]
 }}
+
+EXCEPCION CRITICA: La regla de "minimo codigo" NO aplica a:
+  - Validacion de entrada en limites de confianza
+  - Manejo de errores que previene perdida de datos
+  - Seguridad (sanitizacion, escapado, permisos)
+  - Accesibilidad (aria, semantic HTML, contraste)
+  - NADA explicitamente solicitado por el usuario
+En estos casos, escribe el codigo completo y correcto, aunque sea mas largo.
 
 Requerimiento del usuario: {}
 "#,
@@ -228,9 +268,132 @@ fn collect_project_files(dir: &PathBuf, base_prefix: &str) -> Vec<ProjectFileEnt
     entries
 }
 
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct ClarifyingQuestion {
+    id: String,
+    question: String,
+    answer: String,
+}
+
+/// Llama al LLM para generar preguntas aclaratorias sobre el requerimiento
+async fn call_llm_for_clarification(
+    description: &str,
+    provider_type: &str,
+    model: &str,
+    endpoint: &str,
+    api_key: Option<&str>,
+) -> Result<Vec<ClarifyingQuestion>, String> {
+    let json_example = r#"{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Texto de la pregunta"
+    }
+  ]
+}"#;
+    let system_prompt = format!(
+        "Eres un analista de requerimientos experto. Tu tarea es generar preguntas aclaratorias\npara entender mejor lo que el usuario necesita construir.\n\nReglas:\n1. Genera entre 2 y 4 preguntas relevantes sobre el proyecto.\n2. Las preguntas deben ayudar a definir: alcance, tecnologia, diseno, funcionalidades.\n3. Devuelve SOLO JSON valido, sin explicaciones ni markdown.\n4. El JSON debe tener esta estructura exacta:\n{}\n\nRequerimiento del usuario: {}",
+        json_example,
+        description
+    );
+
+    let messages = serde_json::json!([
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": description}
+    ]);
+
+    let mut args = vec![
+        "--action".to_string(),
+        "chat_llm".to_string(),
+        "--provider_type".to_string(),
+        provider_type.to_string(),
+        "--base_url".to_string(),
+        endpoint.to_string(),
+        "--model".to_string(),
+        model.to_string(),
+        "--messages".to_string(),
+        messages.to_string(),
+    ];
+
+    if let Some(key) = api_key {
+        if !key.is_empty() {
+            args.push("--api_key".to_string());
+            args.push(key.to_string());
+        }
+    }
+
+    let output = run_sidecar(
+        &args.iter().map(String::as_str).collect::<Vec<_>>(),
+    )?;
+
+    let parsed: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Error parseando respuesta del LLM: {}. Output: {}", e, &output[..output.len().min(500)]))?;
+
+    if parsed.get("status").and_then(|s| s.as_str()) == Some("error") {
+        let msg = parsed.get("message").and_then(|m| m.as_str()).unwrap_or("Error desconocido del LLM");
+        return Err(format!("LLM error: {}", msg));
+    }
+
+    let message = parsed.get("message")
+        .or_else(|| parsed.get("msg"))
+        .ok_or_else(|| format!("Respuesta LLM sin campo 'message'. Output: {}", &output[..output.len().min(500)]))?;
+
+    let content = message.get("content")
+        .and_then(|c| c.as_str())
+        .ok_or_else(|| format!("Respuesta LLM sin contenido. Output: {}", &output[..output.len().min(500)]))?;
+
+    let content = content.trim();
+    let json_str = if content.starts_with("```") {
+        let lines: Vec<&str> = content.lines().collect();
+        let start = if lines.first().map_or(false, |l| l.starts_with("```")) { 1 } else { 0 };
+        let end = if lines.last().map_or(false, |l| l.starts_with("```")) {
+            if lines.len() > start { lines.len() - 1 } else { lines.len() }
+        } else {
+            lines.len()
+        };
+        lines[start..end].join("\n")
+    } else {
+        content.to_string()
+    };
+
+    #[derive(serde::Deserialize)]
+    struct QuestionsResponse {
+        questions: Vec<ClarifyingQuestion>,
+    }
+
+    let resp: QuestionsResponse = serde_json::from_str(&json_str)
+        .map_err(|e| format!("Error parseando preguntas del LLM: {}. JSON: {}", e, &json_str[..json_str.len().min(300)]))?;
+
+    Ok(resp.questions)
+}
+
 // ──────────────────────────────────────────────────────────
 // Tauri Commands
 // ──────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn coding_agent_clarify(
+    description: String,
+    provider_type: String,
+    model: String,
+    endpoint: String,
+    api_key: Option<String>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let questions = call_llm_for_clarification(
+        &description,
+        &provider_type,
+        &model,
+        &endpoint,
+        api_key.as_deref(),
+    ).await?;
+
+    app.emit("agent:clarifying_questions", serde_json::json!({
+        "questions": questions
+    })).map_err(|e| e.to_string())?;
+
+    Ok(serde_json::to_string(&questions).unwrap_or_default())
+}
 
 #[tauri::command]
 pub async fn coding_agent_start_generation(
@@ -351,6 +514,9 @@ pub async fn coding_agent_approve_plan(
         "label": format!("Generando {} archivo{}", file_count, if file_count == 1 { "" } else { "s" }),
     })).map_err(|e| e.to_string())?;
 
+    let perm_state = app.state::<PermissionState>();
+    let mut files_written = 0usize;
+
     for spec in &plan.files {
         let full_path = base_path.join(&spec.path);
 
@@ -359,29 +525,89 @@ pub async fn coding_agent_approve_plan(
             std::fs::create_dir_all(parent).map_err(|e| format!("Error creando directorio {}: {}", parent.display(), e))?;
         }
 
-        // Verificar riesgo alto
+        // Si el archivo existe, pedir permiso y esperar respuesta
         if full_path.exists() {
             let perm_id = format!("perm-{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or(std::time::Duration::from_secs(0)).as_millis());
+            let (tx, rx) = oneshot::channel::<bool>();
+            {
+                let mut map = perm_state.pending.lock().map_err(|e| e.to_string())?;
+                map.insert(perm_id.clone(), tx);
+            }
             app.emit("agent:permission_required", serde_json::json!({
                 "id": perm_id,
                 "action": "overwrite",
                 "targetPath": spec.path,
                 "reason": spec.reason
             })).map_err(|e| e.to_string())?;
+
+            // Esperar respuesta del usuario con timeout de 60s
+            let granted = match tokio::time::timeout(std::time::Duration::from_secs(60), rx).await {
+                Ok(Ok(g)) => g,
+                _ => false, // timeout o canal caido = denegar
+            };
+
+            // Limpiar del mapa pendiente si aun esta
+            {
+                let mut map = perm_state.pending.lock().map_err(|e| e.to_string())?;
+                map.remove(&perm_id);
+            }
+
+            if !granted {
+                app.emit("agent:file_created", serde_json::json!({
+                    "path": &spec.path,
+                    "name": spec.path.split('/').last().unwrap_or(&spec.path),
+                    "type": "file",
+                    "status": "skipped",
+                    "reason": "Permiso denegado por el usuario"
+                })).map_err(|e| e.to_string())?;
+                continue;
+            }
         }
 
+        // Emitir evento de inicio de escritura
+        let file_name = spec.path.split('/').last().unwrap_or(&spec.path);
+        app.emit("agent:file_writing_start", serde_json::json!({
+            "path": &spec.path,
+            "name": file_name,
+            "language": &spec.language,
+        })).map_err(|e| e.to_string())?;
+
+        // Emitir chunks de contenido progresivamente
+        let content = &spec.content;
+        let chunk_size = 80;
+        let mut emitted = 0usize;
+        while emitted < content.len() {
+            let end = std::cmp::min(emitted + chunk_size, content.len());
+            let chunk = &content[emitted..end];
+            app.emit("agent:file_content_chunk", serde_json::json!({
+                "path": &spec.path,
+                "chunk": chunk,
+            })).map_err(|e| e.to_string())?;
+            emitted = end;
+            tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+
+        // Escribir el archivo completo
         std::fs::write(&full_path, &spec.content)
             .map_err(|e| format!("Error escribiendo {}: {}", spec.path, e))?;
 
+        let total_lines = content.lines().count();
+        app.emit("agent:file_writing_done", serde_json::json!({
+            "path": &spec.path,
+            "name": file_name,
+            "totalLines": total_lines,
+        })).map_err(|e| e.to_string())?;
+
         app.emit("agent:file_created", serde_json::json!({
             "path": &spec.path,
-            "name": &spec.path.split('/').last().unwrap_or(&spec.path),
+            "name": file_name,
             "type": "file",
             "language": &spec.language,
-            "content": &spec.content,
             "status": "done",
             "reason": &spec.reason
         })).map_err(|e| e.to_string())?;
+
+        files_written += 1;
     }
 
     app.emit("agent:step_complete", serde_json::json!({
@@ -392,7 +618,7 @@ pub async fn coding_agent_approve_plan(
     app.emit("agent:done", serde_json::json!({}))
         .map_err(|e| e.to_string())?;
 
-    Ok(format!("Plan ejecutado: {} archivos creados", file_count))
+    Ok(format!("Plan ejecutado: {} archivos creados", files_written))
 }
 
 #[tauri::command]
@@ -401,6 +627,14 @@ pub async fn coding_agent_resolve_permission(
     granted: bool,
     app: AppHandle,
 ) -> Result<(), String> {
+    let perm_state = app.state::<PermissionState>();
+    let tx = {
+        let mut map = perm_state.pending.lock().map_err(|e| e.to_string())?;
+        map.remove(&request_id)
+    };
+    if let Some(tx) = tx {
+        let _ = tx.send(granted);
+    }
     app.emit("agent:permission_resolved", serde_json::json!({
         "id": request_id,
         "granted": granted

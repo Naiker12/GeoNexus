@@ -53,6 +53,8 @@ ai/chroma/
 ai/.chroma/
 ai/data/
 local-data/
+agent-projects/
+generated-projects/
 
 # OS and editor files
 .DS_Store

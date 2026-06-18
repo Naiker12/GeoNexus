@@ -9,6 +9,8 @@ import type {
   CleanupReport,
   PermissionRequest,
   LoadedProject,
+  ClarifyingQuestion,
+  WritingFile,
 } from "@/types/coding-agent"
 
 type CodingAgentAction =
@@ -29,6 +31,10 @@ type CodingAgentAction =
   | { type: "REJECT_PLAN" }
   | { type: "ADD_PERMISSION_REQUEST"; payload: PermissionRequest }
   | { type: "RESOLVE_PERMISSION_REQUEST"; payload: string }
+  | { type: "SET_CLARIFYING_QUESTIONS"; payload: ClarifyingQuestion[] | null }
+  | { type: "SET_WRITING_FILE"; payload: WritingFile | null }
+  | { type: "APPEND_FILE_CHUNK"; payload: { path: string; chunk: string } }
+  | { type: "UPDATE_EVENT_STATUS"; payload: { id: string; status: AgentEvent["status"] } }
   | { type: "SET_PROJECT_LOADED"; payload: LoadedProject | null }
   | { type: "RESET" }
 
@@ -45,6 +51,8 @@ const initialState: CodingAgentState = {
   currentPlan: null,
   pendingPermissions: [],
   loadedProject: null,
+  clarifyingQuestions: null,
+  writingFile: null,
 }
 
 function codingAgentReducer(
@@ -70,7 +78,10 @@ function codingAgentReducer(
     case "SET_FILES":
       return { ...state, files: action.payload }
     case "ADD_FILE":
-      return { ...state, files: [...state.files, action.payload] }
+      return {
+        ...state,
+        files: addFileDedup(state.files, action.payload),
+      }
     case "UPDATE_FILE":
       return {
         ...state,
@@ -108,6 +119,32 @@ function codingAgentReducer(
           (p) => p.id !== action.payload,
         ),
       }
+    case "SET_CLARIFYING_QUESTIONS":
+      return {
+        ...state,
+        clarifyingQuestions: action.payload,
+        status: action.payload ? "clarifying" : state.status,
+      }
+    case "SET_WRITING_FILE":
+      return { ...state, writingFile: action.payload }
+    case "APPEND_FILE_CHUNK": {
+      const wf = state.writingFile
+      if (!wf || wf.path !== action.payload.path) return state
+      return {
+        ...state,
+        writingFile: {
+          ...wf,
+          accumulatedContent: wf.accumulatedContent + action.payload.chunk,
+        },
+      }
+    }
+    case "UPDATE_EVENT_STATUS":
+      return {
+        ...state,
+        events: state.events.map((e) =>
+          e.id.startsWith(action.payload.id) ? { ...e, status: action.payload.status } : e,
+        ),
+      }
     case "SET_PROJECT_LOADED":
       return { ...state, loadedProject: action.payload }
     case "RESET":
@@ -115,6 +152,25 @@ function codingAgentReducer(
     default:
       return state
   }
+}
+
+function addFileDedup(nodes: FileNode[], newNode: FileNode): FileNode[] {
+  const existing = findFileNode(nodes, newNode.path)
+  if (existing) {
+    return updateFileNode(nodes, newNode.path, newNode)
+  }
+  return [...nodes, newNode]
+}
+
+function findFileNode(nodes: FileNode[], path: string): FileNode | undefined {
+  for (const node of nodes) {
+    if (node.path === path) return node
+    if (node.children) {
+      const found = findFileNode(node.children, path)
+      if (found) return found
+    }
+  }
+  return undefined
 }
 
 function updateFileNode(

@@ -1,6 +1,47 @@
 use super::{GetMeResponse, SendMessageResponse, User};
 use reqwest::Client;
 
+/// Escapa caracteres especiales de MarkdownV2 de Telegram
+/// Requiere escapar: _ * [ ] ( ) ~ > # + - = | { } . !
+/// NO escapar dentro de bloques de codigo (```...```).
+pub fn escape_markdown_v2(text: &str) -> String {
+    let mut result = String::with_capacity(text.len() + 8);
+    let mut in_code = false;
+    let bytes = text.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+
+    while i < len {
+        if bytes[i] == b'`' {
+            let mut count = 0;
+            while i < len && bytes[i] == b'`' {
+                count += 1;
+                i += 1;
+            }
+            if count >= 3 {
+                in_code = !in_code;
+            }
+            for _ in 0..count {
+                result.push('`');
+            }
+            continue;
+        }
+
+        if !in_code {
+            match bytes[i] {
+                b'_' | b'*' | b'[' | b']' | b'(' | b')' | b'~' | b'>' 
+                | b'#' | b'+' | b'-' | b'=' | b'|' | b'{' | b'}' | b'.' 
+                | b'!' => result.push('\\'),
+                _ => {}
+            }
+        }
+        result.push(bytes[i] as char);
+        i += 1;
+    }
+
+    result
+}
+
 pub async fn send_message(
     client: &Client,
     token: &str,
@@ -31,6 +72,34 @@ pub async fn send_message(
         return Err("Respuesta no ok al enviar mensaje".into());
     }
     
+    Ok(())
+}
+
+pub async fn send_chat_action(
+    client: &Client,
+    token: &str,
+    chat_id: i64,
+    action: &str,
+) -> Result<(), String> {
+    let url = format!("https://api.telegram.org/bot{}/sendChatAction", token);
+    let params = [("chat_id", chat_id.to_string()), ("action", action.to_string())];
+
+    let response = client
+        .post(&url)
+        .form(&params)
+        .send()
+        .await
+        .map_err(|e| format!("Error al enviar chat action: {}", e))?;
+
+    let send_response: SendMessageResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Error al parsear chat action: {}", e))?;
+
+    if !send_response.ok {
+        return Err("Respuesta no ok al enviar chat action".into());
+    }
+
     Ok(())
 }
 

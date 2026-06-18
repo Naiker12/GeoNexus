@@ -1,20 +1,37 @@
 import * as React from "react"
-import { X, Zap, FileWarning, FolderOpen, CheckCircle2, XCircle, Loader2 } from "lucide-react"
+import { X, Zap, FileWarning, FolderOpen, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
-import { useCodingAgentEvents } from "@/hooks/useCodingAgent"
-import { AgentTimeline } from "./AgentTimeline"
 import { AgentFileTree } from "./AgentFileTree"
 import { AgentPreview } from "./AgentPreview"
 import { AgentProjectDropzone } from "./AgentProjectDropzone"
 
-export function CodingAgentPanel() {
+type CodingAgentPanelProps = {
+  onApprovePlan: (plan: import("@/types/coding-agent").AgentPlan) => Promise<void>
+  onRejectPlan: () => void
+  onEditPlan: (instructions: string) => Promise<void>
+  onResolvePermission: (requestId: string, granted: boolean) => Promise<void>
+  onReset: () => void
+}
+
+export function CodingAgentPanel(props: CodingAgentPanelProps) {
   const { state, dispatch } = useCodingAgent()
-  const { approvePlan, rejectPlan, editPlan, resolvePermission, reset } = useCodingAgentEvents()
-  const [activeTab, setActiveTab] = React.useState("timeline")
+  const approvePlan = props.onApprovePlan
+  const rejectPlan = props.onRejectPlan
+  const editPlan = props.onEditPlan
+  const resolvePermission = props.onResolvePermission
+  const reset = props.onReset
+  const [activeTab, setActiveTab] = React.useState("files")
   const [editInstructions, setEditInstructions] = React.useState("")
   const [showEditInput, setShowEditInput] = React.useState(false)
+  const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
+
+  React.useEffect(() => {
+    if (state.currentPlan) {
+      setSelectedFiles(new Set(state.currentPlan.files.filter((f) => f.risk !== "high").map((f) => f.path)))
+    }
+  }, [state.currentPlan])
 
   if (state.mode !== "agent") return null
 
@@ -109,26 +126,51 @@ export function CodingAgentPanel() {
           </p>
           <p className="text-xs text-amber-900/80 mb-2">{state.currentPlan.summary}</p>
           <ul className="space-y-1 mb-3">
-            {state.currentPlan.files.map((f, i) => (
-              <li key={i} className="flex items-center gap-2 text-[11px]">
-                <span className={`size-1.5 rounded-full shrink-0 ${f.risk === "high" ? "bg-red-400" : "bg-emerald-400"}`} />
-                <code className="text-amber-800 bg-amber-100/70 px-1 rounded truncate">{f.path}</code>
-                <span className="text-amber-600 truncate">{f.shortDescription}</span>
-                {f.risk === "high" && (
-                  <span className="text-[10px] text-red-500 font-medium shrink-0">requiere aprobación</span>
-                )}
-              </li>
-            ))}
+            {state.currentPlan.files.map((f, i) => {
+              const checked = selectedFiles.has(f.path)
+              return (
+                <li key={i} className="flex items-center gap-2 text-[11px]">
+                  <input
+                    type="checkbox"
+                    className="size-3 accent-amber-600 shrink-0"
+                    checked={checked}
+                    onChange={() => {
+                      const next = new Set(selectedFiles)
+                      if (checked) { next.delete(f.path) } else { next.add(f.path) }
+                      setSelectedFiles(next)
+                    }}
+                  />
+                  <span className={`size-1.5 rounded-full shrink-0 ${f.risk === "high" ? "bg-red-400" : "bg-emerald-400"}`} />
+                  <code className="text-amber-800 bg-amber-100/70 px-1 rounded truncate">{f.path}</code>
+                  <span className="text-amber-600 truncate">{f.shortDescription}</span>
+                  {f.risk === "high" && (
+                    <span
+                      className="text-[10px] text-red-500 font-medium shrink-0 cursor-help"
+                      title={f.reason || "Este archivo ya existe y será sobrescrito"}
+                    >
+                      ⚠ requiere aprobación
+                    </span>
+                  )}
+                </li>
+              )
+            })}
           </ul>
           {!showEditInput ? (
             <div className="flex gap-2">
               <Button
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => approvePlan(state.currentPlan!)}
+                disabled={selectedFiles.size === 0}
+                onClick={() => {
+                  const filteredPlan = {
+                    ...state.currentPlan!,
+                    files: state.currentPlan!.files.filter((f) => selectedFiles.has(f.path)),
+                  }
+                  approvePlan(filteredPlan)
+                }}
               >
                 <CheckCircle2 className="size-3 mr-1" />
-                Aprobar y crear
+                Aprobar ({selectedFiles.size})
               </Button>
               <Button
                 variant="outline"
@@ -194,16 +236,13 @@ export function CodingAgentPanel() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — solo Archivos y Preview; el timeline está en el chat */}
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0"
       >
         <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-4">
-          <TabsTrigger value="timeline" className="text-xs">
-            Timeline
-          </TabsTrigger>
           <TabsTrigger value="files" className="text-xs">
             Archivos
           </TabsTrigger>
@@ -213,41 +252,39 @@ export function CodingAgentPanel() {
         </TabsList>
 
         <TabsContent
-          value="timeline"
-          className="flex-1 min-h-0 overflow-y-auto m-0 p-0"
-        >
-          <div className="p-3">
-            {state.plan && !state.currentPlan && (
-              <div className="mb-3 rounded-lg border border-amber-200/50 bg-amber-50/40 p-3">
-                <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider mb-1">
-                  Plan
-                </p>
-                <pre className="text-xs leading-relaxed text-amber-900/80 whitespace-pre-wrap font-sans">
-                  {state.plan}
-                </pre>
-              </div>
-            )}
-            <AgentTimeline events={state.events} />
-            {state.status === "thinking" && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
-                <Loader2 className="size-3 animate-spin" />
-                Analizando con LLM...
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent
           value="files"
           className="flex-1 min-h-0 overflow-y-auto m-0 p-0"
         >
-          <AgentFileTree
-            files={state.files}
-            activeFile={state.activeFile}
-            onFileSelect={(file) =>
-              dispatch({ type: "SET_ACTIVE_FILE", payload: file })
-            }
-          />
+          {state.currentPlan && (
+            <div className="border-b border-amber-200/30 bg-amber-50/30 px-4 py-2">
+              <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1">
+                Plan
+              </p>
+              <p className="text-xs text-amber-900/80 mb-1">{state.currentPlan.summary}</p>
+              <ul className="space-y-0.5">
+                {state.currentPlan.files.map((f, i) => (
+                  <li key={i} className="flex items-center gap-1.5 text-[10px] text-amber-700">
+                    <span className={`size-1.5 rounded-full shrink-0 ${f.risk === "high" ? "bg-red-400" : "bg-emerald-400"}`} />
+                    <code className="bg-amber-100/70 px-1 rounded truncate">{f.path}</code>
+                    <span className="truncate text-amber-600">{f.shortDescription}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {state.files.length === 0 && !state.loadedProject ? (
+            <div className="p-4">
+              <AgentProjectDropzone />
+            </div>
+          ) : (
+            <AgentFileTree
+              files={state.files}
+              activeFile={state.activeFile}
+              onFileSelect={(file) =>
+                dispatch({ type: "SET_ACTIVE_FILE", payload: file })
+              }
+            />
+          )}
         </TabsContent>
 
         <TabsContent
@@ -278,7 +315,7 @@ export function CodingAgentPanel() {
             variant="outline"
             size="sm"
             className="w-full text-xs"
-            onClick={() => setActiveTab("timeline")}
+            onClick={() => setActiveTab("files")}
           >
             Ver reporte de limpieza ({state.cleanupReport.removedFiles} archivos)
           </Button>

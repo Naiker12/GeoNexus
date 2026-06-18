@@ -3,6 +3,7 @@ export type AgentMode = "chat" | "agent"
 export type AgentStatus =
   | "idle"
   | "thinking"
+  | "clarifying"
   | "planning"
   | "planning_review"
   | "coding"
@@ -33,7 +34,7 @@ export interface AgentEvent {
   duration?: number
 }
 
-export type FileStatus = "pending" | "creating" | "done" | "error"
+export type FileStatus = "pending" | "creating" | "done" | "error" | "skipped"
 
 export interface FileNode {
   path: string
@@ -75,10 +76,23 @@ export interface PermissionRequest {
   reason: string
 }
 
+export interface ClarifyingQuestion {
+  id: string
+  question: string
+  answer: string
+}
+
 export interface LoadedProject {
   name: string
   summary: string
   files: FileNode[]
+}
+
+export interface WritingFile {
+  path: string
+  name: string
+  language: string
+  accumulatedContent: string
 }
 
 export interface CodingAgentState {
@@ -94,4 +108,6 @@ export interface CodingAgentState {
   currentPlan: AgentPlan | null
   pendingPermissions: PermissionRequest[]
   loadedProject: LoadedProject | null
+  clarifyingQuestions: ClarifyingQuestion[] | null
+  writingFile: WritingFile | null
 }

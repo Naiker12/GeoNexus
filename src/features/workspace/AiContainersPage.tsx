@@ -234,6 +234,12 @@ export function AiContainersPage() {
           onConnectApi={handleConnectApi}
         />
 
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+          Las claves API se almacenan en localStorage (visible solo
+          localmente). No compartas capturas de esta pantalla. Si sospechas
+          que una clave fue expuesta, revócala en el proveedor.
+        </div>
+
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
           <ConfiguredProvidersList
             options={providerOptions}

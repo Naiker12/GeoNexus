@@ -20,6 +20,9 @@ import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
 import { useCodingAgentEvents } from "@/hooks/useCodingAgent"
 import { CodingAgentPanel } from "@/components/chat/CodingAgentPanel"
+import { AgentStepsAccordion } from "@/components/chat/AgentStepsAccordion"
+import { ClarifyingQuestions } from "@/components/chat/ClarifyingQuestions"
+import { useSidebar } from "@/components/ui/sidebar"
 
 
 const PROJECT_ID = "project-default"
@@ -33,7 +36,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
   const { state: agentState } = useCodingAgent()
-  const { startGeneration } = useCodingAgentEvents()
+  const agentActions = useCodingAgentEvents()
   const {
     activeProvider,
     conversationId,
@@ -57,6 +60,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     loadConversation,
     newConversation,
     stop,
+    addSystemMessage,
   } = useChatSession(activeConnectorId, connectors)
 
   const handleNewConversation = React.useCallback(() => {
@@ -97,7 +101,77 @@ export function ChatPanel(_props: ChatPanelProps) {
   }, [])
 
   const sidebarWidth = sidebarOpen ? 220 : 44
+  const { setOpen: setAppSidebarOpen, open: appSidebarOpen } = useSidebar()
+  const prevSidebarRef = React.useRef<boolean | null>(null)
+
+  React.useEffect(() => {
+    if (agentPanelOpen && agentState.mode === "agent") {
+      if (appSidebarOpen) {
+        prevSidebarRef.current = true
+        setAppSidebarOpen(false)
+      } else {
+        prevSidebarRef.current = false
+      }
+    } else if (prevSidebarRef.current === true) {
+      setAppSidebarOpen(true)
+      prevSidebarRef.current = null
+    }
+  }, [agentPanelOpen, agentState.mode, setAppSidebarOpen])
+
   const [composerValue, setComposerValue] = React.useState("")
+  const [clarifyingPrompt, setClarifyingPrompt] = React.useState<string | null>(null)
+  const [showEditInput, setShowEditInput] = React.useState(false)
+
+  const planRef = React.useRef(agentState.currentPlan)
+  planRef.current = agentState.currentPlan
+
+  const prevAgentStatus = React.useRef(agentState.status)
+
+  React.useEffect(() => {
+    if (agentState.status === "planning_review" && agentState.currentPlan) {
+      const fileList = agentState.currentPlan.files.map((f) =>
+        `  • ${f.path} ${f.risk === "high" ? "⚠" : ""} — ${f.shortDescription}`
+      ).join("\n")
+      addSystemMessage(
+        `📋 **Plan generado**: ${agentState.currentPlan.summary}\n\nArchivos propuestos:\n${fileList}`
+      )
+    }
+    if (agentState.status === "done" && prevAgentStatus.current !== "done") {
+      const fileCount = agentState.files.filter((f) => f.type === "file").length
+      addSystemMessage(
+        `✅ **Agente completado**: ${fileCount} archivo(s) generados en total.`
+      )
+    }
+    if (agentState.status === "error" && agentState.error) {
+      addSystemMessage(
+        `❌ **Error del agente**: ${agentState.error}`
+      )
+    }
+    prevAgentStatus.current = agentState.status
+  }, [agentState.status, agentState.currentPlan, agentState.files, agentState.error, addSystemMessage])
+
+  React.useEffect(() => {
+    const onApprove = (e: Event) => {
+      const plan = (e as CustomEvent).detail ?? planRef.current
+      if (plan) agentActions.approvePlan(plan)
+    }
+    const onEdit = () => setShowEditInput(true)
+    const onReject = () => agentActions.rejectPlan()
+    const onResolvePermission = (e: Event) => {
+      const { requestId, granted } = (e as CustomEvent).detail
+      agentActions.resolvePermission(requestId, granted)
+    }
+    window.addEventListener("geonexus:approve-plan", onApprove)
+    window.addEventListener("geonexus:edit-plan", onEdit)
+    window.addEventListener("geonexus:reject-plan", onReject)
+    window.addEventListener("geonexus:resolve-permission", onResolvePermission)
+    return () => {
+      window.removeEventListener("geonexus:approve-plan", onApprove)
+      window.removeEventListener("geonexus:edit-plan", onEdit)
+      window.removeEventListener("geonexus:reject-plan", onReject)
+      window.removeEventListener("geonexus:resolve-permission", onResolvePermission)
+    }
+  }, [agentActions])
 
   const lastUserMessage = React.useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -216,6 +290,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               </div>
             </div>
           ) : messages.length > 0 || pending ? (
+            <>
             <ChatTranscript
               messages={messages}
               pending={pending}
@@ -228,6 +303,42 @@ export function ChatPanel(_props: ChatPanelProps) {
               thinkingText={thinkingText}
               toolCalls={toolCalls}
             />
+            {agentState.clarifyingQuestions && clarifyingPrompt && (
+              <ClarifyingQuestions
+                originalPrompt={clarifyingPrompt}
+                onSkip={() => {
+                  setClarifyingPrompt(null)
+                  agentActions.startGeneration(clarifyingPrompt)
+                }}
+                onSubmit={(prompt, questions) => {
+                  setClarifyingPrompt(null)
+                  agentActions.submitClarification(prompt, questions)
+                }}
+              />
+            )}
+            <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+              <AgentStepsAccordion />
+            </div>
+            </>
+          ) : agentState.mode === "agent" ? (
+            <div className="flex min-h-full items-center justify-center pb-16 pt-10">
+              <div className="w-full max-w-3xl px-4">
+                {agentState.clarifyingQuestions && clarifyingPrompt && (
+                  <ClarifyingQuestions
+                    originalPrompt={clarifyingPrompt}
+                    onSkip={() => {
+                      setClarifyingPrompt(null)
+                      agentActions.startGeneration(clarifyingPrompt)
+                    }}
+                    onSubmit={(prompt, questions) => {
+                      setClarifyingPrompt(null)
+                      agentActions.submitClarification(prompt, questions)
+                    }}
+                  />
+                )}
+                <AgentStepsAccordion />
+              </div>
+            </div>
           ) : (
             <EmptyChatState />
           )}
@@ -246,7 +357,8 @@ export function ChatPanel(_props: ChatPanelProps) {
           onSubmit={(content, mentions, attachments) => {
             setComposerValue("")
             if (agentState.mode === "agent") {
-              startGeneration(content)
+              setClarifyingPrompt(content)
+              agentActions.clarify(content)
               return
             }
             const fromActive = activeSkills.map(s => s.name)
@@ -297,7 +409,15 @@ export function ChatPanel(_props: ChatPanelProps) {
 
       
 
-      {agentState.mode === "agent" && agentPanelOpen && <CodingAgentPanel />}
+      {agentState.mode === "agent" && agentPanelOpen && (
+        <CodingAgentPanel
+          onApprovePlan={agentActions.approvePlan}
+          onRejectPlan={agentActions.rejectPlan}
+          onEditPlan={agentActions.editPlan}
+          onResolvePermission={agentActions.resolvePermission}
+          onReset={agentActions.reset}
+        />
+      )}
 
       <ProjectContextPanel
         projectId={PROJECT_ID}

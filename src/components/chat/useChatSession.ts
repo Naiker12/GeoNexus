@@ -579,6 +579,27 @@ export function useChatSession(
     setLoadingPhase("idle")
   }, [])
 
+  const addSystemMessage = React.useCallback(
+    (content: string) => {
+      const msg: Message = {
+        id: `sys-${Date.now()}`,
+        conversation_id: conversationId ?? "",
+        role: "system",
+        content,
+        provider: null,
+        model: null,
+        created_at: Date.now(),
+        trace_id: "",
+        chunks_used: [],
+        nodes_used: [],
+        tool_calls: [],
+        sources: [],
+      }
+      setMessages((prev) => [...prev, msg])
+    },
+    [conversationId],
+  )
+
   return {
     activeProvider,
     conversationId,
@@ -602,5 +623,6 @@ export function useChatSession(
     loadConversation,
     newConversation,
     stop,
+    addSystemMessage,
   }
 }

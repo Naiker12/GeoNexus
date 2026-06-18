@@ -2,7 +2,7 @@ use tauri::{AppHandle, Emitter, State};
 use crate::AppState;
 use geonexus_core::telegram::{
     polling::start_polling_loop,
-    sender::{get_me, send_message},
+    sender::{get_me, send_message, send_chat_action, escape_markdown_v2},
     TelegramConfig, Update,
 };
 use reqwest::Client;
@@ -170,9 +170,41 @@ pub async fn telegram_send_message(
     let config = telegram_load_config(state).await?;
     let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
     
+    let escaped = escape_markdown_v2(&text);
     let client = Client::new();
-    send_message(&client, &config.bot_token, chat_id, &text, Some("MarkdownV2")).await?;
+    send_message(&client, &config.bot_token, chat_id, &escaped, Some("MarkdownV2")).await?;
     
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn telegram_send_chat_action(
+    chat_id: i64,
+    action: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let config = telegram_load_config(state).await?;
+    let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
+
+    let client = Client::new();
+    send_chat_action(&client, &config.bot_token, chat_id, &action).await?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn telegram_send_response(
+    chat_id: i64,
+    text: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let config = telegram_load_config(state).await?;
+    let config = config.ok_or_else(|| "Config de Telegram no encontrada".to_string())?;
+
+    let escaped = escape_markdown_v2(&text);
+    let client = Client::new();
+    send_message(&client, &config.bot_token, chat_id, &escaped, Some("MarkdownV2")).await?;
+
     Ok(())
 }
 

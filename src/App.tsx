@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toast"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
 import { UpdateBanner } from "@/components/UpdateBanner"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
+import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
 import type { ToastPosition } from "@/types/notifications"
 import type { CSSProperties } from "react"
@@ -86,6 +87,7 @@ export default function App() {
       </SidebarInset>
     </SidebarProvider>
       <Toaster position={toastPosition} />
+      <TelegramBridgeMount />
     </NotificationSettingsProvider>
   )
 }

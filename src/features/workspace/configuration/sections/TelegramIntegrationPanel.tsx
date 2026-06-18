@@ -66,9 +66,10 @@ export function TelegramIntegrationPanel() {
       }
       const status = await getTelegramStatus()
       if (status.botName) {
+        const botName: string = status.botName
         setConfig((prev) => ({
           ...prev,
-          botName: status.botName,
+          botName,
           status: status.isRunning ? "active" : "disconnected",
           isPolling: status.isRunning,
         }))
@@ -316,7 +317,7 @@ export function TelegramIntegrationPanel() {
                 {stoppingPolling ? (
                   <RefreshCwIcon className="size-3.5 animate-spin" />
                 ) : (
-                  <StopIcon className="size-3.5" />
+                  <StopCircleIcon className="size-3.5" />
                 )}
                 {stoppingPolling ? "Deteniendo..." : "Detener bot"}
               </Button>
