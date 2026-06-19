@@ -169,10 +169,12 @@ pub async fn run_agent_pipeline(
         for tool in &tools {
             if !matches!(tool.status, ToolStatus::Ready) { continue; }
 
-            let allowed = registry::check_allowlist(&state.db, &server.id, &tool.name)
+            let allowlist_rule = registry::check_allowlist(&state.db, &server.id, &tool.name)
                 .await
-                .unwrap_or(true);
-            if !allowed { continue; }
+                .unwrap_or(None);
+            if let Some(ref rule) = allowlist_rule {
+                if !rule.allowed { continue; }
+            }
 
             emit_event(&app_handle, "mcp", "running", &format!("Ejecutando {}/{}...", server.name, tool.name), None);
 

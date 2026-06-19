@@ -2,7 +2,7 @@ import * as React from 'react';
 import { CheckCircle2, Circle, XCircle, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-interface Task {
+export interface Task {
   id: string;
   title: string;
   status: 'pending' | 'running' | 'done' | 'error';
@@ -58,12 +58,4 @@ export function ThinkingPanel({
   );
 }
 
-// Datos de ejemplo como tu imagen
-export const DEFAULT_TASKS: Task[] = [
-  { id: '1', title: 'Analyzing objective', status: 'pending' },
-  { id: '2', title: 'Creating project structure', status: 'pending' },
-  { id: '3', title: 'Installing dependencies', status: 'pending' },
-  { id: '4', title: 'Generating code', status: 'pending' },
-  { id: '5', title: 'Setting up database', status: 'pending' },
-  { id: '6', title: 'Launching preview', status: 'pending' },
-];
+// DEFAULT_TASKS eliminado en F1, serán reemplazados por Event Bus en F3

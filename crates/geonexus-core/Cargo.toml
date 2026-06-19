@@ -15,6 +15,8 @@ async-trait = "0.1"
 thiserror = "1"
 toml = "0.8"
 reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "sync"] }
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio"] }
+tracing = "0.1"
 
 [dev-dependencies]

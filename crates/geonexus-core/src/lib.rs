@@ -1,4 +1,3 @@
-pub mod agents;
 pub mod allowlist;
 pub mod config;
 pub mod chat;
@@ -7,5 +6,7 @@ pub mod reasoning;
 pub mod agent;
 pub mod types;
 pub mod telegram;
+pub mod events;
+pub mod workers;
 
 pub use types::*;

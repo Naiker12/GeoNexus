@@ -3,8 +3,8 @@ import { Explorer } from './Explorer';
 import { CodeEditor } from './CodeEditor';
 import { PreviewPanel } from './PreviewPanel';
 import { ArtifactsPanel } from './ArtifactsPanel';
-import { ReasoningTimeline, exampleSteps, exampleStats } from './ReasoningTimeline';
-import { ThinkingPanel, DEFAULT_TASKS } from './ThinkingPanel';
+import { ReasoningTimeline } from './ReasoningTimeline';
+import { ThinkingPanel, type Task } from './ThinkingPanel';
 import { useReasoningTimeline } from './useReasoningTimeline';
 import { type FileNode, type Artifact, type WorkspaceState } from './ide-types';
 import { Layout, Eye, Code, Play, RotateCcw, MessageSquare } from 'lucide-react';
@@ -17,7 +17,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Datos de ejemplo
+// Datos de ejemplo eliminados en F1
 const sampleFileTree: FileNode[] = [
   {
     name: 'mi-proyecto',
@@ -259,12 +259,12 @@ const sampleArtifacts: Artifact[] = [
 
 export function WorkspaceIDE() {
   const [state, setState] = React.useState<WorkspaceState>({
-    selectedFile: sampleFileTree[0].children?.[0].children?.[0].children?.[0] || null,
+    selectedFile: null,
     activeTab: 'preview',
     previewPort: 5174,
     isPreviewLoading: false,
-    fileTree: sampleFileTree,
-    artifacts: sampleArtifacts,
+    fileTree: [],
+    artifacts: [],
   });
 
   const { steps, isRunning, simulateTimeline } = useReasoningTimeline([]);
@@ -272,7 +272,7 @@ export function WorkspaceIDE() {
   const [activeSidebar, setActiveSidebar] = React.useState<'chat' | 'artifacts'>('chat');
 
   // Estado para los tasks del ThinkingPanel
-  const [thinkingTasks, setThinkingTasks] = React.useState(DEFAULT_TASKS);
+  const [thinkingTasks, setThinkingTasks] = React.useState<Task[]>([]);
 
   // Mapeo de stepIds a taskIds del ThinkingPanel
   const stepToTaskMap: Record<string, string> = {
@@ -335,10 +335,7 @@ export function WorkspaceIDE() {
 
   const handleStartDemo = async () => {
     if (!isRunning) {
-      // Reset
-      setThinkingTasks(DEFAULT_TASKS);
-      
-      // Ejecuta la simulación del timeline (que actualizará automáticamente el ThinkingPanel via useEffect)
+      setThinkingTasks([]);
       await simulateTimeline();
     }
   };
@@ -392,8 +389,8 @@ export function WorkspaceIDE() {
           {showTimeline && (
             <div className="flex-1 overflow-auto border-b border-gray-200 dark:border-gray-800">
               <ReasoningTimeline
-                steps={steps.length > 0 ? steps : exampleSteps}
-                stats={steps.length > 0 && totalTime > 0 ? stats : exampleStats}
+                steps={steps}
+                stats={steps.length > 0 && totalTime > 0 ? stats : undefined}
               />
             </div>
           )}
