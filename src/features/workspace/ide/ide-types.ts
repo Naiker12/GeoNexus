@@ -17,6 +17,7 @@ export interface Artifact {
   description: string;
   lineCount: number;
   status: 'pending' | 'generating' | 'done' | 'error';
+  content?: string;
 }
 
 export interface WorkspaceState {

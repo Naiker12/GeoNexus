@@ -2,6 +2,7 @@
 
 use tauri::{Manager, AppHandle};
 use geonexus_db::DataRepository;
+use geonexus_core::events::EventBus;
 
 pub mod commands;
 mod builtin_skills;
@@ -14,6 +15,7 @@ pub struct AppState {
     pub repo: DataRepository,
     pub db_path: String,
     pub app_handle: Option<AppHandle>,
+    pub event_bus: EventBus,
 }
 
 fn main() {
@@ -52,31 +54,36 @@ fn main() {
 
             let db = repo.pool.clone();
 
-            // Fallback: asegurar columnas de migraciones recientes (por si el binario está desactualizado)
-            tauri::async_runtime::block_on(async {
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN transport TEXT NOT NULL DEFAULT 'http'").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN command TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN args_json TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN env_json TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN headers_json TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN auto_approve_json TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN timeout_ms INTEGER DEFAULT 5000").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN tools_count INTEGER").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN protocol_version TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN last_error TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_servers ADD COLUMN auth_token TEXT").execute(&db).await;
-                let _ = sqlx::query("ALTER TABLE mcp_tools ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))").execute(&db).await;
-            });
-
             let db_path_str = db_path.to_string_lossy().to_string();
 
             // Guardar la ruta de la base de datos en la variable de entorno global para procesos hijos
             std::env::set_var("GEONEXUS_DB_PATH", &db_path_str);
 
+            // Crear el Event Bus del sistema
+            let event_bus = EventBus::default();
+
             // Gestionar el estado global unificado de la aplicación
             let app_handle = app.handle().clone();
-            app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle) });
+            app.manage(AppState { db: db.clone(), repo, db_path: db_path_str, app_handle: Some(app_handle.clone()), event_bus: event_bus.clone() });
+
+            // Iniciar forwarder de eventos al frontend
+            commands::events::start_event_forwarder(&app_handle, &event_bus, db.clone());
+
+            // Iniciar Worker Pool (tokio background workers)
+            {
+                let mut config = geonexus_core::workers::WorkerConfig::default();
+                config.concurrency = 2;
+                config.poll_interval_ms = 2000;
+                let pool = geonexus_core::workers::WorkerPool::new(
+                    db.clone(),
+                    geonexus_core::workers::tasks::default_handlers(),
+                )
+                .with_config(config)
+                .with_event_bus(event_bus.clone());
+                tauri::async_runtime::spawn(async move {
+                    pool.start().await;
+                });
+            }
             app.manage(PermissionState::new());
             app.manage(TelegramState::default());
 
@@ -318,6 +325,19 @@ fn main() {
             commands::coding_agent::coding_agent_approve_plan,
             commands::coding_agent::coding_agent_resolve_permission,
             commands::coding_agent::coding_agent_load_project,
+
+            // Event Bus + Artifact System (F3)
+            commands::events::list_events,
+            commands::events::count_events,
+            commands::events::list_artifacts,
+            commands::events::list_artifact_summaries,
+            commands::events::get_artifact,
+            commands::events::delete_artifact,
+
+            // Secure Store (P0)
+            commands::secure::set_secure,
+            commands::secure::get_secure,
+            commands::secure::delete_secure,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

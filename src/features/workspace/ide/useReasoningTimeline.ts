@@ -2,7 +2,6 @@ import * as React from 'react';
 import { TimelineStep, TimelineItem } from './timeline-types';
 import { isTauriAvailable } from '@/api/data';
 import { listen } from '@tauri-apps/api/event';
-import { invoke } from '@tauri-apps/api/core';
 
 type TimelineAction =
   | { type: 'ADD_STEP'; step: TimelineStep }
