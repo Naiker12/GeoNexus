@@ -78,17 +78,15 @@ export async function sendMessage(
       content: "Esto es una respuesta de demostración. Para usar la app completa, ejecútala en el runtime Tauri.",
       provider: input.provider,
       model: input.model,
-      timestamp: Date.now(),
+      created_at: Date.now(),
       trace_id: "demo-trace-id",
       chunks_used: [],
       nodes_used: [],
       tool_calls: [],
       sources: []
     },
-    session_summary: null,
-    intent: null,
-    research_sources: [],
-    search_query: null
+    chunks_used: [],
+    trace_id: "demo-trace-id"
   })
 }
 
@@ -110,9 +108,8 @@ export function listMessages(conversationId: string): Promise<Message[]> {
 export function getProjectContext(projectId: string): Promise<ProjectContext> {
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invokeOrFallback("get_project_context", { projectId }, {
-    toggles: { rag_chunks: true, indexed_assets: true, graph_nodes: true },
-    sources: [],
-    assets: []
+    assets: [],
+    graph_nodes: []
   })
 }
 

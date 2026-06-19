@@ -18,6 +18,9 @@ mod tests {
             mentioned_asset_ids: vec![],
             mentioned_connector_ids: vec![],
             mentioned_node_ids: vec![],
+            mentioned_agent_sources: vec![],
+            skill_names: vec![],
+            attachments: vec![],
         }
     }
 

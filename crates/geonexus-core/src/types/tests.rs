@@ -221,6 +221,9 @@ mod tests {
             origin_kind: "document".into(),
             pinned: false,
             deleted_at: None,
+            use_count: 0,
+            last_used_at: None,
+            memory_score: 0.0,
         };
         let json = serde_json::to_string(&n).unwrap();
         let de: GraphNode = serde_json::from_str(&json).unwrap();

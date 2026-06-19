@@ -98,9 +98,10 @@ const RenderedContent = memo(function RenderedContent({
             key={i}
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ className, children, inline }) {
+              code({ className, children }) {
+                const isInline = !className?.startsWith("language-")
                 return (
-                  <CodeBlock className={className} inline={inline}>
+                  <CodeBlock className={className} inline={isInline}>
                     {String(children)}
                   </CodeBlock>
                 )

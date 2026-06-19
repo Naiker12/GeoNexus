@@ -83,8 +83,8 @@ mod tests {
 
     fn sample_nodes() -> Vec<ContextNode> {
         vec![
-            ContextNode { label: "Art. 45".into(), kind: "norma".into() },
-            ContextNode { label: "Art. 67".into(), kind: "norma".into() },
+            ContextNode { id: "n1".into(), label: "Art. 45".into(), kind: "norma".into() },
+            ContextNode { id: "n2".into(), label: "Art. 67".into(), kind: "norma".into() },
         ]
     }
 

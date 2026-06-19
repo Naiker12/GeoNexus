@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi, beforeAll } from "vitest"
+
+beforeAll(() => {
+  vi.stubGlobal("window", { __TAURI_INTERNALS__: {} })
+})
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),

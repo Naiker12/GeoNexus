@@ -1,34 +1,36 @@
-import * as React from "react"
+import { useEffect, useState, useRef, createContext, useContext, type Dispatch, type SetStateAction } from "react"
 import { CloudIcon } from "lucide-react"
 
 import { providerOptions } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/features/workspace/workspace-data"
+import { setSecure, getSecure, deleteSecure } from "@/api/secure"
 
 const STORAGE_KEY = "geonexus.connectors"
 const ACTIVE_ID_KEY = "geonexus.activeConnectorId"
 
-type ConnectorData = Omit<AiConnector, "icon">
+type ConnectorData = Omit<AiConnector, "icon" | "apiKey">
 
-function loadConnectors(): AiConnector[] {
+function secureKey(id: string): string {
+  return `connector_api_key:${id}`
+}
+
+function stripApiKeys(connectors: AiConnector[]): ConnectorData[] {
+  return connectors.map(({ icon: _icon, apiKey: _key, ...rest }) => rest)
+}
+
+function loadConnectorsMeta(): ConnectorData[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    const data: ConnectorData[] = JSON.parse(raw)
-    return data.map((item) => ({
-      ...item,
-      icon: providerOptions.find((p) => p.id === item.id)?.icon ?? CloudIcon,
-    }))
+    return JSON.parse(raw)
   } catch {
     return []
   }
 }
 
-function saveConnectors(connectors: AiConnector[]) {
+function saveConnectorsMeta(connectors: ConnectorData[]) {
   try {
-    const data: ConnectorData[] = connectors.map(
-      ({ icon: _icon, ...rest }) => rest
-    )
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(connectors))
   } catch {
     // localStorage may be full or unavailable
   }
@@ -56,32 +58,95 @@ function saveActiveId(id: string | null) {
 
 type ConnectorsContextValue = {
   connectors: AiConnector[]
-  setConnectors: React.Dispatch<React.SetStateAction<AiConnector[]>>
+  setConnectors: Dispatch<SetStateAction<AiConnector[]>>
   activeConnectorId: string | null
   setActiveConnectorId: (id: string | null) => void
 }
 
-const ConnectorsContext = React.createContext<ConnectorsContextValue | null>(
-  null
-)
+const ConnectorsContext = createContext<ConnectorsContextValue | null>(null)
 
-export function ConnectorsProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const [connectors, setConnectors] = React.useState<AiConnector[]>(() =>
-    loadConnectors()
-  )
-  const [activeConnectorId, setActiveConnectorId] = React.useState<
-    string | null
-  >(() => loadActiveId())
+export function ConnectorsProvider({ children }: { children: React.ReactNode }) {
+  const [connectors, setConnectors] = useState<AiConnector[]>([])
+  const [ready, setReady] = useState(false)
+  const [activeConnectorId, setActiveConnectorId] = useState<string | null>(() => loadActiveId())
+  const savedRef = useRef(false)
 
-  React.useEffect(() => {
-    saveConnectors(connectors)
-  }, [connectors])
+  // Carga inicial: migrar desde localStorage + secure store
+  useEffect(() => {
+    async function init() {
+      const metaList = loadConnectorsMeta()
+      if (metaList.length === 0) {
+        setReady(true)
+        return
+      }
 
-  React.useEffect(() => {
+      // Migrar API keys desde localStorage legacy
+      const migrated: AiConnector[] = []
+      let needsSave = false
+
+      for (const meta of metaList) {
+        const secureKeyId = secureKey(meta.id)
+        let apiKey: string | undefined = (await getSecure(secureKeyId)) ?? undefined
+
+        // Migración desde localStorage legacy (donde apiKey estaba en el JSON)
+        if (!apiKey) {
+          const raw = localStorage.getItem(STORAGE_KEY)
+          if (raw) {
+            try {
+              const legacy: any[] = JSON.parse(raw)
+              const entry = legacy.find((c: any) => c.id === meta.id)
+              if (entry?.apiKey) {
+                apiKey = String(entry.apiKey)
+                await setSecure(secureKeyId, apiKey)
+                needsSave = true
+              }
+            } catch {}
+          }
+        }
+
+        migrated.push({
+          ...meta,
+          apiKey: apiKey ?? undefined,
+          icon: providerOptions.find((p) => p.id === meta.id)?.icon ?? CloudIcon,
+        })
+      }
+
+      // Si migramos claves, limpiar localStorage legacy
+      if (needsSave) {
+        saveConnectorsMeta(stripApiKeys(migrated))
+      }
+
+      setConnectors(migrated)
+      setReady(true)
+    }
+    init()
+  }, [])
+
+  // Persistir metadata (sin apiKey) a localStorage
+  useEffect(() => {
+    if (!ready) return
+    savedRef.current = true
+    saveConnectorsMeta(stripApiKeys(connectors))
+  }, [connectors, ready])
+
+  // Persistir apiKeys al secure store cuando cambian
+  useEffect(() => {
+    if (!ready) return
+    const prevSaved = savedRef.current
+    savedRef.current = true
+    if (!prevSaved) return // skip initial effect after load
+
+    for (const c of connectors) {
+      if (c.apiKey) {
+        setSecure(secureKey(c.id), c.apiKey)
+      } else {
+        deleteSecure(secureKey(c.id))
+      }
+    }
+  }, [connectors, ready])
+
+  // Persistir activeConnectorId
+  useEffect(() => {
     saveActiveId(activeConnectorId)
   }, [activeConnectorId])
 
@@ -100,7 +165,7 @@ export function ConnectorsProvider({
 }
 
 export function useConnectors() {
-  const ctx = React.useContext(ConnectorsContext)
+  const ctx = useContext(ConnectorsContext)
   if (!ctx) {
     throw new Error("useConnectors must be used within <ConnectorsProvider>")
   }

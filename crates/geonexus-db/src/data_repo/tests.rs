@@ -101,6 +101,9 @@ async fn test_graph_nodes_and_edges_crud() {
             origin_kind: "document".into(),
             pinned: false,
             deleted_at: None,
+            use_count: 0,
+            last_used_at: None,
+            memory_score: 0.0,
         },
         GraphNode {
             id: "n2".into(),
@@ -123,6 +126,9 @@ async fn test_graph_nodes_and_edges_crud() {
             origin_kind: "document".into(),
             pinned: false,
             deleted_at: None,
+            use_count: 0,
+            last_used_at: None,
+            memory_score: 0.0,
         },
     ];
     repo.insert_graph_nodes(&nodes).await.unwrap();

@@ -31,6 +31,7 @@ fn msg(conversation_id: &str, role: MessageRole, content: &str) -> Message {
         created_at: 1_000_000,
         research_sources: None,
         stats: None,
+        attachments: vec![],
     }
 }
 
