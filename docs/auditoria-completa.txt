@@ -1,0 +1,1419 @@
+================================================================================
+  AUDITORIA TECNICA COMPLETA — GEONEXUS / GEO AGENTS
+  Version: 0.1.5
+  Fecha: 19 Junio 2026
+  Auditor: Principal Software Architect / AI Systems Architect
+================================================================================
+
+INDICE
+  1.  ESTADO ACTUAL
+  2.  ARQUITECTURA GENERAL
+  3.  ANALISIS POR CAPA
+  4.  SISTEMA MULTIAGENTE
+  5.  MCP — MODEL CONTEXT PROTOCOL
+  6.  REASONING TIMELINE
+  7.  CODING AGENT
+  8.  GIS AGENT
+  9.  WORKSPACE / IDE
+  10. MEMORIA Y KNOWLEDGE GRAPH
+  11. TELEGRAM
+  12. ONE DRIVE
+  13. GITHUB
+  14. SEGURIDAD
+  15. PROBLEMAS CRITICOS
+  16. CODIGO MUERTO Y REDUNDANCIAS
+  17. ALGORITMOS RECOMENDADOS
+  18. ARQUITECTURA MCP V2
+  19. ARQUITECTURA RECOMENDADA V3
+  20. ROADMAP Y PRIORIDADES
+  21. COSTE TECNICO Y COMPLEJIDAD
+
+
+================================================================================
+1. ESTADO ACTUAL
+================================================================================
+
+1.1 Lo que existe
+──────────────────
+
+  Componente                    Estado           Lineas     Calidad
+  ────────────────────────────  ───────────────  ─────────  ──────
+  Rust backend (4 crates)       Funcional        ~4,500     6/10
+  React frontend (130+ archs)   Funcional        ~18,000    5/10
+  Python sidecar (15 modulos)   Funcional        ~2,500     5/10
+  MCP runtime                   Funcional parcial ~1,200    5/10
+  Skills system                 Funcional basico  ~800      4/10
+  Knowledge Graph               Funcional basico  ~900      4/10
+  Web Search                    Funcional         ~250      6/10
+  LLM Router (5 providers)      Funcional         ~600      6/10
+  Telegram integration          Roto              ~700      2/10
+  GIS pipeline                  Esqueleto         ~150      1/10
+  Coding Agent                  Funcional parcial ~1,500    3/10
+  IDE/Workspace                 Demo              ~900      2/10
+  Documentacion (22 docs)       Completa          ~4,500    7/10
+  Tests (Rust:81, Frontend:8)   Insuficiente      ~2,000    3/10
+  OneDrive OAuth                Sin implementar   ~200 ph    1/10
+  Event Preview Streaming       Front OK, Back no ~200      3/10
+
+1.2 Lo que funciona bien
+─────────────────────────
+  - LLM Router: 5 providers con fallback, streaming, tool calls.
+    Diseno limpio.
+  - MCP Discovery: STDIO y HTTP discovery funcional con JSON-RPC 2.0.
+  - Knowledge Graph: Extraccion de entidades basica funcional con
+    ChromaDB.
+  - Web Search: 4 providers con fallback, deep search multi-query.
+  - Tipado TypeScript: Fuerte tipado en frontend, interfaces completas.
+  - Temas UI: 8 temas con CSS variables, implementacion solida.
+  - Rust modular: 4 crates con separacion de responsabilidades aceptable.
+
+1.3 Lo que esta roto
+─────────────────────
+  - Telegram: No hay frontend listener. Mensajes entrantes nunca se
+    procesan. Pipeline roto.
+  - Pipeline duration: Calculo en useChatSession.ts:454 es
+    Date.now() - (Date.now() - 0) = 0. Bug matematico.
+  - saveConversationId en mount: useChatSession.ts:134 limpia el ID
+    guardado al montar. Bug de sesion.
+  - MCP handshake versiones inconsistentes: executor.rs usa "2025-06-18",
+    pinger.rs y stdio.rs usan "2025-03-26".
+  - pinger.rs:74 tiene typo: "2025-03-26}" con llave extra.
+
+1.4 Lo que no existe
+─────────────────────
+  - OneDrive OAuth: Placeholder. No implementado.
+  - Sistema de eventos backend: Frontend 100%, backend 0%.
+  - GIS real: Solo shapefile_extractor.py y geo_utils.py placeholders.
+    Sin QGIS, ArcGIS, PostGIS real.
+  - Task Queue worker: La queue existe en SQLite, no hay worker loop
+    procesandola.
+  - Rate limiting en MCP: Campo rate_limit en AllowlistRule nunca se usa.
+  - Session/Project/Global Memory: Solo ChromaDB RAG basico.
+    Sin jerarquia de memoria.
+  - Artifact system: No existe como concepto central.
+  - Multi-tenancy: Todo hardcodeado a "project-default".
+
+
+================================================================================
+2. ARQUITECTURA GENERAL
+================================================================================
+
+2.1 Diagrama actual
+────────────────────
+
+  ┌─────────────────────────────────────────────────────┐
+  │                    REACT FRONTEND                    │
+  │  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │
+  │  │  Chat    │ │   IDE    │ │   MCP    │ │  Agentes │ │
+  │  │  Panel   │ │ Workspace│ │  Servers │ │  Panel   │ │
+  │  └────┬────┘ └────┬─────┘ └────┬─────┘ └────┬────┘ │
+  │       │           │            │            │        │
+  │  ┌────▼───────────▼────────────▼────────────▼────┐  │
+  │  │           API Layer (14 modulos)              │  │
+  │  │        src/api/*.ts → Tauri invoke()          │  │
+  │  └───────────────────┬──────────────────────────┘  │
+  └──────────────────────┼─────────────────────────────┘
+                         │ Tauri IPC (invoke + events)
+  ┌──────────────────────▼─────────────────────────────┐
+  │              RUST BACKEND (geonexus-tauri)          │
+  │  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │
+  │  │  60+    │ │  MCP     │ │  Event   │ │  Python  │ │
+  │  │Commands │ │  Runtime │ │  Emitter │ │  Sidecar │ │
+  │  └────┬────┘ └────┬─────┘ └────┬─────┘ └────┬────┘ │
+  │       │           │            │            │        │
+  │  ┌────▼───────────▼────────────▼────────────▼────┐  │
+  │  │         geonexus-core + geonexus-db           │  │
+  │  │         (SQLite: 12 tablas)                   │  │
+  │  └───────────────────────────────────────────────┘  │
+  └──────────────────────┼─────────────────────────────┘
+                         │ subprocess (CLI)
+  ┌──────────────────────▼─────────────────────────────┐
+  │               PYTHON SIDECAR                        │
+  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+  │  │LLM Router│ │ ChromaDB │ │  Web     │ │  Docs  │ │
+  │  │(5 prov.) │ │  Vector  │ │  Search  │ │ Pipeline│ │
+  │  └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+  └─────────────────────────────────────────────────────┘
+
+2.2 Problemas estructurales
+────────────────────────────
+
+  Problema 1: God Command Hub
+  ────────────────────────────
+  geonexus-tauri/src/main.rs registra 90+ comandos en un solo archivo.
+  Cada modulo de comandos esta aislado, pero el registro centralizado
+  es un punto de acoplamiento masivo.
+
+  Impacto: Dificil de mantener, probar y extender. Cualquier nuevo
+  comando toca main.rs.
+
+  Problema 2: Sidecar CLI como cuello de botella
+  ──────────────────────────────────────────────
+  Cada operacion Python lanza un subproceso, paga el startup de Python
+  (~200-500ms), ejecuta, y muere. Para RAG, cada consulta paga
+  200-500ms de overhead antes de tocar ChromaDB.
+
+  Impacto: Latencia innecesaria en operaciones frecuentes (RAG, chat).
+
+  Problema 3: Sin capa de abstraccion frontend-backend
+  ────────────────────────────────────────────────────
+  api/chat.ts llama directamente invoke("send_message", {...}).
+  No hay bus de eventos formal, cola de mensajes, retry policy,
+  ni circuit breaker.
+
+  Impacto: Fallos de red/Tauri se traducen en excepciones no manejadas.
+
+  Problema 4: SQLite como unica base de datos
+  ────────────────────────────────────────────
+  Para un sistema multiagente con memoria, eventos y telemetria,
+  SQLite no escala. 12 tablas tendran contencion de escritura.
+
+  Impacto: Degradacion con uso intensivo (~100+ consultas/minuto).
+
+  Problema 5: ChromaDB como proceso embebido
+  ───────────────────────────────────────────
+  ChromaDB corre dentro del sidecar Python como SQLite local.
+  No hay separacion entre memoria del sistema y memoria del usuario.
+
+  Impacto: Mezcla de datos, dificultad para limpiar/resetear memoria.
+
+
+================================================================================
+3. ANALISIS POR CAPA
+================================================================================
+
+3.1 Rust Backend
+─────────────────
+
+  Archivo                             Problema                           Sev.
+  ──────────────────────────────────  ────────────────────────────────  ─────
+  main.rs:85-86                       unwrap_or_default() traga errors   ALTA
+                                      de config malformada
+  main.rs:57-70,108-119,147-174       let _ = silencia errores de       ALTA
+                                      migracion
+  executor.rs vs pinger.rs vs         Handshake MCP triplicado con      ALTA
+  registry.rs vs stdio.rs             versiones inconsistentes
+  registry.rs:22-25                   serde_json::to_string()           MEDIA
+                                      unwrap_or_default() silencia
+                                      errores de serializacion
+  registry.rs:366-387                 infer_tool_category() heuristica  MEDIA
+                                      fragil basada en keywords
+  types.rs:66,93,119                  from_str() fallbacks silenciosos  BAJA
+                                      a valores por defecto
+  agent_repo.rs:73                    Hardcode "project-default"        MEDIA
+  config.rs vs types.rs               Dos structs McpServerDef         MEDIA
+                                      diferentes
+
+3.2 Python Sidecar
+───────────────────
+
+  Archivo                             Problema                           Sev.
+  ──────────────────────────────────  ────────────────────────────────  ─────
+  sidecar.py                          16 rutas CLI en dispatch →       ALTA
+                                      startup overhead cada llamada
+  llm/router.py                       Streaming duplicado: mismo        ALTA
+                                      patron OpenAI reimplementado
+                                      3 veces (OpenAI, OpenRouter,
+                                      Anthropic/Ollama tienen
+                                      implementaciones separadas)
+  llm/openai.py, anthropic.py,        CODIGO MUERTO: list_models(),    ALTA
+  ollama.py, lmstudio.py              generate(), ping() NO son
+                                      llamados por nadie. router.py
+                                      es el entry point real.
+  memory/chroma.py                    ChromaDB embebido en sidecar,    MEDIA
+                                      sin separacion de memoria
+  graph/extractor.py                  NER basico con regex,            MEDIA
+                                      spaCy no esta en requirements
+  gis/geo_utils.py                    Placeholder vacio                BAJA
+  requirements.txt                    geopandas, shapely instalados     BAJA
+                                      pero no usados realmente
+
+3.3 React Frontend
+───────────────────
+
+  Archivo                             Problema                           Sev.
+  ──────────────────────────────────  ────────────────────────────────  ─────
+  hooks/useChatSession.ts             628 lineas, 6 responsabilidades  ALTA
+                                      mezcladas (estado, streaming,
+                                      pipeline, research, tool calls,
+                                      conversacion)
+  hooks/useCodingAgent.ts             561 lineas, patron repetido      ALTA
+                                      6+ veces para error handling
+  useChatSession.ts:134               saveConversationId(null) en      ALTA
+                                      mount → bug de sesion
+  useChatSession.ts:454               Date.now() - (prev.totalDuration ALTA
+                                      Ms ? Date.now() - 0 : 0) = bug
+  WorkspaceIDE.tsx                    260 lineas de datos demo inline  MEDIA
+  src/types/coding-agent.ts vs        FileNode definido en 2 archivos  MEDIA
+  ide/ide-types.ts                    con formas diferentes
+  src/types/agents.ts vs              AgentEvent definido en 2         MEDIA
+  src/types/coding-agent.ts           archivos con formas diferentes
+  useStreamPreview.ts                 Estado mutable fuera de React    MEDIA
+                                      (module-level Map)
+  useReasoningTimeline.ts             imports no usados (invoke,       BAJA
+                                      isTauriAvailable)
+
+3.4 Base de Datos (SQLite + ChromaDB)
+──────────────────────────────────────
+
+  Tablas SQLite actuales (12):
+    conversations, messages, chat_tool_calls
+    data_assets, data_chunks, graph_nodes, graph_edges
+    connector_configs, connector_files
+    mcp_servers, mcp_tools, mcp_allowlist
+    agent_tasks
+    analysis_metrics
+    skills, skill_activations
+    notification_settings
+
+  Problemas:
+    1. Sin migraciones formales. main.rs ejecuta ALTER TABLE con
+       let _ = para ignorar errores. Esto no es un sistema de
+       migraciones, es un parche.
+    2. 12 tablas sin indices explicitos en muchas de ellas.
+       Las consultas seran lentas con miles de mensajes.
+    3. ChromaDB y SQLite no estan sincronizados. Los chunks se
+       almacenan en ambos, sin transacciones cross-DB.
+    4. No hay soft-deletes consistentes. Algunas tablas tienen
+       deleted_at, otras no.
+
+
+================================================================================
+4. SISTEMA MULTIAGENTE
+================================================================================
+
+4.1 Arquitectura actual
+────────────────────────
+
+  AgentTrait (trait)
+    ├── AgentKind::Core
+    ├── AgentKind::Data
+    ├── AgentKind::Gis
+    └── AgentKind::Intelligence
+
+  AgentRegistry
+    ├── HashMap<String, Box<dyn AgentTrait>>
+    ├── register(), get(), list(), execute()
+    └── EventBus (trait opcional)
+
+  AgentTaskQueue (SQLite)
+    ├── enqueue()
+    ├── pop_pending()
+    ├── mark_completed/failed/retry
+    └── list()
+
+4.2 Problemas detectados
+─────────────────────────
+
+  PROBLEMA 1: Sob reingenieria sin implementaciones
+  ─────────────────────────────────────────────────
+  AgentTrait, AgentRegistry, EventBus, AgentKind, AgentTask,
+  AgentContext, AgentOutput, AgentError ─ todo esto para CERO
+  implementaciones concretas. No hay ningun agente real.
+
+  No existe:
+    - CoreAgent que implemente AgentTrait
+    - DataAgent que implemente AgentTrait
+    - GisAgent que implemente AgentTrait
+    - IntelligenceAgent que implemente AgentTrait
+
+  PROBLEMA 2: Los "agentes" reales estan en el frontend
+  ─────────────────────────────────────────────────────
+  Los agentes que se muestran en AgentsPage.tsx son:
+    - "Planner"  → hook usePlannerAgent.ts (18 lineas)
+    - "Knowledge" → hook useKnowledgeAgent.ts (wrapper recallChunks)
+    - "Discovery" → hook useDiscoveryAgent.ts (18 lineas)
+
+  Son WORKERS LOGICOS del chat pipeline, no agentes.
+
+  PROBLEMA 3: EventBus es un trait sin implementacion
+  ────────────────────────────────────────────────────
+  AgentRegistry::set_event_bus() acepta Box<dyn EventBus>
+  pero en ningun lado se construye una implementacion concreta.
+  Si alguien llama registry.emit_event(), no pasa nada.
+
+4.3 Diagnostico de cada componente
+───────────────────────────────────
+
+  Componente          Deberia ser               Estado actual
+  ──────────────────  ────────────────────────  ─────────────────────
+  Planner             Worker del chat pipeline  "Agente" falso frontend
+  Knowledge           Worker del chat pipeline  "Agente" falso frontend
+  Discovery           Worker del chat pipeline  "Agente" falso frontend
+  AgentTrait          ELIMINAR (sin impl.)      Codigo muerto
+  AgentRegistry       ELIMINAR (sin uso)        Codigo muerto
+  AgentKind           ELIMINAR                  Codigo muerto
+  EventBus trait      ELIMINAR (sin impl.)      Codigo muerto
+  AgentTaskQueue      Mantener como cola        Unico comp. util
+  Coding Agent        Worker MCP+filesystem     Esqueleto Rust
+
+4.4 Arquitectura recomendada: Worker Pool
+──────────────────────────────────────────
+
+  Pipeline (router central)
+    ├── Intent Classifier → determina workers
+    ├── Workers (NO agentes):
+    │   ├── WebSearch Worker
+    │   ├── RAG Worker (ChromaDB)
+    │   ├── CodeGen Worker
+    │   ├── GIS Worker
+    │   ├── Graph Worker
+    │   └── Telegram Worker
+    └── Task Queue (SQLite → Tokio tasks)
+
+  Los workers son SERVICIOS, no agentes. No tienen identidad,
+  no tienen registro, no tienen traits. Son funciones async
+  registradas en un HashMap<String, Box<dyn WorkerTrait>>.
+
+
+================================================================================
+5. MCP — MODEL CONTEXT PROTOCOL
+================================================================================
+
+5.1 Arquitectura actual
+────────────────────────
+
+  geonexus-mcp crate
+    ├── types.rs → McpServer, McpTool, CallToolPayload/Result
+    ├── registry.rs → CRUD sobre SQLite + allowlist + discovery
+    ├── executor.rs → HTTP JSON-RPC execution
+    ├── pinger.rs → Health check loop
+    ├── stdio.rs → STDIO subprocess MCP
+    └── containers/ → Container schema
+
+  Frontend (11 componentes)
+    ├── McpServersPage → Tabla con filtros
+    ├── McpRegisterDialog → 445 lineas de formulario
+    ├── McpConsole → Terminal emulator
+    ├── McpToolsViewer → Tool browser
+    └── hooks: useMcpServers, useMcpTools, useMcpTerminal
+
+5.2 Problemas criticos
+───────────────────────
+
+  BUG 1: Handshake duplicado y divergente
+  ────────────────────────────────────────
+    executor.rs:32  → protocol version "2025-06-18"
+    pinger.rs:74    → protocol version "2025-03-26}"  (TYPO: llave extra)
+    stdio.rs:47     → protocol version "2025-03-26"
+    registry.rs:213 → identico al pinger
+
+  Cuatro implementaciones del mismo handshake, tres versiones
+  diferentes del protocolo.
+
+  BUG 2: pinger.rs:74 tiene typo "2025-03-26}"
+  ──────────────────────────────────────────────
+  La llave extra } rompe handshake con servidores MCP que
+  validan el protocol version estrictamente.
+
+  PROBLEMA 3: Sin sandboxing
+  ───────────────────────────
+  El MCP executor llama build_client() con reqwest::Client default.
+  No hay:
+    - Restriccion de IPs internas (SSRF)
+    - Timeout configurables por servidor
+    - Rate limiting (aunque schema tiene rate_limit, NO se usa)
+    - Limitacion de tamano de respuesta
+
+  PROBLEMA 4: STDIO sin lifecycle management
+  ───────────────────────────────────────────
+  stdio.rs spawnea proceso hijo, escribe stdin, lee stdout, mata.
+  No hay:
+    - Reconexion automatica
+    - Health checking persistente
+    - Pool de conexiones
+    - Limite de procesos concurrentes
+
+  PROBLEMA 5: McpRegisterDialog.tsx es un monolito de 445 lineas
+  ──────────────────────────────────────────────────────────────
+  Maneja: formulario manual, upload JSON, file picker, discovery,
+  token parser, HTTP vs STDIO, guia Supabase. Deberia ser 4-5
+  componentes.
+
+5.3 Riesgos de seguridad en MCP
+────────────────────────────────
+
+  Riesgo                    Descripcion                          Severidad
+  ────────────────────────  ─────────────────────────────────── ─────────
+  SSRF                      No se valida URL, puede apuntar a   CRITICA
+                            127.0.0.1:*, 10.0.0.*, etc.
+  No rate limiting          rate_limit en schema pero NO en     ALTA
+                            check_allowlist()
+  STDIO fork bomb           No hay limite de procesos hijo      ALTA
+  Sin validacion schema     CallToolPayload.args se pasa sin    MEDIA
+                            validar contra inputSchema
+  Auth tokens en log        audit_tool_call podria loguear       MEDIA
+                            tokens
+
+
+================================================================================
+6. REASONING TIMELINE
+================================================================================
+
+6.1 Estado actual
+──────────────────
+
+  Frontend:
+    - ReasoningTimeline.tsx (250 lineas): Cards con pasos,
+      temporizadores, badges
+    - useReasoningTimeline.ts (337 lineas): Hook dual: simulacion
+      demo + listeners reales
+    - timeline-types.ts: TimelineStep, TimelineItem, GenerationStats
+
+  Backend:
+    - core/src/reasoning.rs (48 lineas): QueryIntent, ValidationResult,
+      AnalysisSession
+
+6.2 Problemas
+─────────────
+
+  1. AnalysisSession disenado mal.
+     datasets_used, nodes_consulted, tools_executed son String
+     cuando deberian ser Vec<String>. intent es String cuando
+     existe QueryIntent::label().
+
+  2. Frontend tiene datos demo inline.
+     ReasoningTimeline.tsx tiene exampleSteps y exampleStats
+     hardcodeados. El backend nunca emite estos eventos realmente.
+
+  3. Eventos del timeline no persisten.
+     No hay tabla SQLite para persistir pasos del reasoning.
+
+  4. QueryIntent infrautilizado.
+     6 intents definidos (query, analysis, planning, research,
+     coding, gis) pero el clasificador de intents no existe.
+     Ningun codigo instancia QueryIntent.
+
+
+================================================================================
+7. CODING AGENT
+================================================================================
+
+7.1 Estado actual
+──────────────────
+
+  Frontend:
+    - CodingAgentContext.tsx: useReducer con 21 action types
+    - useCodingAgent.ts: 561 lineas, 13+ event listeners
+    - WorkspaceIDE.tsx: 510 lineas, orchestrator + data demo
+
+  Backend:
+    - core/src/agents/coding.rs: CodingAgentType, CodeGenerationTask,
+      VirtualFileSystem, PONYTAIL_PROMPT
+
+7.2 Problemas
+─────────────
+
+  1. PONYTAIL_PROMPT definido pero nunca referenciado.
+     Ningun codigo lo consulta.
+
+  2. VirtualFileSystem tiene add_file() y get_file()
+     pero NO update_file() ni delete_file().
+
+  3. CodingAgentType tiene ReactTs, Rust, Python
+     pero NO hay fabrica que mapee tipo a template.
+
+  4. 13 Tauri events para coding agent.
+     Excesivo. Deberian reducirse a 3-4 eventos genericos
+     con type field.
+
+  5. No hay rollback.
+     Si el agente genera codigo incorrecto, no hay mecanismo
+     para revertir cambios.
+
+  6. No hay aislamiento de proyectos.
+     Escribe en agent-projects/ pero sin sandboxing.
+
+
+================================================================================
+8. GIS AGENT
+================================================================================
+
+8.1 Estado actual (casi nada)
+──────────────────────────────
+
+  gis/geo_utils.py          → placeholder de 2 lineas
+  extractors/shapefile_extractor.py → extraccion basica texto
+  GisToolPanel (frontend)   → placeholder toolbar
+  tools/GisToolPanel        → placeholder
+
+8.2 Diagnostico
+───────────────
+
+  EL SISTEMA GIS NO EXISTE. Shapefile extraction convierte
+  atributos a texto. No hay:
+
+    - QGIS integration
+    - ArcGIS integration
+    - PostGIS
+    - Raster processing
+    - GeoJSON generation/validation
+    - Coordinate transformation
+    - Spatial analysis algorithms
+    - Map rendering
+
+  Esto es un problema GRAVE si el proyecto se posiciona
+  como plataforma GIS.
+
+8.3 Arquitectura GIS recomendada
+─────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────┐
+  │                 GIS LAYER (Rust + Python)            │
+  │                                                      │
+  │  ┌──────────────────────────────────────────────┐   │
+  │  │         GIS Service (Rust async)              │   │
+  │  │  - Spatial queries (geo-index)               │   │
+  │  │  - File format detection & parsing           │   │
+  │  │  - CRS transformation (proj)                 │   │
+  │  │  - Tile generation (vector/raster tiles)     │   │
+  │  └──────────────────────────────────────────────┘   │
+  │                                                      │
+  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐    │
+  │  │  QGIS    │ │  ArcGIS  │ │  GDAL/OGR CLI    │    │
+  │  │  Bridge  │ │  Bridge  │ │  (Python/Rust)    │    │
+  │  │  (MCP)   │ │  (MCP)   │ │                   │    │
+  │  └──────────┘ └──────────┘ └──────────────────┘    │
+  │                                                      │
+  │  ┌──────────────────────────────────────────────┐   │
+  │  │         Data Formats Supported               │   │
+  │  │  Shapefile │ GeoJSON │ GeoPackage │ GeoTIFF  │   │
+  │  │  MBTiles   │ GPKG    │ KML        │ GML      │   │
+  │  │  PostGIS   │ SpatiaLite │ WMS/WMTS  │         │   │
+  │  └──────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────┘
+
+  QGIS y ArcGIS deben ser integraciones MCP, no codigo nativo.
+  La capa GIS central debe ser Rust nativo usando crates geo,
+  geojson, proj, con GDAL como fallback via subprocess.
+
+
+================================================================================
+9. WORKSPACE / IDE
+================================================================================
+
+9.1 El proyecto intenta ser 3 cosas a la vez
+─────────────────────────────────────────────
+
+  Modo          Implementacion                      Estado
+  ────────────  ──────────────────────────────────  ────────────
+  Chat          GeoAgentsWorkspace con hash routing  Funcional
+  Workspace     Paneles laterales, tabs, sidebar     Funcional
+  IDE           WorkspaceIDE.tsx (editor+explorer)   Demo
+
+  10 rutas hash: #chat, #documentos, #datos, #conocimiento,
+  #uso, #agentes, #skills, #mcp, #conectores, #contenedores-ia
+
+9.2 Problema fundamental
+─────────────────────────
+
+  El proyecto no sabe que quiere ser. Tiene:
+    - #chat            → unico flujo usable
+    - #datos, #docs,   → paginas de consulta/CRUD
+      #conocimiento, #uso
+    - #agentes, #skills → configuracion
+    - #mcp, #conectores,  → configuracion tecnica
+      #contenedores-ia
+
+  Esto es una aplicacion de chat con paneles de administracion,
+  no un workspace ni un IDE.
+
+9.3 Recomendacion
+──────────────────
+
+  GeoNexus debe ser un CONVERSATIONAL AI WORKSPACE:
+
+    GeoNexus = Conversation-Centric Workspace
+      ├── Chat Panel (flujo principal, siempre visible)
+      ├── Context Panel (memoria, graph, documentos activos)
+      ├── Tool Panel (MCP, workers ejecutandose)
+      └── Output Panel (codigo, mapas, reportes generados)
+
+  NO debe ser un IDE tipo VSCode. Debe ser como Claude Desktop
+  + Cursor overlay: el chat es el centro, las herramientas se
+  despliegan contextualmente.
+
+
+================================================================================
+10. MEMORIA Y KNOWLEDGE GRAPH
+================================================================================
+
+10.1 Estado actual
+───────────────────
+
+  ChromaDB (SQLite embebido)
+    ├── collection: project_memory
+    ├── query_chunks() → RAG por embedding
+    └── no jerarquia, no metadata estructurada
+
+  Knowledge Graph (SQLite)
+    ├── graph_nodes (23 campos)
+    ├── graph_edges (source, target, relation)
+    ├── Python extractors: extractor.py, chat_extractor.py
+    └── compute_memory_score() en Python
+
+  Frontend:
+    ├── GraphPage + GraphCanvas + NodeSheet
+    ├── GraphFilters + GraphActivityPanel
+    └── graph-draw, graph-data, graph-colors
+
+10.2 Problemas
+──────────────
+
+  1. Sin jerarquia de memoria. Todo va a project_memory.
+     No hay:
+       - Session Memory (lo de esta conversacion)
+       - Project Memory (conocimiento acumulado)
+       - Global Memory (config, preferencias)
+       - Ephemeral Memory (resultados temporales, cache)
+
+  2. Graph y ChromaDB no sincronizados.
+     Nodos del graph deberian tener referencias a chunks en
+     ChromaDB, pero no hay foreign keys cross-DB.
+
+  3. compute_memory_score() recorre TODOS los nodos.
+     SELECT * FROM graph_nodes. Con 10,000 nodos tomaria
+     segundos en Python.
+
+  4. Extraccion de entidades es basica (regex). No hay NER
+     con modelos. requirements.txt no tiene spaCy.
+
+10.3 Arquitectura de memoria recomendada
+─────────────────────────────────────────
+
+  ┌──────────────────────────────────────────────────────┐
+  │              MEMORY ARCHITECTURE V3                   │
+  │                                                       │
+  │  ┌──────────────────────────────────────────────┐    │
+  │  │           Memory Router (Rust)                │    │
+  │  │  routing por: scope + type + recency          │    │
+  │  └────┬──────────┬──────────┬───────────────────┘    │
+  │       │          │          │                         │
+  │  ┌────▼──┐ ┌────▼──┐ ┌────▼────────┐                │
+  │  │Session│ │Project│ │  Global     │                │
+  │  │Memory │ │Memory │ │  Memory     │                │
+  │  │(chat  │ │(RAG)  │ │(settings,  │                │
+  │  │context│ │       │ │config)      │                │
+  │  └───────┘ └───────┘ └─────────────┘                │
+  │                                                       │
+  │  ┌──────────────────────────────────────────────┐    │
+  │  │           Storage Layer                       │    │
+  │  │  Short-term: Redis / In-memory HashMap         │    │
+  │  │  Long-term:  SQLite + ChromaDB                │    │
+  │  │  Graph:      SQLite (graph_nodes/edges)       │    │
+  │  └──────────────────────────────────────────────┘    │
+  └──────────────────────────────────────────────────────┘
+
+
+================================================================================
+11. TELEGRAM
+================================================================================
+
+11.1 Estado actual
+───────────────────
+
+  Backend (Rust):
+    ├── core/src/telegram/ → mod, polling, sender
+    ├── commands/telegram.rs → Tauri command handlers
+    └── TelegramState en main.rs
+
+  Frontend:
+    ├── hooks/useTelegramBridge.ts → TelegramBridgeMount
+    └── api/telegram.ts → telegram CRUD
+
+  Problemas documentados en docs/17-analisis-telegram.txt:
+    1. NO hay frontend listener de mensajes entrantes
+    2. NO hay pipeline de respuesta
+    3. NO hay typing indicator
+    4. StopIcon bug
+
+11.2 Diagnostico
+─────────────────
+
+  TELEGRAM ESTA ROTO. El frontend monta TelegramBridgeMount
+  pero no hay listener de eventos entrantes. Los mensajes que
+  llegan al bot nunca llegan al chat de GeoNexus.
+
+  El polling backend funciona, escribe a BD, pero no emite
+  eventos Tauri al frontend.
+
+11.3 Arquitectura recomendada
+──────────────────────────────
+
+  Telegram Bot (Python, long polling)
+    ├── Message Handler → Event Bus
+    ├── Command Parser → /search, /map, /ask
+    ├── Media Handler → imagenes, audio, documentos
+    └── Response Pipeline → envia respuestas
+
+  Event Bus (Rust, Tauri events)
+    ├── telegram:message_received → frontend
+    ├── telegram:typing → frontend
+    ├── telegram:media_received → frontend
+    └── telegram:error → frontend
+
+  Frontend
+    ├── Escucha telegram:* events
+    ├── Muestra notificaciones entrantes
+    └── Permite responder desde el chat
+
+
+================================================================================
+12. ONE DRIVE
+================================================================================
+
+12.1 Estado actual
+───────────────────
+
+  - src/config/oauth.ts → PKCE challenge, auth URL builder
+  - .env.local → OneDrive OAuth vars (client ID, redirect URI, scope)
+  - commands/oauth.rs → Tauri OAuth handler (placeholders)
+
+12.2 Problema
+─────────────
+
+  NO IMPLEMENTADO. El OAuth flow existe como esqueleto pero
+  no hay:
+    - Token refresh
+    - File listing API
+    - Download/upload
+    - Webhook sync
+    - Delta query para cambios incrementales
+
+12.3 Recomendacion
+───────────────────
+
+  OneDrive debe ser un MCP SERVER independiente (como
+  mcp-servers/containers-mcp), no codigo acoplado al backend.
+  Esto permite:
+    - Reutilizacion con otros clientes MCP
+    - Aislamiento de seguridad
+    - Actualizaciones independientes
+
+
+================================================================================
+13. GITHUB
+================================================================================
+
+13.1 Estado actual
+───────────────────
+
+  - Mencionado en MentionPicker.tsx como @github source
+  - NO hay implementacion de repos, issues, PRs, branches, commits
+
+13.2 Recomendacion
+───────────────────
+
+  GitHub debe ser un MCP SERVER. Usar GitHub CLI (gh) o API.
+
+  Operaciones como MCP tools:
+    createRepo(name, desc, private?)      → MCP Tool
+    createIssue(repo, title, body, labels?) → MCP Tool
+    createPR(repo, base, head, title, body) → MCP Tool
+    listBranches(repo)                    → MCP Tool
+    listIssues(repo, state?)              → MCP Tool
+
+  NO implementar como codigo nativo en GeoNexus.
+
+
+================================================================================
+14. SEGURIDAD
+================================================================================
+
+14.1 Riesgos actuales
+──────────────────────
+
+  #  Riesgo                    Componente          Severidad  Mitigacion
+  ── ────────────────────────  ──────────────────  ─────────  ───────────
+  1  API keys en localStorage  Frontend (connects)  CRITICA   Solo mencion
+  2  SSRF via MCP URLs         MCP executor         CRITICA   Ninguna
+  3  STDIO fork sin limite     MCP stdio            ALTA      Ninguna
+  4  Token exposure en logs    MCP executor/reg     ALTA      Ninguna
+  5  SQL injection via format! MCP registry.rs      MEDIA     Constantes
+                                                             mitigantes
+  6  Sin auth multi-usuario    Toda la app          BAJA      Desktop app
+  7  Supply chain              npm + Cargo + pip    MEDIA     Cargo.lock
+  8  ChromaDB 127.0.0.1        Python sidecar       BAJA      Verificado
+
+14.2 Modelo de permisos propuesto
+──────────────────────────────────
+
+  Permiso              │ MCP Tool │ Skill │ Connector │ Coding Agent
+  ─────────────────────┼──────────┼───────┼───────────┼─────────────
+  filesystem:read      │ allow    │ allow │ allow     │ allow
+  filesystem:write     │ confirm  │ deny  │ n/a       │ confirm
+  filesystem:delete    │ deny     │ deny  │ n/a       │ deny
+  network:http         │ allow    │ allow │ allow     │ allow
+  network:localhost    │ confirm  │ deny  │ allow     │ confirm
+  process:spawn        │ confirm  │ deny  │ n/a       │ confirm
+  process:signal       │ deny     │ deny  │ n/a       │ deny
+  env:read             │ allow    │ allow │ allow     │ allow
+  env:write            │ deny     │ deny  │ n/a       │ deny
+  db:query             │ confirm  │ deny  │ n/a       │ n/a
+  ui:notification      │ allow    │ allow │ allow     │ allow
+
+  Niveles:
+    allow   → ejecucion automatica
+    confirm → requiere confirmacion del usuario (Tauri dialog)
+    deny    → rechazado
+
+
+================================================================================
+15. PROBLEMAS CRITICOS
+================================================================================
+
+15.1 Top 10 bugs
+─────────────────
+
+  #  Bug                                      Archivo                    Impacto
+  ── ──────────────────────────────────────── ───────────────────────── ────────
+  1  saveConversationId(null) en mount        useChatSession.ts:134     Pierde ID
+                                                                        al recargar
+  2  Pipeline duration = 0                    useChatSession.ts:454     Metricas
+                                                                        incorrectas
+  3  Handshake typo "2025-03-26}"             pinger.rs:74              Falla conexion
+                                                                        servidores MCP
+  4  Protocol version inconsistente           executor vs pinger vs     Falla
+                                               stdio vs registry        handshake
+  5  Telegram sin frontend listener           Todo telegram             Bot inutil
+  6  API keys en localStorage sin encrypt     SECURITY.md               Exposicion
+                                                                        credenciales
+  7  SSRF via MCP URLs                        executor.rs               Acceso red
+                                                                        interna
+  8  unwrap() en config malformada            main.rs:85-86             Defaults
+                                                                        silenciosos
+  9  ChromaDB + SQLite desincronizados        Toda la app               RAG devuelve
+                                                                        chunks
+                                                                        eliminados
+  10 0 tests para componentes criticos        chat, MCP, telegram       Sin cobertura
+
+15.2 Top 10 deudas tecnicas
+────────────────────────────
+
+  #  Deuda                                    Area        Esfuerzo
+  ── ──────────────────────────────────────── ─────────── ────────
+  1  Refactor useChatSession.ts (628→200)      Frontend    4h
+  2  Refactor useCodingAgent.ts (561→250)      Frontend    3h
+  3  Unificar FileNode y AgentEvent types      Frontend    1h
+  4  Eliminar AgentTrait/Registry/EventBus     Rust        2h
+  5  DRY MCP handshake (4→1 impl)             Rust MCP    3h
+  6  Eliminar codigo LLM providers muerto      Python      1h
+  7  Migraciones SQLite formales               Rust DB     4h
+  8  Remover datos demo inline de comps.       Frontend    2h
+  9  Anadir indices a tablas SQLite            Rust DB     1h
+  10 Tests para chat pipeline y MCP           General     8h
+
+
+================================================================================
+16. CODIGO MUERTO Y REDUNDANCIAS
+================================================================================
+
+16.1 Codigo para ELIMINAR
+──────────────────────────
+
+  Archivo                                          Justificacion
+  ───────────────────────────────────────────────  ───────────────────────────
+  crates/geonexus-core/src/agents/mod.rs           AgentTrait, AgentKind,
+                                                   AgentRegistry, EventBus
+                                                   todo codigo muerto sin
+                                                   implementaciones concretas
+  crates/geonexus-core/src/agents/registry.rs      Idem. Solo referenciado
+                                                   en main.rs para seed
+  crates/geonexus-core/src/agents/task.rs          AgentTask duplicado en
+                                                   task_queue.rs
+  crates/geonexus-core/src/agents/coding.rs        PONYTAIL_PROMPT nunca
+                                                   usado, VirtualFileSystem
+                                                   incompleto
+  crates/geonexus-core/src/agent.rs                Struct Agent nunca
+                                                   instanciado realmente
+  ai/llm/openai.py                                 Todo el archivo: no
+                                                   llamado por nadie
+  ai/llm/anthropic.py                              Idem
+  ai/llm/ollama.py                                 Idem
+  ai/llm/lmstudio.py                               Idem
+  ai/llm/openrouter.py                             Idem
+  ai/gis/geo_utils.py                              Placeholder vacio
+  ai/geonexus_ai/__init__.py                       Package placeholder
+                                                   no usado
+
+16.2 Codigo para REFACTORIZAR
+──────────────────────────────
+
+  Archivo                                          Accion
+  ───────────────────────────────────────────────  ──────────────────────────
+  src/hooks/useChatSession.ts                      Split en: useMessageState,
+                                                   useChatStream,
+                                                   useChatPipeline,
+                                                   useChatResearch
+  src/hooks/useCodingAgent.ts                      Split en:
+                                                   useCodingAgentEvents,
+                                                   useCodingAgentActions
+  ide/WorkspaceIDE.tsx                             Extraer datos demo a
+                                                   fixtures, split en
+                                                   componentes
+  mcp/McpRegisterDialog.tsx                        Split en: McpBasicForm,
+                                                   McpJsonUpload,
+                                                   McpFilePicker,
+                                                   McpDiscoveryPanel
+  crates/geonexus-mcp/src/pinger.rs                Eliminar duplicacion
+  crates/geonexus-mcp/src/executor.rs              Idem
+  crates/geonexus-mcp/src/registry.rs              Extraer handshake a
+                                                   shared util
+  crates/geonexus-mcp/src/stdio.rs                 Idem
+
+
+================================================================================
+17. ALGORITMOS RECOMENDADOS
+================================================================================
+
+17.1 Intent Classification
+───────────────────────────
+
+  Actual: No existe. Se asume que todo es chat.
+
+  Recomendado:
+    1. Generar embedding del mensaje del usuario
+    2. Cosine similarity con ejemplos de cada intent:
+       - "query"    → "que datos hay sobre...?"
+       - "analysis" → "analiza la correlacion entre..."
+       - "planning" → "crea un proyecto que..."
+       - "research" → "investiga sobre..."
+       - "coding"   → "escribe una funcion que..."
+       - "gis"      → "muestra en el mapa..."
+    3. Threshold > 0.85 → intent directo
+    4. < 0.85 → LLM-based classification
+    5. Fallback → "query" (chat general)
+
+17.2 RAG con reranking
+───────────────────────
+
+  Actual: recall_chunks → cosine similarity simple, top-K fijo (4).
+
+  Recomendado:
+    1. Query expansion: generar 3 variaciones (LLM)
+    2. Multi-vector: embedding + BM25 + keyword
+    3. Fusion: Reciprocal Rank Fusion (RRF)
+    4. Reranking: cross-encoder (BAAI/bge-reranker-v2-m3)
+    5. Context window optimization:
+       - Presupuesto: 4000 tokens
+       - Seleccionar chunks mas relevantes hasta llenar budget
+       - Preferir chunks contiguos del mismo documento
+
+17.3 Knowledge Graph incremental
+─────────────────────────────────
+
+  Actual: SELECT * FROM graph_nodes cada vez.
+
+  Recomendado:
+    1. Score decay:
+       score = base * e^(-lambda * days_since_access) + 0.1 * visits
+    2. Actualizacion incremental:
+       - Al leer nodo: UPDATE last_accessed, visit_count++
+       - Al crear nodo: INSERT con score = 1.0
+       - Cada 100 ops: batch UPDATE de scores decaidos
+       - NUNCA recorrer toda la tabla
+    3. Graph traversal:
+       - BFS limitado a profundidad 3
+       - Weighted edges por co-occurrence
+       - PageRank personalizado sobre subgraph
+
+17.4 Streaming con backpressure
+────────────────────────────────
+
+  Actual: Tauri events sin control de flujo.
+
+  Recomendado:
+    1. Token buffer: 100ms window, batch de tokens
+    2. Frontend: requestAnimationFrame para render
+    3. Backpressure:
+       - Si buffer frontend > 500 tokens → pausar emision
+       - Si buffer frontend < 100 tokens → reanudar
+    4. Chunked messages para tool calls grandes
+
+17.5 Task Queue con prioridad
+──────────────────────────────
+
+  Actual: FIFO simple sin prioridad.
+
+  Recomendado:
+    1. Priority queue: 0 (critical) a 3 (background)
+       - CRITICAL: user-facing chat responses
+       - HIGH: tool calls en pipeline activo
+       - MEDIUM: indexacion, sync
+       - LOW: cleanup, analysis aggregation
+    2. Deadlines: cada tarea tiene max_execution_ms
+       - Excedido → kill + retry (max 2) → failed
+    3. Worker pool: N workers tokio (N = num_cpus * 2)
+       - Cada worker: pop → execute → complete/fail
+       - Health check: heartbeat cada 5s
+
+
+================================================================================
+18. ARQUITECTURA MCP V2
+================================================================================
+
+18.1 Diseno
+───────────
+
+  ┌─────────────────────────────────────────────────────────┐
+  │                    MCP V2 ARCHITECTURE                    │
+  ├─────────────────────────────────────────────────────────┤
+  │                                                          │
+  │  ┌──────────────────────────────────────────────────┐   │
+  │  │              MCP Router (Rust)                    │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │   │
+  │  │  │  HTTP    │ │  STDIO   │ │  Sandbox Proxy    │  │   │
+  │  │  │  Handler │ │  Manager │ │  (isolated proc)  │  │   │
+  │  │  └────┬─────┘ └────┬─────┘ └────────┬─────────┘  │   │
+  │  │       │            │                │             │   │
+  │  │  ┌────▼────────────▼────────────────▼──────────┐  │   │
+  │  │  │         Protocol Layer (JSON-RPC 2.0)        │  │   │
+  │  │  │  initialize | tools/list | tools/call        │  │   │
+  │  │  └────────────────────┬────────────────────────┘  │   │
+  │  └───────────────────────┼──────────────────────────┘   │
+  │                          │                               │
+  │  ┌───────────────────────▼──────────────────────────┐   │
+  │  │             Security Layer                        │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │   │
+  │  │  │Allowlist │ │ Rate     │ │  Schema Valid.   │  │   │
+  │  │  │ + RBAC   │ │ Limiter  │ │  (JSON Schema)   │  │   │
+  │  │  └──────────┘ └──────────┘ └──────────────────┘  │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │   │
+  │  │  │ Audit    │ │ SSRF     │ │  Token Scanner   │  │   │
+  │  │  │ Logging  │ │ Guard    │ │  (no secrets in  │  │   │
+  │  │  │          │ │          │ │  params/result)  │  │   │
+  │  │  └──────────┘ └──────────┘ └──────────────────┘  │   │
+  │  └──────────────────────────────────────────────────┘   │
+  │                                                          │
+  │  ┌──────────────────────────────────────────────────┐   │
+  │  │             Transport Layer                       │   │
+  │  │  HTTP/1.1 │ SSE │ STDIO │ WebSocket (MCP v2)     │   │
+  │  └──────────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────────┘
+
+18.2 Cambios clave V1 → V2
+───────────────────────────
+
+  Aspecto        V1 (actual)                       V2 (propuesto)
+  ─────────────  ────────────────────────────────  ────────────────────────────
+  Handshake      4 implementaciones divergentes    1 shared utility con test
+  Seguridad      Sin validacion                    SSRF Guard + Schema
+                                                    Validation + Token Scanner
+  Rate limit     Schema field no usado             Token bucket por servidor
+  STDIO          Sin lifecycle                     Manager con pool,
+                                                    healthcheck, reconexion
+  Audit          Texto plano                       Estructurado +
+                                                    sanitizacion de secrets
+  Transport      HTTP + STDIO                      HTTP + STDIO + SSE +
+                                                    WebSocket
+  Timeout        Hardcoded 30s                     Configurable por servidor
+
+18.3 SSRF Guard (pseudocodigo)
+──────────────────────────────
+
+  struct SsrfGuard {
+      denied_cidrs: Vec<IpNet>,
+      // ["10.0.0.0/8", "172.16.0.0/12",
+      //  "192.168.0.0/16", "127.0.0.0/8"]
+      allowed_domains: Vec<String>,
+      // ["*.mcp.local"] o vacio = todo excepto denied
+      allow_loopback: bool,
+      // default: false
+  }
+
+  fn check_url(url: &str) -> Result<(), SsrfError> {
+      // 1. Parse URL → host
+      // 2. Resolve DNS → IP(s)
+      // 3. Check IP contra denied_cidrs
+      // 4. Check dominio contra allowed_domains
+      // 5. Si allow_loopback=false, rechazar 127.0.0.1
+  }
+
+
+================================================================================
+19. ARQUITECTURA RECOMENDADA V3
+================================================================================
+
+19.1 Vision general
+────────────────────
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                    GEONEXUS V3                                │
+  │                  Conversational AI Workspace                  │
+  ├──────────────────────────────────────────────────────────────┤
+  │                                                               │
+  │  ┌───────────────────────────────────────────────────────┐   │
+  │  │              REACT FRONTEND (Tauri WebView)            │   │
+  │  │                                                       │   │
+  │  │  ┌──────────────────────┐  ┌──────────────────────┐   │   │
+  │  │  │     Chat Channel      │  │    Context Panel      │   │   │
+  │  │  │  (siempre visible)    │  │  (toggleable)         │   │   │
+  │  │  │  - mensajes           │  │  - memoria activa     │   │   │
+  │  │  │  - streaming          │  │  - documentos         │   │   │
+  │  │  │  - @mentions          │  │  - graph view         │   │   │
+  │  │  │  - tool calls inline  │  │  - sesiones recientes │   │   │
+  │  │  └──────────────────────┘  └──────────────────────┘   │   │
+  │  │                                                       │   │
+  │  │  ┌──────────────────────┐  ┌──────────────────────┐   │   │
+  │  │  │     Output Panel      │  │    Tool Panel         │   │   │
+  │  │  │  (contextual)         │  │  (minimizable)        │   │   │
+  │  │  │  - codigo generado    │  │  - MCP servers        │   │   │
+  │  │  │  - mapas              │  │  - workers activos    │   │   │
+  │  │  │  - reportes           │  │  - task queue         │   │   │
+  │  │  │  - dashboards         │  │  - telegram status    │   │   │
+  │  │  └──────────────────────┘  └──────────────────────┘   │   │
+  │  └──────────────────────────┬────────────────────────────┘   │
+  │                             │ Tauri IPC                       │
+  │  ┌──────────────────────────▼────────────────────────────┐   │
+  │  │              RUST BACKEND (Tauri Commands)             │   │
+  │  │                                                       │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │   │
+  │  │  │ Chat     │ │ Pipeline │ │ Memory   │ │ MCP V2   │ │   │
+  │  │  │ Pipeline │ │ Router   │ │ Service  │ │ Runtime  │ │   │
+  │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │   │
+  │  │  │ Worker   │ │ Event    │ │ Auth     │ │ Skills   │ │   │
+  │  │  │ Pool     │ │ Bus      │ │ Service  │ │ Runtime  │ │   │
+  │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │   │
+  │  └──────────────────────────┬────────────────────────────┘   │
+  │                             │                                │
+  │  ┌──────────────────────────▼────────────────────────────┐   │
+  │  │              STORAGE LAYER                             │   │
+  │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │   │
+  │  │  │ SQLite   │ │ ChromaDB │ │ Redis    │ │Filesystem│ │   │
+  │  │  │ (rel.)   │ │ (vector) │ │ (cache)  │ │ (proj.)  │ │   │
+  │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │   │
+  │  └────────────────────────────────────────────────────────┘   │
+  │                                                               │
+  │  ┌────────────────────────────────────────────────────────┐   │
+  │  │              EXTERNAL MCP SERVERS                       │   │
+  │  │  QGIS │ ArcGIS │ GitHub │ OneDrive │ Filesystem │ ...  │   │
+  │  └────────────────────────────────────────────────────────┘   │
+  └──────────────────────────────────────────────────────────────┘
+
+19.2 Cambios principales V2 → V3
+─────────────────────────────────
+
+  Componente        V2 (actual)                        V3 (propuesto)
+  ────────────────  ────────────────────────────────  ─────────────────────────
+  Core architecture Monolito TauriCommands             Domain services con
+                                                       MessageBus
+  Agent system      AgentTrait/Registry (sin impl)     Worker Pool
+                                                       (implementado)
+  Memory            ChromaDB plano                     Router: Session/Project/
+                                                       Global
+  MCP               V1 con bugs                        V2 con sandbox +
+                                                       SSRF guard
+  Pipeline          Inline en hooks                    Pipeline Router
+                                                       Rust nativo
+  Event system      Frontend 100% / Backend 0%         Event Bus Rust nativo
+  Chat              useChatSession.ts monolito          ChatService +
+                                                       EventStream
+  GIS               Placeholders                       MCP servers + Rust
+                                                       geo crates
+  Telegram          Roto                               Bot MCP + Event Bus
+  Tests             Rust:81, Frontend:8                Rust:200+, Frontend:50+
+  Migraciones       ALTER TABLE inline                 sqlx migrations
+                                                       formales
+  Python sidecar    CLI dispatcher (16 acciones)       API HTTP persistente
+                                                       (FastAPI)
+  IDE               Demo inline                        Output Panel contextual
+  Auth              localStorage                       tauri-plugin-stronghold
+
+19.3 Flujo Chat V3
+───────────────────
+
+  Usuario escribe en Chat ─┐
+                            ▼
+  ┌──────────────────────────────┐
+  │        Chat Pipeline (Rust)  │
+  │                              │
+  │  1. Guardar mensaje en SQLite│
+  │  2. Intent Classifier        │
+  │     ├─ query   → RAG+Graph   │
+  │     ├─ coding  → CodeGenWork │
+  │     ├─ gis     → GIS Work    │
+  │     ├─ research → WebSearch  │
+  │     └─ analysis→ Multi-tool  │
+  │                              │
+  │  3. Context Builder          │
+  │     ├─ Session Memory        │
+  │     ├─ Project Memory (RAG)  │
+  │     ├─ Graph Context         │
+  │     └─ Active Documents      │
+  │                              │
+  │  4. LLM Call (streaming)     │
+  │     ├─ Event: token          │
+  │     ├─ Event: tool_call      │
+  │     └─ Event: done           │
+  │                              │
+  │  5. Post-process             │
+  │     ├─ Save to memory        │
+  │     ├─ Update graph          │
+  │     ├─ Emit artifact         │
+  │     └─ Notify Telegram       │
+  └──────────────────────────────┘
+            │
+            ▼
+     Frontend recibe eventos streaming
+
+
+================================================================================
+20. ROADMAP Y PRIORIDADES
+================================================================================
+
+20.1 Prioridades inmediatas (Mes 1-2)
+──────────────────────────────────────
+
+  #    Tarea                                    Area        Esfuerzo  Impacto
+  ───  ──────────────────────────────────────── ─────────── ────────  ───────
+  P0   Fix saveConversationId(null) bug          Frontend    10min    Critico
+  P0   Fix pipeline duration calculation         Frontend    5min     Critico
+  P0   Fix MCP handshake typo + inconsistencia   Rust MCP    4h       Critico
+  P0   Migrar API keys localStorage→stronghold   Seguridad   8h       Critico
+  P1   Implementar SSRF Guard en MCP executor    Rust MCP    4h       Alto
+  P1   Refactor useChatSession.ts (split)        Frontend    6h       Alto
+  P1   Eliminar codigo muerto (AgentTrait,       General     4h       Alto
+       providers Python)
+  P2   DRY MCP handshake (shared utility)        Rust MCP    4h       Medio
+  P2   Rate limiting real en MCP allowlist       Rust MCP    3h       Medio
+  P2   Fix Telegram frontend listener            Frontend    6h       Medio
+
+20.2 Corto plazo (Mes 3-4)
+───────────────────────────
+
+  #    Tarea                                    Area        Esfuerzo
+  ───  ──────────────────────────────────────── ─────────── ────────
+  P2   Migrar Python sidecar a FastAPI persist   Python      20h
+  P2   Implementar migraciones SQLite formales   Rust DB     8h
+  P2   Unificar FileNode/AgentEvent types        Frontend    2h
+  P3   Pipeline Router en Rust                   Rust        16h
+  P3   Worker Pool tokio para task_queue         Rust        12h
+  P3   Session Memory (HashMap con TTL)          Rust        4h
+  P3   Event Bus backend (Tauri events + SQLite) Rust        8h
+  P3   Tests para chat pipeline + MCP            General     16h
+
+20.3 Mediano plazo (Mes 5-6)
+─────────────────────────────
+
+  #    Tarea                                    Area        Esfuerzo
+  ───  ──────────────────────────────────────── ─────────── ────────
+  P3   Project Memory con reranking (cross-enc)  Python      20h
+  P3   Knowledge Graph incremental update        Python/Rust 12h
+  P3   Output Panel (reemplazar WorkspaceIDE)    Frontend    16h
+  P3   Artifact system                           General     20h
+  P4   GIS MCP Server (QGIS bridge)              MCP         24h
+  P4   GIS MCP Server (GDAL/OGR wrapper)         MCP         16h
+  P4   GitHub MCP Server                         MCP         12h
+  P4   OneDrive MCP Server (OAuth real)          MCP         20h
+
+20.4 Largo plazo (Mes 7-12)
+────────────────────────────
+
+  #    Tarea                                    Area        Esfuerzo
+  ───  ──────────────────────────────────────── ─────────── ────────
+  P4   Global Memory con preferencias            General     8h
+  P4   Multi-project support                     General     16h
+  P4   WebSocket para streaming                  General     12h
+  P4   Plugins SDK (terceros)                     General     40h
+  P5   Modo offline completo con LLM local       General     20h
+  P5   Mobile companion (Telegram + Web)         General     40h
+
+
+================================================================================
+21. COSTE TECNICO Y COMPLEJIDAD
+================================================================================
+
+21.1 Estimacion de esfuerzo
+────────────────────────────
+
+  Fase                    Horas    Dias (8h)  Desarrolladores
+  ──────────────────────  ───────  ─────────  ───────────────
+  Bugs criticos (P0)      16h      2          1
+  Deuda tecnica alta (P1) 60h      7.5        1-2
+  Features media (P2-P3)  160h     20         2
+  Features larga (P4-P5)  280h     35         2-3
+  TOTAL                    516h     64.5       2-3
+
+21.2 Complejidad por componente
+────────────────────────────────
+
+  Componente                        Compl.  Riesgo  Dependencias
+  ────────────────────────────────  ──────  ──────  ─────────────────
+  Fix bugs P0                       1/10    Bajo   Ninguna
+  SSRF Guard                        3/10    Bajo   reqwest
+  Split useChatSession              2/10    Medio  Tests
+  Python sidecar FastAPI            5/10    Medio  FastAPI, uvicorn
+  Pipeline Router Rust              7/10    Alto   Event Bus, Memory
+  Worker Pool                       5/10    Medio  tokio, task_queue
+  Memory Router                     6/10    Alto   ChromaDB, SQLite
+  MCP V2 sandbox                    7/10    Alto   security review
+  QGIS MCP Server                   8/10    Alto   QGIS API, MCP SDK
+  Plugins SDK                       9/10    Muy   Arquitectura completa
+                                                  alto
+
+21.3 Riesgos arquitectonicos
+─────────────────────────────
+
+  Riesgo                                  Prob.   Impacto  Mitigacion
+  ─────────────────────────────────────── ─────── ───────  ─────────────────────
+  Python sidecar cuello de botella         Alta    Alto     FastAPI persistente
+                                                           elimina startup
+  SQLite contencion multi-project          Media   Medio    WAL mode o replicas
+  ChromaDB sin sharding                    Media   Alto     LanceDB o Qdrant
+  MCP protocol version changes             Alta    Medio    Version negotiation
+  Tauri v2 API inestable                   Media   Medio    Feature flags +
+                                                           graceful degradation
+  Dependencias Python no mantenidas        Baja    Alto     Docker image con
+                                                           freeze
+
+
+================================================================================
+RESUMEN EJECUTIVO
+================================================================================
+
+GeoNexus es un proyecto ambicioso con una base tecnica solida pero con
+desviaciones arquitectonicas significativas.
+
+FORTALEZAS:
+  - Stack tecnologico moderno (Tauri 2 + React 18 + Rust + Python)
+  - Tipado fuerte en toda la cadena
+  - MCP como abstraccion de herramientas (decision correcta)
+  - Documentacion interna excelente (22 docs)
+
+DEBILIDADES CRITICAS:
+  - Sistema multiagente es sobreingenieria pura (codigo muerto ~30%)
+  - GIS no existe (contradice el branding del proyecto)
+  - Telegram esta roto
+  - Seguridad tiene agujeros (API keys en localStorage, SSRF)
+  - Bugs matematicos en el hook central de chat
+  - MCP handshake mal implementado (versiones inconsistentes, typo)
+  - Sin migraciones de base de datos
+  - Frontend monolito en hooks de 600+ lineas
+  - Tests insuficientes (81 Rust + 8 Frontend para ~25,000 lineas)
+
+LA DECISION ARQUITECTONICA MAS IMPORTANTE:
+  GeoNexus debe ser un Conversational AI Workspace (chat-centric con
+  paneles contextuales). No un IDE. No una plataforma GIS tradicional.
+  No un CRM de datos. El chat es el centro; GIS, coding, MCP son
+  herramientas invocadas desde el chat.
+
+RECOMENDACION FINAL:
+  1. Bugs P0 primero (1-2 dias)
+  2. Eliminar codigo muerto + refactor hooks (semana 1-2)
+  3. Implementar seguridad faltante (semana 3)
+  4. Reconstruir pipeline sobre Rust: Worker Pool + Event Bus +
+     Memory Router (meses 2-4)
+  5. GIS y Telegram como MCP Servers, no codigo acoplado
+
+TL;DR: Buen proyecto, base solida, pero:
+  - 3 bugs criticos (conversacion ID, pipeline duration, MCP handshake)
+  - ~30% codigo muerto (AgentTrait, providers Python individuales)
+  - Sistema multiagente debe ser Worker Pool
+  - MCP necesita V2 con sandboxing y SSRF guard
+  - GIS no existe (urge si es core del producto)
+  - Tests insuficientes: 81 Rust + 8 frontend para ~25,000 lineas
+
+================================================================================
+FIN DE AUDITORIA
+================================================================================

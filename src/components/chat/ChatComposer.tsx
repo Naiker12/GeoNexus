@@ -2,20 +2,29 @@ import * as React from "react"
 import {
   CloudIcon,
   CpuIcon,
+  DatabaseIcon,
+  DownloadIcon,
   FileTextIcon,
   GitForkIcon,
   GlobeIcon,
   Loader2,
+  PaperclipIcon,
+  PlusIcon,
+  PuzzleIcon,
+  RefreshCwIcon,
+  SearchIcon,
   SendIcon,
+  ServerIcon,
   SparklesIcon,
   StopCircleIcon,
+  Trash2Icon,
   XIcon,
+  ZapIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
-import { ModelSelector } from "@/components/chat/ModelSelector"
-import { CommandPalette } from "@/components/chat/CommandPalette"
-import { MentionPicker } from "@/components/chat/MentionPicker"
+import { CompactPicker, type CompactPickerItem } from "@/components/chat/CompactPicker"
+import { usePickerTrigger } from "@/hooks/usePickerTrigger"
 import { SkillActivationBadge } from "@/features/workspace/skills/SkillActivationBadge"
 import { ConversationMemoryBadge } from "@/components/chat/ConversationMemoryBadge"
 import { DropZone } from "@/components/chat/DropZone"
@@ -29,7 +38,7 @@ import {
 import { Textarea } from "@/components/ui/Textarea"
 import { getMentionableSources } from "@/api/chat"
 import { listSkills } from "@/api/skills"
-import type { MentionSource, MentionableSourcesResponse, SlashCommand, MentionKind } from "@/types/chat"
+import type { MentionSource, MentionableSourcesResponse, MentionKind } from "@/types/chat"
 import type { AgentSourceType } from "@/types/agents"
 import { parseMentions } from "@/features/workspace/chat/MentionPicker"
 import { ToolMenu } from "@/components/chat/ToolMenu"
@@ -88,19 +97,16 @@ export function ChatComposer({
   onRemoveSkill,
   sessionSummary,
 }: ChatComposerProps) {
-  // Slash command state
+  // Picker state (unified @ and /)
   const { state: agentState, dispatch } = useCodingAgent()
-  const [slashQuery, setSlashQuery] = React.useState<string | null>(null)
-  const slashContainerRef = React.useRef<HTMLDivElement | null>(null)
-
-  // Mention state
-  const [showMentionPicker, setShowMentionPicker] = React.useState(false)
-  const [mentionQuery, setMentionQuery] = React.useState("")
   const [chips, setChips] = React.useState<Chip[]>([])
-  const mentionContainerRef = React.useRef<HTMLDivElement | null>(null)
-
-  // Hidden file input for attach-file
+  const [cursorPos, setCursorPos] = React.useState(0)
+  const [selectedPickerIndex, setSelectedPickerIndex] = React.useState(0)
+  const [anchorPosition, setAnchorPosition] = React.useState({ x: 0, y: 0 })
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  const { trigger, query, close: closePicker } = usePickerTrigger(value, cursorPos)
 
   // Mention sources — fetched from real DB via get_mentionable_sources
   const [rawSources, setRawSources] = React.useState<MentionableSourcesResponse | null>(null)
@@ -131,50 +137,49 @@ export function ChatComposer({
   }, [refreshSources])
 
   const mentionSources: MentionSource[] = React.useMemo(() => {
-    if (!rawSources) return []
     const result: MentionSource[] = []
 
-    for (const c of rawSources.connectors) {
-      result.push({
-        id: c.id,
-        kind: "connector",
-        label: c.label,
-        sublabel: c.sublabel,
-        icon: c.icon,
-        color: c.color,
-        status: c.status,
-        contextPayload: { type: "connector", id: c.id },
-      })
-    }
-    for (const a of rawSources.assets) {
-      result.push({
-        id: a.id,
-        kind: "asset",
-        label: a.label,
-        sublabel: a.sublabel,
-        icon: a.icon,
-        color: a.color,
-        contextPayload: { type: "asset", id: a.id },
-      })
-    }
-    for (const n of rawSources.graph_nodes) {
-      result.push({
-        id: n.id,
-        kind: "graph_node",
-        label: n.label,
-        sublabel: n.sublabel,
-        icon: n.icon,
-        color: n.color,
-        contextPayload: { type: "graph_node", id: n.id },
-      })
+    if (rawSources) {
+      for (const c of rawSources.connectors) {
+        result.push({
+          id: c.id,
+          kind: "connector",
+          label: c.label,
+          sublabel: c.sublabel,
+          icon: c.icon,
+          color: c.color,
+          status: c.status,
+          contextPayload: { type: "connector", id: c.id },
+        })
+      }
+      for (const a of rawSources.assets) {
+        result.push({
+          id: a.id,
+          kind: "asset",
+          label: a.label,
+          sublabel: a.sublabel,
+          icon: a.icon,
+          color: a.color,
+          contextPayload: { type: "asset", id: a.id },
+        })
+      }
+      for (const n of rawSources.graph_nodes) {
+        result.push({
+          id: n.id,
+          kind: "graph_node",
+          label: n.label,
+          sublabel: n.sublabel,
+          icon: n.icon,
+          color: n.color,
+          contextPayload: { type: "graph_node", id: n.id },
+        })
+      }
     }
 
-    // Skills
     for (const s of skillSources) {
       result.push(s)
     }
 
-    // Agent sources
     const AGENT_SOURCES: { id: AgentSourceType; label: string; sublabel: string; icon: string; color: string }[] = [
       { id: "memory",     label: "Memoria",     sublabel: "Memoria semántica (ChromaDB)", icon: "Database",     color: "#8B5CF6" },
       { id: "qgis",       label: "QGIS",        sublabel: "Capas y procesos QGIS",         icon: "Map",          color: "#10B981" },
@@ -197,7 +202,7 @@ export function ChatComposer({
     }
 
     return result
-  }, [rawSources])
+  }, [rawSources, skillSources])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -242,34 +247,43 @@ export function ChatComposer({
 
     onValueChange("")
     setChips([])
-    setShowMentionPicker(false)
-    setSlashQuery(null)
+    closePicker()
 
     const allSkillNames = skillNamesFromChips.length > 0 ? skillNamesFromChips : undefined
     onSubmit(finalContent, { assetIds, connectorIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames }, attachments.length > 0 ? attachments : undefined)
   }
 
-  const handleComposerChange = (newValue: string) => {
+  function estimateCursorPosition(textarea: HTMLTextAreaElement): { x: number; y: number } {
+    const pos = textarea.selectionStart
+    const text = textarea.value.slice(0, pos)
+    const s = window.getComputedStyle(textarea)
+    const mirror = document.createElement("div")
+    mirror.style.cssText = [
+      "position:fixed;top:-9999px;left:-9999px",
+      "white-space:pre-wrap;word-wrap:break-word",
+      `font-size:${s.fontSize};font-family:${s.fontFamily};line-height:${s.lineHeight}`,
+      `padding:${s.paddingTop} ${s.paddingRight} ${s.paddingBottom} ${s.paddingLeft}`,
+      `border:${s.borderTopWidth} ${s.borderRightStyle} ${s.borderBottomWidth} ${s.borderLeftWidth}`,
+      `width:${textarea.clientWidth}px`,
+    ].join(";")
+    mirror.textContent = text
+    const span = document.createElement("span")
+    span.textContent = "."
+    mirror.appendChild(span)
+    document.body.appendChild(mirror)
+    const mirrorRect = mirror.getBoundingClientRect()
+    const spanRect = span.getBoundingClientRect()
+    document.body.removeChild(mirror)
+    const taRect = textarea.getBoundingClientRect()
+    return {
+      x: taRect.left + (spanRect.left - mirrorRect.left),
+      y: taRect.top + (spanRect.top - mirrorRect.top),
+    }
+  }
+
+  const handleComposerChange = (newValue: string, event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCursorPos(event.target.selectionStart)
     onValueChange(newValue)
-
-    // Detect @mention trigger
-    const atMatch = newValue.match(/@(\w*)$/)
-    if (atMatch) {
-      setMentionQuery(atMatch[1])
-      setShowMentionPicker(true)
-      setSlashQuery(null)
-    } else {
-      setShowMentionPicker(false)
-    }
-
-    // Detect /slash trigger (at start or after space)
-    const slashMatch = newValue.match(/(?:^|\s)\/(\w*)$/)
-    if (slashMatch) {
-      setSlashQuery(slashMatch[1])
-      setShowMentionPicker(false)
-    } else {
-      setSlashQuery(null)
-    }
   }
 
   // Extract agent source mentions from text (also handle via chips)
@@ -278,79 +292,131 @@ export function ChatComposer({
     return mentions
   }, [value])
 
-  const handleMentionSelect = (source: MentionSource) => {
-    setChips((prev) => [
-      ...prev.filter((c) => c.id !== source.id),
-      { id: source.id, kind: source.kind, label: source.label, color: source.color ?? "#8B5CF6" },
-    ])
-    setShowMentionPicker(false)
-
-    const newValue = value.replace(/@\w*$/, `@${source.label} `)
-    onValueChange(newValue)
-    onMentionSelect?.(source)
-  }
-
   const removeChip = (id: string) => {
     setChips((prev) => prev.filter((c) => c.id !== id))
   }
 
-  const handleSlashSelect = (cmd: SlashCommand) => {
-    setSlashQuery(null)
-    const newValue = value.replace(/(?:^|\s)\/\w*$/, "")
-    onValueChange(newValue)
+  // ── Unified picker items ──
 
-    switch (cmd.id) {
-      case "use-graph":
-        onToggleContext()
-        break
-      case "mode-research":
-        if (!webSearchEnabled) onToggleWebSearch()
-        break
-      case "mode-fast":
-        if (webSearchEnabled) onToggleWebSearch()
-        break
-      case "attach-file":
-        fileInputRef.current?.click()
-        break
-      case "attach-asset":
-        // For now, just trigger context panel or file picker fallback
-        fileInputRef.current?.click()
-        break
-      case "toggle-agent":
-        dispatch({
-          type: "SET_MODE",
-          payload: agentState.mode === "agent" ? "chat" : "agent",
-        })
-        break
-      case "new-chat":
-        onNewChat?.()
-        break
-      case "clear-chat":
-        onClearChat?.()
-        break
-      case "export-chat":
-        onExportChat?.()
-        break
-      case "reindex":
-        onReindex?.()
-        break
-    }
+  const mentionIcons: Record<MentionKind, React.ReactNode> = {
+    connector: <CloudIcon className="size-3.5" />,
+    asset: <FileTextIcon className="size-3.5" />,
+    graph_node: <GitForkIcon className="size-3.5" />,
+    agent_source: <CpuIcon className="size-3.5" />,
+    skill: <PuzzleIcon className="size-3.5" />,
+    mcp_server: <ServerIcon className="size-3.5" />,
   }
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const popupOpen = showMentionPicker || slashQuery !== null
+  const mentionGroupLabels: Record<MentionKind, string> = {
+    connector: "Conectores",
+    asset: "Assets",
+    graph_node: "Grafo",
+    agent_source: "Agentes",
+    skill: "Skills",
+    mcp_server: "Servidores MCP",
+  }
 
-    if (popupOpen) {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter" || event.key === "Escape") {
-        event.preventDefault()
-        const target = mentionContainerRef.current ?? slashContainerRef.current
-        target?.dispatchEvent(
-          new KeyboardEvent("keydown", { key: event.key, bubbles: true })
-        )
+  const mentionKindOrder: MentionKind[] = ["connector", "mcp_server", "asset", "graph_node", "skill", "agent_source"]
+
+  const slashCommands: { id: string; group: string; label: string; subtitle: string; icon: React.ReactNode; run: () => void }[] = [
+    { id: "attach-file", group: "Contexto", label: "Adjuntar archivo", subtitle: "Sube un documento", icon: <PaperclipIcon className="size-3.5" />, run: () => fileInputRef.current?.click() },
+    { id: "attach-asset", group: "Contexto", label: "Adjuntar asset", subtitle: "Asset del catálogo", icon: <DatabaseIcon className="size-3.5" />, run: () => fileInputRef.current?.click() },
+    { id: "use-graph", group: "Contexto", label: "Usar grafo", subtitle: "Incluye nodos del grafo", icon: <GitForkIcon className="size-3.5" />, run: () => onToggleContext() },
+    { id: "new-chat", group: "Chat", label: "Nuevo chat", subtitle: "Empieza una conversación", icon: <PlusIcon className="size-3.5" />, run: () => onNewChat?.() },
+    { id: "clear-chat", group: "Chat", label: "Limpiar chat", subtitle: "Borra los mensajes", icon: <Trash2Icon className="size-3.5" />, run: () => onClearChat?.() },
+    { id: "export-chat", group: "Chat", label: "Exportar chat", subtitle: "Descarga como Markdown", icon: <DownloadIcon className="size-3.5" />, run: () => onExportChat?.() },
+    { id: "mode-research", group: "Modo", label: "Modo investigación", subtitle: "Búsqueda web profunda", icon: <SearchIcon className="size-3.5" />, run: () => { if (!webSearchEnabled) onToggleWebSearch() } },
+    { id: "mode-fast", group: "Modo", label: "Modo rápido", subtitle: "Respuestas sin fuentes", icon: <ZapIcon className="size-3.5" />, run: () => { if (webSearchEnabled) onToggleWebSearch() } },
+    { id: "toggle-agent", group: "Modo", label: "Alternar modo agente", subtitle: "Chat ↔ Agente", icon: <ZapIcon className="size-3.5" />, run: () => dispatch({ type: "SET_MODE", payload: agentState.mode === "agent" ? "chat" : "agent" }) },
+    { id: "reindex", group: "Sistema", label: "Reindexar", subtitle: "Reindexa el catálogo", icon: <RefreshCwIcon className="size-3.5" />, run: () => onReindex?.() },
+  ]
+
+  const pickerItems: CompactPickerItem[] = React.useMemo(() => {
+    if (!trigger) return []
+
+    if (trigger === "/") {
+      const q = query.toLowerCase()
+      return slashCommands
+        .filter(c => !q || c.label.toLowerCase().includes(q) || c.subtitle.toLowerCase().includes(q))
+        .map(c => ({
+          id: c.id,
+          title: c.label,
+          subtitle: c.subtitle,
+          icon: c.icon,
+          group: c.group,
+          onPick: () => {
+            const newValue = value.replace(/(?:^|\s)\/\w*$/, "")
+            onValueChange(newValue)
+            closePicker()
+            c.run()
+          },
+        }))
+    }
+
+    // trigger === "@"
+    const q = query.toLowerCase()
+    const result: CompactPickerItem[] = []
+
+    for (const kind of mentionKindOrder) {
+      const sources = mentionSources.filter(s => s.kind === kind)
+      if (sources.length === 0) continue
+      for (const s of sources) {
+        if (q && !s.label.toLowerCase().includes(q) && !s.sublabel?.toLowerCase().includes(q)) continue
+        result.push({
+          id: `${s.kind}:${s.id}`,
+          title: s.label,
+          subtitle: s.sublabel,
+          icon: mentionIcons[s.kind] ?? <CpuIcon className="size-3.5" />,
+          group: mentionGroupLabels[s.kind] ?? s.kind,
+          onPick: () => {
+            setChips(prev => [
+              ...prev.filter(c => c.id !== s.id),
+              { id: s.id, kind: s.kind, label: s.label, color: s.color ?? "#8B5CF6" },
+            ])
+            const newValue = value.replace(/@\w*$/, `@${s.label} `)
+            onValueChange(newValue)
+            onMentionSelect?.(s)
+            closePicker()
+          },
+        })
       }
-      if (event.key === "Escape") {
-        setShowMentionPicker(false)
-        setSlashQuery(null)
+    }
+
+    return result
+  }, [trigger, query, mentionSources, value, closePicker, webSearchEnabled, onToggleContext, onToggleWebSearch, onNewChat, onClearChat, onExportChat, onReindex, dispatch, agentState.mode])
+
+  // Reset selected index when items change
+  React.useEffect(() => {
+    setSelectedPickerIndex(0)
+  }, [pickerItems.length])
+
+  // Compute pixel anchor for the compact picker portal (before paint)
+  React.useLayoutEffect(() => {
+    if (trigger !== null && textareaRef.current) {
+      try {
+        setAnchorPosition(estimateCursorPosition(textareaRef.current))
+      } catch {
+        const rect = textareaRef.current.getBoundingClientRect()
+        setAnchorPosition({ x: rect.left, y: rect.top })
+      }
+    }
+  }, [trigger, cursorPos])
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (trigger !== null) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault()
+        setSelectedPickerIndex(prev => Math.min(prev + 1, pickerItems.length - 1))
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault()
+        setSelectedPickerIndex(prev => Math.max(prev - 1, 0))
+      } else if (event.key === "Enter") {
+        event.preventDefault()
+        const item = pickerItems[selectedPickerIndex]
+        if (item) item.onPick()
+      } else if (event.key === "Escape") {
+        event.preventDefault()
+        closePicker()
         const newValue = value.replace(/(?:^|\s)[/@]\w*$/, "")
         if (newValue !== value) onValueChange(newValue)
       }
@@ -451,38 +517,23 @@ export function ChatComposer({
                 />
               )}
 
-              {/* Command Palette (/ popup) */}
-              {slashQuery !== null && (
-                <CommandPalette
-                  query={slashQuery}
-                  onSelect={handleSlashSelect}
-                  onClose={() => {
-                    setSlashQuery(null)
-                    const newValue = value.replace(/(?:^|\s)\/\w*$/, "")
-                    if (newValue !== value) onValueChange(newValue)
-                  }}
-                  containerRef={slashContainerRef}
-                />
-              )}
-
-              {/* Mention Picker (@ popup) */}
-              {showMentionPicker && (
-                <MentionPicker
-                  query={mentionQuery}
-                  sources={mentionSources}
-                  onSelect={handleMentionSelect}
-                  onClose={() => setShowMentionPicker(false)}
-                  containerRef={mentionContainerRef}
+              {/* Compact picker (@ or / portal) */}
+              {trigger !== null && pickerItems.length > 0 && (
+                <CompactPicker
+                  items={pickerItems}
+                  selectedIndex={selectedPickerIndex}
+                  anchorPosition={anchorPosition}
                 />
               )}
 
               <Textarea
+                ref={textareaRef}
                 rows={1}
                 value={value}
                 autoComplete="off"
                 className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
                 placeholder={agentState.mode === "agent" ? (agentState.status === "planning_review" ? "Revisa el plan pendiente antes de continuar..." : "Describe la tarea que quieres que realice el agente...") : "Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"}
-                onChange={(event) => handleComposerChange(event.target.value)}
+                onChange={(event) => handleComposerChange(event.target.value, event)}
                 onKeyDown={handleKeyDown}
               />
             </div>
