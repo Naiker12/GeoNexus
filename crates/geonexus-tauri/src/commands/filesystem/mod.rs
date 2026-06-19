@@ -1,3 +1,6 @@
+pub mod config;
+pub mod timeline;
+
 /// Desktop agent commands for local file system access.
 /// Provides folder picker, file watcher, and file upload capabilities.
 

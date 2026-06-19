@@ -2,9 +2,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::oneshot;
+use serde_json::json;
 use crate::commands::llm::run_sidecar;
+
+/// Obtiene el FilesystemMcpFacade del estado de Tauri.
+fn get_fs_facade<'a>(app: &'a AppHandle) -> State<'a, geonexus_fs_mcp::facade::FilesystemMcpFacade> {
+    app.state::<geonexus_fs_mcp::facade::FilesystemMcpFacade>()
+}
 
 pub struct PermissionState {
     pub pending: Arc<std::sync::Mutex<HashMap<String, oneshot::Sender<bool>>>>,
@@ -173,19 +179,29 @@ Requerimiento del usuario: {}
 }
 
 /// Obtiene el contexto del proyecto activo (archivos cargados) para pasarselo al LLM
-fn get_project_context_text(project_path: &str) -> String {
+/// Valida la ruta via FilesystemMcpFacade antes de leer.
+async fn get_project_context_text(
+    project_path: &str,
+    facade: &geonexus_fs_mcp::facade::FilesystemMcpFacade,
+) -> String {
     let base = PathBuf::from(project_path);
+
+    // Validate through facade's path guard
+    if facade.path_guard().validate(&base).is_err() {
+        return "Proyecto no accesible (fuera de las rutas permitidas).".to_string();
+    }
+
     if !base.exists() {
         return "Proyecto nuevo (sin archivos existentes).".to_string();
     }
 
     let mut parts = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(&base) {
-        for entry in entries.flatten() {
+    if let Ok(mut entries) = tokio::fs::read_dir(&base).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
             if path.is_file() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if let Ok(content) = std::fs::read_to_string(&path) {
+                    if let Ok(content) = tokio::fs::read_to_string(&path).await {
                         let preview: String = content.chars().take(200).collect();
                         parts.push(format!("--- {}:\n{}", name, preview));
                     }
@@ -202,12 +218,22 @@ fn get_project_context_text(project_path: &str) -> String {
 }
 
 /// Recolecta archivos de un directorio (recursivamente, ignorando carpetas no deseadas)
-fn collect_project_files(dir: &PathBuf, base_prefix: &str) -> Vec<ProjectFileEntry> {
+/// Valida cada subdirectorio via FilesystemMcpFacade antes de recorrerlo.
+async fn collect_project_files(
+    dir: &PathBuf,
+    base_prefix: &str,
+    facade: &geonexus_fs_mcp::facade::FilesystemMcpFacade,
+) -> Vec<ProjectFileEntry> {
     let mut entries = Vec::new();
     let ignore_dirs = ["node_modules", "target", ".git", "dist", "build", "chroma_db", ".venv", "__pycache__"];
 
-    if let Ok(read_dir) = std::fs::read_dir(dir) {
-        for entry in read_dir.flatten() {
+    // Validate this directory through facade path guard
+    if facade.path_guard().validate(dir).is_err() {
+        return entries;
+    }
+
+    if let Ok(mut read_dir) = tokio::fs::read_dir(dir).await {
+        while let Ok(Some(entry)) = read_dir.next_entry().await {
             let path = entry.path();
             let file_name = entry.file_name().to_string_lossy().to_string();
 
@@ -222,7 +248,7 @@ fn collect_project_files(dir: &PathBuf, base_prefix: &str) -> Vec<ProjectFileEnt
             };
 
             if path.is_dir() {
-                let children = collect_project_files(&path, &relative);
+                let children = Box::pin(collect_project_files(&path, &relative, facade)).await;
                 entries.push(ProjectFileEntry {
                     path: relative.clone(),
                     name: file_name,
@@ -233,7 +259,7 @@ fn collect_project_files(dir: &PathBuf, base_prefix: &str) -> Vec<ProjectFileEnt
                 });
                 entries.extend(children);
             } else if path.is_file() {
-                let content = std::fs::read_to_string(&path).unwrap_or_default();
+                let content = tokio::fs::read_to_string(&path).await.unwrap_or_default();
                 let ext = path.extension()
                     .and_then(|e| e.to_str())
                     .unwrap_or("")
@@ -418,8 +444,9 @@ pub async fn coding_agent_start_generation(
         "detail": format!("Usando LLM para generar plan...")
     })).map_err(|e| e.to_string())?;
 
-    // Obtener contexto del proyecto existente
-    let project_context = get_project_context_text(&project_path);
+    // Obtener contexto del proyecto existente (validado via facade)
+    let facade = get_fs_facade(&app);
+    let project_context = get_project_context_text(&project_path, &facade).await;
 
     // Llamar al LLM
     let plan = if provider_type.is_empty() || model.is_empty() || endpoint.is_empty() {
@@ -451,9 +478,10 @@ pub async fn coding_agent_start_generation(
         "detail": &project_path
     })).map_err(|e| e.to_string())?;
 
-    // Crear directorio si no existe
+    // Crear directorio via FilesystemMcpFacade
     let base_path = PathBuf::from(&project_path);
-    std::fs::create_dir_all(&base_path).map_err(|e| format!("Error creando directorio: {}", e))?;
+    facade.dispatch("createFolder", json!({"path": &project_path}), "coding-agent").await
+        .map_err(|e| format!("Error creando directorio: {}", e))?;
 
     app.emit("agent:file_created", serde_json::json!({
         "path": &project_path,
@@ -506,7 +534,9 @@ pub async fn coding_agent_approve_plan(
         .map_err(|e| format!("Error parseando plan: {}", e))?;
 
     let base_path = PathBuf::from(&project_path);
-    std::fs::create_dir_all(&base_path).map_err(|e| format!("Error creando directorio: {}", e))?;
+    let facade = get_fs_facade(&app);
+    facade.dispatch("createFolder", json!({"path": &project_path}), "coding-agent").await
+        .map_err(|e| format!("Error creando directorio: {}", e))?;
 
     let file_count = plan.files.len();
     app.emit("agent:step_start", serde_json::json!({
@@ -519,10 +549,15 @@ pub async fn coding_agent_approve_plan(
 
     for spec in &plan.files {
         let full_path = base_path.join(&spec.path);
+        let full_path_str = full_path.to_string_lossy().to_string();
 
-        // Crear directorio padre si es necesario
+        // Crear directorio padre via FilesystemMcpFacade si es necesario
         if let Some(parent) = full_path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| format!("Error creando directorio {}: {}", parent.display(), e))?;
+            let parent_str = parent.to_string_lossy().to_string();
+            if !parent.exists() {
+                facade.dispatch("createFolder", json!({"path": parent_str}), "coding-agent").await
+                    .map_err(|e| format!("Error creando directorio {}: {}", parent.display(), e))?;
+            }
         }
 
         // Si el archivo existe, pedir permiso y esperar respuesta
@@ -587,8 +622,9 @@ pub async fn coding_agent_approve_plan(
             tokio::time::sleep(std::time::Duration::from_millis(5)).await;
         }
 
-        // Escribir el archivo completo
-        std::fs::write(&full_path, &spec.content)
+        // Escribir el archivo via FilesystemMcpFacade (pasa por PathGuard, LevelGuard, RateGuard)
+        let tool = if full_path.exists() { "updateFile" } else { "createFile" };
+        facade.dispatch(tool, json!({"path": full_path_str, "content": &spec.content}), "coding-agent").await
             .map_err(|e| format!("Error escribiendo {}: {}", spec.path, e))?;
 
         let total_lines = content.lines().count();
@@ -662,7 +698,8 @@ pub async fn coding_agent_load_project(
         "text": format!("Analizando proyecto {}...", project_name)
     })).map_err(|e| e.to_string())?;
 
-    let files = collect_project_files(&project_path, "");
+    let facade = get_fs_facade(&app);
+    let files = collect_project_files(&project_path, "", &facade).await;
 
     // Contar lenguajes detectados
     let mut lang_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();

@@ -74,9 +74,11 @@ fn main() {
                 let mut config = geonexus_core::workers::WorkerConfig::default();
                 config.concurrency = 2;
                 config.poll_interval_ms = 2000;
+                let mut handlers = geonexus_core::workers::tasks::default_handlers();
+                handlers.push(Box::new(geonexus_fs_mcp::worker::FilesystemWorker));
                 let pool = geonexus_core::workers::WorkerPool::new(
                     db.clone(),
-                    geonexus_core::workers::tasks::default_handlers(),
+                    handlers,
                 )
                 .with_config(config)
                 .with_event_bus(event_bus.clone());
@@ -86,6 +88,15 @@ fn main() {
             }
             app.manage(PermissionState::new());
             app.manage(TelegramState::default());
+
+            // Inicializar FilesystemMcpFacade (Filesystem MCP security pipeline)
+            let fs_config = geonexus_fs_mcp::FilesystemConfig::load()
+                .unwrap_or_default();
+            let fs_facade = geonexus_fs_mcp::facade::FilesystemMcpFacade::new(
+                fs_config,
+                Some(event_bus.clone()),
+            );
+            app.manage(fs_facade);
 
             // Cargar o crear geonexus.config.toml
             let config_path = app_data_dir.join("geonexus.config.toml");
@@ -253,6 +264,11 @@ fn main() {
             commands::filesystem::read_file_base64,
             commands::filesystem::validate_folder_path,
             commands::filesystem::list_directory,
+            commands::filesystem::config::get_filesystem_config,
+            commands::filesystem::config::save_filesystem_config,
+            commands::filesystem::config::is_first_launch,
+            commands::filesystem::config::set_onboarding_completed,
+            commands::filesystem::timeline::get_filesystem_timeline,
 
             // Agents
             commands::agent::list_agents,
