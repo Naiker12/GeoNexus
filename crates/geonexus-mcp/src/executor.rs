@@ -1,78 +1,9 @@
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use sqlx::SqlitePool;
+use crate::handshake;
 use crate::types::*;
 use crate::registry;
-use reqwest::Client;
 use serde_json::{json, Value};
-
-fn build_client() -> reqwest::Result<Client> {
-    Client::builder()
-        .timeout(Duration::from_secs(30))
-        .build()
-}
-
-fn build_headers(request: reqwest::RequestBuilder, auth_token: Option<&str>) -> reqwest::RequestBuilder {
-    let request = request
-        .header("Content-Type", "application/json")
-        .header("Accept", "application/json, text/event-stream");
-    if let Some(token) = auth_token {
-        request.header("Authorization", format!("Bearer {}", token))
-    } else {
-        request
-    }
-}
-
-async fn do_handshake(client: &Client, endpoint: &str, auth_token: Option<&str>) -> Result<(), String> {
-    // PASO 1: initialize
-    let init_payload = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2025-06-18",
-            "capabilities": { "tools": {} },
-            "clientInfo": {
-                "name": "geonexus",
-                "version": "1.0.0"
-            }
-        }
-    });
-
-    let init_resp = build_headers(client.post(endpoint), auth_token)
-        .json(&init_payload)
-        .send()
-        .await
-        .map_err(|e| format!("Error en initialize: {e}"))?;
-
-    if !init_resp.status().is_success() {
-        return Err(format!("initialize falló: HTTP {}", init_resp.status()));
-    }
-
-    let init_body: Value = init_resp.json().await
-        .map_err(|e| format!("Respuesta initialize inválida: {e}"))?;
-
-    if let Some(err) = init_body.get("error") {
-        return Err(
-            err.get("message")
-                .and_then(|m| m.as_str())
-                .unwrap_or("Error JSON-RPC en initialize")
-                .to_string()
-        );
-    }
-
-    // PASO 2: notifications/initialized
-    let notif_payload = json!({
-        "jsonrpc": "2.0",
-        "method": "notifications/initialized"
-    });
-
-    let _ = build_headers(client.post(endpoint), auth_token)
-        .json(&notif_payload)
-        .send()
-        .await;
-
-    Ok(())
-}
 
 pub async fn call_tool(
     pool: &SqlitePool,
@@ -80,27 +11,48 @@ pub async fn call_tool(
     payload: CallToolPayload,
     auth_token: Option<&str>,
 ) -> Result<CallToolResult, String> {
-    let allowed = registry::check_allowlist(pool, &payload.server_id, &payload.tool)
+    let allowlist_rule = registry::check_allowlist(pool, &payload.server_id, &payload.tool)
         .await
         .map_err(|e| format!("Error checking allowlist: {e}"))?;
 
-    if !allowed {
-        return Ok(CallToolResult {
-            success: false,
-            data: None,
-            error: Some(format!("Tool '{}' blocked by allowlist", payload.tool)),
-            duration_ms: 0,
-        });
+    match &allowlist_rule {
+        Some(rule) if !rule.allowed => {
+            return Ok(CallToolResult {
+                success: false,
+                data: None,
+                error: Some(format!("Tool '{}' blocked by allowlist", payload.tool)),
+                duration_ms: 0,
+            });
+        }
+        Some(rule) => {
+            if let Some(limit_secs) = rule.rate_limit {
+                if let Some(ref last) = rule.last_called_at {
+                    if let Ok(elapsed) = elapsed_seconds_since(last) {
+                        if elapsed < limit_secs as u64 {
+                            return Ok(CallToolResult {
+                                success: false,
+                                data: None,
+                                error: Some(format!(
+                                    "Rate limit for '{}': {}s between calls, only {}s elapsed",
+                                    payload.tool, limit_secs, elapsed
+                                )),
+                                duration_ms: 0,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        None => {}
     }
 
     let endpoint = server_url.trim_end_matches('/');
     let start = Instant::now();
-    let client = build_client().map_err(|e| format!("Error creando cliente HTTP: {e}"))?;
+    let client = handshake::build_client(30)
+        .map_err(|e| format!("Error creando cliente HTTP: {e}"))?;
 
-    // Handshake completo (stateless — necesario por request)
-    do_handshake(&client, endpoint, auth_token).await?;
+    handshake::do_handshake(&client, endpoint, auth_token).await?;
 
-    // tools/call — la llamada real
     let call_payload = json!({
         "jsonrpc": "2.0",
         "id": 2,
@@ -111,7 +63,7 @@ pub async fn call_tool(
         }
     });
 
-    let response = build_headers(client.post(endpoint), auth_token)
+    let response = handshake::add_auth_header(client.post(endpoint), auth_token)
         .json(&call_payload)
         .send()
         .await;
@@ -193,5 +145,21 @@ pub async fn call_tool(
         payload.agent_name.as_deref(),
     ).await;
 
+    // Actualizar last_called_at para rate limiting
+    if let Some(rule) = allowlist_rule {
+        if rule.rate_limit.is_some() {
+            let _ = registry::update_last_called_at(pool, &payload.server_id, &payload.tool).await;
+        }
+    }
+
     Ok(result)
+}
+
+fn elapsed_seconds_since(dt: &str) -> Result<u64, String> {
+    // Formato esperado: "2026-06-19 12:34:56"
+    let now = chrono::Utc::now();
+    let last = chrono::NaiveDateTime::parse_from_str(dt, "%Y-%m-%d %H:%M:%S")
+        .map_err(|e| format!("Error parsing last_called_at '{dt}': {e}"))?
+        .and_utc();
+    Ok((now - last).num_seconds().max(0) as u64)
 }

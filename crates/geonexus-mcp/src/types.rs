@@ -8,6 +8,7 @@ pub struct AllowlistRule {
     pub tool_name: String,
     pub allowed: bool,
     pub rate_limit: Option<i32>,
+    pub last_called_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -17,6 +18,7 @@ pub struct AllowlistRuleRow {
     pub tool_name: String,
     pub allowed: i32,
     pub rate_limit: Option<i32>,
+    pub last_called_at: Option<String>,
 }
 
 impl From<AllowlistRuleRow> for AllowlistRule {
@@ -27,6 +29,7 @@ impl From<AllowlistRuleRow> for AllowlistRule {
             tool_name: row.tool_name,
             allowed: row.allowed != 0,
             rate_limit: row.rate_limit,
+            last_called_at: row.last_called_at,
         }
     }
 }

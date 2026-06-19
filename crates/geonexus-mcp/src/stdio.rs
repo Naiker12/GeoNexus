@@ -2,6 +2,7 @@ use std::time::Duration;
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
+use crate::handshake;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct StdioDiscoveredTool {
@@ -38,38 +39,18 @@ pub async fn discover_tools(
     let stdout = child.stdout.take().ok_or("No se pudo abrir stdout del proceso")?;
     let mut reader = BufReader::new(stdout);
 
-    // Step 1: initialize
-    let init_req = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2025-03-26",
-            "capabilities": { "tools": {} },
-            "clientInfo": {
-                "name": "geonexus-mcp-router",
-                "version": "1.0.0"
-            }
-        }
-    });
-
+    // Step 1: initialize (usando handshake compartido)
+    let init_req = handshake::build_initialize_payload();
     write_json_line(&mut stdin, &init_req).await?;
     let init_resp = read_json_line(&mut reader, timeout).await?;
     check_error(&init_resp)?;
 
     // Step 2: notification (no response)
-    let notif = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "notifications/initialized"
-    });
+    let notif = handshake::build_initialized_notification();
     write_json_line(&mut stdin, &notif).await?;
 
     // Step 3: tools/list
-    let tools_req = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": 2,
-        "method": "tools/list"
-    });
+    let tools_req = handshake::build_tools_list_payload(2);
     write_json_line(&mut stdin, &tools_req).await?;
     let tools_resp = read_json_line(&mut reader, timeout).await?;
     check_error(&tools_resp)?;
