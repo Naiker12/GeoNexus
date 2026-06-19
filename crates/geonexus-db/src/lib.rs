@@ -5,4 +5,6 @@ pub mod chat_repo;
 pub mod agent_repo;
 pub mod skills;
 pub mod task_queue;
+pub mod event_repo;
+pub mod artifact_repo;
 pub use data_repo::DataRepository;

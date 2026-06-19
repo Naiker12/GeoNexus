@@ -1,47 +1,25 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import {
-  AlertCircleIcon, BracesIcon, CheckCircle2Icon, FileUpIcon,
-  KeyRoundIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, SearchIcon, XIcon,
+  AlertCircleIcon, CheckCircle2Icon, Loader2Icon, PlugZapIcon, RefreshCwIcon, XIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/Input"
-import { Textarea } from "@/components/ui/Textarea"
 import { cn } from "@/lib/utils"
 import { pingMcpUrl, previewMcpTools } from "@/api/mcp"
 import type { PreviewTool } from "@/api/mcp"
 import type { McpServer, RegisterServerPayload } from "@/types/mcp"
-
-/** Tokeniza una línea de comandos respetando comillas dobles y simples. */
-function tokenizeArgs(input: string): string[] {
-  const args: string[] = []
-  let current = ""
-  let inSingle = false
-  let inDouble = false
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i]
-    if (ch === "'" && !inDouble) { inSingle = !inSingle; continue }
-    if (ch === '"' && !inSingle) { inDouble = !inDouble; continue }
-    if (ch === "\\" && i + 1 < input.length && (input[i + 1] === '"' || input[i + 1] === "'" || input[i + 1] === "\\")) {
-      current += input[++i]; continue
-    }
-    if (/\s/.test(ch) && !inSingle && !inDouble) {
-      if (current) { args.push(current); current = "" }
-      continue
-    }
-    current += ch
-  }
-  if (current) args.push(current)
-  return args
-}
+import { McpManualForm } from "./McpManualForm"
+import { McpJsonImport } from "./McpJsonImport"
+import { McpToolDiscovery } from "./McpToolDiscovery"
 
 interface McpRegisterDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onRegistered: (payload: RegisterServerPayload) => Promise<void>
   editing?: McpServer | null
+  prefill?: Partial<RegisterServerPayload> | null
 }
 
 const INITIAL: RegisterServerPayload = {
@@ -50,7 +28,7 @@ const INITIAL: RegisterServerPayload = {
   auto_approve: undefined, timeout_ms: undefined, tools: [],
 }
 
-export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, prefill }: McpRegisterDialogProps & { prefill?: Partial<RegisterServerPayload> | null }) {
+export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, prefill }: McpRegisterDialogProps) {
   const [form, setForm] = useState<RegisterServerPayload>(INITIAL)
   const [toolsRaw, setToolsRaw] = useState("")
   const [configJson, setConfigJson] = useState("")
@@ -76,32 +54,16 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
   useEffect(() => {
     if (editing) {
       setForm({
-        id: editing.id,
-        name: editing.name,
-        url: editing.url,
-        transport: editing.transport,
-        auth_type: editing.auth_type,
-        auth_ref: editing.auth_ref,
-        auth_token: editing.auth_token,
-        command: editing.command,
-        args: editing.args,
-        env: editing.env,
-        headers: editing.headers,
-        disabled: editing.disabled,
-        auto_approve: editing.auto_approve,
-        timeout_ms: editing.timeout_ms,
+        id: editing.id, name: editing.name, url: editing.url, transport: editing.transport,
+        auth_type: editing.auth_type, auth_ref: editing.auth_ref, auth_token: editing.auth_token,
+        command: editing.command, args: editing.args, env: editing.env, headers: editing.headers,
+        disabled: editing.disabled, auto_approve: editing.auto_approve, timeout_ms: editing.timeout_ms,
         tools: undefined,
       })
-      setToolsRaw("")
-      setConfigJson("")
-      setDiscoveredTools([])
-      setSelectedToolNames(new Set())
+      setToolsRaw(""); setConfigJson(""); setDiscoveredTools([]); setSelectedToolNames(new Set())
     } else if (prefill) {
       setForm({ ...INITIAL, ...prefill })
-      setToolsRaw("")
-      setConfigJson("")
-      setDiscoveredTools([])
-      setSelectedToolNames(new Set())
+      setToolsRaw(""); setConfigJson(""); setDiscoveredTools([]); setSelectedToolNames(new Set())
     } else {
       reset()
     }
@@ -280,116 +242,25 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
           )}
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <section className="grid gap-2.5 rounded-lg border border-border/80 bg-card/40 p-3 shadow-inner">
-              <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <KeyRoundIcon className="size-3.5 text-primary" />
-                Registro manual
-              </div>
-              <FormInput label="ID único" placeholder="qgis-mcp" value={form.id ?? ""} onChange={v => updateForm("id", v)} />
-              <FormInput label="Nombre" placeholder="QGIS MCP" value={form.name ?? ""} onChange={v => updateForm("name", v)} />
-              <div className="flex gap-2">
-                <select
-                  className="h-7 rounded-md border border-border/60 bg-background/50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={form.transport ?? "http"}
-                  onChange={e => updateForm("transport", e.target.value)}
-                >
-                  <option value="http">HTTP</option>
-                  <option value="stdio">STDIO</option>
-                </select>
-                <div className="flex-1">
-                  {form.transport === "http" ? (
-                    <FormInput label="URL" placeholder="localhost:3001 o https://..." value={form.url ?? ""} onChange={v => updateForm("url", v)} />
-                  ) : (
-                    <FormInput label="Comando" placeholder="npx, python, node..." value={form.command ?? ""} onChange={v => updateForm("command", v)} />
-                  )}
-                </div>
-              </div>
-              {form.transport === "stdio" && (
-                <FormInput label="Args (separados por espacio)" placeholder="-y @modelcontextprotocol/server-memory" value={form.args?.join(" ") ?? ""} onChange={v => updateForm("args", v ? tokenizeArgs(v) : undefined)} />
-              )}
-              <FormInput label="Auth ref (opcional)" placeholder="oauth:auto o env:MCP_TOKEN" value={form.auth_ref ?? ""} onChange={v => updateForm("auth_ref", v)} />
-              <FormInputPassword label="Token de autenticación (opcional)" placeholder="sbp_xxxx o api_key" value={form.auth_token ?? ""} onChange={v => updateForm("auth_token", v)} />
-              {(form.url ?? "").toLowerCase().includes("supabase.com/mcp") && (
-                <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 px-3 py-2.5 text-xs">
-                  <p className="font-semibold text-green-800 dark:text-green-300 mb-1">Supabase requiere autenticación</p>
-                  <ol className="list-decimal list-inside text-green-700 dark:text-green-400 space-y-0.5">
-                    <li>Ve a <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer" className="underline font-medium">supabase.com/dashboard/account/tokens</a></li>
-                    <li>Genera un <strong>Personal Access Token</strong></li>
-                    <li>Pégalo en <strong>Token de autenticación</strong> arriba</li>
-                  </ol>
-                  <p className="mt-1.5 text-green-600 dark:text-green-500">URL correcta: <code className="text-[10px] bg-green-100 dark:bg-green-900/50 px-1 rounded">https://mcp.supabase.com/mcp</code></p>
-                </div>
-              )}
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <FormInput label="Tools (opcional)" placeholder={discoveredTools.length === 0 ? "buffer, distance, load_layer" : "Selecciona abajo"} value={toolsRaw} onChange={setToolsRaw} />
-                </div>
-                <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0"
-                  onClick={handleDiscoverTools} disabled={discovering}>
-                  {discovering ? <Loader2Icon className="size-3 animate-spin" /> : <SearchIcon className="size-3" />}
-                  {discovering ? "Descubriendo..." : "Descubrir tools"}
-                </Button>
-              </div>
-              {discoveredTools.length > 0 && (
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 bg-background/30 p-2 space-y-1">
-                  {discoveredTools.map(tool => (
-                    <label key={tool.name} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-accent/50 cursor-pointer text-xs">
-                      <input type="checkbox" className="size-3.5 accent-primary"
-                        checked={selectedToolNames.has(tool.name)}
-                        onChange={() => toggleTool(tool.name)} />
-                      <span className="font-mono font-medium text-foreground">{tool.name}</span>
-                      {tool.description && (
-                        <span className="text-muted-foreground/60 truncate ml-1">{tool.description}</span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-              )}
-              {selectedToolNames.size > 0 && (
-                <p className="text-[10px] text-emerald-500 font-medium">
-                  {selectedToolNames.size} tool{selectedToolNames.size !== 1 ? "s" : ""} seleccionada{selectedToolNames.size !== 1 ? "s" : ""}
-                </p>
-              )}
-              <details className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5">
-                <summary className="cursor-pointer text-[10px] font-semibold text-muted-foreground">
-                  Cómo iniciar servidores locales
-                </summary>
-                <div className="mt-1.5 space-y-1.5 text-[10px] text-muted-foreground">
-                  <p><strong>Memory MCP</strong>: <code className="text-primary">npx @modelcontextprotocol/server-memory --port 3001</code></p>
-                  <p><strong>QGIS MCP</strong>: <code className="text-primary">pip install mcp-proxy && mcp-proxy --port 3002 -- python -m qgis_mcp</code></p>
-                  <p><strong>Supabase</strong>: genera PAT en <code className="text-primary">supabase.com/dashboard/account/tokens</code> y pégalo en "Token de autenticación"</p>
-                </div>
-              </details>
-            </section>
-
-            <section className="grid gap-2 rounded-lg border border-border/80 bg-card/40 p-3 shadow-inner">
-              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <span className="flex items-center gap-2">
-                  <BracesIcon className="size-3.5 text-primary" />
-                  Config por código (JSON)
-                </span>
-                {fileName && <span className="truncate max-w-[120px] text-[10px] text-emerald-500 font-normal normal-case">{fileName}</span>}
-              </div>
-              <Textarea
-                rows={9}
-                className="min-h-48 font-mono text-[11px] leading-relaxed bg-background/50 border-border/60"
-                value={configJson}
-                onChange={e => setConfigJson(e.target.value)}
-                placeholder='{"id": "mi-mcp", "name": "Mi MCP", "url": "localhost:7031"}'
+            <div className="grid gap-3">
+              <McpManualForm form={form} updateForm={updateForm} />
+              <McpToolDiscovery
+                toolsRaw={toolsRaw}
+                onToolsRawChange={setToolsRaw}
+                discoveredTools={discoveredTools}
+                selectedToolNames={selectedToolNames}
+                discovering={discovering}
+                onDiscover={handleDiscoverTools}
+                onToggleTool={toggleTool}
               />
-              <Button variant="outline" size="sm" className="h-8 text-xs cursor-pointer" asChild>
-                <label className="flex items-center justify-center gap-1.5 w-full">
-                  <FileUpIcon className="size-3.5" />
-                  Seleccionar archivo config
-                  <input className="sr-only" type="file" accept=".json,.yaml,.yml,.toml" onChange={handleFileChange} />
-                </label>
-              </Button>
-              {configJson && (
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={handleJsonLoad}>
-                  Aplicar JSON al formulario
-                </Button>
-              )}
-            </section>
+            </div>
+            <McpJsonImport
+              configJson={configJson}
+              fileName={fileName}
+              onConfigChange={setConfigJson}
+              onFileSelect={handleFileChange}
+              onApplyJson={handleJsonLoad}
+            />
           </div>
 
           <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-between">
@@ -413,33 +284,5 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
         </form>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function FormInput({ label, placeholder, value, onChange }: {
-  label: string; placeholder: string; value: string; onChange: (v: string) => void
-}) {
-  return (
-    <label className="grid gap-1 text-[11px] font-semibold text-muted-foreground">
-      {label}
-      <Input placeholder={placeholder} className="h-7 text-xs bg-background/50 border-border/60 placeholder:text-muted-foreground/50"
-        value={value} onChange={e => onChange(e.target.value)} />
-    </label>
-  )
-}
-
-function FormInputPassword({ label, placeholder, value, onChange }: {
-  label: string; placeholder: string; value: string; onChange: (v: string) => void
-}) {
-  return (
-    <label className="grid gap-1 text-[11px] font-semibold text-muted-foreground">
-      {label}
-      <input type="password" placeholder={placeholder}
-        className="h-7 w-full rounded-md border border-border/60 bg-background/50 px-2.5 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-        value={value} onChange={e => onChange(e.target.value)} />
-      <span className="text-[10px] font-normal text-muted-foreground/70">
-        Supabase: genera un PAT en supabase.com/dashboard/account/tokens
-      </span>
-    </label>
   )
 }

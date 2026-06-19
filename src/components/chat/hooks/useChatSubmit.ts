@@ -1,0 +1,259 @@
+import * as React from "react"
+import { sendMessage } from "@/api/chat"
+import { useToast } from "@/components/ui/toast"
+import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
+import type { Message, SendMessageInput, KnowledgeLookupStep, FileAttachment } from "@/types/chat"
+import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
+
+const DEFAULT_PROJECT_ID = "project-default"
+
+export function useChatSubmit(
+  conversationId: string | null,
+  setConversationId: (id: string | null) => void,
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>,
+  updateAssistantMessage: (id: string, updates: Partial<Message> | ((prev: Message) => Partial<Message>)) => void,
+  webSearchEnabled: boolean,
+  contextToggles: ContextToggle,
+  activeConnectorId: string | null,
+  allConnectors: AiConnector[],
+  resetPipeline: () => void,
+  markPipelineComplete: (totalDurationMs: number) => void,
+  stopResearchTimer: () => void,
+  startResearchTimer: (startTime: number, assistantMsgId: string, onTick: (elapsed: number) => void) => void,
+  setSessionSummary: (s: any) => void,
+  setLastIntent: (s: string | null) => void,
+) {
+  const { toast } = useToast()
+  const [pending, setPending] = React.useState(false)
+  const [loadingPhase, setLoadingPhase] = React.useState<ChatLoadingPhase>("idle")
+  const [error, setError] = React.useState<string | null>(null)
+  const submitTimeRef = React.useRef<number>(0)
+
+  const activeProvider = React.useMemo(() => {
+    if (!activeConnectorId) return null
+    const active = allConnectors.find(
+      (model) =>
+        model.id === activeConnectorId &&
+        model.model !== "Sin modelo" &&
+        model.endpoint !== "Sin endpoint",
+    )
+    if (!active) return null
+    return {
+      provider: active.id,
+      model: active.model,
+      endpoint: active.endpoint,
+    }
+  }, [activeConnectorId, allConnectors])
+
+  const submit = React.useCallback(
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[]) => {
+      const clean = content.trim()
+      if (!clean || pending) return
+      if (!activeProvider) {
+        setError("No hay proveedor LLM configurado")
+        toast({ title: "Sin proveedor", description: "Conecta un proveedor LLM en Contenedores IA para usar el chat", variant: "warning" })
+        return
+      }
+
+      submitTimeRef.current = Date.now()
+
+      const optimistic: Message = {
+        id: `local-${Date.now()}`,
+        conversation_id: conversationId ?? "pending",
+        role: "user",
+        content: clean,
+        provider: null,
+        model: null,
+        trace_id: "",
+        chunks_used: [],
+        nodes_used: [],
+        tool_calls: [],
+        sources: [],
+        created_at: Math.floor(Date.now() / 1000),
+        attachments,
+      }
+
+      setError(null)
+      setPending(true)
+      setLoadingPhase("classifying")
+      resetPipeline()
+      setMessages((current) => [...current, optimistic])
+
+      const assistantMsgId = `assistant-${Date.now()}`
+      const startTime = Date.now()
+
+      const placeholderAssistant: Message = {
+        id: assistantMsgId,
+        conversation_id: conversationId ?? "pending",
+        role: "assistant",
+        content: "",
+        provider: activeProvider.provider,
+        model: activeProvider.model,
+        trace_id: "",
+        chunks_used: [],
+        nodes_used: [],
+        tool_calls: [],
+        sources: [],
+        created_at: Math.floor(Date.now() / 1000),
+        ...(webSearchEnabled
+          ? {
+              isSearching: true,
+              currentSearchQuery: "Buscando fuentes...",
+              research_sources: [],
+              searchElapsedSeconds: 0,
+            }
+          : {}),
+      }
+      setMessages((current) => [...current, placeholderAssistant])
+
+      const searchingTimer = setTimeout(() => setLoadingPhase("searching"), 300)
+
+      const useContext = contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes
+
+      const active = allConnectors.find((c) => c.id === activeConnectorId)
+
+      const input: SendMessageInput = {
+        project_id: DEFAULT_PROJECT_ID,
+        conversation_id: conversationId,
+        content: clean,
+        provider: activeProvider.provider,
+        model: activeProvider.model,
+        endpoint: activeProvider.endpoint,
+        api_key: active?.apiKey ?? null,
+        use_context: useContext,
+        max_context_chunks: useContext ? 4 : 0,
+        web_search: webSearchEnabled || undefined,
+        mentioned_asset_ids: mentions?.assetIds.length ? mentions.assetIds : undefined,
+        mentioned_connector_ids: mentions?.connectorIds.length ? mentions.connectorIds : undefined,
+        mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
+        mentioned_agent_sources: mentions?.agentSources?.length ? mentions.agentSources : undefined,
+        skill_names: skillNames && skillNames.length > 0 ? skillNames : undefined,
+        attachments,
+      }
+
+      if (webSearchEnabled) {
+        startResearchTimer(startTime, assistantMsgId, (elapsed: number) => {
+          updateAssistantMessage(assistantMsgId, {
+            searchElapsedSeconds: elapsed,
+            currentSearchQuery: elapsed < 2
+              ? "Buscando fuentes..."
+              : elapsed < 4
+                ? "Analizando resultados..."
+                : "Generando respuesta...",
+          })
+        })
+      }
+
+      let unlisten: (() => void) | null = null
+
+      try {
+        const { listen } = await import("@tauri-apps/api/event")
+        unlisten = await listen<string>("llm:token", ({ payload }) => {
+          setMessages((current) =>
+            current.map((msg) =>
+              msg.id === assistantMsgId
+                ? { ...msg, content: msg.content + payload }
+                : msg,
+            ),
+          )
+        })
+
+        clearTimeout(searchingTimer)
+        setLoadingPhase("generating")
+
+        const response = await sendMessage(input)
+        unlisten?.()
+        setConversationId(response.conversation_id)
+        setLoadingPhase("extracting")
+        markPipelineComplete(Date.now() - submitTimeRef.current)
+        if (response.session_summary) setSessionSummary(response.session_summary)
+        if (response.intent) setLastIntent(response.intent)
+
+        stopResearchTimer()
+
+        const elapsed = (Date.now() - startTime) / 1000
+        const uniqueAssetsCount = new Set(response.chunks_used?.map((c) => c.asset_id).filter(Boolean) ?? []).size
+        const finalKnowledgeSteps: KnowledgeLookupStep[] | undefined = useContext
+          ? [
+              { source: "chromadb", label: "Búsqueda semántica", status: (response.chunks_used?.length ?? 0) > 0 ? "found" : "empty", count: response.chunks_used?.length ?? 0 },
+              { source: "graph", label: "Knowledge Graph", status: (response.message.nodes_used?.length ?? 0) > 0 ? "found" : "empty", count: response.message.nodes_used?.length ?? 0 },
+              { source: "assets", label: "Assets indexados", status: uniqueAssetsCount > 0 ? "found" : "empty", count: uniqueAssetsCount },
+            ]
+          : undefined
+
+        const baseUpdate: Record<string, unknown> = {
+          conversation_id: response.conversation_id,
+          stats: response.message.stats,
+          knowledgeSteps: finalKnowledgeSteps,
+          chunk_references: response.chunks_used,
+        }
+        if (webSearchEnabled) {
+          updateAssistantMessage(assistantMsgId, {
+            ...baseUpdate,
+            content: response.message.content,
+            isSearching: false,
+            currentSearchQuery: response.search_query ?? clean,
+            research_sources: response.research_sources ?? [],
+            searchElapsedSeconds: elapsed,
+          } as Partial<Message>)
+        } else {
+          updateAssistantMessage(assistantMsgId, baseUpdate as Partial<Message>)
+        }
+
+        toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el análisis", variant: "success" })
+      } catch (err) {
+        clearTimeout(searchingTimer)
+        stopResearchTimer()
+
+        setMessages((current) => current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId))
+
+        const message = typeof err === "string" ? err : err instanceof Error ? err.message : String(err)
+        setError(message)
+        toast({ title: "Error en el chat", description: message, variant: "error" })
+      } finally {
+        setPending(false)
+        setLoadingPhase("idle")
+      }
+    },
+    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage, resetPipeline, markPipelineComplete, stopResearchTimer, startResearchTimer, setConversationId, setMessages, setSessionSummary, setLastIntent, toast],
+  )
+
+  const regenerate = React.useCallback(() => {
+    setError(null)
+    let contentToSubmit = ""
+
+    setMessages((current) => {
+      let lastUserIdx = -1
+      for (let i = current.length - 1; i >= 0; i--) {
+        if (current[i].role === "user") {
+          lastUserIdx = i
+          contentToSubmit = current[i].content
+          break
+        }
+      }
+      if (lastUserIdx === -1) return current
+      return current.slice(0, lastUserIdx)
+    })
+
+    if (contentToSubmit) submit(contentToSubmit)
+  }, [submit, setMessages, setError])
+
+  const stop = React.useCallback(() => {
+    stopResearchTimer()
+    setPending(false)
+    setLoadingPhase("idle")
+  }, [stopResearchTimer])
+
+  return {
+    activeProvider,
+    pending,
+    loadingPhase,
+    error,
+    setError,
+    submit,
+    regenerate,
+    stop,
+    submitTimeRef,
+  }
+}

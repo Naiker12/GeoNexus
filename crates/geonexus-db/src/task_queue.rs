@@ -1,4 +1,4 @@
-use geonexus_core::agents::task::AgentTask;
+use geonexus_core::AgentTask;
 use sqlx::SqlitePool;
 use sqlx::Row;
 
