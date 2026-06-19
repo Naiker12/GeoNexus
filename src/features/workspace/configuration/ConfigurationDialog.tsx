@@ -9,6 +9,7 @@ import { AiEmbeddingsSection } from "@/features/workspace/configuration/sections
 import { ConnectorsSection } from "@/features/workspace/configuration/sections/ConnectorsSection"
 import { GisToolsPanel } from "@/features/workspace/configuration/sections/GisToolsPanel"
 import { LocalPathsSection } from "@/features/workspace/configuration/sections/LocalPathsSection"
+import { AllowedPathsSection } from "@/features/workspace/configuration/sections/AllowedPathsSection"
 import { MaintenanceSection } from "@/features/workspace/configuration/sections/MaintenanceSection"
 import { MapEnginesSection } from "@/features/workspace/configuration/sections/MapEnginesSection"
 import { McpRouterSection } from "@/features/workspace/configuration/sections/McpRouterSection"
@@ -30,6 +31,7 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   connectors: ConnectorsSection,
   memory: MemorySection,
   "local-paths": LocalPathsSection,
+  "allowed-paths": AllowedPathsSection,
   maintenance: MaintenanceSection,
   telegram: TelegramIntegrationPanel,
   "gis-tools": GisToolsPanel,

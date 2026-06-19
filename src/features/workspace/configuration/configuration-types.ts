@@ -8,6 +8,7 @@ export type ConfigSectionId =
   | "connectors"
   | "memory"
   | "local-paths"
+  | "allowed-paths"
   | "gis-tools"
   | "commands"
   | "maintenance"

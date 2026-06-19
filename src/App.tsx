@@ -5,6 +5,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toast"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
 import { UpdateBanner } from "@/components/UpdateBanner"
+import { OnboardingWizard } from "@/features/workspace/onboarding/OnboardingWizard"
+import { useOnboarding } from "@/hooks/useOnboarding"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
 import type { ThemePreset } from "@/features/workspace/workspace-data"
@@ -44,6 +46,7 @@ export default function App() {
       return "geo-light"
     })
   const [configOpen, setConfigOpen] = React.useState(false)
+  const { loading, showWizard, completeOnboarding, dismissOnboarding } = useOnboarding()
   const activeRoute = useHashRoute()
 
   React.useEffect(() => {
@@ -88,6 +91,13 @@ export default function App() {
     </SidebarProvider>
       <Toaster position={toastPosition} />
       <TelegramBridgeMount />
+      {!loading && (
+        <OnboardingWizard
+          open={showWizard}
+          onComplete={completeOnboarding}
+          onDismiss={dismissOnboarding}
+        />
+      )}
     </NotificationSettingsProvider>
   )
 }

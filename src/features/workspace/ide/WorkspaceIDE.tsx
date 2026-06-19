@@ -5,9 +5,11 @@ import { PreviewPanel } from './PreviewPanel';
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { ReasoningTimeline } from './ReasoningTimeline';
 import { ThinkingPanel, type Task } from './ThinkingPanel';
+import { FilesystemTimeline } from './FilesystemTimeline';
 import { useReasoningTimeline } from './useReasoningTimeline';
+import { useFilesystemTimeline } from '@/hooks/useFilesystemTimeline';
 import { type FileNode, type Artifact, type WorkspaceState } from './ide-types';
-import { Layout, Eye, Code, Play, RotateCcw, MessageSquare } from 'lucide-react';
+import { Layout, Eye, Code, Play, RotateCcw, MessageSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -268,7 +270,9 @@ export function WorkspaceIDE() {
   });
 
   const { steps, isRunning, simulateTimeline } = useReasoningTimeline([]);
+  const { entries: fsEntries, clearEntries: clearFsEntries } = useFilesystemTimeline();
   const [showTimeline, setShowTimeline] = React.useState(true);
+  const [showFsTimeline, setShowFsTimeline] = React.useState(false);
   const [activeSidebar, setActiveSidebar] = React.useState<'chat' | 'artifacts'>('chat');
 
   // Estado para los tasks del ThinkingPanel
@@ -364,6 +368,15 @@ export function WorkspaceIDE() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowFsTimeline(!showFsTimeline)}
+            className="relative"
+          >
+            <Activity className="size-4 mr-1" />
+            {showFsTimeline ? 'Ocultar FS' : 'FS Activity'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowTimeline(!showTimeline)}
           >
             {showTimeline ? <RotateCcw className="size-4 mr-1" /> : <MessageSquare className="size-4 mr-1" />}
@@ -382,7 +395,13 @@ export function WorkspaceIDE() {
       </div>
 
       {/* Main layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        <FilesystemTimeline
+          entries={fsEntries}
+          open={showFsTimeline}
+          onOpenChange={setShowFsTimeline}
+          onClear={clearFsEntries}
+        />
         {/* Left: Explorer + Timeline */}
         <div className="flex flex-col w-80 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
           {/* Timeline Toggle */}
