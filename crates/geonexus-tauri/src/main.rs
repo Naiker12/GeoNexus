@@ -60,7 +60,7 @@ fn main() {
             std::env::set_var("GEONEXUS_DB_PATH", &db_path_str);
 
             // Crear el Event Bus del sistema
-            let event_bus = EventBus::default();
+            let event_bus = EventBus::new(db.clone());
 
             // Gestionar el estado global unificado de la aplicación
             let app_handle = app.handle().clone();
@@ -71,19 +71,29 @@ fn main() {
 
             // Iniciar Worker Pool (tokio background workers)
             {
-                let mut config = geonexus_core::workers::WorkerConfig::default();
-                config.concurrency = 2;
-                config.poll_interval_ms = 2000;
+                let config = geonexus_core::workers::WorkerConfig {
+                    concurrency: 2,
+                    poll_interval_ms: 2000,
+                };
                 let mut handlers = geonexus_core::workers::tasks::default_handlers();
                 handlers.push(Box::new(geonexus_fs_mcp::worker::FilesystemWorker));
-                let pool = geonexus_core::workers::WorkerPool::new(
-                    db.clone(),
-                    handlers,
-                )
-                .with_config(config)
-                .with_event_bus(event_bus.clone());
-                tauri::async_runtime::spawn(async move {
-                    pool.start().await;
+                let pool_db = db.clone();
+                let pool_bus = event_bus.clone();
+                std::thread::spawn(move || {
+                    let rt = tokio::runtime::Builder::new_multi_thread()
+                        .enable_all()
+                        .worker_threads(2)
+                        .build()
+                        .expect("failed to create worker tokio runtime");
+                    rt.block_on(async move {
+                        let pool = geonexus_core::workers::WorkerPool::new(
+                            pool_db,
+                            handlers,
+                        )
+                        .with_config(config)
+                        .with_event_bus(pool_bus);
+                        pool.start().await;
+                    });
                 });
             }
             app.manage(PermissionState::new());
@@ -346,9 +356,11 @@ fn main() {
             commands::events::list_events,
             commands::events::count_events,
             commands::events::list_artifacts,
-            commands::events::list_artifact_summaries,
-            commands::events::get_artifact,
+            commands::events::open_artifact,
+            commands::events::get_artifact_content,
             commands::events::delete_artifact,
+            commands::events::subscribe_events,
+            commands::events::list_geo_events,
 
             // Secure Store (P0)
             commands::secure::set_secure,

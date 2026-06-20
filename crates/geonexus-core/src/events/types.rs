@@ -73,32 +73,75 @@ impl BusEvent {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Artifact {
-    pub id: String,
-    pub name: String,
-    pub artifact_type: String,
-    pub content: String,
-    pub path: String,
-    pub language: Option<String>,
-    pub description: Option<String>,
-    pub line_count: i32,
-    pub status: String,
-    pub conversation_id: Option<String>,
-    pub created_at: i64,
-    pub updated_at: i64,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ArtifactType {
+    Code,       // código generado
+    Report,     // reporte markdown/PDF
+    Map,        // GeoJSON, shapefile, mapa renderizado
+    Dashboard,  // componente React generado
+    GeoJson,    // datos geoespaciales
+    Pdf,
+    Csv,
+    Image,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ArtifactSummary {
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct Artifact {
     pub id: String,
+    pub session_id: String,
     pub name: String,
-    pub artifact_type: String,
-    pub path: String,
-    pub description: Option<String>,
-    pub line_count: i32,
-    pub status: String,
+    pub artifact_type: ArtifactType,
+    pub path: Option<String>,      // ruta en filesystem si aplica
+    pub content: Option<String>,   // contenido inline si es pequeño
+    pub metadata: serde_json::Value,
     pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeoEvent {
+    pub id: String,           // UUID v4
+    pub session_id: String,   // conversación activa
+    pub timestamp: i64,       // unix ms
+    pub event_type: EventType,
+    pub payload: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EventType {
+    // Pipeline
+    PipelineStarted,
+    PipelineCompleted,
+    PipelineFailed,
+    
+    // Workers
+    WorkerStarted,     // payload: { worker: "discovery", task: "..." }
+    WorkerCompleted,   // payload: { worker, duration_ms, result_summary }
+    WorkerFailed,      // payload: { worker, error }
+    
+    // Connectors  
+    ConnectorUsed,     // payload: { connector: "onedrive", action: "search", result_count }
+    
+    // MCP
+    McpCalled,         // payload: { server, tool, duration_ms }
+    McpFailed,         // payload: { server, tool, error }
+    
+    // Artifacts
+    ArtifactCreated,   // payload: { artifact_id, name, type }
+    
+    // Memory
+    MemoryQueried,     // payload: { scope: "project", chunks_found }
+    MemoryUpdated,
+    
+    // Telegram
+    TelegramMessageReceived,
+    TelegramMessageSent,
+    
+    // Tokens (streaming)
+    LlmToken,         // payload: { token } — alta frecuencia, no persiste en SQLite
+    LlmDone,          // payload: { total_tokens, duration_ms }
+    LlmToolCall,      // payload: { tool_name, args }
 }
 
 #[cfg(test)]
@@ -147,39 +190,5 @@ mod tests {
             .with_conversation("conv-123");
         assert_eq!(event.conversation_id, Some("conv-123".into()));
     }
-
-    #[test]
-    fn test_artifact_has_all_fields() {
-        let a = Artifact {
-            id: "a1".into(),
-            name: "main.rs".into(),
-            artifact_type: "code".into(),
-            content: "fn main() {}".into(),
-            path: "/src/main.rs".into(),
-            language: Some("rust".into()),
-            description: None,
-            line_count: 1,
-            status: "draft".into(),
-            conversation_id: None,
-            created_at: 100,
-            updated_at: 100,
-        };
-        assert_eq!(a.artifact_type, "code");
-        assert_eq!(a.language, Some("rust".into()));
-    }
-
-    #[test]
-    fn test_artifact_summary_omits_content() {
-        let s = ArtifactSummary {
-            id: "a1".into(),
-            name: "main.rs".into(),
-            artifact_type: "code".into(),
-            path: "/src/main.rs".into(),
-            description: None,
-            line_count: 1,
-            status: "draft".into(),
-            created_at: 100,
-        };
-        assert_eq!(s.name, "main.rs");
-    }
 }
+

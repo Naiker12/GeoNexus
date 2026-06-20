@@ -123,3 +123,22 @@ pub async fn get_me(client: &Client, token: &str) -> Result<User, String> {
     
     Ok(get_me_response.result)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_markdown_v2_normal() {
+        let input = "Hello_World! This is *bold* and .dot.";
+        let expected = "Hello\\_World\\! This is \\*bold\\* and \\.dot\\.";
+        assert_eq!(escape_markdown_v2(input), expected);
+    }
+
+    #[test]
+    fn test_escape_markdown_v2_code_block() {
+        let input = "Some text\n```rust\nlet x = 1 + 2;\n```\nOutside *bold*";
+        let expected = "Some text\n```rust\nlet x = 1 + 2;\n```\nOutside \\*bold\\*";
+        assert_eq!(escape_markdown_v2(input), expected);
+    }
+}

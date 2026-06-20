@@ -17,8 +17,8 @@ import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 import {
   listArtifacts,
-  listArtifactSummaries,
-  getArtifact,
+  openArtifact,
+  getArtifactContent,
   deleteArtifact,
   listEvents,
   countEvents,
@@ -30,43 +30,42 @@ describe("events API", () => {
   describe("listArtifacts", () => {
     it("calls invoke with correct args", async () => {
       vi.mocked(invoke).mockResolvedValueOnce([{ id: "a1", name: "test" }])
-      const result = await listArtifacts("conv-1", 10, 0)
+      const result = await listArtifacts("conv-1")
       expect(invoke).toHaveBeenCalledWith("list_artifacts", {
-        conversationId: "conv-1", limit: 10, offset: 0,
+        sessionId: "conv-1",
       })
       expect(result).toHaveLength(1)
     })
 
     it("returns empty array fallback", async () => {
       vi.mocked(invoke).mockRejectedValueOnce(new Error("no tauri"))
-      const result = await listArtifacts()
+      const result = await listArtifacts("conv-1")
       expect(result).toEqual([])
     })
   })
 
-  describe("listArtifactSummaries", () => {
+  describe("openArtifact", () => {
     it("calls invoke with correct args", async () => {
-      vi.mocked(invoke).mockResolvedValueOnce([{ id: "a1", name: "test" }])
-      const result = await listArtifactSummaries("conv-1")
-      expect(invoke).toHaveBeenCalledWith("list_artifact_summaries", {
-        conversationId: "conv-1",
+      vi.mocked(invoke).mockResolvedValueOnce(undefined)
+      await openArtifact("a1")
+      expect(invoke).toHaveBeenCalledWith("open_artifact", {
+        artifactId: "a1",
       })
-      expect(result).toHaveLength(1)
     })
   })
 
-  describe("getArtifact", () => {
-    it("calls invoke with id", async () => {
-      vi.mocked(invoke).mockResolvedValueOnce({ id: "a1", content: "abc" })
-      const result = await getArtifact("a1")
-      expect(invoke).toHaveBeenCalledWith("get_artifact", { id: "a1" })
-      expect(result).not.toBeNull()
+  describe("getArtifactContent", () => {
+    it("calls invoke with artifactId", async () => {
+      vi.mocked(invoke).mockResolvedValueOnce("some-content")
+      const result = await getArtifactContent("a1")
+      expect(invoke).toHaveBeenCalledWith("get_artifact_content", { artifactId: "a1" })
+      expect(result).toBe("some-content")
     })
 
-    it("returns null fallback", async () => {
+    it("returns empty string fallback", async () => {
       vi.mocked(invoke).mockRejectedValueOnce(new Error("no tauri"))
-      const result = await getArtifact("a1")
-      expect(result).toBeNull()
+      const result = await getArtifactContent("a1")
+      expect(result).toBe("")
     })
   })
 

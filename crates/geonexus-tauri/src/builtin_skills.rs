@@ -8,7 +8,6 @@ version: 1.0.0
 author: Code Clean / GeoNexus
 category: gis
 tags: [POT, PBOT, EOT, plan-ordenamiento, usos-suelo, colombia, norma-urbana, aprovechamiento, zonificacion]
-mcp-servers: [memory-mcp, qgis-mcp]
 ---
 
 # POT Analyzer
@@ -26,9 +25,8 @@ uso de suelo, zonificación, norma urbana, aprovechamiento, área de actividad,
 ## Protocolo de análisis
 
 ### Paso 1 — Identificar el documento
-1. Confirmar municipio y año de vigencia
-2. Buscar en fuentes disponibles (@onedrive, @filesystem, @memory)
-3. Si no se encuentra, preguntar al usuario
+ 1. Confirmar municipio y año de vigencia
+ 2. Si no se encuentra, preguntar al usuario
 
 ### Paso 2 — Estructura a extraer
 - Clasificación del suelo (urbano, rural, expansión)
@@ -40,10 +38,7 @@ uso de suelo, zonificación, norma urbana, aprovechamiento, área de actividad,
 - Afectaciones (vías, rondas hídricas, riesgo)
 - Cesiones tipo A y B
 
-### Paso 3 — Consultar Memory MCP
-query_pot(question="[pregunta específica]", zone_id="[zona si la hay]")
-
-### Paso 4 — Formato de respuesta obligatorio
+### Paso 3 — Formato de respuesta obligatorio
 1. Resumen ejecutivo (2-3 párrafos)
 2. Clasificación del suelo (tabla)
 3. Norma urbanística (tabla)

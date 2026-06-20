@@ -37,27 +37,18 @@ export interface BusEvent {
 
 export interface Artifact {
   id: string
+  session_id: string
   name: string
-  artifact_type: string
-  content: string
-  path: string
-  language: string | null
-  description: string | null
-  line_count: number
-  status: string
-  conversation_id: string | null
-  created_at: number
-  updated_at: number
-}
-
-export interface ArtifactSummary {
-  id: string
-  name: string
-  artifact_type: string
-  path: string
-  description: string | null
-  line_count: number
-  status: string
+  artifact_type: "code" | "report" | "map" | "dashboard" | "geo_json" | "pdf" | "csv" | "image"
+  path: string | null
+  content: string | null
+  metadata: {
+    language?: string
+    description?: string
+    line_count?: number
+    status?: string
+    [key: string]: any
+  }
   created_at: number
 }
 
@@ -87,16 +78,16 @@ async function subscribeToTauriEvent(eventName: string, callback: (data: any) =>
 
 // --- Artifact API ---
 
-export function listArtifacts(conversationId?: string, limit = 50, offset = 0): Promise<Artifact[]> {
-  return invokeOrFallback("list_artifacts", { conversationId, limit, offset }, [])
+export function listArtifacts(sessionId: string): Promise<Artifact[]> {
+  return invokeOrFallback("list_artifacts", { sessionId }, [])
 }
 
-export function listArtifactSummaries(conversationId?: string): Promise<ArtifactSummary[]> {
-  return invokeOrFallback("list_artifact_summaries", { conversationId }, [])
+export function openArtifact(artifactId: string): Promise<void> {
+  return invokeOrFallback("open_artifact", { artifactId }, undefined)
 }
 
-export function getArtifact(id: string): Promise<Artifact | null> {
-  return invokeOrFallback("get_artifact", { id }, null)
+export function getArtifactContent(artifactId: string): Promise<string> {
+  return invokeOrFallback("get_artifact_content", { artifactId }, "")
 }
 
 export function deleteArtifact(id: string): Promise<boolean> {
@@ -112,3 +103,30 @@ export function listEvents(domain?: string, conversationId?: string, limit = 50,
 export function countEvents(domain?: string, conversationId?: string): Promise<number> {
   return invokeOrFallback("count_events", { domain, conversationId }, 0)
 }
+
+// --- Geo Event API (F3) ---
+
+export interface GeoEvent {
+  id: string
+  session_id: string
+  timestamp: number
+  event_type: string
+  payload: any
+}
+
+export function subscribeEvents(
+  sessionId: string,
+  callback: (event: GeoEvent) => void,
+): Promise<() => void> {
+  invokeOrFallback("subscribe_events", { sessionId }, null)
+  return subscribeToTauriEvent("geo:event", callback)
+}
+
+export function listGeoEvents(
+  sessionId: string,
+  limit = 100,
+  offset = 0,
+): Promise<GeoEvent[]> {
+  return invokeOrFallback("list_geo_events", { sessionId, limit, offset }, [])
+}
+

@@ -3,7 +3,7 @@ use geonexus_core::events::{BusEvent, Domain};
 
 pub async fn insert_event(pool: &SqlitePool, event: &BusEvent) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "INSERT INTO events (id, domain, action, payload, source, timestamp, conversation_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+        "INSERT INTO legacy_events (id, domain, action, payload, source, timestamp, conversation_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
     )
     .bind(&event.id)
     .bind(event.domain.as_str())
@@ -25,11 +25,11 @@ pub async fn list_events(
     offset: i64,
 ) -> Result<Vec<BusEvent>, sqlx::Error> {
     let (sql, bind_value): (&str, Option<&str>) = if let Some(d) = domain {
-        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM events WHERE domain = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3", Some(d))
+        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM legacy_events WHERE domain = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3", Some(d))
     } else if let Some(cid) = conversation_id {
-        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM events WHERE conversation_id = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3", Some(cid))
+        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM legacy_events WHERE conversation_id = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3", Some(cid))
     } else {
-        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM events ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2", None)
+        ("SELECT id, domain, action, payload, source, timestamp, conversation_id FROM legacy_events ORDER BY timestamp DESC LIMIT ?1 OFFSET ?2", None)
     };
 
     let rows = if let Some(val) = bind_value {
@@ -57,21 +57,22 @@ pub async fn list_events(
 
 pub async fn count_events(pool: &SqlitePool, domain: Option<&str>, conversation_id: Option<&str>) -> Result<i64, sqlx::Error> {
     let row = if let Some(d) = domain {
-        sqlx::query("SELECT COUNT(*) as cnt FROM events WHERE domain = ?1").bind(d).fetch_one(pool).await?
+        sqlx::query("SELECT COUNT(*) as cnt FROM legacy_events WHERE domain = ?1").bind(d).fetch_one(pool).await?
     } else if let Some(cid) = conversation_id {
-        sqlx::query("SELECT COUNT(*) as cnt FROM events WHERE conversation_id = ?1").bind(cid).fetch_one(pool).await?
+        sqlx::query("SELECT COUNT(*) as cnt FROM legacy_events WHERE conversation_id = ?1").bind(cid).fetch_one(pool).await?
     } else {
-        sqlx::query("SELECT COUNT(*) as cnt FROM events").fetch_one(pool).await?
+        sqlx::query("SELECT COUNT(*) as cnt FROM legacy_events").fetch_one(pool).await?
     };
     Ok(row.get("cnt"))
 }
 
 pub async fn delete_old_events(pool: &SqlitePool, older_than_unix: i64) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query("DELETE FROM events WHERE timestamp < ?1")
+    let result = sqlx::query("DELETE FROM legacy_events WHERE timestamp < ?1")
         .bind(older_than_unix)
         .execute(pool).await?;
     Ok(result.rows_affected())
 }
+
 
 #[cfg(test)]
 mod tests {
