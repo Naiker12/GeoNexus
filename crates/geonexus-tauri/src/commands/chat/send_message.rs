@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use geonexus_core::chat::{
-    ChunkReference, Message, MessageRole, ReasoningStepEvent, ResearchSource,
+    ChunkReference, Message, MessageRole, ResearchSource,
     SendMessageInput, SendMessageResponse, SessionSummary,
 };
 use geonexus_core::reasoning::QueryIntent;
@@ -25,15 +25,71 @@ use crate::commands::graph::crud::bump_use_count;
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
 
-fn emit_reasoning_step(handle: Option<&tauri::AppHandle>, event: &ReasoningStepEvent) {
+fn emit_reasoning_start(handle: Option<&tauri::AppHandle>, session_id: &str) {
     if let Some(h) = handle {
-        let _ = h.emit("reasoning:step", event);
+        let _ = h.emit("reasoning:start", serde_json::json!({
+            "session_id": session_id,
+        }));
     }
 }
 
-fn emit_reasoning_done(handle: Option<&tauri::AppHandle>, summary: &SessionSummary) {
+fn now_unix_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+fn emit_reasoning_step(
+    handle: Option<&tauri::AppHandle>,
+    id: &str,
+    agent_name: &str,
+    agent_type: &str,
+    status: &str,
+    label: &str,
+    step_timers: &mut std::collections::HashMap<String, std::time::Instant>,
+) {
+    let now_unix = now_unix_ms();
+    let (duration_ms, completed_at) = if status == "success" || status == "failed" {
+        if let Some(start) = step_timers.remove(id) {
+            (Some(start.elapsed().as_millis() as u64), Some(now_unix))
+        } else {
+            (None, None)
+        }
+    } else {
+        step_timers.entry(id.to_string()).or_insert_with(std::time::Instant::now);
+        (None, None)
+    };
     if let Some(h) = handle {
-        let _ = h.emit("reasoning:done", summary);
+        let _ = h.emit("reasoning:step", serde_json::json!({
+            "id": id,
+            "agent_name": agent_name,
+            "agent_type": agent_type,
+            "status": status,
+            "label": label,
+            "sub_items": [],
+            "duration_ms": duration_ms,
+            "started_at": now_unix,
+            "completed_at": completed_at,
+        }));
+    }
+}
+
+fn emit_reasoning_sub_item(handle: Option<&tauri::AppHandle>, step_id: &str, text: &str) {
+    if let Some(h) = handle {
+        let _ = h.emit("reasoning:sub_item", serde_json::json!({
+            "step_id": step_id,
+            "text": text,
+        }));
+    }
+}
+
+fn emit_reasoning_end(handle: Option<&tauri::AppHandle>, session_id: &str, total_ms: u64) {
+    if let Some(h) = handle {
+        let _ = h.emit("reasoning:end", serde_json::json!({
+            "session_id": session_id,
+            "total_ms": total_ms,
+        }));
     }
 }
 
@@ -101,14 +157,14 @@ pub async fn send_message(
     let trace_id = Uuid::new_v4().to_string();
     let conversation_id = ensure_conversation(&state, &input).await?;
 
+    emit_reasoning_start(state.app_handle.as_ref(), &conversation_id);
+
+    let mut step_timers: std::collections::HashMap<String, std::time::Instant> = std::collections::HashMap::new();
+
     // === Intent Classification ===
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
-    let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::IntentClassified {
-        intent: intent_label.clone(),
-        confidence: 0.85,
-        detected_entities: vec![],
-    });
+    emit_reasoning_step(state.app_handle.as_ref(), "intent", "Main Agent", "intent", "success", &format!("Intent: {}", intent_label), &mut step_timers);
 
     // === Graph nodes + edges for enhanced context ===
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
@@ -142,10 +198,7 @@ pub async fn send_message(
     let (graph_context, graph_node_ids) = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
     if !graph_node_ids.is_empty() {
-        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GraphContextLoaded {
-            nodes_count: graph_node_ids.len(),
-            edges_count: graph_edges.len(),
-        });
+        emit_reasoning_step(state.app_handle.as_ref(), "graph_context", "Main Agent", "graph", "success", &format!("Loaded {} graph nodes", graph_node_ids.len()), &mut step_timers);
         let _ = bump_use_count(&state.db, &graph_node_ids).await;
     }
 
@@ -257,13 +310,7 @@ pub async fn send_message(
             .map(|(i, c)| format!("[{}] {}", i + 1, c.text))
             .collect::<Vec<_>>()
             .join("\n\n");
-        let top_relevance = chunks_used.iter().map(|c| c.relevance_score).fold(0.0_f32, f32::max);
-        let assets_queried: Vec<String> = chunks_used.iter().map(|c| c.asset_name.clone()).collect();
-        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::KnowledgeRetrieved {
-            chunks_found: recall_chunks.len(),
-            assets_queried,
-            top_relevance,
-        });
+        emit_reasoning_step(state.app_handle.as_ref(), "rag", "Main Agent", "rag", "success", &format!("Retrieved {} chunks from RAG", recall_chunks.len()), &mut step_timers);
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "knowledge_lookup",
             "event_id": rag_event_id,
@@ -392,10 +439,7 @@ pub async fn send_message(
         ]);
         match &result {
             Ok(srcs) => {
-                let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::WebSearching {
-                    query: search_query.clone(),
-                    sources_found: srcs.len(),
-                });
+                emit_reasoning_step(state.app_handle.as_ref(), "web_search", "Main Agent", "web", "success", &format!("Web search: {} sources", srcs.len()), &mut step_timers);
                 emit_stream_event(state.app_handle.as_ref(), &json!({
                     "type": "deep_research",
                     "event_id": web_event_id,
@@ -471,11 +515,7 @@ pub async fn send_message(
             }
         }
         if !contents.is_empty() {
-            let total_tokens: usize = contents.iter().map(|c| c.len() / 4).sum();
-            let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::SkillsInjected {
-                skill_names: input.skill_names.clone(),
-                total_tokens,
-            });
+            emit_reasoning_step(state.app_handle.as_ref(), "skills", "Main Agent", "skills", "success", &format!("Injected {} skills", input.skill_names.len()), &mut step_timers);
         }
         if contents.is_empty() {
             String::new()
@@ -520,14 +560,7 @@ pub async fn send_message(
             );
         }
 
-        let estimated_input_tokens = serde_json::to_string(&messages)
-            .map(|s| s.len() / 4)
-            .unwrap_or(0);
-        let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::GeneratingResponse {
-            model: input.model.clone(),
-            provider: input.provider.clone(),
-            estimated_tokens: Some(estimated_input_tokens),
-        });
+        emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "llm", "running", &format!("Generating with {}", input.model), &mut step_timers);
 
         let gen_event_id = format!("gen-{}", stream_event_id());
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
@@ -573,6 +606,7 @@ pub async fn send_message(
             &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
             state.app_handle.as_ref(),
             Some(&gen_event_id),
+            Some("generating"),
         );
 
         // Limpiar archivos temporales
@@ -665,12 +699,7 @@ pub async fn send_message(
 
                 emit_tool_result(state.app_handle.as_ref(), tool_name, true, t_dur);
 
-                let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::McpToolCalled {
-                    server_id: "filesystem".into(),
-                    tool_name: tool_name.to_string(),
-                    success: true,
-                    duration_ms: t_dur,
-                });
+                emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("Called tool: {} ({}ms)", tool_name, t_dur));
                 messages.push(json!({
                     "role": "tool",
                     "tool_call_id": tool_call_id,
@@ -686,6 +715,9 @@ pub async fn send_message(
             .content()
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
+
+        let response_token_count = (content.len() as f64 / 4.0).ceil() as u32;
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("{} tokens generados", response_token_count));
 
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "generating",
@@ -920,26 +952,11 @@ pub async fn send_message(
         last_topics: vec![],
     };
 
-    let _ = emit_reasoning_done(state.app_handle.as_ref(), &session_summary);
+    // Mark generating step as complete
+    emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "llm", "success", "Generation complete", &mut step_timers);
 
     let total_duration = chat_start.elapsed().as_millis() as u64;
-    let steps_executed: Vec<String> = {
-        let mut s = vec!["intent_classified".to_string()];
-        if !graph_nodes.is_empty() { s.push("graph_context_loaded".to_string()); }
-        if !recall_chunks.is_empty() { s.push("knowledge_retrieved".to_string()); }
-        if input.web_search { s.push("web_searching".to_string()); }
-        if !input.skill_names.is_empty() { s.push("skills_injected".to_string()); }
-        s.push("generating_response".to_string());
-        s.push("response_complete".to_string());
-        s
-    };
-
-    let _ = emit_reasoning_step(state.app_handle.as_ref(), &ReasoningStepEvent::ResponseComplete {
-        total_duration_ms: total_duration,
-        input_tokens: msg_stats.as_ref().map(|s| s.input_tokens as usize).unwrap_or(0),
-        output_tokens: msg_stats.as_ref().map(|s| s.output_tokens as usize).unwrap_or(0),
-        steps_executed,
-    });
+    emit_reasoning_end(state.app_handle.as_ref(), &conversation_id, total_duration);
 
     Ok(SendMessageResponse {
         conversation_id,

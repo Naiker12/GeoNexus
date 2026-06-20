@@ -53,6 +53,7 @@ pub fn run_sidecar_streaming(
     args: &[&str],
     app_handle: Option<&tauri::AppHandle>,
     gen_event_id: Option<&str>,
+    step_id: Option<&str>,
 ) -> Result<String, String> {
     let root_path = project_root();
     let python_exe = python_executable(&root_path);
@@ -88,6 +89,8 @@ pub fn run_sidecar_streaming(
 
     let reader = std::io::BufReader::new(stdout);
     let mut done_line = String::new();
+    let mut token_count: u32 = 0;
+    let mut last_subitem_emit = std::time::Instant::now();
 
     for line in reader.lines() {
         let line = line.map_err(|e| format!("Error leyendo stdout del sidecar: {e}"))?;
@@ -107,6 +110,16 @@ pub fn run_sidecar_streaming(
                                     "chunk_type": "text",
                                     "content": content,
                                 }));
+                            }
+                        }
+                        token_count += if content.len() < 4 { 1 } else { (content.len() as f64 / 4.0).ceil() as u32 };
+                        if let Some(sid) = step_id {
+                            if last_subitem_emit.elapsed().as_millis() > 500 {
+                                let _ = app_handle.map(|h| h.emit("reasoning:sub_item", json!({
+                                    "id": sid,
+                                    "text": format!("{} tokens generados...", token_count),
+                                })));
+                                last_subitem_emit = std::time::Instant::now();
                             }
                         }
                     }
@@ -203,6 +216,6 @@ impl PythonSidecar {
         app_handle: Option<&tauri::AppHandle>,
         gen_event_id: Option<&str>,
     ) -> Result<String, String> {
-        run_sidecar_streaming(args, app_handle, gen_event_id)
+        run_sidecar_streaming(args, app_handle, gen_event_id, None)
     }
 }

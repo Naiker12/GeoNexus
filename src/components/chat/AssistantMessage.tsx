@@ -7,9 +7,10 @@ import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
-import { TypingDots } from "@/components/chat/TypingDots"
-import { ThinkingPill, PipelineTrace, ThinkingBlock, ToolCallTrace } from "@/components/chat/reasoning"
-import type { PipelineState, ToolCallRecord } from "@/components/chat/reasoning"
+import { ThinkingCard } from "@/components/chat/ThinkingCard"
+
+import { ReasoningTimelineBlock } from "@/components/chat/ReasoningTimelineBlock"
+import { useReasoningTimeline } from "@/hooks/useReasoningTimeline"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
 import type { Message } from "@/types/chat"
@@ -18,37 +19,20 @@ interface AssistantMessageProps {
   message: Message
   isStreaming?: boolean
   isPending?: boolean
-  pipeline?: PipelineState | null
   onSendMessage?: (text: string) => void
   cumulativeContext?: { totalTokens: number; contextWindow: number }
-  thinkingText?: string
-  toolCalls?: ToolCallRecord[]
-}
-
-const toolCallFromMessage = (msg: Message): ToolCallRecord[] => {
-  if (!msg.tool_calls || msg.tool_calls.length === 0) return []
-  return (msg.tool_calls as Array<{ tool_name?: string; name?: string; args?: string; result?: string; duration_ms?: number; error?: string }>).map((tc, i) => ({
-    id: `msg-tc-${i}`,
-    toolName: tc.tool_name ?? tc.name ?? "unknown",
-    args: (() => {
-      try { return tc.args ? JSON.parse(tc.args) : {} } catch { return {} }
-    })(),
-    resultSummary: tc.result ?? undefined,
-    durationMs: tc.duration_ms ?? undefined,
-    status: (tc.error ? "error" : tc.result ? "done" : "pending") as ToolCallRecord["status"],
-  }))
 }
 
 export function AssistantMessage({
   message,
   isStreaming,
   isPending,
-  pipeline,
   onSendMessage,
   cumulativeContext,
-  thinkingText,
-  toolCalls,
 }: AssistantMessageProps) {
+  const { timeline, isStreaming: timelineStreaming, toggleCollapse } =
+    useReasoningTimeline(isStreaming ? message.conversation_id ?? null : null)
+
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
     : parseSuggestions(message.content)
@@ -58,8 +42,9 @@ export function AssistantMessage({
   const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
   const hasContent = message.content.length > 0
-  const msgToolCalls = toolCalls && toolCalls.length > 0 ? toolCalls : toolCallFromMessage(message)
-  const hasThinking = thinkingText && thinkingText.length > 0
+
+  const lastRunningStep = [...(timeline?.steps ?? [])].reverse().find(s => s.status === "running")
+  const showThinkingCard = (timelineStreaming || isStreaming) && !hasContent && !isPending
 
   return (
     <div className="group flex items-start gap-2 py-0.5">
@@ -73,16 +58,23 @@ export function AssistantMessage({
           </span>
         </div>
 
-        {/* Estado A: ThinkingPill — solo mientras espera, sin pipeline aún */}
-        {isPending && !pipeline && <ThinkingPill />}
+        {/* Reasoning Timeline */}
+        {(timeline || timelineStreaming) && (
+          <ReasoningTimelineBlock
+            timeline={timeline}
+            isStreaming={timelineStreaming}
+            onToggle={toggleCollapse}
+          />
+        )}
 
-        {/* Estados B+C: PipelineTrace — bloque unificado */}
-        {pipeline && <PipelineTrace pipeline={pipeline} />}
+        {/* ─── THINKING CARD ─── */}
+        <ThinkingCard
+          isVisible={showThinkingCard}
+          currentStepLabel={lastRunningStep?.label}
+        />
 
         {/* ─── RESPUESTA PRINCIPAL (siempre primero) ─── */}
-        {isStreaming && !hasContent ? (
-          <TypingDots />
-        ) : (
+        {showThinkingCard ? null : (
           <>
             {showResearch && (
               <DeepResearchPanel
@@ -120,39 +112,12 @@ export function AssistantMessage({
           </>
         )}
 
-        {/* Tool calls inline — bajo la respuesta */}
-        {msgToolCalls.length > 0 && (
-          <div className="mt-2 space-y-0.5">
-            {msgToolCalls.map((tc) => (
-              <ToolCallTrace key={tc.id} record={tc} />
-            ))}
-          </div>
-        )}
-
-        {/* ThinkingBlock — razonamiento LLM colapsado, bajo tool calls */}
-        {hasThinking && (
-          <ThinkingBlock
-            content={thinkingText}
-            tokenCount={(message as any).stats?.thinkingTokens}
-            isStreaming={isStreaming}
-          />
-        )}
-
         {/* Citas ChromaDB */}
         {message.sources && message.sources.length > 0 && (
           <SearchSourcesBlock sources={message.sources} />
         )}
         {message.chunk_references && message.chunk_references.length > 0 && (
           <CitationsBlock chunks={message.chunk_references} />
-        )}
-        {message.tool_calls && (message.tool_calls as Array<{ tool_name: string }>).length > 0 && (
-          <div className="mt-1 flex flex-col gap-1.5">
-            {(message.tool_calls as Array<{ tool_name: string; server_id?: string; args?: string; result?: string; duration_ms?: number }>).map((tc, i) => (
-              <div key={`${tc.tool_name}-${i}`} className="rounded border border-stone-200 bg-stone-50 px-3 py-2 text-[12px] text-stone-500">
-                {tc.tool_name}{(tc as any).result ? " ✓" : ""}
-              </div>
-            ))}
-          </div>
         )}
         <ActionSuggestions
           suggestions={suggestions}
