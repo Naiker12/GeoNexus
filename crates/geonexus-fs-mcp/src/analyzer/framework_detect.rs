@@ -36,7 +36,7 @@ pub enum ProjectType {
 }
 
 pub struct FrameworkDetect {
-    /// Map from filename → detection function name
+    #[allow(dead_code)]
     detectors: Vec<Detector>,
 }
 
@@ -308,6 +308,7 @@ fn extract_deps(v: &serde_json::Value, key: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+#[allow(dead_code)]
 fn has_any(deps: &[String], names: &[&str]) -> bool {
     deps.iter().any(|d| names.iter().any(|n| d.contains(n)))
 }
