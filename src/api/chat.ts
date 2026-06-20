@@ -69,25 +69,7 @@ export async function sendMessage(
   if (!input.model.trim()) throw new Error("model requerido")
   if (!input.endpoint.trim()) throw new Error("endpoint requerido")
 
-  return invokeOrFallback("send_message", { input }, {
-    conversation_id: "demo-conversation-id",
-    message: {
-      id: "demo-message-id",
-      conversation_id: "demo-conversation-id",
-      role: "assistant",
-      content: "Esto es una respuesta de demostración. Para usar la app completa, ejecútala en el runtime Tauri.",
-      provider: input.provider,
-      model: input.model,
-      created_at: Date.now(),
-      trace_id: "demo-trace-id",
-      chunks_used: [],
-      nodes_used: [],
-      tool_calls: [],
-      sources: []
-    },
-    chunks_used: [],
-    trace_id: "demo-trace-id"
-  })
+  return invokeRequired("send_message", { input })
 }
 
 export function deleteConversation(conversationId: string): Promise<void> {

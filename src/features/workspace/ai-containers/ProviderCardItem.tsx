@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 

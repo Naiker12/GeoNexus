@@ -4,14 +4,20 @@ import type {
   DataStoreMetrics,
   SyncEvent,
   DocumentChunk,
-  GraphNode,
-  GraphEdge,
-  BackendGraphNode,
-  BackendGraphEdge,
   DataLineage,
-  SearchGraphNodesResult,
 } from "@/types/data"
-import { defaultMetrics } from "@/features/workspace/data/data-data"
+import type { GraphNode, GraphEdge, GraphNodeKind, SearchGraphNodesResult } from "@/types/graph"
+const defaultMetrics: DataStoreMetrics = {
+  project_id: "project-default",
+  total_assets: 0,
+  assets_ready: 0,
+  assets_pending: 0,
+  assets_error: 0,
+  total_chunks: 0,
+  total_embeddings: 0,
+  total_graph_nodes: 0,
+  cache_size_bytes: 0,
+}
 
 export const DEFAULT_PROJECT_ID = "project-default"
 
@@ -131,14 +137,14 @@ export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]>
 }
 
 export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<GraphNode[]> {
-  const nodes = await invokeOrFallback<BackendGraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
+  const nodes = await invokeOrFallback<GraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
   if (nodes) {
     return nodes.map((n, idx) => ({
       id: n.id ?? `fallback-node-${idx}-${Date.now()}`,
       project_id: n.project_id ?? projectId,
       workspace_id: n.workspace_id ?? null,
-      label: n.name ?? "Nodo",
-      type: (n.kind as any) ?? "concepto",
+      label: (n as any).name ?? n.label ?? "Nodo",
+      kind: (n.kind ?? "concepto") as GraphNodeKind,
       description: n.description ?? "",
       evidence: n.evidence ?? "",
       x: n.x ?? 50,
@@ -172,14 +178,16 @@ export async function searchGraphNodes(
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
-    const edges = await invokeOrFallback<BackendGraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
+    const edges = await invokeOrFallback<GraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
     if (edges) {
         return edges.map((e, idx) => ({
-            id: e.id ?? `edge-${idx}-${Date.now()}`, // Add fallback ID
+            id: e.id ?? `edge-${idx}-${Date.now()}`,
+            project_id: e.project_id ?? projectId,
             source: e.source ?? "unknown",
             target: e.target ?? "unknown",
             relation: e.relation ?? "related",
-            strength: e.strength ?? 100
+            strength: e.strength ?? 100,
+            created_at: e.created_at ?? Date.now(),
         }))
     }
     return []
@@ -201,7 +209,7 @@ export async function getRecentGraphEvents(
   projectId = DEFAULT_PROJECT_ID,
   sourceEvent?: string,
   limit?: number,
-): Promise<BackendGraphNode[]> {
+): Promise<GraphNode[]> {
   return await invokeOrFallback("get_recent_graph_events", { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null }, [])
 }
 

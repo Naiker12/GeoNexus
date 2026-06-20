@@ -1,8 +1,4 @@
 export const MCP_SERVER_TEMPLATES: Record<string, object> = {
-  memory: {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-memory"]
-  },
   filesystem: {
     "command": "npx",
     "args": [
@@ -18,10 +14,6 @@ export const MCP_SERVER_TEMPLATES: Record<string, object> = {
       "Authorization": "Bearer TU_SUPABASE_PAT_AQUI"
     },
     "timeout": 10000
-  },
-  qgis: {
-    "command": "npx",
-    "args": ["mcp-stdio-http-proxy", "--url", "http://localhost:3002/mcp"]
   },
   github: {
     "command": "npx",
@@ -41,16 +33,6 @@ export const MCP_SERVER_TEMPLATES: Record<string, object> = {
 
 export const GEONEXUS_MCP_TEMPLATE = `{
   "mcpServers": {
-    "memory-mcp": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "disabled": false
-    },
-    "qgis-mcp": {
-      "command": "npx",
-      "args": ["mcp-stdio-http-proxy", "--url", "http://localhost:3002/mcp"],
-      "disabled": false
-    },
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp",

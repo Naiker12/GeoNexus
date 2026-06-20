@@ -4,9 +4,7 @@ import type { AgentSourceType } from "@/types/agents"
 const SOURCES: Array<{ id: AgentSourceType; icon: string; label: string; description: string }> = [
   { id: "onedrive",   icon: "☁️",  label: "OneDrive",   description: "Buscar en OneDrive" },
   { id: "filesystem", icon: "📁",  label: "Archivos",   description: "Carpetas locales" },
-  { id: "qgis",       icon: "🗺️", label: "QGIS",       description: "Capas y procesos QGIS" },
   { id: "arcgis",     icon: "🌐",  label: "ArcGIS",     description: "ArcGIS Online / Portal" },
-  { id: "memory",     icon: "🧠",  label: "Memoria",    description: "Memoria semántica (ChromaDB)" },
   { id: "graph",      icon: "🕸️", label: "Grafo",      description: "Knowledge Graph" },
   { id: "github",     icon: "🐙",  label: "GitHub",     description: "Repositorios Git" },
 ]
@@ -57,7 +55,7 @@ export function MentionPicker({
 }
 
 export function parseMentions(text: string): { cleaned: string; mentions: AgentSourceType[] } {
-  const regex = /@(onedrive|filesystem|qgis|arcgis|memory|graph|github)/gi
+  const regex = /@(onedrive|filesystem|arcgis|graph|github)/gi
   const mentions: AgentSourceType[] = []
   const cleaned = text.replace(regex, (_, m) => {
     mentions.push(m.toLowerCase() as AgentSourceType)

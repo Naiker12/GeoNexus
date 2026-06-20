@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 
 // Mock the ConnectorsContext
 vi.mock("@/contexts/ConnectorsContext", () => ({

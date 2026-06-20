@@ -57,12 +57,12 @@ export async function transcribeAudio(options: TranscribeOptions): Promise<strin
   if (!options.audioBase64.trim()) throw new Error('audioBase64 is required')
   if (!options.mimeType.trim()) throw new Error('mimeType is required')
 
-  const result = await invokeOrFallback<{ status: string; text: string; language?: string }>('audio_transcribe', {
+  const result = await invokeRequired<{ status: string; text: string; language?: string }>('audio_transcribe', {
     request: {
       audio_base64: options.audioBase64,
       mime_type: options.mimeType
     }
-  }, { status: 'ok', text: 'Transcripción de demostración (ejecuta la app en Tauri para grabar audio real)' })
+  })
 
   if (result.status !== 'ok') {
     throw new Error('Transcription failed')

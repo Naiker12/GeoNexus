@@ -64,8 +64,8 @@ export function McpManualForm({ form, updateForm }: McpManualFormProps) {
         <KeyRoundIcon className="size-3.5 text-primary" />
         Registro manual
       </div>
-      <FormInput label="ID único" placeholder="qgis-mcp" value={form.id ?? ""} onChange={v => updateForm("id", v)} />
-      <FormInput label="Nombre" placeholder="QGIS MCP" value={form.name ?? ""} onChange={v => updateForm("name", v)} />
+      <FormInput label="ID único" placeholder="mi-servidor" value={form.id ?? ""} onChange={v => updateForm("id", v)} />
+      <FormInput label="Nombre" placeholder="Mi servidor MCP" value={form.name ?? ""} onChange={v => updateForm("name", v)} />
       <div className="flex gap-2">
         <select
           className="h-7 rounded-md border border-border/60 bg-background/50 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
@@ -104,8 +104,6 @@ export function McpManualForm({ form, updateForm }: McpManualFormProps) {
           Cómo iniciar servidores locales
         </summary>
         <div className="mt-1.5 space-y-1.5 text-[10px] text-muted-foreground">
-          <p><strong>Memory MCP</strong>: <code className="text-primary">npx @modelcontextprotocol/server-memory --port 3001</code></p>
-          <p><strong>QGIS MCP</strong>: <code className="text-primary">pip install mcp-proxy && mcp-proxy --port 3002 -- python -m qgis_mcp</code></p>
           <p><strong>Supabase</strong>: genera PAT en <code className="text-primary">supabase.com/dashboard/account/tokens</code> y pégalo en "Token de autenticación"</p>
         </div>
       </details>

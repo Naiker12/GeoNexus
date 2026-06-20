@@ -9,7 +9,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { themePresets, type ThemePreset } from "@/features/workspace/workspace-data"
+import { themePresets } from "@/constants/workspace"
+import type { ThemePreset } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
 
 type ThemeSettingsDialogProps = {

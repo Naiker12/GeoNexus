@@ -33,8 +33,6 @@ export function AddConnectorDialog({
     if (!open) setQuery("")
   }, [open])
 
-  const customProvider =
-    providers.find((provider) => provider.id === "api-rest") ?? providers[0]
   const normalizedQuery = query.trim().toLowerCase()
   const filteredProviders = normalizedQuery
     ? providers.filter((provider) =>
@@ -84,15 +82,17 @@ export function AddConnectorDialog({
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <Button
-              variant="outline"
-              className="h-9 justify-start"
-              type="button"
-              onClick={() => selectProvider(customProvider)}
-            >
-              <WrenchIcon className="size-4" />
-              Agregar por mi cuenta
-            </Button>
+            {providers.length > 0 && (
+              <Button
+                variant="outline"
+                className="h-9 justify-start"
+                type="button"
+                onClick={() => selectProvider(providers[0])}
+              >
+                <WrenchIcon className="size-4" />
+                Agregar por mi cuenta
+              </Button>
+            )}
           </div>
 
           <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -143,7 +143,7 @@ function ConnectorChoiceCard({
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">{provider.name}</h3>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {provider.phase} / {provider.status}
+              {provider.status === "connected" ? "Conectado" : "Desconectado"}
             </p>
           </div>
         </div>

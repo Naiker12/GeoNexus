@@ -1,14 +1,12 @@
 import * as React from "react"
 import { X, Zap, FileWarning, FolderOpen, CheckCircle2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
 import { AgentFileTree } from "./AgentFileTree"
-import { AgentPreview } from "./AgentPreview"
 import { AgentProjectDropzone } from "./AgentProjectDropzone"
 
 type CodingAgentPanelProps = {
-  onApprovePlan: (plan: import("@/types/coding-agent").AgentPlan) => Promise<void>
+  onApprovePlan: (plan: import("@/types/coding-agent").CodingAgentPlan) => Promise<void>
   onRejectPlan: () => void
   onEditPlan: (instructions: string) => Promise<void>
   onResolvePermission: (requestId: string, granted: boolean) => Promise<void>
@@ -22,7 +20,6 @@ export function CodingAgentPanel(props: CodingAgentPanelProps) {
   const editPlan = props.onEditPlan
   const resolvePermission = props.onResolvePermission
   const reset = props.onReset
-  const [activeTab, setActiveTab] = React.useState("files")
   const [editInstructions, setEditInstructions] = React.useState("")
   const [showEditInput, setShowEditInput] = React.useState(false)
   const [selectedFiles, setSelectedFiles] = React.useState<Set<string>>(new Set())
@@ -236,25 +233,8 @@ export function CodingAgentPanel(props: CodingAgentPanelProps) {
         </div>
       )}
 
-      {/* Tabs — solo Archivos y Preview; el timeline está en el chat */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="flex-1 flex flex-col min-h-0"
-      >
-        <TabsList className="w-full justify-start rounded-none border-b bg-transparent px-4">
-          <TabsTrigger value="files" className="text-xs">
-            Archivos
-          </TabsTrigger>
-          <TabsTrigger value="preview" className="text-xs">
-            Preview
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent
-          value="files"
-          className="flex-1 min-h-0 overflow-y-auto m-0 p-0"
-        >
+      {/* Archivos generados */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
           {state.currentPlan && (
             <div className="border-b border-amber-200/30 bg-amber-50/30 px-4 py-2">
               <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-1">
@@ -285,42 +265,9 @@ export function CodingAgentPanel(props: CodingAgentPanelProps) {
               }
             />
           )}
-        </TabsContent>
+      </div>
 
-        <TabsContent
-          value="preview"
-          className="flex-1 overflow-hidden m-0 p-0"
-        >
-          <AgentPreview
-            previewUrl={state.previewUrl}
-            onRefresh={() => {
-              if (state.previewUrl) {
-                dispatch({ type: "SET_PREVIEW_URL", payload: null })
-                setTimeout(() => {
-                  dispatch({
-                    type: "SET_PREVIEW_URL",
-                    payload: state.previewUrl,
-                  })
-                }, 50)
-              }
-            }}
-          />
-        </TabsContent>
-      </Tabs>
 
-      {/* Cleanup report button */}
-      {state.cleanupReport && (
-        <div className="shrink-0 border-t bg-muted/20 px-4 py-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-            onClick={() => setActiveTab("files")}
-          >
-            Ver reporte de limpieza ({state.cleanupReport.removedFiles} archivos)
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

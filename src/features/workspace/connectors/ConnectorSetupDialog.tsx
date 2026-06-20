@@ -228,7 +228,6 @@ function ConnectorSummary({ provider }: { provider: ConnectorProvider }) {
         <InfoRow label="Autenticacion" value={provider.auth} />
         <InfoRow label="Scope base" value={provider.scope} />
         <InfoRow label="Endpoint" value={provider.endpoint} />
-        <InfoRow label="Roadmap" value={provider.phase} />
       </div>
     </div>
   )

@@ -222,10 +222,6 @@ export function useChatPipeline() {
   return {
     pipeline,
     setPipeline,
-    thinkingText,
-    setThinkingText,
-    toolCalls,
-    setToolCalls,
     resetPipeline,
     markPipelineComplete,
     pipelineStepStartRef,

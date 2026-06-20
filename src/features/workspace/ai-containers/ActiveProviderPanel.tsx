@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
 
 type ActiveProviderPanelProps = {

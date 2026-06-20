@@ -9,14 +9,13 @@ const sourceConfigMock: Record<SearchSource, SourceConfig> = {
   local: { color: "text-emerald-500" },
   chromadb: { color: "text-violet-500" },
   web: { color: "text-blue-500" },
-  qgis: { color: "text-lime-500" },
 }
 
 const allStatuses: SearchStepStatus[] = ["searching", "found", "empty", "error"]
 
 describe("SearchingIndicator source config", () => {
   it("has config for every known source type", () => {
-    const sources: SearchSource[] = ["onedrive", "local", "chromadb", "web", "qgis"]
+    const sources: SearchSource[] = ["onedrive", "local", "chromadb", "web"]
     for (const source of sources) {
       expect(sourceConfigMock[source]).toBeDefined()
       expect(sourceConfigMock[source].color).toMatch(/^text-/)
@@ -83,14 +82,14 @@ describe("SearchingIndicator step scenarios", () => {
   })
 
   it("all sources can be used in a step", () => {
-    const allSources: SearchSource[] = ["onedrive", "local", "chromadb", "web", "qgis"]
+    const allSources: SearchSource[] = ["onedrive", "local", "chromadb", "web"]
     const steps: SearchStep[] = allSources.map((source) => ({
       source,
       status: "found",
       label: source,
       count: 1,
     }))
-    expect(steps).toHaveLength(5)
+    expect(steps).toHaveLength(4)
     for (const step of steps) {
       expect(sourceConfigMock[step.source]).toBeDefined()
     }

@@ -1,7 +1,7 @@
 import { CheckIcon, LockIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import type { GisTool } from "@/features/workspace/workspace-data"
+import type { GisTool } from "@/types/workspace-types"
 
 type GisToolPanelProps = {
   tools: GisTool[]

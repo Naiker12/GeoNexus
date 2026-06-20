@@ -6,7 +6,6 @@ import { AssistantMessage } from "@/components/chat/AssistantMessage"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { CopyButton, UserActions } from "@/components/chat/MessageActions"
 import type { Message } from "@/types/chat"
-import type { PipelineState, ToolCallRecord } from "@/components/chat/reasoning"
 
 type ChatTranscriptProps = {
   messages: Message[]
@@ -17,9 +16,6 @@ type ChatTranscriptProps = {
   onEditLastUserMessage?: () => void
   onRegenerateLastMessage?: () => void
   useContext?: boolean
-  pipeline?: PipelineState | null
-  thinkingText?: string
-  toolCalls?: ToolCallRecord[]
 }
 
 export function ChatTranscript({
@@ -29,9 +25,6 @@ export function ChatTranscript({
   onSendMessage,
   onEditLastUserMessage,
   onRegenerateLastMessage,
-  pipeline,
-  thinkingText,
-  toolCalls,
 }: ChatTranscriptProps) {
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const containerRef = React.useRef<HTMLDivElement>(null)
@@ -155,11 +148,8 @@ export function ChatTranscript({
               message={message}
               isStreaming={index === lastAssistantIndex && pending}
               isPending={index === lastAssistantIndex && pending}
-              pipeline={index === lastAssistantIndex ? pipeline : null}
               onSendMessage={onSendMessage}
               cumulativeContext={{ totalTokens: runningContext, contextWindow: lastContextWindow }}
-              thinkingText={index === lastAssistantIndex ? thinkingText : undefined}
-              toolCalls={index === lastAssistantIndex ? toolCalls : undefined}
             />
           </div>
         ),

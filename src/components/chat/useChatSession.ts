@@ -1,5 +1,5 @@
 import * as React from "react"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message } from "@/types/chat"
@@ -27,7 +27,7 @@ export function useChatSession(
   } = useWebSearch()
 
   const {
-    pipeline, thinkingText, toolCalls,
+    pipeline,
     resetPipeline, markPipelineComplete,
   } = useChatPipeline()
 
@@ -91,8 +91,6 @@ export function useChatSession(
     sessionSummary,
     lastIntent,
     pipeline,
-    thinkingText,
-    toolCalls,
     submit: wrappedSubmit,
     regenerate,
     loadConversation,

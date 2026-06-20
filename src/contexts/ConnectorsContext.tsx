@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, createContext, useContext, type Dispatch, 
 import { CloudIcon } from "lucide-react"
 
 import { providerOptions } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import { setSecure, getSecure, deleteSecure } from "@/api/secure"
 
 const STORAGE_KEY = "geonexus.connectors"

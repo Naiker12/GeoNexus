@@ -11,11 +11,14 @@ interface ArtifactsPanelProps {
 
 function getArtifactIcon(type: Artifact["type"]) {
   const colors: Record<string, string> = {
-    component: "text-blue-500",
-    page: "text-green-500",
-    style: "text-pink-500",
-    config: "text-yellow-500",
-    util: "text-purple-500",
+    code: "text-blue-500",
+    dashboard: "text-green-500",
+    report: "text-pink-500",
+    map: "text-yellow-500",
+    geo_json: "text-purple-500",
+    csv: "text-cyan-500",
+    pdf: "text-red-500",
+    image: "text-indigo-500",
   }
   return <FileCode className={cn("size-4", colors[type] ?? "text-muted-foreground")} />
 }

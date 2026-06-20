@@ -1,62 +1,85 @@
-import { useEffect, useRef, useState, useCallback } from "react"
-import { subscribeToAllBusEvents, type BusEvent, type Artifact } from "@/api/events"
+import { useEffect, useRef, useState } from "react"
+import { subscribeEvents, listGeoEvents, type GeoEvent, type Artifact } from "@/api/events"
 
-export function useEventBus() {
-  const [latestEvent, setLatestEvent] = useState<BusEvent | null>(null)
-  const [events, setEvents] = useState<BusEvent[]>([])
+export function useEventBus(sessionId: string) {
+  const [events, setEvents] = useState<GeoEvent[]>([])
   const unlistenRef = useRef<() => void>()
 
   useEffect(() => {
-    subscribeToAllBusEvents((event) => {
-      setLatestEvent(event)
-      setEvents(prev => [event, ...prev].slice(0, 200))
+    if (!sessionId) {
+      setEvents([])
+      return
+    }
+
+    // Load initial events from SQLite DB
+    listGeoEvents(sessionId).then((existing) => {
+      setEvents(existing)
+    })
+
+    // Subscribe to new real-time events
+    subscribeEvents(sessionId, (event) => {
+      setEvents((prev) => {
+        // Dedup by event ID to prevent duplicates
+        if (prev.some((e) => e.id === event.id)) return prev
+        return [...prev, event]
+      })
     }).then((unlisten) => {
       unlistenRef.current = unlisten
     })
+
     return () => {
       unlistenRef.current?.()
     }
-  }, [])
+  }, [sessionId])
 
-  const clearEvents = useCallback(() => {
-    setEvents([])
-    setLatestEvent(null)
-  }, [])
+  return events
+}
 
-  return { latestEvent, events, clearEvents }
+import type { Artifact as IdeArtifact } from "@/features/workspace/ide/ide-types"
+
+function mapApiArtifactToIde(a: any): IdeArtifact {
+  return {
+    id: a.id,
+    name: a.name,
+    path: a.path || "",
+    type: a.artifact_type as IdeArtifact["type"],
+    description: a.metadata?.description || "",
+    lineCount: a.metadata?.line_count || 0,
+    status: (a.metadata?.status as IdeArtifact["status"]) || "done",
+    content: a.content || undefined,
+  }
 }
 
 export function useArtifactStream(conversationId?: string) {
-  const [artifacts, setArtifacts] = useState<Artifact[]>([])
+  const [artifacts, setArtifacts] = useState<IdeArtifact[]>([])
   const [loading, setLoading] = useState(true)
   const unlistenRef = useRef<() => void>()
 
   useEffect(() => {
-    import("@/api/events").then(({ listArtifacts, subscribeToAllBusEvents }) => {
-      listArtifacts(conversationId).then(setArtifacts).finally(() => setLoading(false))
+    if (!conversationId) {
+      setArtifacts([])
+      setLoading(false)
+      return
+    }
 
-      subscribeToAllBusEvents((event) => {
-        if (event.domain !== "artifact") return
-        setArtifacts(prev => {
-          if (event.action === "created" || event.action === "updated") {
-            const payload = event.payload as any
-            const idx = prev.findIndex(a => a.id === payload.id)
-            if (idx >= 0) {
-              const next = [...prev]
-              next[idx] = { ...next[idx], ...payload }
-              return next
-            }
-            return [{ ...payload } as Artifact, ...prev]
-          }
-          if (event.action === "deleted") {
-            return prev.filter(a => a.id !== (event.payload as any).id)
-          }
-          return prev
+    import("@/api/events").then(({ listArtifacts, subscribeEvents }) => {
+      listArtifacts(conversationId)
+        .then((items) => {
+          setArtifacts(items.map(mapApiArtifactToIde))
         })
+        .finally(() => setLoading(false))
+
+      subscribeEvents(conversationId, (event) => {
+        if (event.event_type === "artifact_created") {
+          listArtifacts(conversationId).then((items) => {
+            setArtifacts(items.map(mapApiArtifactToIde))
+          })
+        }
       }).then((unlisten) => {
         unlistenRef.current = unlisten
       })
     })
+
     return () => {
       unlistenRef.current?.()
     }
@@ -64,3 +87,4 @@ export function useArtifactStream(conversationId?: string) {
 
   return { artifacts, loading }
 }
+

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { sendMessage } from "@/api/chat"
 import { useToast } from "@/components/ui/toast"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { Message, SendMessageInput, KnowledgeLookupStep, FileAttachment } from "@/types/chat"
 import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"

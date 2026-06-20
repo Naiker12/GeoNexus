@@ -1,47 +1,9 @@
 import {
-  BrainCircuitIcon,
   DatabaseIcon,
   FolderCogIcon,
   KeyRoundIcon,
-  MapIcon,
   ServerIcon,
-  ShieldCheckIcon,
-  type LucideIcon,
 } from "lucide-react"
-
-export type SettingsSection = {
-  title: string
-  description: string
-  icon: LucideIcon
-  status: "Listo" | "Revisar" | "Local" | "Seguro"
-}
-
-export const settingsSections: SettingsSection[] = [
-  {
-    title: "Privacidad local",
-    description: "Datos, tokens y memoria bajo control del equipo.",
-    icon: ShieldCheckIcon,
-    status: "Seguro",
-  },
-  {
-    title: "Proveedores IA",
-    description: "Modelo activo, embeddings y API keys en keychain.",
-    icon: BrainCircuitIcon,
-    status: "Listo",
-  },
-  {
-    title: "Servidores MCP",
-    description: "Allowlist, ping, registry y rate limit.",
-    icon: ServerIcon,
-    status: "Revisar",
-  },
-  {
-    title: "Motor de mapa",
-    description: "MapLibre, ArcGIS, Leaflet o Deck.gl segun el caso.",
-    icon: MapIcon,
-    status: "Local",
-  },
-]
 
 export const localPaths = [
   {

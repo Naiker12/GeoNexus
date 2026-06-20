@@ -15,7 +15,7 @@ import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
 import { useCodingAgentEvents } from "@/hooks/useCodingAgent"
@@ -36,7 +36,6 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
   const { state: agentState } = useCodingAgent()
-  const agentActions = useCodingAgentEvents()
   const {
     activeProvider,
     conversationId,
@@ -53,8 +52,6 @@ export function ChatPanel(_props: ChatPanelProps) {
     sessionSummary,
     lastIntent,
     pipeline,
-    thinkingText,
-    toolCalls,
     submit,
     regenerate,
     loadConversation,
@@ -62,6 +59,8 @@ export function ChatPanel(_props: ChatPanelProps) {
     stop,
     addSystemMessage,
   } = useChatSession(activeConnectorId, connectors)
+
+  const agentActions = useCodingAgentEvents(conversationId || undefined)
 
   const handleNewConversation = React.useCallback(() => {
     newConversation()
@@ -299,9 +298,6 @@ export function ChatPanel(_props: ChatPanelProps) {
               webSearchEnabled={webSearchEnabled}
               onEditLastUserMessage={handleEditLastUserMessage}
               onRegenerateLastMessage={handleRegenerate}
-              pipeline={pipeline}
-              thinkingText={thinkingText}
-              toolCalls={toolCalls}
             />
             {agentState.clarifyingQuestions && clarifyingPrompt && (
               <ClarifyingQuestions

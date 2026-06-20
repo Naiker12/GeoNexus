@@ -1,10 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  ServerIcon,
-  Settings2Icon,
-} from "lucide-react"
+import { Settings2Icon } from "lucide-react"
 
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import {
@@ -16,19 +13,16 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { ThemeSettingsDialog } from "@/features/theme/ThemeSettingsDialog"
-import {
-  navigationItems,
-  recentProjects,
-  type ThemePreset,
-} from "@/features/workspace/workspace-data"
-import { CreateProjectDialog } from "@/features/workspace/projects/CreateProjectDialog"
-import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
+import { navigationItems } from "@/constants/workspace"
+import type { NavItem, ThemePreset } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
 
 const cleanSidebarButton =
@@ -41,6 +35,59 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   onOpenConfig: () => void
 }
 
+function NavItemButton({ item, activeRoute, depth = 0 }: { item: NavItem; activeRoute: string; depth?: number }) {
+  const [expanded, setExpanded] = React.useState(true)
+  const hasChildren = item.children && item.children.length > 0
+  const isActive = item.url ? isActiveRoute(activeRoute, item.url) : false
+
+  if (hasChildren) {
+    return (
+      <div>
+        <SidebarMenuButton
+          className={cleanSidebarButton}
+          onClick={() => setExpanded(!expanded)}
+          tooltip={item.title}
+        >
+          <item.icon className="size-4" />
+          <span className="truncate">{item.title}</span>
+        </SidebarMenuButton>
+        {expanded && (
+          <SidebarMenuSub>
+            {item.children!.map((child) => (
+              <SidebarMenuSubItem key={child.title}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={child.url ? isActiveRoute(activeRoute, child.url) : false}
+                  className="hover:bg-transparent hover:text-sidebar-foreground"
+                >
+                  <a href={child.url}>
+                    <child.icon className="size-3.5" />
+                    <span className="truncate">{child.title}</span>
+                  </a>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <SidebarMenuButton
+      asChild
+      isActive={isActive}
+      className={cleanSidebarButton}
+      tooltip={item.title}
+    >
+      <a href={item.url}>
+        <item.icon className="size-4" />
+        <span className="truncate">{item.title}</span>
+      </a>
+    </SidebarMenuButton>
+  )
+}
+
 export function AppSidebar({
   activeRoute,
   activeTheme,
@@ -48,7 +95,6 @@ export function AppSidebar({
   onOpenConfig,
   ...props
 }: AppSidebarProps) {
-  const { onlineCount } = useMcpServers()
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -76,24 +122,12 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Agentes</SidebarGroupLabel>
+          <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.filter((i) => i.title === "Chat IA" || i.title === "Mapa" || i.title === "Agentes").map((item) => (
+              {navigationItems.filter((i) => ["Chat", "Tareas", "Memoria"].includes(i.title)).map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActiveRoute(activeRoute, item.url)}
-                    className={cleanSidebarButton}
-                    tooltip={item.title}
-                  >
-                  <a
-                    href={item.url}
-                  >
-                    <item.icon className="size-4" />
-                    <span className="truncate">{item.title}</span>
-                  </a>
-                  </SidebarMenuButton>
+                  <NavItemButton item={item} activeRoute={activeRoute} />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -101,102 +135,21 @@ export function AppSidebar({
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Contenido</SidebarGroupLabel>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.filter((i) => i.title === "Documentos" || i.title === "Conocimiento" || i.title === "Datos").map((item) => (
+              {navigationItems.filter((i) => i.title === "Workspace").map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActiveRoute(activeRoute, item.url)}
-                    className={cleanSidebarButton}
-                    tooltip={item.title}
-                  >
-                  <a
-                    href={item.url}
-                  >
-                    <item.icon className="size-4" />
-                    <span className="truncate">{item.title}</span>
-                  </a>
-                  </SidebarMenuButton>
+                  <NavItemButton item={item} activeRoute={activeRoute} />
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Sistema</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.filter((i) => i.title === "Conectores" || i.title === "Uso" || i.title === "Skills").map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActiveRoute(activeRoute, item.url)}
-                    className={cleanSidebarButton}
-                    tooltip={item.title}
-                  >
-                  <a
-                    href={item.url}
-                  >
-                    <item.icon className="size-4" />
-                    <span className="truncate">{item.title}</span>
-                  </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Proyectos</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="space-y-1">
-              {recentProjects.map((project) => (
-                <a
-                  key={project.name}
-                  href="#project"
-                  className={cn(
-                    "block rounded-lg border border-sidebar-border bg-transparent p-3 text-sm transition-colors hover:border-sidebar-primary/40 hover:bg-transparent",
-                    project.active && "border-sidebar-primary/50"
-                  )}
-                >
-                  <span className="block truncate font-medium">
-                    {project.name}
-                  </span>
-                  <span className="mt-1 block text-xs text-sidebar-foreground/65">
-                    {project.layers} capas / {project.analyses} analisis
-                  </span>
-                </a>
-              ))}
-              <CreateProjectDialog />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className={cleanSidebarButton}
-              tooltip="Servidores MCP"
-            >
-              <a href="#mcp">
-                <ServerIcon className="size-4" />
-                <span>Servidores MCP</span>
-              </a>
-            </SidebarMenuButton>
-            {onlineCount > 0 && (
-              <SidebarMenuBadge className="bg-emerald-500/10 text-emerald-500">
-                {onlineCount}
-              </SidebarMenuBadge>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
         <ThemeSettingsDialog
           activeTheme={activeTheme}
           onThemeChange={onThemeChange}

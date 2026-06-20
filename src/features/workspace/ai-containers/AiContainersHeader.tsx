@@ -2,7 +2,7 @@ import { KeyRoundIcon } from "lucide-react"
 
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { Button } from "@/components/ui/Button"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 
 type AiContainersHeaderProps = {
   connectors: AiConnector[]

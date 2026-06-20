@@ -1,16 +1,14 @@
 import { useEffect } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
-import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
 import { ConfigurationDialog } from "@/features/workspace/configuration/ConfigurationDialog"
 import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
-import { DataPage } from "@/features/workspace/data/DataPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
-import { AgentsPage } from "@/features/workspace/agents/AgentsPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
+import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
@@ -28,15 +26,6 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
       model: "Sin modelo",
       status: "offline" as const,
     }
-  const isAiContainers = activeRoute.startsWith("#contenedores-ia")
-  const isConnectors = activeRoute.startsWith("#conectores")
-  const isData = activeRoute.startsWith("#datos")
-  const isDocuments = activeRoute.startsWith("#documentos")
-  const isGraph = activeRoute.startsWith("#conocimiento")
-  const isAnalysis = activeRoute.startsWith("#uso")
-  const isAgents = activeRoute.startsWith("#agentes")
-  const isMcp = activeRoute.startsWith("#mcp")
-  const isSkills = activeRoute.startsWith("#skills")
 
   useEffect(() => {
     const handleOpenRegister = () => {
@@ -48,6 +37,33 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
     return () => window.removeEventListener("geonexus:open-mcp-register", handleOpenRegister)
   }, [activeRoute])
 
+  const renderPage = () => {
+    switch (true) {
+      case activeRoute.startsWith("#chat"):
+        return <ChatPanel />
+      case activeRoute.startsWith("#tasks"):
+        return <ChatPanel />
+      case activeRoute.startsWith("#memory"):
+        return <GraphPage />
+      case activeRoute.startsWith("#files"):
+        return <DocumentsPage />
+      case activeRoute.startsWith("#mcp"):
+        return <McpServersPage />
+      case activeRoute.startsWith("#uso"):
+        return <AnalysisPage />
+      case activeRoute.startsWith("#conectores"):
+        return <ConnectorsPage />
+      case activeRoute.startsWith("#projects"):
+        return <ChatPanel />
+      case activeRoute.startsWith("#skills"):
+        return <SkillsPage />
+      case activeRoute.startsWith("#contenedores-ia"):
+        return <AiContainersPage />
+      default:
+        return <ChatPanel />
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
       <AppTopbar
@@ -58,27 +74,7 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
 
       <main className="relative min-h-0 flex-1 overflow-hidden bg-background flex flex-col">
         <MapBackdrop />
-        {isDocuments ? (
-          <DocumentsPage />
-        ) : isData ? (
-          <DataPage />
-        ) : isGraph ? (
-          <GraphPage />
-        ) : isAnalysis ? (
-          <AnalysisPage />
-        ) : isAgents ? (
-          <AgentsPage />
-        ) : isSkills ? (
-          <SkillsPage />
-        ) : isMcp ? (
-          <McpServersPage />
-        ) : isConnectors ? (
-          <ConnectorsPage />
-        ) : isAiContainers ? (
-          <AiContainersPage />
-        ) : (
-          <ChatPanel />
-        )}
+        {renderPage()}
       </main>
 
       <ConfigurationDialog

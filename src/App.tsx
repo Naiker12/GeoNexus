@@ -9,7 +9,7 @@ import { OnboardingWizard } from "@/features/workspace/onboarding/OnboardingWiza
 import { useOnboarding } from "@/hooks/useOnboarding"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
-import type { ThemePreset } from "@/features/workspace/workspace-data"
+import type { ThemePreset } from "@/types/workspace-types"
 import type { ToastPosition } from "@/types/notifications"
 import type { CSSProperties } from "react"
 

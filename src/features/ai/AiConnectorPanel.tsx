@@ -7,7 +7,7 @@ import {
 
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 
 type AiConnectorPanelProps = {
   connectors: AiConnector[]

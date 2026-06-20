@@ -2,10 +2,10 @@ import * as React from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import { useCodingAgent } from "@/contexts/CodingAgentContext"
-import type { AgentEvent, AgentStatus, FileNode, CleanupReport, AgentPlan, PermissionRequest, LoadedProject, ClarifyingQuestion, WritingFile } from "@/types/coding-agent"
+import type { CodingAgentEvent, AgentStatus, FileNode, CleanupReport, CodingAgentPlan, PermissionRequest, LoadedProject, ClarifyingQuestion, WritingFile } from "@/types/coding-agent"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 
-export function useCodingAgentEvents() {
+export function useCodingAgentEvents(conversationId?: string) {
   const { state, dispatch } = useCodingAgent()
   const { connectors, activeConnectorId } = useConnectors()
 
@@ -35,7 +35,7 @@ export function useCodingAgentEvents() {
         (event) => {
           dispatch({ type: "SET_PLAN", payload: event.payload.label })
           dispatch({ type: "SET_STATUS", payload: "planning" })
-          const agentEvent: AgentEvent = {
+          const agentEvent: CodingAgentEvent = {
             id: `plan-${Date.now()}`,
             type: "plan",
             label: event.payload.label,
@@ -58,7 +58,7 @@ export function useCodingAgentEvents() {
             payload: { ...event.payload, accumulatedContent: "" },
           })
           // Also add as a regular event for the timeline
-          const agentEvent: AgentEvent = {
+          const agentEvent: CodingAgentEvent = {
             id: `write-${event.payload.path}-${Date.now()}`,
             type: "step_start",
             label: `Escribiendo ${event.payload.path}...`,
@@ -106,7 +106,7 @@ export function useCodingAgentEvents() {
       )
       unlisteners.push(uClarifyingQuestions)
 
-      const uPlanReady = await listen<AgentPlan>(
+      const uPlanReady = await listen<CodingAgentPlan>(
         "agent:plan_ready",
         (event) => {
           dispatch({ type: "SET_CURRENT_PLAN", payload: event.payload })
@@ -162,7 +162,7 @@ export function useCodingAgentEvents() {
         "agent:step_start",
         (event) => {
           dispatch({ type: "SET_STATUS", payload: "coding" })
-          const agentEvent: AgentEvent = {
+          const agentEvent: CodingAgentEvent = {
             id: event.payload.id,
             type: "step_start",
             label: event.payload.label,
@@ -418,6 +418,7 @@ export function useCodingAgentEvents() {
           model: activeProvider?.model ?? "",
           endpoint: activeProvider?.endpoint ?? "",
           apiKey: activeProvider?.apiKey ?? null,
+          conversationId: conversationId || null,
         })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -425,17 +426,18 @@ export function useCodingAgentEvents() {
         dispatch({ type: "SET_STATUS", payload: "error" })
       }
     },
-    [dispatch, state.loadedProject, activeProvider],
+    [dispatch, state.loadedProject, activeProvider, conversationId],
   )
 
   const approvePlan = React.useCallback(
-    async (plan: AgentPlan) => {
+    async (plan: CodingAgentPlan) => {
       try {
         await invoke("coding_agent_approve_plan", {
           planJson: JSON.stringify(plan),
           projectPath: state.loadedProject
             ? `./agent-projects/${state.loadedProject.name}`
             : "./agent-projects/default",
+          conversationId: conversationId || null,
         })
         dispatch({ type: "APPROVE_PLAN" })
       } catch (err) {
@@ -444,7 +446,7 @@ export function useCodingAgentEvents() {
         dispatch({ type: "SET_STATUS", payload: "error" })
       }
     },
-    [dispatch, state.loadedProject],
+    [dispatch, state.loadedProject, conversationId],
   )
 
   const rejectPlan = React.useCallback(() => {
@@ -466,6 +468,7 @@ export function useCodingAgentEvents() {
           model: activeProvider?.model ?? "",
           endpoint: activeProvider?.endpoint ?? "",
           apiKey: activeProvider?.apiKey ?? null,
+          conversationId: conversationId || null,
         })
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -473,7 +476,7 @@ export function useCodingAgentEvents() {
         dispatch({ type: "SET_STATUS", payload: "error" })
       }
     },
-    [dispatch, state.loadedProject, activeProvider],
+    [dispatch, state.loadedProject, activeProvider, conversationId],
   )
 
   const clarify = React.useCallback(

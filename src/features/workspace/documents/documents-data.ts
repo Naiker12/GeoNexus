@@ -38,9 +38,3 @@ export const documentSources: DocumentSource[] = [
     status: "Pendiente",
   },
 ]
-
-export const documents: WorkspaceDocument[] = []
-
-export const aiFindings: string[] = []
-
-export const pipelineSteps: PipelineStepItem[] = []

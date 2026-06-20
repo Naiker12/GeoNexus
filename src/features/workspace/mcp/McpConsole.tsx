@@ -103,7 +103,7 @@ export function McpConsole() {
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent border-none outline-none text-xs text-[#cccccc] placeholder:text-slate-600 focus:ring-0 p-0"
-          placeholder='Escribe "help" o "ping qgis-mcp"...'
+          placeholder='Escribe "help" para los comandos disponibles...'
           spellCheck={false}
           autoComplete="off"
         />

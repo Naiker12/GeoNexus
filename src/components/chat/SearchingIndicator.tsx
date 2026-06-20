@@ -6,13 +6,12 @@ import {
   DatabaseIcon,
   GlobeIcon,
   HardDriveIcon,
-  MapIcon,
   SearchIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-export type SearchSource = "onedrive" | "local" | "chromadb" | "web" | "qgis"
+export type SearchSource = "onedrive" | "local" | "chromadb" | "web"
 
 export type SearchStepStatus = "searching" | "found" | "empty" | "error"
 
@@ -32,7 +31,6 @@ const sourceConfig: Record<SearchSource, { icon: typeof SearchIcon; color: strin
   local: { icon: HardDriveIcon, color: "text-emerald-500" },
   chromadb: { icon: DatabaseIcon, color: "text-violet-500" },
   web: { icon: GlobeIcon, color: "text-blue-500" },
-  qgis: { icon: MapIcon, color: "text-lime-500" },
 }
 
 function SpinnerSmall() {

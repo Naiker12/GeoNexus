@@ -181,8 +181,6 @@ export function ChatComposer({
     }
 
     const AGENT_SOURCES: { id: AgentSourceType; label: string; sublabel: string; icon: string; color: string }[] = [
-      { id: "memory",     label: "Memoria",     sublabel: "Memoria semántica (ChromaDB)", icon: "Database",     color: "#8B5CF6" },
-      { id: "qgis",       label: "QGIS",        sublabel: "Capas y procesos QGIS",         icon: "Map",          color: "#10B981" },
       { id: "arcgis",     label: "ArcGIS",      sublabel: "ArcGIS Online / Portal",         icon: "Globe",        color: "#3B82F6" },
       { id: "onedrive",   label: "OneDrive",    sublabel: "Buscar en OneDrive",             icon: "Cloud",        color: "#F59E0B" },
       { id: "filesystem", label: "Archivos",    sublabel: "Carpetas locales",               icon: "Folder",       color: "#6B7280" },

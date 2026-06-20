@@ -24,7 +24,7 @@ export type AgentEventType =
   | "cleanup_result"
   | "preview_ready"
 
-export interface AgentEvent {
+export interface CodingAgentEvent {
   id: string
   type: AgentEventType
   label: string
@@ -34,18 +34,11 @@ export interface AgentEvent {
   duration?: number
 }
 
-export type FileStatus = "pending" | "creating" | "done" | "error" | "skipped"
+import type { FileNode } from '@/types/files'
 
-export interface FileNode {
-  path: string
-  name: string
-  type: "file" | "directory"
-  status?: FileStatus
-  children?: FileNode[]
-  content?: string
-  language?: string
-  isOriginal?: boolean
-}
+export type { FileNode }
+
+export type FileStatus = "pending" | "creating" | "done" | "error" | "skipped"
 
 export interface CleanupReport {
   totalFiles: number
@@ -64,7 +57,7 @@ export interface AgentPlanFile {
   reason: string
 }
 
-export interface AgentPlan {
+export interface CodingAgentPlan {
   summary: string
   files: AgentPlanFile[]
 }
@@ -98,14 +91,14 @@ export interface WritingFile {
 export interface CodingAgentState {
   mode: AgentMode
   status: AgentStatus
-  events: AgentEvent[]
+  events: CodingAgentEvent[]
   files: FileNode[]
   activeFile: FileNode | null
   previewUrl: string | null
   plan: string | null
   error: string | null
   cleanupReport: CleanupReport | null
-  currentPlan: AgentPlan | null
+  currentPlan: CodingAgentPlan | null
   pendingPermissions: PermissionRequest[]
   loadedProject: LoadedProject | null
   clarifyingQuestions: ClarifyingQuestion[] | null

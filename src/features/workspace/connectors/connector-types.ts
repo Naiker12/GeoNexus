@@ -6,7 +6,6 @@ export type ConnectorProviderId =
   | "google-drive"
   | "dropbox"
   | "local"
-  | "qgis"
   | "arcgis-pro"
   | "api-rest"
   | "s3"
@@ -18,10 +17,9 @@ export type ConnectorProvider = {
     | "Microsoft Graph"
     | "OAuth"
     | "Local"
-    | "GIS desktop"
     | "External API"
     | "Object storage"
-  status: "simulated" | "planned" | "connected"
+  status: "connected" | "disconnected"
   phase: "V1" | "V2" | "V3"
   auth: string
   scope: string
@@ -32,7 +30,6 @@ export type ConnectorProvider = {
   permissions: string[]
   mcpServer: string
   tools: string[]
-  actionLabel: string
   indexTargets: string[]
   svglRoute?: string
   fallbackIcon?: ComponentType<{ className?: string }>

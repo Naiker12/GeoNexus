@@ -6,6 +6,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::oneshot;
 use serde_json::json;
 use crate::commands::llm::run_sidecar;
+use crate::AppState;
 
 /// Obtiene el FilesystemMcpFacade del estado de Tauri.
 fn get_fs_facade<'a>(app: &'a AppHandle) -> State<'a, geonexus_fs_mcp::facade::FilesystemMcpFacade> {
@@ -429,11 +430,36 @@ pub async fn coding_agent_start_generation(
     model: String,
     endpoint: String,
     api_key: Option<String>,
+    conversation_id: Option<String>,
     app: AppHandle,
 ) -> Result<String, String> {
     if description.trim().is_empty() {
         return Err("La descripcion no puede estar vacia".into());
     }
+
+    let state = app.state::<AppState>();
+    let bus = &state.event_bus;
+    let session_id = conversation_id.clone().unwrap_or_else(|| "default-session".to_string());
+
+    // Emit PipelineStarted
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        session_id: session_id.clone(),
+        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::PipelineStarted,
+        payload: serde_json::json!({ "goal": description }),
+    }).await;
+
+    // Emit WorkerStarted for planner
+    let planner_event_id = uuid::Uuid::new_v4().to_string();
+    let planner_start_time = std::time::SystemTime::now();
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: planner_event_id.clone(),
+        session_id: session_id.clone(),
+        timestamp: planner_start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerStarted,
+        payload: serde_json::json!({ "worker": "planner", "task": description }),
+    }).await;
 
     let project_name = project_path.split('/').last().unwrap_or("proyecto");
 
@@ -466,10 +492,31 @@ pub async fn coding_agent_start_generation(
         call_llm_for_plan(&description, &project_context, &provider_type, &model, &endpoint, api_key.as_deref()).await?
     };
 
+    let planner_duration = planner_start_time.elapsed().unwrap_or_default().as_millis() as u64;
+    // Emit WorkerCompleted for planner
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: planner_event_id,
+        session_id: session_id.clone(),
+        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerCompleted,
+        payload: serde_json::json!({ "worker": "planner", "duration_ms": planner_duration, "result_summary": plan.summary }),
+    }).await;
+
     app.emit("agent:step_complete", serde_json::json!({
         "id": "step-plan",
-        "duration": 0
+        "duration": planner_duration
     })).map_err(|e| e.to_string())?;
+
+    // Emit WorkerStarted for workspace
+    let workspace_event_id = uuid::Uuid::new_v4().to_string();
+    let workspace_start_time = std::time::SystemTime::now();
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: workspace_event_id.clone(),
+        session_id: session_id.clone(),
+        timestamp: workspace_start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerStarted,
+        payload: serde_json::json!({ "worker": "workspace", "task": format!("Creando estructura en {}", project_name) }),
+    }).await;
 
     // PASO 2: Workspace (preparar directorio)
     app.emit("agent:step_start", serde_json::json!({
@@ -479,7 +526,7 @@ pub async fn coding_agent_start_generation(
     })).map_err(|e| e.to_string())?;
 
     // Crear directorio via FilesystemMcpFacade
-    let base_path = PathBuf::from(&project_path);
+    let _base_path = PathBuf::from(&project_path);
     facade.dispatch("createFolder", json!({"path": &project_path}), "coding-agent").await
         .map_err(|e| format!("Error creando directorio: {}", e))?;
 
@@ -491,9 +538,19 @@ pub async fn coding_agent_start_generation(
         "language": ""
     })).map_err(|e| e.to_string())?;
 
+    let workspace_duration = workspace_start_time.elapsed().unwrap_or_default().as_millis() as u64;
+    // Emit WorkerCompleted for workspace
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: workspace_event_id,
+        session_id: session_id.clone(),
+        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerCompleted,
+        payload: serde_json::json!({ "worker": "workspace", "duration_ms": workspace_duration, "result_summary": format!("Directorio {} listo", project_name) }),
+    }).await;
+
     app.emit("agent:step_complete", serde_json::json!({
         "id": "step-workspace",
-        "duration": 0
+        "duration": workspace_duration
     })).map_err(|e| e.to_string())?;
 
     // Emitir plan para revision del usuario
@@ -528,10 +585,26 @@ pub async fn coding_agent_start_generation(
 pub async fn coding_agent_approve_plan(
     plan_json: String,
     project_path: String,
+    conversation_id: Option<String>,
     app: AppHandle,
 ) -> Result<String, String> {
     let plan: LLMPlan = serde_json::from_str(&plan_json)
         .map_err(|e| format!("Error parseando plan: {}", e))?;
+
+    let state = app.state::<AppState>();
+    let bus = &state.event_bus;
+    let session_id = conversation_id.clone().unwrap_or_else(|| "default-session".to_string());
+
+    // Emit WorkerStarted for coding
+    let coding_event_id = uuid::Uuid::new_v4().to_string();
+    let coding_start_time = std::time::SystemTime::now();
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: coding_event_id.clone(),
+        session_id: session_id.clone(),
+        timestamp: coding_start_time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerStarted,
+        payload: serde_json::json!({ "worker": "coding", "task": format!("Generando {} componentes", plan.files.len()) }),
+    }).await;
 
     let base_path = PathBuf::from(&project_path);
     let facade = get_fs_facade(&app);
@@ -643,12 +716,108 @@ pub async fn coding_agent_approve_plan(
             "reason": &spec.reason
         })).map_err(|e| e.to_string())?;
 
+        // ── Artifact Creation in DB & EventBus ──
+        let artifact_id = uuid::Uuid::new_v4().to_string();
+        
+        let artifact_type = match spec.language.as_str() {
+            "html" | "htm" => geonexus_core::events::ArtifactType::Code,
+            "css" => geonexus_core::events::ArtifactType::Code,
+            "js" | "jsx" | "ts" | "tsx" => {
+                if spec.path.contains("Dashboard") || spec.path.contains("dashboard") {
+                    geonexus_core::events::ArtifactType::Dashboard
+                } else {
+                    geonexus_core::events::ArtifactType::Code
+                }
+            }
+            "json" => geonexus_core::events::ArtifactType::Code,
+            "geojson" => geonexus_core::events::ArtifactType::GeoJson,
+            "csv" => geonexus_core::events::ArtifactType::Csv,
+            "pdf" => geonexus_core::events::ArtifactType::Pdf,
+            "png" | "jpg" | "jpeg" => geonexus_core::events::ArtifactType::Image,
+            _ => geonexus_core::events::ArtifactType::Code,
+        };
+
+        let metadata = serde_json::json!({
+            "language": spec.language,
+            "description": spec.reason,
+            "line_count": total_lines,
+            "status": "done"
+        });
+
+        let artifact = geonexus_core::events::Artifact {
+            id: artifact_id.clone(),
+            session_id: session_id.clone(),
+            name: file_name.to_string(),
+            artifact_type,
+            path: Some(spec.path.clone()),
+            content: Some(spec.content.clone()),
+            metadata: metadata.clone(),
+            created_at: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as i64,
+        };
+
+        if let Err(err) = geonexus_db::artifact_repo::insert_artifact(&state.db, &artifact).await {
+            eprintln!("[ERROR] Error insertando artifact: {}", err);
+        }
+
+        // Emit legacy BusEvent
+        bus.publish(geonexus_core::events::BusEvent::new(
+            geonexus_core::events::Domain::Artifact,
+            "created",
+            json!({
+                "id": artifact_id,
+                "name": file_name,
+                "artifact_type": "code",
+                "path": spec.path,
+                "content": spec.content,
+                "language": spec.language,
+                "description": spec.reason,
+                "line_count": total_lines,
+                "status": "done",
+                "conversation_id": conversation_id,
+                "created_at": artifact.created_at,
+                "updated_at": artifact.created_at,
+            }),
+            "coding_agent",
+        ).with_conversation(&session_id));
+
+        // Emit GeoEvent for ArtifactCreated
+        bus.emit(geonexus_core::events::GeoEvent {
+            id: uuid::Uuid::new_v4().to_string(),
+            session_id: session_id.clone(),
+            timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+            event_type: geonexus_core::events::EventType::ArtifactCreated,
+            payload: json!({
+                "artifact_id": artifact_id,
+                "name": file_name,
+                "type": serde_json::to_string(&artifact.artifact_type).unwrap_or_default().trim_matches('"'),
+            }),
+        }).await;
+
         files_written += 1;
     }
 
+    let coding_duration = coding_start_time.elapsed().unwrap_or_default().as_millis() as u64;
+    // Emit WorkerCompleted for coding
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: coding_event_id,
+        session_id: session_id.clone(),
+        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::WorkerCompleted,
+        payload: serde_json::json!({ "worker": "coding", "duration_ms": coding_duration, "result_summary": format!("Generados {} archivos", files_written) }),
+    }).await;
+
+    // Emit PipelineCompleted
+    bus.emit(geonexus_core::events::GeoEvent {
+        id: uuid::Uuid::new_v4().to_string(),
+        session_id: session_id.clone(),
+        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as i64,
+        event_type: geonexus_core::events::EventType::PipelineCompleted,
+        payload: serde_json::json!({ "status": "completed", "files_written": files_written }),
+    }).await;
+
     app.emit("agent:step_complete", serde_json::json!({
         "id": "step-coding",
-        "duration": 0
+        "duration": coding_duration
     })).map_err(|e| e.to_string())?;
 
     app.emit("agent:done", serde_json::json!({}))

@@ -56,12 +56,12 @@ describe("parseContent", () => {
   })
 
   it("handles connect_card at the start of content", () => {
-    const content = '{"type":"connect_card","connectorId":"qgis"}\nAhora puedes usar QGIS.'
+    const content = '{"type":"connect_card","connectorId":"onedrive"}\nAhora puedes usar OneDrive.'
     const result = parseContent(content)
     expect(result).toHaveLength(2)
     expect(result[0].kind).toBe("connect_card")
     expect(result[1].kind).toBe("text")
-    expect(result[1].value).toBe("\nAhora puedes usar QGIS.")
+    expect(result[1].value).toBe("\nAhora puedes usar OneDrive.")
   })
 
   it("handles empty content", () => {

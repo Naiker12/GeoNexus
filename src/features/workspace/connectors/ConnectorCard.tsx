@@ -67,10 +67,5 @@ function StatusBadge({ status }: { status: ConnectorProvider["status"] }) {
       </span>
     )
   }
-  const label = status === "simulated" ? "Simulado" : "Planeado"
-  return (
-    <span className="shrink-0 rounded-full border border-border bg-background/80 px-2 py-0.5 text-[0.68rem] font-medium text-muted-foreground">
-      {label}
-    </span>
-  )
+  return null
 }

@@ -1,6 +1,6 @@
 import { ProviderCardItem } from "@/features/workspace/ai-containers/ProviderCardItem"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/features/workspace/workspace-data"
+import type { AiConnector } from "@/types/workspace-types"
 
 type ConfiguredProvidersListProps = {
   options: ProviderOption[]

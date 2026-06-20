@@ -21,7 +21,26 @@ export function useConversation() {
   const [loadingHistory, setLoadingHistory] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => { saveConversationId(conversationId) }, [conversationId])
+  React.useEffect(() => {
+    saveConversationId(conversationId)
+    window.dispatchEvent(new CustomEvent("geonexus:conversation-changed", { detail: conversationId }))
+  }, [conversationId])
+
+  React.useEffect(() => {
+    const handleChanged = (e: Event) => {
+      const id = (e as CustomEvent).detail
+      if (id !== conversationId) {
+        setConversationId(id)
+        if (id) {
+          listMessages(id).then(setMessages).catch(() => setError("No se pudo cargar la conversación"))
+        } else {
+          setMessages([])
+        }
+      }
+    }
+    window.addEventListener("geonexus:conversation-changed", handleChanged)
+    return () => window.removeEventListener("geonexus:conversation-changed", handleChanged)
+  }, [conversationId])
 
   const loadConversation = React.useCallback(async (id: string) => {
     setLoadingHistory(true)

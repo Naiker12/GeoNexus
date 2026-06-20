@@ -14,15 +14,6 @@ export const MCP_SETUP_GUIDES: Record<string, McpSetupGuide> = {
     tokenField: "Authorization",
     tokenFormat: "Bearer sbp_...",
   },
-  "memory-mcp": {
-    message:
-      "Inicia el servidor localmente: npx @modelcontextprotocol/server-memory --port 3001",
-    command: "npx @modelcontextprotocol/server-memory --port 3001",
-  },
-  "qgis-mcp": {
-    message: "Inicia QGIS MCP en el puerto 3002. Requiere QGIS instalado.",
-    command: "python -m qgis_mcp --port 3002",
-  },
 }
 
 export const DEFAULT_GUIDE: McpSetupGuide = {
