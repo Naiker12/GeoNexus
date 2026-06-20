@@ -84,7 +84,7 @@ export function useReasoningTimeline(sessionId: string | null) {
           if (!prev) return prev
           const steps = prev.steps.map((s) =>
             s.id === step_id
-              ? { ...s, subItems: [...s.subItems, text] }
+              ? { ...s, subItems: [...s.subItems, text ?? ""] }
               : s,
           )
           return { ...prev, steps }

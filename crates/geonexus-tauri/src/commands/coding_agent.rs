@@ -464,6 +464,22 @@ pub async fn coding_agent_start_generation(
     let project_name = project_path.split('/').last().unwrap_or("proyecto");
 
     // PASO 1: Thinking (analizando)
+    let reasoning_start = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let _ = app.emit("reasoning:start", serde_json::json!({ "session_id": session_id }));
+    let _ = app.emit("reasoning:step", serde_json::json!({
+        "id": "planning",
+        "agent_name": "Coding Agent",
+        "agent_type": "code",
+        "status": "running",
+        "label": format!("Planificando: {}", &description),
+        "sub_items": [],
+        "duration_ms": null,
+        "started_at": reasoning_start,
+        "completed_at": null,
+    }));
     app.emit("agent:step_start", serde_json::json!({
         "id": "step-plan",
         "label": format!("Analizando objetivo: {}", &description),
@@ -501,6 +517,19 @@ pub async fn coding_agent_start_generation(
         event_type: geonexus_core::events::EventType::WorkerCompleted,
         payload: serde_json::json!({ "worker": "planner", "duration_ms": planner_duration, "result_summary": plan.summary }),
     }).await;
+
+    let now_unix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+    let _ = app.emit("reasoning:step", serde_json::json!({
+        "id": "planning",
+        "agent_name": "Coding Agent",
+        "agent_type": "code",
+        "status": "success",
+        "label": format!("Plan generado: {} archivos", plan.files.len()),
+        "sub_items": [],
+        "duration_ms": planner_duration,
+        "started_at": reasoning_start,
+        "completed_at": now_unix,
+    }));
 
     app.emit("agent:step_complete", serde_json::json!({
         "id": "step-plan",
@@ -573,6 +602,11 @@ pub async fn coding_agent_start_generation(
     app.emit("agent:plan_ready", plan_payload.clone())
         .map_err(|e| e.to_string())?;
 
+    let _ = app.emit("reasoning:end", serde_json::json!({
+        "session_id": session_id,
+        "total_ms": planner_duration,
+    }));
+
     // Emitir evento thinking resumido
     app.emit("agent:thinking", serde_json::json!({
         "text": format!("Plan generado: {} archivo(s) propuesto(s)", plan.files.len())
@@ -611,7 +645,24 @@ pub async fn coding_agent_approve_plan(
     facade.dispatch("createFolder", json!({"path": &project_path}), "coding-agent").await
         .map_err(|e| format!("Error creando directorio: {}", e))?;
 
+    let _ = app.emit("reasoning:start", serde_json::json!({ "session_id": session_id }));
+
     let file_count = plan.files.len();
+    let coding_reasoning_start = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let _ = app.emit("reasoning:step", serde_json::json!({
+        "id": "writing",
+        "agent_name": "Coding Agent",
+        "agent_type": "code",
+        "status": "running",
+        "label": format!("Generando {} archivo{}", file_count, if file_count == 1 { "" } else { "s" }),
+        "sub_items": [],
+        "duration_ms": null,
+        "started_at": coding_reasoning_start,
+        "completed_at": null,
+    }));
     app.emit("agent:step_start", serde_json::json!({
         "id": "step-coding",
         "label": format!("Generando {} archivo{}", file_count, if file_count == 1 { "" } else { "s" }),
@@ -794,6 +845,10 @@ pub async fn coding_agent_approve_plan(
         }).await;
 
         files_written += 1;
+        let _ = app.emit("reasoning:sub_item", serde_json::json!({
+            "id": "writing",
+            "text": format!("✓ {} ({} líneas)", spec.path, total_lines),
+        }));
     }
 
     let coding_duration = coding_start_time.elapsed().unwrap_or_default().as_millis() as u64;
@@ -814,6 +869,23 @@ pub async fn coding_agent_approve_plan(
         event_type: geonexus_core::events::EventType::PipelineCompleted,
         payload: serde_json::json!({ "status": "completed", "files_written": files_written }),
     }).await;
+
+    let now_unix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
+    let _ = app.emit("reasoning:step", serde_json::json!({
+        "id": "writing",
+        "agent_name": "Coding Agent",
+        "agent_type": "code",
+        "status": "success",
+        "label": format!("{} archivos generados", files_written),
+        "sub_items": [],
+        "duration_ms": coding_duration,
+        "started_at": coding_reasoning_start,
+        "completed_at": now_unix,
+    }));
+    let _ = app.emit("reasoning:end", serde_json::json!({
+        "session_id": session_id,
+        "total_ms": coding_duration,
+    }));
 
     app.emit("agent:step_complete", serde_json::json!({
         "id": "step-coding",

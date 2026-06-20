@@ -160,7 +160,7 @@ export function useChatPipeline() {
           "reasoning:thinking",
           (event) => {
             const { text, is_partial } = event.payload
-            setThinkingText((prev) => (is_partial ? prev + text : text))
+            setThinkingText((prev) => (is_partial ? prev + (text ?? "") : (text ?? "")))
           },
         ).then((u) => { unlistenThinking = u })
       } catch { }

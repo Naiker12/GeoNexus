@@ -41,7 +41,7 @@ export function AssistantMessage({
 
   const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
-  const hasContent = message.content.length > 0
+  const hasContent = (message.content?.length ?? 0) > 0
 
   const lastRunningStep = [...(timeline?.steps ?? [])].reverse().find(s => s.status === "running")
   const showThinkingCard = (timelineStreaming || isStreaming) && !hasContent && !isPending

@@ -11,7 +11,7 @@ export function parseSuggestions(content: string): {
   mainContent: string
   suggestions: string[]
 } {
-  const lines = content.split("\n")
+  const lines = (content ?? "").split("\n")
   let splitIndex = -1
 
   for (let i = lines.length - 1; i >= 0; i--) {

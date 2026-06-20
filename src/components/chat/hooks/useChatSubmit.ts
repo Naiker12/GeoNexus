@@ -153,7 +153,7 @@ export function useChatSubmit(
           setMessages((current) =>
             current.map((msg) =>
               msg.id === assistantMsgId
-                ? { ...msg, content: msg.content + payload }
+                ? { ...msg, content: msg.content + (payload ?? "") }
                 : msg,
             ),
           )

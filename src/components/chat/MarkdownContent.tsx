@@ -25,6 +25,7 @@ type Segment =
   | { type: "chart"; code: string }
 
 function splitContent(content: string): Segment[] {
+  if (!content) return []
   const segments: Segment[] = []
   const blocks = content.split(/\n\n+/)
   const chartBlock: string[] = []
