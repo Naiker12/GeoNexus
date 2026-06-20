@@ -79,7 +79,7 @@ export function GraphActivityPanel({
                 key={node.id}
                 className="flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/50"
               >
-                <div className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full", nodeDotColor(node.type as any))}>
+                <div className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full", nodeDotColor(node.kind))}>
                   <Icon className="size-3 text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ export function GraphActivityPanel({
                     {node.label}
                   </p>
                   <p className="text-[0.65rem] text-muted-foreground">
-                    {nodeTypeLabel(node.type as any)} · {formatTime(node.created_at)}
+                    {nodeTypeLabel(node.kind)} · {formatTime(node.created_at)}
                   </p>
                 </div>
               </div>

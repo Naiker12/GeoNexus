@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { cn } from "@/lib/utils"
 import { updateNodePosition } from "@/api/data"
-import type { GraphNode, GraphEdge, GraphNodeType } from "@/types/data"
+import type { GraphNode, GraphEdge, GraphNodeKind } from "@/types/graph"
 
 import { useGraphEvents } from "./useGraphEvents"
 import { GraphFilters, type KindFilter } from "./GraphFilters"
@@ -69,7 +69,7 @@ export function GraphPage() {
   const filteredNodes = React.useMemo(() => {
     let result = nodes
     if (kindFilter !== "all") {
-      result = result.filter((n) => n.type === kindFilter)
+      result = result.filter((n) => n.kind === kindFilter)
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -249,11 +249,6 @@ export function GraphPage() {
           refresh()
           setSelectedNodeId(null)
         }}
-        onNodePin={(nodeId, pinned) => {
-          setNodes((prev) =>
-            prev.map((n) => (n.id === nodeId ? { ...n, pinned } : n)),
-          )
-        }}
       />
     </section>
     </ErrorBoundary>
@@ -303,12 +298,12 @@ function GraphHeader({
 }
 
 function GraphLegend() {
-  const items: Array<{ label: string; type: GraphNodeType }> = [
+  const items: Array<{ label: string; type: GraphNodeKind }> = [
     { label: "Norma", type: "norma" },
     { label: "Documento", type: "documento" },
     { label: "Capa GIS", type: "capa" },
     { label: "Zona", type: "zona" },
-    { label: "Concepto", type: "concepto" },
+    { label: "Concepto", type: "concept" },
     { label: "Chat", type: "chat_turn" },
     { label: "Web", type: "web_search" },
     { label: "Subida", type: "upload" },

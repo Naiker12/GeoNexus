@@ -10,7 +10,6 @@ import {
   MapPinnedIcon,
   MessageSquareTextIcon,
   NetworkIcon,
-  PinIcon,
   SearchIcon,
   SparklesIcon,
   Trash2Icon,
@@ -27,7 +26,7 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { nodeColor, nodeTailwind, nodeTypeLabel } from "./graph-colors"
-import type { GraphEdge, GraphNode, GraphNodeType } from "@/types/data"
+import type { GraphEdge, GraphNode, GraphNodeKind } from "@/types/graph"
 
 /** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
 function isTauriAvailable(): boolean {
@@ -45,8 +44,12 @@ async function getInvoke() {
   }
 }
 
-export function nodeIcon(type: GraphNodeType) {
+export function nodeIcon(type: GraphNodeKind) {
   return {
+    entity: DatabaseIcon,
+    concept: SparklesIcon,
+    file: FileTextIcon,
+    agent: BrainCircuitIcon,
     norma: FileTextIcon,
     documento: DatabaseIcon,
     capa: Layers3Icon,
@@ -57,14 +60,14 @@ export function nodeIcon(type: GraphNodeType) {
     upload: UploadIcon,
     connector: LinkIcon,
     rag_recall: BrainCircuitIcon,
-  }[type]
+  }[type] ?? FileTextIcon
 }
 
-export function nodeBubbleColor(type: GraphNodeType) {
+export function nodeBubbleColor(type: GraphNodeKind) {
   return nodeTailwind(type)
 }
 
-export function nodeDotColor(type: GraphNodeType) {
+export function nodeDotColor(type: GraphNodeKind) {
   return nodeBubbleColor(type)
 }
 
@@ -74,14 +77,12 @@ export function NodeSheet({
   open,
   onOpenChange,
   onNodeDelete,
-  onNodePin,
 }: {
   node?: GraphNode
   relations: Array<{ edge: GraphEdge; connectedNode: GraphNode }>
   open: boolean
   onOpenChange: (open: boolean) => void
   onNodeDelete?: (nodeId: string) => void
-  onNodePin?: (nodeId: string, pinned: boolean) => void
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -90,7 +91,7 @@ export function NodeSheet({
     return <Sheet open={open} onOpenChange={onOpenChange} />
   }
 
-  const Icon = nodeIcon(node.type)
+  const Icon = nodeIcon(node.kind)
   const relationStrength =
     relations.length > 0
       ? Math.round(
@@ -118,20 +119,6 @@ export function NodeSheet({
     }
   }
 
-  const handleTogglePin = async () => {
-    const invoke = await getInvoke()
-    if (!invoke) {
-      console.warn("Tauri not available, cannot toggle pin")
-      return
-    }
-    try {
-      await invoke("pin_node", { id: node.id, pinned: !node.pinned })
-      onNodePin?.(node.id, !node.pinned)
-    } catch (err) {
-      console.error("Error toggling pin:", err)
-    }
-  }
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[min(96vw,40rem)] gap-0 border-border bg-card/95 p-0 text-card-foreground shadow-[0_18px_70px_rgba(15,23,42,0.22)] backdrop-blur-xl sm:max-w-[40rem]">
@@ -141,7 +128,7 @@ export function NodeSheet({
             <div
               className={cn(
                 "relative flex size-10 shrink-0 items-center justify-center rounded-full text-white shadow-sm ring-4 ring-primary/10",
-                nodeBubbleColor(node.type)
+                nodeBubbleColor(node.kind)
               )}
             >
               <span className="absolute inset-[-0.45rem] rounded-full border border-current/15" />
@@ -151,7 +138,7 @@ export function NodeSheet({
               <div className="flex flex-wrap items-center gap-2">
                 <SheetTitle className="text-base">{node.label}</SheetTitle>
                 <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[0.68rem] font-medium text-primary">
-                  {nodeTypeLabel(node.type)}
+                  {nodeTypeLabel(node.kind)}
                 </span>
               </div>
               <SheetDescription className="mt-1 leading-5">
@@ -233,7 +220,7 @@ export function NodeSheet({
                       <span
                         className={cn(
                           "size-2.5 shrink-0 rounded-full",
-                          nodeDotColor(connectedNode.type)
+                          nodeDotColor(connectedNode.kind)
                         )}
                       />
                       <p className="truncate text-sm font-medium">
@@ -328,16 +315,7 @@ export function NodeSheet({
         )}
 
         <SheetFooter className="border-t border-border bg-card/95 p-3">
-          <div className="grid grid-cols-4 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTogglePin}
-              className={cn(node.pinned && "border-primary/50 text-primary")}
-            >
-              <PinIcon className="size-4" />
-              {node.pinned ? "Anclado" : "Anclar"}
-            </Button>
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -357,10 +335,7 @@ export function NodeSheet({
                 Fuente
               </a>
             </Button>
-            <Button size="sm">
-              <BrainCircuitIcon className="size-4" />
-              Usar en IA
-            </Button>
+
           </div>
         </SheetFooter>
       </SheetContent>

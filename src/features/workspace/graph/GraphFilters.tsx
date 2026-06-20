@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 import { nodeDotColor } from "./NodeSheet"
 import { nodeTypeLabel } from "./graph-colors"
-import type { GraphNodeType } from "@/types/data"
+import type { GraphNodeKind } from "@/types/graph"
 
-export type KindFilter = "all" | GraphNodeType
+export type KindFilter = "all" | GraphNodeKind
 
 export const KIND_OPTIONS: Array<{ value: KindFilter; label: string }> = [
   { value: "all", label: "Todos" },
@@ -14,7 +14,7 @@ export const KIND_OPTIONS: Array<{ value: KindFilter; label: string }> = [
   { value: "documento", label: "Documento" },
   { value: "capa", label: "Capa GIS" },
   { value: "zona", label: "Zona" },
-  { value: "concepto", label: "Concepto" },
+  { value: "concept", label: "Concepto" },
   { value: "chat_turn", label: "Chat" },
   { value: "web_search", label: "Web" },
   { value: "upload", label: "Subida" },
@@ -48,7 +48,7 @@ export function GraphFilters({
           }`}
         >
           {opt.value !== "all" && (
-            <span className={cn("size-2 rounded-full inline-block", nodeDotColor(opt.value as GraphNodeType))} />
+            <span className={cn("size-2 rounded-full inline-block", nodeDotColor(opt.value as GraphNodeKind))} />
           )}
           {opt.label}
         </button>

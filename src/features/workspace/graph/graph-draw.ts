@@ -119,7 +119,7 @@ export function drawNodes(
     const pos = positions.get(node.id)
     if (!pos) continue
 
-    const color = nodeColor(node.type)
+    const color = nodeColor(node.kind)
     const radius = getNodeRadius(node)
     const isSelected = node.id === selectedNodeId
     const matchesSearch = q ? node.label.toLowerCase().includes(q) : true
