@@ -83,9 +83,11 @@ export function useMcpTerminal() {
       try {
         const result = await pingMcpServer(serverId)
         if (result.online) {
-          addLine("success", `✓ ${serverId} online · ${result.latency_ms}ms`)
+          const latency = result.latency_ms != null ? ` - ${result.latency_ms}ms` : ""
+          const tools = result.tools_count != null ? ` - ${result.tools_count} tools` : ""
+          addLine("success", `[ok] ${serverId} online${latency}${tools}`)
         } else {
-          addLine("error", `✗ ${serverId} sin respuesta · ${result.error}`)
+          addLine("error", `[x] ${serverId} sin respuesta - ${result.error}`)
         }
       } catch (err) {
         addLine("error", `Error: ${err}`)

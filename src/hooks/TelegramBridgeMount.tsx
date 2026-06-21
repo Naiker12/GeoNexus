@@ -1,25 +1,38 @@
 import { useCallback, useEffect, useState } from "react"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { sendMessage } from "@/api/chat"
-import { getTelegramStatus } from "@/api/telegram"
+import { getTelegramStatus, type TelegramStatus } from "@/api/telegram"
 import { useTelegramBridge } from "./useTelegramBridge"
 import { DEFAULT_PROJECT_ID } from "@/api/data"
 
+interface TelegramErrorEvent {
+  kind: string
+  message: string
+}
+
 export function TelegramBridgeMount() {
   const { connectors, activeConnectorId } = useConnectors()
-  const [isPolling, setIsPolling] = useState(false)
+  const [status, setStatus] = useState<TelegramStatus>({ isRunning: false })
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     const check = async () => {
       try {
-        const status = await getTelegramStatus()
-        if (!cancelled) setIsPolling(status.isRunning)
+        const s = await getTelegramStatus()
+        if (!cancelled) {
+          setStatus(s)
+          if (s.error) setError(s.error)
+        }
       } catch { /* ignore */ }
     }
     check()
     const interval = setInterval(check, 5000)
     return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+
+  const handleError = useCallback((evt: TelegramErrorEvent) => {
+    setError(evt.message)
   }, [])
 
   const sendToLlm = useCallback(async (text: string): Promise<string> => {
@@ -35,14 +48,14 @@ export function TelegramBridgeMount() {
       provider: active.id,
       model: active.model,
       endpoint: active.endpoint,
-      api_key: active.apiKey ?? null,
+      api_key: null,
       use_context: false,
     })
 
     return response.message?.content ?? "No se pudo generar una respuesta."
   }, [connectors, activeConnectorId])
 
-  useTelegramBridge({ enabled: isPolling, sendToLlm })
+  useTelegramBridge({ enabled: status.isRunning, sendToLlm, onError: handleError })
 
   return null
 }

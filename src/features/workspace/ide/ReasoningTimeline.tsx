@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { TimelineStep, TimelineItem, GenerationStats } from './timeline-types';
-import { CheckCircle2, XCircle, Circle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Circle, Loader2, Brain, Folder, Package, Bot, Database, Plug, Eye } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -8,15 +8,23 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const AGENT_ICONS: Record<TimelineStep['agent'], string> = {
-  planner: '🧠',
-  workspace: '📁',
-  dependencies: '⚙️',
-  coding: '💻',
-  database: '🗄️',
-  api: '🔌',
-  preview: '🎨',
+interface AgentIconConfig {
+  Icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+  bg: string;
+}
+
+const AGENT_ICON_CONFIG: Record<TimelineStep['agent'], AgentIconConfig> = {
+  planner: { Icon: Brain, accent: '#D97706', bg: 'rgba(217, 119, 6, 0.1)' },
+  workspace: { Icon: Folder, accent: '#2563EB', bg: 'rgba(37, 99, 235, 0.1)' },
+  dependencies: { Icon: Package, accent: '#7C3AED', bg: 'rgba(124, 58, 237, 0.1)' },
+  coding: { Icon: Bot, accent: '#059669', bg: 'rgba(5, 150, 105, 0.1)' },
+  database: { Icon: Database, accent: '#2563EB', bg: 'rgba(37, 99, 235, 0.1)' },
+  api: { Icon: Plug, accent: '#4F46E5', bg: 'rgba(79, 70, 229, 0.1)' },
+  preview: { Icon: Eye, accent: '#0891B2', bg: 'rgba(8, 145, 178, 0.1)' },
 };
+
+const DEFAULT_CONFIG: AgentIconConfig = { Icon: Bot, accent: '#6B7280', bg: 'rgba(107, 114, 128, 0.1)' };
 
 interface StatusIconProps {
   status: TimelineStep['status'];
@@ -91,13 +99,21 @@ function TimelineCard({ step }: TimelineCardProps) {
     error: 'border-red-500/30 bg-red-50 dark:bg-red-900/10',
   };
 
+  const config = AGENT_ICON_CONFIG[step.agent] ?? DEFAULT_CONFIG;
+  const { Icon } = config;
+
   return (
     <div className={cn(
       'rounded-lg border p-3 transition-all duration-200',
       statusStyle[step.status]
     )}>
       <div className="flex items-center gap-2">
-        <span className="text-lg">{AGENT_ICONS[step.agent]}</span>
+        <span
+          className="flex items-center justify-center size-7 rounded-full"
+          style={{ background: config.bg, color: config.accent }}
+        >
+          <Icon className="size-4" />
+        </span>
         <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{step.label}</span>
         <div className="ml-auto flex items-center gap-2">
           <StatusIcon status={step.status} />
@@ -161,6 +177,8 @@ interface ReasoningTimelineProps {
 }
 
 export function ReasoningTimeline({ steps, stats }: ReasoningTimelineProps) {
+  if (steps.length === 0) return null;
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-3 p-4">
@@ -172,5 +190,3 @@ export function ReasoningTimeline({ steps, stats }: ReasoningTimelineProps) {
     </div>
   );
 }
-
-// Datos de ejemplo — eliminados en F1, serán reemplazados por Event Bus en F3

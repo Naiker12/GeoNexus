@@ -7,22 +7,30 @@ interface TelegramMessage {
   user_id: number
   username: string | null
   text: string
-  message_id: number
+}
+
+interface TelegramErrorEvent {
+  kind: string
+  message: string
 }
 
 interface UseTelegramBridgeOptions {
   enabled: boolean
   sendToLlm: (text: string) => Promise<string>
+  onError?: (error: TelegramErrorEvent) => void
 }
 
-export function useTelegramBridge({ enabled, sendToLlm }: UseTelegramBridgeOptions) {
+export function useTelegramBridge({ enabled, sendToLlm, onError }: UseTelegramBridgeOptions) {
   const unlistenRef = useRef<UnlistenFn | null>(null)
+  const unlistenErrorRef = useRef<UnlistenFn | null>(null)
   const activeRequests = useRef<Set<number>>(new Set())
 
   useEffect(() => {
     if (!enabled) {
       unlistenRef.current?.()
       unlistenRef.current = null
+      unlistenErrorRef.current?.()
+      unlistenErrorRef.current = null
       return
     }
 
@@ -30,11 +38,11 @@ export function useTelegramBridge({ enabled, sendToLlm }: UseTelegramBridgeOptio
       const unlisten = await listen<TelegramMessage>(
         "telegram:message",
         async (event) => {
-          console.log("[Telegram] ⚡ Evento recibido:", event.payload)
           const msg = event.payload
+          const dedupKey = msg.chat_id * 1000 + msg.user_id
 
-          if (activeRequests.current.has(msg.message_id)) return
-          activeRequests.current.add(msg.message_id)
+          if (activeRequests.current.has(dedupKey)) return
+          activeRequests.current.add(dedupKey)
 
           try {
             await invoke("telegram_send_chat_action", {
@@ -57,30 +65,27 @@ export function useTelegramBridge({ enabled, sendToLlm }: UseTelegramBridgeOptio
               text: response,
             })
           } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : String(err)
-            console.error("[Telegram] Error:", errorMsg)
-            // Intentar con in-memory primero, luego con DB
-            try {
-              await invoke("telegram_send_response", {
-                chatId: msg.chat_id,
-                text: `Error: ${errorMsg}`,
-              })
-            } catch {
-              try {
-                await invoke("telegram_send_message", {
-                  chatId: msg.chat_id,
-                  text: `Error: ${errorMsg}`,
-                })
-              } catch { /* Telegram inaccesible */ }
-            }
+            console.error("[TelegramBridge] Error:", err)
+            await invoke("telegram_send_response", {
+              chatId: msg.chat_id,
+              text: "Lo siento, ocurrió un error procesando tu mensaje. Por favor intenta de nuevo.",
+            })
           } finally {
-            setTimeout(() => activeRequests.current.delete(msg.message_id), 30_000)
+            setTimeout(() => activeRequests.current.delete(dedupKey), 30_000)
           }
-      },
-      { target: { kind: "Any" } }
-    )
+        },
+      )
 
-    unlistenRef.current = unlisten
+      const unlistenError = await listen<TelegramErrorEvent>(
+        "telegram:error",
+        (event) => {
+          console.error("[TelegramBridge] Error event:", event.payload)
+          onError?.(event.payload)
+        },
+      )
+
+      unlistenRef.current = unlisten
+      unlistenErrorRef.current = unlistenError
     }
 
     setup().catch((err) => {
@@ -90,6 +95,8 @@ export function useTelegramBridge({ enabled, sendToLlm }: UseTelegramBridgeOptio
     return () => {
       unlistenRef.current?.()
       unlistenRef.current = null
+      unlistenErrorRef.current?.()
+      unlistenErrorRef.current = null
     }
-  }, [enabled, sendToLlm])
+  }, [enabled, sendToLlm, onError])
 }

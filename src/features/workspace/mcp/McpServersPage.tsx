@@ -103,6 +103,7 @@ export function McpServersPage() {
       const count = await discoverMcpTools(serverId)
       toast.toast({ title: `${count} tools descubiertas`, variant: "success" })
       setSelectedServerId(serverId)
+      await refresh()
       refreshTools()
     } catch (e) {
       toast.toast({ title: `Error descubriendo tools: ${e}`, variant: "error" })
