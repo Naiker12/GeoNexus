@@ -22,9 +22,6 @@ pub struct Message {
     pub from: User,
     pub chat: Chat,
     pub text: Option<String>,
-    pub photo: Option<Vec<PhotoSize>>,
-    pub document: Option<Document>,
-    pub voice: Option<Voice>,
     pub date: i64,
 }
 
@@ -46,33 +43,6 @@ pub struct Chat {
     pub username: Option<String>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PhotoSize {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub width: i32,
-    pub height: i32,
-    pub file_size: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Document {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub file_name: Option<String>,
-    pub file_size: Option<i32>,
-    pub mime_type: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Voice {
-    pub file_id: String,
-    pub file_unique_id: String,
-    pub file_size: Option<i32>,
-    pub mime_type: Option<String>,
-    pub duration: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
