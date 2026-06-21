@@ -2,8 +2,6 @@ use tauri::{Emitter, State};
 use uuid::Uuid;
 use crate::AppState;
 use geonexus_core::agent::Agent;
-use geonexus_mcp::{registry, executor};
-use geonexus_mcp::types::{CallToolPayload, McpTool, McpStatus, ToolStatus};
 use super::chat::{run_sidecar_json, RecallChunk};
 
 #[tauri::command]
@@ -21,6 +19,26 @@ pub async fn toggle_agent(
         return Err("agent_id requerido".into());
     }
     geonexus_db::agent_repo::toggle_agent(&state.db, &agent_id, active).await
+}
+
+#[tauri::command]
+pub async fn set_agent_model(
+    agent_id: String,
+    model_name: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    sqlx::query("UPDATE agents SET model_name = ?1, updated_at = ?2 WHERE id = ?3")
+        .bind(&model_name)
+        .bind(now)
+        .bind(&agent_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| format!("Error al asignar modelo al agente: {e}"))?;
+    Ok(())
 }
 
 fn emit_event(app: &tauri::AppHandle, agent: &str, status: &str, message: &str, data: Option<serde_json::Value>) {
@@ -94,7 +112,7 @@ pub async fn run_agent_pipeline(
         return Err("El objetivo no puede estar vacío".into());
     }
 
-    let trace_id = trace_id;
+    let _trace_id = trace_id;
 
     emit_event(&app_handle, "planner", "running", "Analizando objetivo...", None);
 
@@ -151,75 +169,28 @@ pub async fn run_agent_pipeline(
     let knowledge_data = serde_json::json!(knowledge_chunks);
     emit_event(&app_handle, "knowledge", "done", &knowledge_summary, Some(knowledge_data));
 
-    // ── Phase: MCP ──────────────────────────────────────────────────
-    emit_event(&app_handle, "mcp", "running", "Ejecutando herramientas MCP relevantes...", None);
+    // ── Phase: MCP (contexto solamente — el LLM decide qué tools invocar) ──
+    let mcp_tool_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM mcp_tools t
+         JOIN mcp_servers s ON s.id = t.server_id
+         WHERE s.disabled = 0 AND t.status = 'ready'",
+    )
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
 
-    let servers = registry::list_servers(&state.db).await.unwrap_or_default();
-    let mut mcp_result_lines: Vec<String> = Vec::new();
+    emit_event(
+        &app_handle,
+        "mcp",
+        "done",
+        &format!(
+            "{} herramientas MCP registradas (disponibles vía chat/tool-calling)",
+            mcp_tool_count
+        ),
+        Some(serde_json::json!({ "tools_count": mcp_tool_count })),
+    );
 
-    for server in &servers {
-        if server.disabled { continue; }
-        if !matches!(server.status, McpStatus::Online) { continue; }
-        if server.url.is_empty() { continue; }
-
-        let tools: Vec<McpTool> = registry::list_tools(&state.db, &server.id)
-            .await
-            .unwrap_or_default();
-
-        for tool in &tools {
-            if !matches!(tool.status, ToolStatus::Ready) { continue; }
-
-            let allowlist_rule = registry::check_allowlist(&state.db, &server.id, &tool.name)
-                .await
-                .unwrap_or(None);
-            if let Some(ref rule) = allowlist_rule {
-                if !rule.allowed { continue; }
-            }
-
-            emit_event(&app_handle, "mcp", "running", &format!("Ejecutando {}/{}...", server.name, tool.name), None);
-
-            let payload = CallToolPayload {
-                server_id: server.id.clone(),
-                tool: tool.name.clone(),
-                args: serde_json::json!({"query": goal, "sources": sources}),
-                trace_id: trace_id.clone(),
-                agent_name: Some("mcp".to_string()),
-            };
-
-            let auth_token = server.auth_token.clone()
-                .or_else(|| server.auth_ref.clone());
-            match executor::call_tool(&state.db, &server.url, payload, auth_token.as_deref()).await {
-                Ok(result) if result.success => {
-                    let msg = format!("{}/{}: OK ({}ms)", server.name, tool.name, result.duration_ms);
-                    emit_event(&app_handle, "mcp", "done", &msg, result.data.clone());
-                    mcp_result_lines.push(format!("- {}: {}", server.name, tool.name));
-                    if let Some(ref data) = result.data {
-                        mcp_result_lines.push(format!("  Resultado: {}", serde_json::to_string(data).unwrap_or_default()));
-                    }
-                }
-                Ok(result) => {
-                    let err = result.error.as_deref().unwrap_or("error desconocido");
-                    emit_event(&app_handle, "mcp", "error", &format!("{}/{} falló: {}", server.name, tool.name, err), None);
-                    mcp_result_lines.push(format!("- {}: {} — {}", server.name, tool.name, err));
-                }
-                Err(e) => {
-                    emit_event(&app_handle, "mcp", "error", &format!("{}/{} error: {}", server.name, tool.name, e), None);
-                    mcp_result_lines.push(format!("- {}: {} — error: {}", server.name, tool.name, e));
-                }
-            }
-        }
-    }
-
-    let mcp_result_context = if mcp_result_lines.is_empty() {
-        String::new()
-    } else {
-        format!("Resultados de herramientas MCP ejecutadas:\n{}\n", mcp_result_lines.join("\n"))
-    };
-
-    emit_event(&app_handle, "mcp", "done", &format!("{} herramientas MCP procesadas", mcp_result_lines.len()), None);
-
-    // ── Phase: Reasoning ────────────────────────────────────────────
-    emit_event(&app_handle, "reasoning", "running", "Razonando con contexto enriquecido...", None);
+    let mcp_result_context = String::new();
 
     let knowledge_context = if knowledge_chunks.is_empty() {
         String::new()
@@ -229,8 +200,6 @@ pub async fn run_agent_pipeline(
     };
 
     let final_answer = generate_answer(&goal, &mcp_context, &graph_context, &knowledge_context, &mcp_result_context, &source_hint, &state.db).await?;
-
-    emit_event(&app_handle, "reasoning", "done", "Razonamiento completado", None);
 
     // ── Phase: Result ───────────────────────────────────────────────
     emit_event(&app_handle, "result", "done", &final_answer, None);
@@ -317,7 +286,6 @@ async fn generate_answer(
 }
 
 async fn run_sidecar_llm(system_prompt: &str, pool: &sqlx::SqlitePool) -> Result<String, String> {
-    // Check if there's an active AI connector configured
     let provider: Option<String> = sqlx::query_scalar(
         "SELECT endpoint FROM ai_connectors WHERE status = 'online' LIMIT 1"
     )
@@ -331,7 +299,6 @@ async fn run_sidecar_llm(system_prompt: &str, pool: &sqlx::SqlitePool) -> Result
         return Err("Sin proveedor LLM configurado".into());
     }
 
-    // If sidecar is available, use it
     let args = vec![
         "--action", "chat_llm",
         "--system_prompt", system_prompt,
@@ -348,5 +315,310 @@ async fn run_sidecar_llm(system_prompt: &str, pool: &sqlx::SqlitePool) -> Result
             Ok(content)
         }
         Err(e) => Err(format!("Error LLM: {e}"))
+    }
+}
+
+// ── Agent Task Board (new system) ─────────────────────────────────────────
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct AgentTask {
+    pub id: String,
+    pub title: String,
+    pub notes: Option<String>,
+    pub status: String,
+    pub priority: String,
+    pub data: String,
+    pub project_path: Option<String>,
+    pub connector_id: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+impl AgentTask {
+    fn new(title: String, notes: Option<String>, priority: String,
+           project_path: Option<String>, connector_id: Option<String>) -> Self {
+        let now = chrono::Utc::now().timestamp_millis();
+        Self {
+            id: Uuid::new_v4().to_string(),
+            title,
+            notes,
+            status: "todo".into(),
+            priority,
+            data: "{}".into(),
+            project_path,
+            connector_id,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn agent_list_tasks(state: State<'_, AppState>) -> Result<Vec<AgentTask>, String> {
+    let rows = sqlx::query_as::<_, (String, String, Option<String>, String, String, String, Option<String>, Option<String>, i64, i64)>(
+        "SELECT id, title, notes, status, priority, data, project_path, connector_id, created_at, updated_at
+         FROM agent_task_board ORDER BY created_at DESC LIMIT 50"
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| format!("Error al listar tareas: {e}"))?;
+
+    Ok(rows.into_iter().map(|(id, title, notes, status, priority, data, project_path, connector_id, created_at, updated_at)| AgentTask {
+        id, title, notes, status, priority, data, project_path, connector_id, created_at, updated_at
+    }).collect())
+}
+
+#[tauri::command]
+pub async fn agent_create_task(
+    title: String,
+    notes: Option<String>,
+    priority: Option<String>,
+    project_path: Option<String>,
+    connector_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<AgentTask, String> {
+    let task = AgentTask::new(
+        title,
+        notes,
+        priority.unwrap_or_else(|| "normal".into()),
+        project_path,
+        connector_id,
+    );
+
+    sqlx::query(
+        "INSERT INTO agent_task_board (id, title, notes, status, priority, data, project_path, connector_id, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
+    )
+    .bind(&task.id)
+    .bind(&task.title)
+    .bind(&task.notes)
+    .bind(&task.status)
+    .bind(&task.priority)
+    .bind(&task.data)
+    .bind(&task.project_path)
+    .bind(&task.connector_id)
+    .bind(task.created_at)
+    .bind(task.updated_at)
+    .execute(&state.db)
+    .await
+    .map_err(|e| format!("Error al crear tarea: {e}"))?;
+
+    Ok(task)
+}
+
+#[tauri::command]
+pub async fn agent_start_task(
+    task_id: String,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let now = chrono::Utc::now().timestamp_millis();
+    let claim = serde_json::json!({
+        "startedAt": now,
+        "heartbeatAt": now,
+        "expiresAt": now + 60_000
+    });
+
+    sqlx::query(
+        "UPDATE agent_task_board SET status = 'running', data = ?1, updated_at = ?2 WHERE id = ?3"
+    )
+    .bind(claim.to_string())
+    .bind(now)
+    .bind(&task_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| format!("Error al iniciar tarea: {e}"))?;
+
+    let _ = app.emit("agent:task", serde_json::json!({
+        "kind": "started",
+        "taskId": task_id
+    }));
+
+    // Spawn heartbeat + execution
+    let app_clone = app.clone();
+    let db = state.db.clone();
+    tauri::async_runtime::spawn(async move {
+        run_agent_task(task_id, app_clone, db).await;
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn agent_cancel_task(
+    task_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let now = chrono::Utc::now().timestamp_millis();
+    sqlx::query(
+        "UPDATE agent_task_board SET status = 'todo', data = '{}', updated_at = ?1 WHERE id = ?2"
+    )
+    .bind(now)
+    .bind(&task_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| format!("Error al cancelar tarea: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn agent_retry_task(
+    task_id: String,
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    agent_start_task(task_id, app, state).await
+}
+
+#[tauri::command]
+pub async fn agent_delete_task(
+    task_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    sqlx::query("DELETE FROM agent_task_board WHERE id = ?1")
+        .bind(&task_id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| format!("Error al eliminar tarea: {e}"))?;
+    Ok(())
+}
+
+async fn run_agent_task(
+    task_id: String,
+    app: tauri::AppHandle,
+    db: sqlx::SqlitePool,
+) {
+    use crate::commands::chat::run_sidecar_json;
+
+    // Heartbeat loop
+    let heartbeat_id = task_id.clone();
+    let heartbeat_app = app.clone();
+    let heartbeat_db = db.clone();
+    let heartbeat = tauri::async_runtime::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(15)).await;
+            let now = chrono::Utc::now().timestamp_millis();
+            let _ = sqlx::query(
+                "UPDATE agent_task_board SET data = json_set(data, '$.heartbeatAt', ?1), updated_at = ?2 WHERE id = ?3"
+            )
+            .bind(now)
+            .bind(now)
+            .bind(&heartbeat_id)
+            .execute(&heartbeat_db)
+            .await;
+            let _ = heartbeat_app.emit("agent:task", serde_json::json!({
+                "kind": "heartbeat",
+                "taskId": heartbeat_id,
+                "note": null
+            }));
+        }
+    });
+
+    // Read task details
+    let task_info: Option<(String, Option<String>, String)> = sqlx::query_as(
+        "SELECT title, notes, data FROM agent_task_board WHERE id = ?1"
+    )
+    .bind(&task_id)
+    .fetch_optional(&db)
+    .await
+    .unwrap_or(None);
+
+    let (title, _notes, _data_json) = match task_info {
+        Some(t) => t,
+        None => {
+            heartbeat.abort();
+            return;
+        }
+    };
+
+    let _ = app.emit("agent:task", serde_json::json!({
+        "kind": "comment",
+        "taskId": task_id,
+        "text": format!("Iniciando tarea: {}", title)
+    }));
+
+    // Try to use LLM via sidecar
+    let system_prompt = format!(
+        "Eres el agente autónomo de GeoNexus. Tu tarea es: {}\n\n\
+         Trabajas dentro del proyecto en disco. Puedes leer y escribir archivos.\n\
+         Al completar, entrega un resumen de lo que hiciste y qué archivos creaste/modificaste.\n\
+         Si encuentras un error, indícalo claramente.",
+        title
+    );
+
+    let result = run_sidecar_json::<serde_json::Value>(&[
+        "--action", "chat_llm",
+        "--system_prompt", &system_prompt,
+        "--max_tokens", "2048",
+    ]);
+
+    match result {
+        Ok(val) => {
+            let summary = val["content"].as_str()
+                .or_else(|| val["text"].as_str())
+                .or_else(|| val["response"].as_str())
+                .unwrap_or("Tarea completada");
+
+            let now = chrono::Utc::now().timestamp_millis();
+            let data = serde_json::json!({
+                "comments": [format!("✓ {}", summary)],
+                "artifacts": [],
+                "attempts": [{
+                    "id": Uuid::new_v4().to_string(),
+                    "startedAt": now - 5000,
+                    "endedAt": now,
+                    "status": "succeeded",
+                    "summary": summary
+                }]
+            });
+
+            let _ = sqlx::query(
+                "UPDATE agent_task_board SET status = 'done', data = ?1, updated_at = ?2 WHERE id = ?3"
+            )
+            .bind(data.to_string())
+            .bind(now)
+            .bind(&task_id)
+            .execute(&db)
+            .await;
+
+            let _ = app.emit("agent:task", serde_json::json!({
+                "kind": "completed",
+                "taskId": task_id,
+                "summary": summary,
+                "artifacts": []
+            }));
+
+            heartbeat.abort();
+        }
+        Err(e) => {
+            let now = chrono::Utc::now().timestamp_millis();
+            let data = serde_json::json!({
+                "blockedReason": format!("Error del LLM: {}", e),
+                "comments": [format!("Error: {}", e)],
+                "attempts": [{
+                    "id": Uuid::new_v4().to_string(),
+                    "startedAt": now - 5000,
+                    "endedAt": now,
+                    "status": "failed"
+                }]
+            });
+
+            let _ = sqlx::query(
+                "UPDATE agent_task_board SET status = 'blocked', data = ?1, updated_at = ?2 WHERE id = ?3"
+            )
+            .bind(data.to_string())
+            .bind(now)
+            .bind(&task_id)
+            .execute(&db)
+            .await;
+
+            let _ = app.emit("agent:task", serde_json::json!({
+                "kind": "blocked",
+                "taskId": task_id,
+                "reason": format!("Error del LLM: {}", e)
+            }));
+
+            heartbeat.abort();
+        }
     }
 }

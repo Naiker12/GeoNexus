@@ -109,6 +109,7 @@ export type SendMessageInput = {
   web_search?: boolean
   mentioned_asset_ids?: string[]
   mentioned_connector_ids?: string[]
+  mentioned_mcp_server_ids?: string[]
   mentioned_node_ids?: string[]
   mentioned_agent_sources?: string[]
   skill_names?: string[]
@@ -134,6 +135,7 @@ export interface MentionableSourceItem {
 
 export interface MentionableSourcesResponse {
   connectors: MentionableSourceItem[]
+  mcp_servers: MentionableSourceItem[]
   assets: MentionableSourceItem[]
   graph_nodes: MentionableSourceItem[]
 }
@@ -198,48 +200,6 @@ export type SendMessageResponse = {
   validation_warnings?: string[]
   intent?: string
   session_summary?: SessionSummary
-}
-
-// ── Reasoning Events (from Rust reasoning:step) ──
-
-export type ReasoningStep =
-  | { type: "intent_classified"; intent: string; confidence: number; detected_entities: string[] }
-  | { type: "knowledge_retrieved"; chunks_found: number; assets_queried: string[]; top_relevance: number }
-  | { type: "web_searching"; query: string; sources_found: number }
-  | { type: "skills_injected"; skill_names: string[]; total_tokens: number }
-  | { type: "mcp_tool_called"; server_id: string; tool_name: string; success: boolean; duration_ms: number }
-  | { type: "graph_context_loaded"; nodes_count: number; edges_count: number }
-  | { type: "generating_response"; model: string; provider: string; estimated_tokens?: number }
-  | { type: "response_complete"; total_duration_ms: number; input_tokens: number; output_tokens: number; steps_executed: string[] }
-
-export interface ReasoningStepDisplay {
-  id: string
-  type: string
-  label: string
-  detail: string
-  durationMs?: number
-  status: "pending" | "running" | "done" | "skipped"
-}
-
-// New types for Claude-style reasoning
-export type ToolCallDisplay = {
-  id: string
-  toolName: string
-  args: Record<string, unknown>
-  status: "running" | "success" | "error"
-  durationMs?: number
-  result?: unknown
-}
-
-export interface ReasoningPanelState {
-  steps: ReasoningStepDisplay[]
-  thinkingText: string
-  toolCalls: ToolCallDisplay[]
-  isRunning: boolean
-  startTime?: number | null
-  sourceCount?: number
-  intent?: string
-  userQuery?: string
 }
 
 // ── Event Preview Streaming ─────────────────────────────────────

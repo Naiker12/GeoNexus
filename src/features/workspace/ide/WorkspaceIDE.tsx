@@ -3,7 +3,7 @@ import { Explorer } from './Explorer';
 import { CodeEditor } from './CodeEditor';
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { ReasoningTimeline } from './ReasoningTimeline';
-import { ThinkingPanel, type Task } from './ThinkingPanel';
+
 import { FilesystemTimeline } from './FilesystemTimeline';
 import { useReasoningTimeline } from './useReasoningTimeline';
 import { useFilesystemTimeline } from '@/hooks/useFilesystemTimeline';
@@ -33,8 +33,6 @@ export function WorkspaceIDE() {
   const { entries: fsEntries, clearEntries: clearFsEntries } = useFilesystemTimeline();
   const [showFsTimeline, setShowFsTimeline] = React.useState(false);
   const [activeSidebar, setActiveSidebar] = React.useState<'chat' | 'artifacts'>('chat');
-
-  const [thinkingTasks, setThinkingTasks] = React.useState<Task[]>([]);
 
   const handleSelectFile = (file: FileNode) => {
     setState(prev => ({
@@ -149,9 +147,6 @@ export function WorkspaceIDE() {
               />
             ) : (
               <div className="p-4 flex flex-col h-full">
-                <div className="flex-1">
-                  <ThinkingPanel tasks={thinkingTasks} />
-                </div>
                 <div className="border-t border-gray-200 pt-2 mt-2">
                   <input
                     type="text"
