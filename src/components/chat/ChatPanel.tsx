@@ -3,6 +3,7 @@ import {
   MessageSquarePlusIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  TerminalIcon,
 } from "lucide-react"
 
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
@@ -12,6 +13,7 @@ import { ConversationSidebarList } from "@/components/chat/ConversationSidebarLi
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
+import { EventLogPanel } from "@/components/chat/EventLogPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
@@ -68,6 +70,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const [newChatCounter, setNewChatCounter] = React.useState(0)
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
   const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
+  const [eventLogOpen, setEventLogOpen] = React.useState(false)
 
   React.useEffect(() => {
     localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
@@ -189,6 +192,14 @@ export function ChatPanel(_props: ChatPanelProps) {
               : "idle"}
             conversationCount={messages.filter(m => m.role === "user").length}
           />
+          <div className="ml-auto" />
+          <button
+            onClick={() => setEventLogOpen(!eventLogOpen)}
+            className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-0.5 rounded hover:bg-zinc-800/50 transition-all"
+          >
+            <TerminalIcon className="size-3.5" />
+            Log
+          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -324,6 +335,11 @@ export function ChatPanel(_props: ChatPanelProps) {
         onClose={() => setContextPanelOpen(false)}
         toggles={contextToggles}
         onToggleChange={setContextToggles}
+      />
+      
+      <EventLogPanel
+        isOpen={eventLogOpen}
+        onClose={() => setEventLogOpen(false)}
       />
     </section>
   )
