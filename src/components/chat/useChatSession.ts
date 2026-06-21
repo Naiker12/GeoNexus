@@ -1,11 +1,9 @@
 import * as React from "react"
 import type { AiConnector } from "@/types/workspace-types"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
-import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
 import type { Message } from "@/types/chat"
 import { useConversation } from "./hooks/useConversation"
 import { useWebSearch } from "./hooks/useWebSearch"
-import { useChatPipeline } from "./hooks/useChatPipeline"
 import { useChatSubmit } from "./hooks/useChatSubmit"
 
 export function useChatSession(
@@ -26,11 +24,6 @@ export function useChatSession(
     stopResearchTimer, startResearchTimer,
   } = useWebSearch()
 
-  const {
-    pipeline,
-    resetPipeline, markPipelineComplete,
-  } = useChatPipeline()
-
   const [contextToggles, setContextToggles] = React.useState<ContextToggle>({
     rag_chunks: true,
     indexed_assets: true,
@@ -45,7 +38,6 @@ export function useChatSession(
     setMessages, updateAssistantMessage,
     webSearchEnabled, contextToggles,
     activeConnectorId, allConnectors,
-    resetPipeline, markPipelineComplete,
     stopResearchTimer, startResearchTimer,
     setSessionSummary, setLastIntent,
   )
@@ -57,9 +49,9 @@ export function useChatSession(
   }, [setConvError, setSubmitError])
 
   const newConversation = React.useCallback(() => {
+    stop()
     newConv()
-    resetPipeline()
-  }, [newConv, resetPipeline])
+  }, [stop, newConv])
 
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
 
@@ -68,7 +60,7 @@ export function useChatSession(
   }, [pending])
 
   const wrappedSubmit = React.useCallback(
-    (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: Message["attachments"]) => {
+    (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: Message["attachments"]) => {
       setSubmitTime(Date.now())
       return submit(content, mentions, skillNames, attachments)
     },
@@ -90,7 +82,6 @@ export function useChatSession(
     submitTime,
     sessionSummary,
     lastIntent,
-    pipeline,
     submit: wrappedSubmit,
     regenerate,
     loadConversation,

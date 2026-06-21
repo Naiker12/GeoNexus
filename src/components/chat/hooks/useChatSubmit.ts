@@ -4,7 +4,13 @@ import { useToast } from "@/components/ui/toast"
 import type { AiConnector } from "@/types/workspace-types"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { Message, SendMessageInput, KnowledgeLookupStep, FileAttachment } from "@/types/chat"
-import type { ChatLoadingPhase } from "@/components/chat/ChatLoadingIndicator"
+type ChatLoadingPhase =
+  | "idle"
+  | "classifying"
+  | "searching"
+  | "generating"
+  | "extracting"
+  | "done"
 
 const DEFAULT_PROJECT_ID = "project-default"
 
@@ -17,8 +23,6 @@ export function useChatSubmit(
   contextToggles: ContextToggle,
   activeConnectorId: string | null,
   allConnectors: AiConnector[],
-  resetPipeline: () => void,
-  markPipelineComplete: (totalDurationMs: number) => void,
   stopResearchTimer: () => void,
   startResearchTimer: (startTime: number, assistantMsgId: string, onTick: (elapsed: number) => void) => void,
   setSessionSummary: (s: any) => void,
@@ -29,6 +33,7 @@ export function useChatSubmit(
   const [loadingPhase, setLoadingPhase] = React.useState<ChatLoadingPhase>("idle")
   const [error, setError] = React.useState<string | null>(null)
   const submitTimeRef = React.useRef<number>(0)
+  const generationRef = React.useRef(0)
 
   const activeProvider = React.useMemo(() => {
     if (!activeConnectorId) return null
@@ -47,7 +52,7 @@ export function useChatSubmit(
   }, [activeConnectorId, allConnectors])
 
   const submit = React.useCallback(
-    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[]) => {
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[]) => {
       const clean = content.trim()
       if (!clean || pending) return
       if (!activeProvider) {
@@ -57,6 +62,7 @@ export function useChatSubmit(
       }
 
       submitTimeRef.current = Date.now()
+      const myGen = generationRef.current
 
       const optimistic: Message = {
         id: `local-${Date.now()}`,
@@ -77,7 +83,6 @@ export function useChatSubmit(
       setError(null)
       setPending(true)
       setLoadingPhase("classifying")
-      resetPipeline()
       setMessages((current) => [...current, optimistic])
 
       const assistantMsgId = `assistant-${Date.now()}`
@@ -126,6 +131,7 @@ export function useChatSubmit(
         web_search: webSearchEnabled || undefined,
         mentioned_asset_ids: mentions?.assetIds.length ? mentions.assetIds : undefined,
         mentioned_connector_ids: mentions?.connectorIds.length ? mentions.connectorIds : undefined,
+        mentioned_mcp_server_ids: mentions?.mcpServerIds?.length ? mentions.mcpServerIds : undefined,
         mentioned_node_ids: mentions?.nodeIds.length ? mentions.nodeIds : undefined,
         mentioned_agent_sources: mentions?.agentSources?.length ? mentions.agentSources : undefined,
         skill_names: skillNames && skillNames.length > 0 ? skillNames : undefined,
@@ -146,27 +152,53 @@ export function useChatSubmit(
       }
 
       let unlisten: (() => void) | null = null
+      let tokenBuffer = ""
+      let flushTimer: number | null = null
+      const flushTokenBuffer = () => {
+        if (!tokenBuffer) {
+          flushTimer = null
+          return
+        }
+        const chunk = tokenBuffer
+        tokenBuffer = ""
+        flushTimer = null
+        setMessages((current) =>
+          current.map((msg) =>
+            msg.id === assistantMsgId
+              ? { ...msg, content: msg.content + chunk }
+              : msg,
+          ),
+        )
+      }
 
       try {
         const { listen } = await import("@tauri-apps/api/event")
         unlisten = await listen<string>("llm:token", ({ payload }) => {
-          setMessages((current) =>
-            current.map((msg) =>
-              msg.id === assistantMsgId
-                ? { ...msg, content: msg.content + (payload ?? "") }
-                : msg,
-            ),
-          )
+          tokenBuffer += payload ?? ""
+          if (flushTimer == null) {
+            flushTimer = window.setTimeout(flushTokenBuffer, 50)
+          }
         })
 
         clearTimeout(searchingTimer)
         setLoadingPhase("generating")
 
         const response = await sendMessage(input)
+        if (generationRef.current !== myGen) {
+          unlisten?.()
+          if (flushTimer != null) { window.clearTimeout(flushTimer); flushTimer = null }
+          setPending(false)
+          setLoadingPhase("idle")
+          return
+        }
         unlisten?.()
+        if (flushTimer != null) {
+          window.clearTimeout(flushTimer)
+          flushTimer = null
+        }
+        flushTokenBuffer()
         setConversationId(response.conversation_id)
         setLoadingPhase("extracting")
-        markPipelineComplete(Date.now() - submitTimeRef.current)
         if (response.session_summary) setSessionSummary(response.session_summary)
         if (response.intent) setLastIntent(response.intent)
 
@@ -184,6 +216,7 @@ export function useChatSubmit(
 
         const baseUpdate: Record<string, unknown> = {
           conversation_id: response.conversation_id,
+          content: response.message.content,
           stats: response.message.stats,
           knowledgeSteps: finalKnowledgeSteps,
           chunk_references: response.chunks_used,
@@ -203,6 +236,10 @@ export function useChatSubmit(
 
         toast({ title: "Respuesta recibida", description: "Geo Agents ha completado el análisis", variant: "success" })
       } catch (err) {
+        if (flushTimer != null) {
+          window.clearTimeout(flushTimer)
+          flushTimer = null
+        }
         clearTimeout(searchingTimer)
         stopResearchTimer()
 
@@ -216,7 +253,7 @@ export function useChatSubmit(
         setLoadingPhase("idle")
       }
     },
-    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage, resetPipeline, markPipelineComplete, stopResearchTimer, startResearchTimer, setConversationId, setMessages, setSessionSummary, setLastIntent, toast],
+    [activeProvider, activeConnectorId, allConnectors, conversationId, pending, webSearchEnabled, contextToggles, updateAssistantMessage, stopResearchTimer, startResearchTimer, setConversationId, setMessages, setSessionSummary, setLastIntent, toast],
   )
 
   const regenerate = React.useCallback(() => {
@@ -240,6 +277,7 @@ export function useChatSubmit(
   }, [submit, setMessages, setError])
 
   const stop = React.useCallback(() => {
+    generationRef.current += 1
     stopResearchTimer()
     setPending(false)
     setLoadingPhase("idle")
