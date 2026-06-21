@@ -1,6 +1,7 @@
 import * as React from "react"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { Bot } from "lucide-react"
+import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 
 const THINKING_TEXTS = [
   "Analizando tu consulta...",
@@ -13,12 +14,21 @@ const THINKING_TEXTS = [
 interface ThinkingCardProps {
   isVisible: boolean
   currentStepLabel?: string
+  thinkingText?: string
 }
 
-export function ThinkingCard({ isVisible, currentStepLabel }: ThinkingCardProps) {
+export function ThinkingCard({ isVisible, currentStepLabel, thinkingText }: ThinkingCardProps) {
+  const reduceMotion = useReducedMotion()
   const [textIndex, setTextIndex] = React.useState(0)
   const [fadeText, setFadeText] = React.useState(true)
-  const showRotatingText = !currentStepLabel
+  const showRotatingText = !currentStepLabel && !thinkingText
+  const contentRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    }
+  }, [thinkingText])
 
   React.useEffect(() => {
     if (!isVisible || !showRotatingText) return
@@ -40,35 +50,63 @@ export function ThinkingCard({ isVisible, currentStepLabel }: ThinkingCardProps)
   }, [isVisible])
 
   return (
-    <div
-      className={cn(
-        "transition-all duration-300 ease-in-out overflow-hidden",
-        isVisible
-          ? "opacity-100 max-h-24 mb-3"
-          : "opacity-0 max-h-0 mb-0",
-      )}
-    >
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/40">
-        <div className="relative shrink-0">
-          <Bot className="size-4 text-muted-foreground" />
-          <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-green-500 animate-pulse" />
-        </div>
-
-        <span
-          className={cn(
-            "text-sm text-muted-foreground transition-opacity duration-300",
-            fadeText ? "opacity-100" : "opacity-0",
-          )}
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: -8, height: 0 }}
+          animate={{ opacity: 1, y: 0, height: "auto" }}
+          exit={{ opacity: 0, y: -4, height: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         >
-          {showRotatingText ? THINKING_TEXTS[textIndex] : currentStepLabel}
-        </span>
+          <div className="mb-3 flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+            <div className="relative shrink-0 mt-0.5">
+              <GeoAgentsIcon className="size-4" variant="nexus" />
+              {!reduceMotion && (
+                <motion.span
+                  className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500"
+                  animate={{ scale: [1, 1.3, 1] }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                />
+              )}
+            </div>
 
-        <div className="ml-auto flex gap-1">
-          <span className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
-          <span className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
-          <span className="size-1.5 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
-        </div>
-      </div>
-    </div>
+            <div className="flex-1 min-w-0">
+              <motion.span
+                className="block text-sm text-muted-foreground"
+                animate={{ opacity: fadeText ? 1 : 0.2 }}
+                transition={{ duration: 0.3 }}
+              >
+                {thinkingText ? "Razonando..." : showRotatingText ? THINKING_TEXTS[textIndex] : currentStepLabel}
+              </motion.span>
+
+              {thinkingText && (
+                <div
+                  ref={contentRef}
+                  className="mt-2 max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-wrap font-mono border-t border-border/50 pt-2 scroll-smooth"
+                  style={{ scrollbarWidth: "thin" }}
+                >
+                  {thinkingText}
+                  <motion.span
+                    className="inline-block size-1.5 ml-0.5 rounded-full bg-emerald-500"
+                    animate={{ opacity: [1, 0.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 1 }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <motion.div
+              className="flex gap-1 ml-auto shrink-0 mt-1"
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+            >
+              <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+            </motion.div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

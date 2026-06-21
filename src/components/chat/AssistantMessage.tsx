@@ -11,9 +11,11 @@ import { ThinkingCard } from "@/components/chat/ThinkingCard"
 
 import { ReasoningTimelineBlock } from "@/components/chat/ReasoningTimelineBlock"
 import { useReasoningTimeline } from "@/hooks/useReasoningTimeline"
+import { getStepDisplay } from "@/components/chat/tool-display-config"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
 import type { Message } from "@/types/chat"
+import { AnimatePresence, motion } from "framer-motion"
 
 interface AssistantMessageProps {
   message: Message
@@ -30,7 +32,7 @@ export function AssistantMessage({
   onSendMessage,
   cumulativeContext,
 }: AssistantMessageProps) {
-  const { timeline, isStreaming: timelineStreaming, toggleCollapse } =
+  const { timeline, isStreaming: timelineStreaming, thinkingText, isCollapsing, toggleCollapse } =
     useReasoningTimeline(isStreaming ? message.conversation_id ?? null : null)
 
   const { mainContent, suggestions } = isStreaming
@@ -44,6 +46,9 @@ export function AssistantMessage({
   const hasContent = (message.content?.length ?? 0) > 0
 
   const lastRunningStep = [...(timeline?.steps ?? [])].reverse().find(s => s.status === "running")
+  const lastRunningLabel = lastRunningStep
+    ? `${getStepDisplay(lastRunningStep.id, lastRunningStep.label).title}: ${lastRunningStep.label}`
+    : undefined
   const showThinkingCard = (timelineStreaming || isStreaming) && !hasContent && !isPending
 
   return (
@@ -63,54 +68,64 @@ export function AssistantMessage({
           <ReasoningTimelineBlock
             timeline={timeline}
             isStreaming={timelineStreaming}
+            isCollapsing={isCollapsing}
             onToggle={toggleCollapse}
           />
         )}
 
         {/* ─── THINKING CARD ─── */}
         <ThinkingCard
-          isVisible={showThinkingCard}
-          currentStepLabel={lastRunningStep?.label}
+          isVisible={!!showThinkingCard}
+          currentStepLabel={lastRunningLabel}
+          thinkingText={thinkingText}
         />
 
-        {/* ─── RESPUESTA PRINCIPAL (siempre primero) ─── */}
-        {showThinkingCard ? null : (
-          <>
-            {showResearch && (
-              <DeepResearchPanel
-                sources={message.research_sources ?? []}
-                isSearching={message.isSearching ?? false}
-                currentQuery={message.currentSearchQuery}
-                elapsedSeconds={message.searchElapsedSeconds}
-              />
-            )}
-            {segments.map((seg, i) =>
-              seg.kind === "connect_card" ? (
-                <ConnectCard
-                  key={`card-${i}`}
-                  connectorId={(seg.value as ConnectCardData).connectorId}
-                  reason={(seg.value as ConnectCardData).reason}
+        {/* ─── RESPUESTA PRINCIPAL con crossfade ─── */}
+        <AnimatePresence mode="wait">
+          {showThinkingCard ? null : (
+            <motion.div
+              key="response"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              {showResearch && (
+                <DeepResearchPanel
+                  sources={message.research_sources ?? []}
+                  isSearching={message.isSearching ?? false}
+                  currentQuery={message.currentSearchQuery}
+                  elapsedSeconds={message.searchElapsedSeconds}
                 />
-              ) : seg.kind === "mcp_connect_card" ? (
-                <McpConnectCard
-                  key={`mcp-card-${i}`}
-                  serverId={(seg.value as McpConnectCardData).serverId}
-                  serverName={(seg.value as McpConnectCardData).serverName}
-                  serverUrl={(seg.value as McpConnectCardData).serverUrl}
-                  reason={(seg.value as McpConnectCardData).reason}
-                  onConnect={() => {
-                    const event = new CustomEvent("geonexus:open-mcp-register", {
-                      detail: seg.value,
-                    })
-                    window.dispatchEvent(event)
-                  }}
-                />
-              ) : (
-                <MarkdownContent key={`text-${i}`} content={seg.value as string} isStreaming={isStreaming && i === segments.length - 1} />
-              ),
-            )}
-          </>
-        )}
+              )}
+              {segments.map((seg, i) =>
+                seg.kind === "connect_card" ? (
+                  <ConnectCard
+                    key={`card-${i}`}
+                    connectorId={(seg.value as ConnectCardData).connectorId}
+                    reason={(seg.value as ConnectCardData).reason}
+                  />
+                ) : seg.kind === "mcp_connect_card" ? (
+                  <McpConnectCard
+                    key={`mcp-card-${i}`}
+                    serverId={(seg.value as McpConnectCardData).serverId}
+                    serverName={(seg.value as McpConnectCardData).serverName}
+                    serverUrl={(seg.value as McpConnectCardData).serverUrl}
+                    reason={(seg.value as McpConnectCardData).reason}
+                    onConnect={() => {
+                      const event = new CustomEvent("geonexus:open-mcp-register", {
+                        detail: seg.value,
+                      })
+                      window.dispatchEvent(event)
+                    }}
+                  />
+                ) : (
+                  <MarkdownContent key={`text-${i}`} content={seg.value as string} isStreaming={isStreaming && i === segments.length - 1} />
+                ),
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Citas ChromaDB */}
         {message.sources && message.sources.length > 0 && (
