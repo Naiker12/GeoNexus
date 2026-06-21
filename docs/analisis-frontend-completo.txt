@@ -1,0 +1,186 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS COMPLETO DEL FRONTEND EN GEONEXUS                           ║
+║   Incluye: Estructura de directorios, features, componentes, hooks      ║
+║   Actualizado: Junio 2026 (verificado contra código real)               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ESTRUCTURA GENERAL DEL FRONTEND (src/)                                ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/
+  ├── App.tsx                     → Punto de entrada React
+  ├── main.tsx                    → Monta App
+  ├── index.css                   → Estilos globales
+  ├── api/                        → Capa de comunicación Tauri/HTTP
+  ├── components/                 → Componentes compartidos
+  ├── features/                   → Módulos de funcionalidad (workspace)
+  ├── hooks/                      → Custom hooks React
+  ├── types/                      → TypeScript types
+  └── lib/                        → Utilidades
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   FEATURES (src/features/)                                              ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/features/workspace/:
+  ├── chat/                       → Chat + agente conversacional
+  ├── configuration/              → Panel de configuración (documentado aparte)
+  ├── workspace/                  → Layout del workspace IDE
+  └── mcp/                        → UI de gestión MCP
+
+  chat/:
+    ├── ChatPanel.tsx             → Panel principal de chat
+    ├── CodingAgentPanel.tsx      → Panel del agente de código
+    ├── AssistantMessage.tsx      → Renderizado de mensajes del asistente
+    ├── UserMessage.tsx           → Renderizado de mensajes del usuario
+    ├── ThinkingCard.tsx          → Pensamiento en vivo del LLM (razonamiento)
+    ├── MessageList.tsx           → Lista de mensajes
+    ├── MessageInput.tsx          → Input de mensajes
+    ├── ModelSelectorInternal.tsx → Selector de modelo dentro del chat
+    ├── ToolCalls.tsx             → Visualización de llamadas a herramientas
+    ├── hooks/
+    │   ├── useChat.ts            → Hook principal de chat
+    │   └── useReasoningTimeline.ts → Hook para eventos de razonamiento
+    └── (otros componentes del chat)
+
+  mcp/:
+    ├── McpServersPage.tsx        → Página de servidores MCP
+    ├── McpServerCard.tsx         → Tarjeta de servidor individual
+    ├── McpServerGrid.tsx         → Grid de servidores
+    ├── McpServerRow.tsx          → Fila de servidor (lista)
+    ├── McpRegisterDialog.tsx     → Diálogo de registro
+    ├── McpToolsViewer.tsx        → Visor de herramientas
+    ├── McpConsole.tsx            → Consola MCP
+    ├── McpHeader.tsx             → Encabezado MCP
+    ├── McpConfigEditor.tsx       → Editor de configuración JSON
+    ├── McpConfigImport.tsx       → Importador de configuración
+    └── hooks/
+        ├── useMcpServers.ts      → Hook de servidores
+        ├── useMcpTools.ts        → Hook de herramientas
+        └── useMcpTerminal.ts     → Hook de terminal
+
+  workspace/ (IDE):
+    ├── WorkspaceIDE.tsx          → Layout principal del IDE
+    ├── ide/
+    │   ├── ReasoningTimeline.tsx → Timeline de razonamiento (chat mode)
+    │   ├── Header.tsx            → Encabezado del workspace
+    │   ├── Sidebar.tsx           → Barra lateral
+    │   └── StatusBar.tsx         → Barra de estado
+    └── (otros componentes IDE)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   COMPONENTES COMPARTIDOS (src/components/)                             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  components/:
+  ├── ui/                         → Primitivas UI (Button, Input, Dialog, etc.)
+  ├── chat/                       → Componentes de chat compartidos
+  ├── map/                        → Componentes de mapa
+  ├── graph/                      → Componentes de grafo de conocimiento
+  └── (otros directorios UI)
+
+  Nota: Los siguientes archivos fueron eliminados por no usarse:
+    - AgentCleanupReport.tsx
+    - AgentCodeViewer.tsx
+    - CommandPalette.tsx
+    - ConversationList.tsx
+    - ModelSelector.tsx
+    - ShapefileConnectorDialog.tsx
+    - SkillActivationToast.tsx
+    - TypingDots.tsx
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   HOOKS PRINCIPALES (src/hooks/)                                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  useChat.ts:
+     ├── Gestiona el estado del chat (mensajes, conversación, loading)
+     ├── Envía mensajes vía Tauri invoke("send_message")
+     ├── Maneja streaming de respuesta
+     ├── Eventos de razonamiento (reasoning:thinking, reasoning:tool)
+     └── Integración con MCP tools + skills + context graph
+
+  useReasoningTimeline.ts:
+     ├── Escucha eventos de razonamiento del backend
+     ├── reasoning:thinking → texto de pensamiento en vivo
+     ├── reasoning:tool → herramientas utilizadas
+     ├── reasoning:sub_item → ítems del plan
+     ├── reasoning:complete → razonamiento finalizado
+     └── reasoning:error → errores de razonamiento
+
+  useMcpServers.ts:
+     ├── Lista servidores MCP registrados
+     ├── Ping, registro, eliminación
+     └── Estado online/offline
+
+  useMcpTools.ts:
+     ├── Lista herramientas por servidor
+     └── Estado de carga
+
+  useMcpTerminal.ts:
+     ├── Consola interactiva MCP
+     └── Historial de comandos
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   API LAYER (src/api/)                                                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  api/:
+  ├── index.ts                    → Configuración de cliente HTTP
+  ├── mcp.ts                      → Llamadas a API de MCP
+  └── (otros archivos de API)
+
+  Los comandos IPC Tauri se llaman directamente con invoke() desde los
+  componentes/hooks, no pasan por la capa api/ (que es para HTTP externo).
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   TYPES (src/types/)                                                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  types/:
+  ├── mcp.ts                      → Tipos MCP del frontend
+  ├── chat.ts                     → Tipos de chat
+  └── (otros archivos de tipos)
+
+  Los tipos reflejan los structs del backend Rust para serialización JSON
+  a través de Tauri IPC.
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   SISTEMA DE EVENTOS (FRONTEND)                                         ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  El frontend recibe eventos del backend a través de Tauri event system:
+     - listen("event-name", callback)
+     - Eventos emitidos desde Rust con app_handle.emit()
+
+  Eventos clave:
+     reasoning:thinking  → Texto de razonamiento del LLM (streaming)
+     reasoning:tool      → Herramienta siendo ejecutada
+     reasoning:sub_item  → Sub-ítem de plan (file changes, etc.)
+     reasoning:complete  → Razonamiento finalizado
+     reasoning:error     → Error en razonamiento
+     agent:*             → Eventos del agente de código (agent mode)
+     mcp:*               → Eventos de MCP
+
+  Diferencia entre modos:
+     - Chat mode: usa reasoning:* events + AssistantMessage + useReasoningTimeline
+     - Agent mode: usa agent:* events + CodingAgentPanel
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   SISTEMA DE ICONOS                                                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  El frontend usa Lucide React para todos los iconos:
+     - import { IconName } from "lucide-react"
+     - Antes se usaban emojis en algunos componentes (ReasoningTimeline IDE)
+     - Migración completada: emoji → Lucide outline + color accent
+
+  tool-display-config.ts:
+     ├── Define display config para cada tool (nombre, ícono, color)
+     ├── MCP tools, FS tools, container tools
+     └── lookupToolDisplay() → ToolDisplayConfig | undefined
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   FIN DEL ANÁLISIS                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝

@@ -1,0 +1,272 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS COMPLETO DE CONFIGURACIÓN EN GEONEXUS                        ║
+║   Incluye: Workspace Configuration UI + Settings Dialogs + Sections     ║
+║   Actualizado: Junio 2026 (verificado contra código real)               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ÍNDICE DE ARCHIVOS                                                    ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║   src/features/workspace/configuration/                                  ║
+║   ├── ConfigurationDialog.tsx          (punto de entrada)                ║
+║   ├── ConfigurationSidebar.tsx         (navegación lateral)              ║
+║   ├── ConfigurationHeader.tsx          (encabezado)                      ║
+║   ├── ConfigurationFooter.tsx          (footer con guardar)              ║
+║   ├── configuration-data.ts            (grupos de navegación)            ║
+║   ├── configuration-types.ts           (tipos: ConfigSectionId, etc.)    ║
+║   ├── settings-data.ts                 (datos estáticos: rutas, tareas)  ║
+║   ├── settings-types.ts                (tipos: SettingsDialog unión)     ║
+║   ├── settings-ui.tsx                  (primitivas UI reutilizables)     ║
+║   ├── SettingsDialogs.tsx              (orquestador de sub-diálogos)     ║
+║   ├── AiModelsTable.tsx               (tabla de modelos IA)              ║
+║   ├── AllowedPathDialog.tsx            (dialogo de rutas permitidas)     ║
+║   ├── ConfirmSettingsDialog.tsx        (confirmación eliminar/desactivar)║
+║   ├── DialogActions.tsx                (botones Cancel/Submit reutiliz.) ║
+║   ├── LocalPathDialog.tsx              (detalle de ruta local)           ║
+║   ├── MapEngineDialog.tsx              (configurar motor de mapa)        ║
+║   ├── MapSettingsPanel.tsx             (lista motores de mapa)           ║
+║   ├── McpRulesTable.tsx                (tabla reglas allowlist MCP)      ║
+║   └── McpSettingsDialog.tsx            (editar regla allowlist MCP)      ║
+║                                                                          ║
+║   sections/                                                              ║
+║   ├── AgentsSection.tsx                (agentes IA)                      ║
+║   ├── AiEmbeddingsSection.tsx          (modelos de embedding)            ║
+║   ├── AllowedPathsSection.tsx          (directorios permitidos)          ║
+║   ├── CommandsSection.tsx              (comandos y atajos teclado)       ║
+║   ├── ConnectorsSection.tsx            (conectores IA)                   ║
+║   ├── GisToolsPanel.tsx                (herramientas GIS vía MCP)        ║
+║   ├── LocalPathsSection.tsx            (rutas locales del workspace)     ║
+║   ├── MaintenanceSection.tsx           (tareas de mantenimiento)         ║
+║   ├── MapEnginesSection.tsx            (wrapper MapSettingsPanel)        ║
+║   ├── McpRouterSection.tsx             (servidores MCP Router)            ║
+║   ├── MemorySection.tsx                (memoria vectorial ChromaDB)      ║
+║   ├── NotificationsPanel.tsx           (canales de notificación)         ║
+║   └── TelegramIntegrationPanel.tsx     (integración bot Telegram)        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   1. ARQUITECTURA DEL DIÁLOGO DE CONFIGURACIÓN                          ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  ConfigurationDialog.tsx (punto de entrada):
+     ├── Renderiza: ConfigurationHeader + ConfigurationSidebar + panel activo + ConfigurationFooter
+     ├── Estado: activeSection (ConfigSectionId), dirty (bool), saving (bool)
+     ├── El panel activo se resuelve con un switch sobre activeSection
+     └── Los cambios se acumulan y guardan con botón "Guardar" en footer
+
+  ConfigurationSidebar.tsx:
+     ├── Lee configGroups desde configuration-data.ts
+     ├── Agrupa secciones en: SISTEMA, INTEGRACIONES, GEOESPACIAL, DATOS
+     ├── Cada entrada tiene icono Lucide + indicador de estado (green/yellow/null)
+     └── onClick → setActiveSection(id)
+
+  ConfigurationHeader.tsx:
+     ├── Título "Configuración"
+     └── Muestra contexto del workspace ("Workspace sin proyecto activo")
+
+  ConfigurationFooter.tsx:
+     ├── Botón "Cancelar" → cierra sin guardar
+     ├── Botón "Guardar configuración" → itera dirty sections y persiste
+     └── Muestra toast mientras guarda (loading)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   2. SISTEMA DE SECCIONES (ConfigSectionId)                             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Las 13 secciones se definen en configuration-types.ts:
+
+  SISTEMA:
+    ai-embeddings  → BrainCircuitIcon (green)  → AiEmbeddingsSection
+    mcp-router     → ServerIcon (yellow)       → McpRouterSection
+
+  INTEGRACIONES:
+    telegram       → MessageSquareIcon         → TelegramIntegrationPanel
+
+  GEOESPACIAL:
+    map-engines    → MapIcon                   → MapEnginesSection
+    connectors     → LayersIcon                → ConnectorsSection
+    gis-tools      → SlidersHorizontalIcon     → GisToolsPanel
+
+  DATOS:
+    memory         → DatabaseIcon              → MemorySection
+    local-paths    → FolderCogIcon             → LocalPathsSection
+    allowed-paths  → Shield                    → AllowedPathsSection
+
+  SISTEMA (segundo grupo):
+    agents         → SparklesIcon              → AgentsSection
+    commands       → TerminalIcon              → CommandsSection
+    notifications  → BellIcon                  → NotificationsPanel
+    maintenance    → WrenchIcon                → MaintenanceSection
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   3. SUB-DIÁLOGOS (SettingsDialog unión discriminada)                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  SettingsDialogs.tsx es un orquestador que renderiza el diálogo correcto
+  según el tipo:
+
+  add-model        → inline ModelSettingsDialog (nuevo modelo IA)
+  edit-model       → inline ModelSettingsDialog (editar existente)
+  view-key         → muestra clave del modelo
+  disable-model    → ConfirmSettingsDialog (desactivar modelo)
+  delete-model     → ConfirmSettingsDialog (eliminar modelo)
+  edit-mcp         → McpSettingsDialog (editar regla allowlist)
+  disable-mcp      → ConfirmSettingsDialog (desactivar servidor MCP)
+  delete-mcp       → ConfirmSettingsDialog (eliminar servidor MCP)
+  configure-map    → MapEngineDialog (configurar motor mapa)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   4. PRIMITIVAS UI REUTILIZABLES (settings-ui.tsx)                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  SettingGroup     → Contenedor con título + descripción opcional
+  Field            → Label + children (input personalizado)
+  CheckRow         → Fila con checkbox + label + descripción
+  CompactCheckRow  → Versión compacta de CheckRow
+  SideMetric       → Métrica numérica con label (ej: "128 chunks")
+
+  DialogActions    → Botones Cancel + Submit con variante destructive
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   5. DESCRIPCIÓN DE CADA SECCIÓN                                        ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  AiEmbeddingsSection:
+     ├── Configura modelos de embedding (proveedor, modelo, endpoint, key)
+     ├── Tabla con toggle activo/inactivo
+     ├── Botón "Añadir modelo" → add-model dialog
+     └── Catálogo de proveedores con botón "Conectar"
+
+  McpRouterSection:
+     ├── Gestiona servidores MCP Router
+     ├── Tarjetas de servidor con ping online/offline
+     ├── Botón "Registrar servidor"
+     └── Acciones por servidor: ping, editar, eliminar
+
+  TelegramIntegrationPanel:
+     ├── Token input + botón "Probar conexión"
+     ├── Select modo de respuesta (responder al chat / reenviar al asistente)
+     ├── Lista de usuarios permitidos (input + botón añadir)
+     ├── Botón "Iniciar polling" / "Detener polling"
+     └── Estado actual del bot (conectado/desconectado/error)
+
+  MapEnginesSection:
+     ├── Wrapper que renderiza MapSettingsPanel
+     └── Conecta con SettingsDialogs para configure-map
+
+  MapSettingsPanel:
+     ├── Lista motores: MapLibre GL, ArcGIS JS, Leaflet, Deck.gl
+     ├── Cada motor: nombre, descripción, ícono, status (active/inactive)
+     └── Botón "Configurar" por motor → MapEngineDialog
+
+  ConnectorsSection:
+     ├── Muestra conectores IA configurados (proveedores, MCP, servicios)
+     ├── Carga desde API
+     └── Estado de carga mientras fetch
+
+  GisToolsPanel:
+     ├── Descubre herramientas GIS vía MCP
+     ├── Agrupado por categoría: GIS, Memoria, Datos, IA, UI
+     ├── Por servidor: lista de herramientas con toggle on/off
+     └── Expandir/colapsar por grupo
+
+  MemorySection:
+     ├── Configura ChromaDB (memoria vectorial)
+     ├── Chunk size slider
+     ├── Select modelo de embedding
+     ├── Top-K results
+     └── Stats de colección (total chunks, dimensiones)
+
+  LocalPathsSection:
+     ├── Muestra 3 rutas locales: Workspace, Database, Memory
+     ├── Cada una en bloque de código legible
+     └── Botón detalle → LocalPathDialog (copy-to-clipboard + "Abrir")
+
+  AllowedPathsSection:
+     ├── Gestiona directorios permitidos para el filesystem MCP
+     ├── Tabla: ruta, nivel permiso (read/write/execute/admin)
+     ├── Botón "Añadir ruta" → AllowedPathDialog
+     └── Botón eliminar por ruta
+
+  AgentsSection:
+     ├── Lista agentes IA: document, embedding, graph, classifier, chat
+     ├── Por agente: ícono, nombre, kind, toggle on/off
+     └── Input para crear nuevo agente personalizado
+
+  CommandsSection:
+     ├── Referencia de comandos del workspace
+     ├── Agrupado por categoría
+     ├── Cada comando: nombre, descripción, shortcut teclado
+     └── Estado: hecho / progreso / planeado
+
+  NotificationsPanel:
+     ├── Canales: toast, OS notification, sound
+     ├── Duración default + posición del toast
+     └── Toggles por categoría de notificación
+
+  MaintenanceSection:
+     ├── Tareas: migraciones SQLite, integridad DB, reindexar Chroma, etc.
+     ├── Cada tarea con botón "Ejecutar"
+     └── Botón "Limpiar caché"
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   6. DATOS ESTÁTICOS (settings-data.ts)                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Local paths:
+     ├── Ruta del workspace (directorio de trabajo)
+     ├── Ruta de la base de datos SQLite
+     └── Ruta de memoria/vectores
+
+  Maintenance tasks:
+     ├── Run SQLite migrations (VACUUM, integrity_check)
+     ├── Check DB integrity
+     ├── Re-index Chroma collections
+     ├── Clear cache
+     ├── Export traces as CSV
+     ├── Export traces as JSON
+     └── Reset analytics
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   7. TIPOS Y ESTRUCTURAS                                                ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  ConfigSectionId = "ai-embeddings" | "mcp-router" | "telegram"
+                  | "map-engines" | "connectors" | "memory"
+                  | "local-paths" | "allowed-paths" | "gis-tools"
+                  | "commands" | "maintenance" | "agents" | "notifications"
+
+  ConfigSection = { id, label, icon: LucideIcon, indicator?: "green"|"yellow" }
+
+  ConfigGroup = { label: string, sections: ConfigSection[] }
+
+  SettingsDialog = { type: "add-model" }
+                 | { type: "edit-model"; name }
+                 | { type: "view-key"; name }
+                 | { type: "disable-model"; name }
+                 | { type: "delete-model"; name }
+                 | { type: "edit-mcp"; name; serverId }
+                 | { type: "disable-mcp"; name; serverId }
+                 | { type: "delete-mcp"; name; serverId }
+                 | { type: "configure-map"; name }
+                 | null
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   8. FLUJO DE DATOS                                                     ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  1. Usuario abre configuración → ConfigurationDialog monta sidebar + panel default
+  2. Usuario navega secciones → activeSection cambia, panel se re-renderiza
+  3. Usuario modifica settings → se marca dirty en estado del dialog
+  4. Usuario hace clic "Guardar configuración":
+     a. Se itera dirty sections
+     b. Cada sección persiste vía API Tauri
+     c. Toast de éxito/error
+  5. Usuario hace clic "Cancelar" → se cierra sin persistir
+
+  Los sub-diálogos (SettingsDialog) se abren desde acciones dentro de cada
+  sección (ej: "Añadir modelo" → add-model, "Configurar" → configure-map).
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   FIN DEL ANÁLISIS                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝

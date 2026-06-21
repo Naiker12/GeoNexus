@@ -1,0 +1,516 @@
+================================================================================
+  AUDITORÍA DE SEGURIDAD: INTEGRACIÓN TELEGRAM EN GEONEXUS
+================================================================================
+  Fecha: 2026-06-20
+  Versión del código analizado: Actual (main)
+  Archivos auditados:
+    - crates/geonexus-core/src/telegram/mod.rs
+    - crates/geonexus-core/src/telegram/polling.rs
+    - crates/geonexus-core/src/telegram/sender.rs
+    - crates/geonexus-tauri/src/commands/telegram.rs
+    - crates/geonexus-tauri/src/main.rs
+    - src/api/telegram.ts
+    - src/hooks/useTelegramBridge.ts
+    - src/hooks/TelegramBridgeMount.tsx
+    - src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx
+================================================================================
+
+RESUMEN EJECUTIVO
+================================================================================
+  La integración de Telegram en GeoNexus tiene 3 vulnerabilidades de
+  seguridad CRÍTICAS, 5 de ALTA, 3 de MEDIA y 4 de BAJA.
+  
+  El riesgo más grave es que el Bot Token de Telegram se expone en:
+    1. La base de datos SQLite sin cifrar
+    2. La memoria del frontend (accesible via DevTools)
+    3. Peticiones directas desde el navegador a Telegram API
+
+  Además, cualquier usuario de Telegram puede usar el bot si el campo
+  "allowed_users" queda vacío, lo que permite acceso no autorizado a
+  los LLMs configurados (con sus API keys).
+
+================================================================================
+ÍNDICE DE HALLAZGOS
+================================================================================
+  CRÍTICOS
+  [C-1] Bot Token almacenado sin cifrar en SQLite
+  [C-2] Bot Token expuesto en frontend y redes
+  [C-3] Sin autenticación → acceso público al LLM
+
+  ALTOS
+  [A-1] API keys de LLM transitan por el frontend
+  [A-2] Sin rate limiting → ataque de denegación de servicio
+  [A-3] Polling infinito sin heartbeat ni detección de token inválido
+  [A-4] Errores internos filtrados al frontend y Telegram
+  [A-5] Sin cifrado en la DB (SQLite sin encrypt)
+
+  MEDIOS
+  [M-1] Sin validación de tipo de chat (grupos no controlados)
+  [M-2] Sin sanitización del contenido de mensajes entrantes
+  [M-3] Parada forzosa del polling (abort) sin graceful shutdown
+
+  BAJOS
+  [B-1] Sin auditoría/log de accesos
+  [B-2] Sin límite de tamaño de mensaje entrante
+  [B-3] Sin rotación de token
+  [B-4] Posible fuga del token en URLs de error
+
+================================================================================
+DETALLE DE HALLAZGOS
+================================================================================
+
+------------------------------------------------------------------------------
+C-1 [CRÍTICO] Bot Token almacenado sin cifrar en SQLite
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:48-53
+  Severidad: CRÍTICO
+  Descripción:
+    El bot_token se guarda en texto plano en la tabla `app_settings`
+    de SQLite. Cualquier proceso con acceso al archivo de la DB puede
+    leer el token.
+
+  Código vulnerable:
+    let config_json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
+    sqlx::query(
+      "INSERT INTO app_settings (key, value) VALUES (?1, ?2)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, ..."
+    )
+    .bind("telegram_config")
+    .bind(&config_json)
+    .execute(&state.db)
+
+  Impacto:
+    - Un atacante con acceso al sistema de archivos roba el token
+    - Puede enviar mensajes como el bot, leer mensajes, etc.
+
+  Recomendación:
+    - Cifrar el bot_token con AES-256-GCM antes de almacenarlo
+    - Usar una clave derivada del sistema o del usuario
+    - Alternativa: almacenar solo en memoria volátil (no persistir)
+
+------------------------------------------------------------------------------
+C-2 [CRÍTICO] Bot Token expuesto en frontend y redes
+------------------------------------------------------------------------------
+  Archivo: src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx:118-119
+  Severidad: CRÍTICO
+  Descripción:
+    La función handleTest() hace una petición DIRECTA desde el frontend
+    a Telegram API usando fetch(), exponiendo el token en:
+      - La pestaña Network de DevTools
+      - Extensiones del navegador
+      - Logs de servicios de terceros (si aplica)
+    El token también está en el state de React (memoria del frontend).
+
+  Código vulnerable:
+    const res = await fetch(
+      `https://api.telegram.org/bot${config.botToken.trim()}/getMe`
+    );
+
+  Impacto:
+    - Cualquier extensión de Chrome/Firefox puede leer el token
+    - Cualquier script inyectado (XSS) roba el token
+    - El token viaja en texto plano por la red local
+
+  Recomendación:
+    - NUNCA hacer peticiones directas a Telegram desde el frontend
+    - Siempre usar el backend Tauri como proxy (invoke)
+    - Mover handleTest() al backend (telegram_test_connection)
+
+------------------------------------------------------------------------------
+C-3 [CRÍTICO] Sin autenticación → acceso público al LLM
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:216-218
+            src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx:271-273
+  Severidad: CRÍTICO
+  Descripción:
+    Si "allowed_users" está vacío, el bot responde a CUALQUIER persona
+    que le escriba. La UI dice expresamente: "Vacío = cualquier usuario
+    puede consultar".
+    
+    Esto significa que cualquiera que descubra el bot puede:
+      - Consultar el LLM configurado (con coste asociado)
+      - Acceder al contexto del proyecto GeoNexus
+
+  Código vulnerable:
+    let is_allowed = allowed_users.is_empty()
+      || allowed_users.contains(&user_id)
+      || username.map(|u| allowed_users.contains(&format!("@{}", u))).unwrap_or(false);
+
+  Impacto:
+    - Uso no autorizado del LLM → costes inesperados
+    - Exposición de información del proyecto GIS
+    - Posible abuso del bot para actividades maliciosas
+
+  Recomendación:
+    - Exigir siempre al menos un usuario permitido
+    - En la UI, no permitir guardar con allowed_users vacío
+    - Agregar validación en telegram_save_config del backend
+
+------------------------------------------------------------------------------
+A-1 [ALTO] API keys de LLM transitan por el frontend
+------------------------------------------------------------------------------
+  Archivo:  src/hooks/TelegramBridgeMount.tsx:38
+            crates/geonexus-core/src/chat/types.rs:143
+  Severidad: ALTO
+  Descripción:
+    El bridge de Telegram toma el apiKey del connector activo desde
+    el frontend (ConnectorsContext) y lo envía al backend en cada
+    llamada a sendMessage(). La API key del LLM está en memoria JS
+    y es accesible desde DevTools.
+
+  Impacto:
+    - Un atacante con acceso al navegador roba la API key del LLM
+    - La API key se envía en cada petición al Tauri backend
+
+  Recomendación:
+    - Las API keys deberían almacenarse SOLO en el backend
+    - El frontend debería referenciar el connector por ID, no pasar
+      la API key como parámetro
+    - El backend debería resolver la API key desde su propio almacén
+
+------------------------------------------------------------------------------
+A-2 [ALTO] Sin rate limiting → ataque de denegación de servicio
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-core/src/telegram/polling.rs:42-56
+  Severidad: ALTO
+  Descripción:
+    El polling loop no aplica ningún rate limiting. Un usuario malicioso
+    puede enviar cientos de mensajes por segundo, causando:
+      - Saturación del LLM (costes elevados)
+      - Bloqueo del hilo de polling
+      - Posible crash por sobrecarga de memoria
+
+  Código vulnerable:
+    loop {
+      match get_updates(&client, &token, offset, 30).await {
+        Ok(updates) => {
+          for update in updates {
+            offset = update.update_id + 1;
+            handler(update).await;  // ← Sin límite
+          }
+        }
+        ...
+      }
+      tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+
+  Impacto:
+    - Coste económico por uso excesivo del LLM
+    - Denegación de servicio para usuarios legítimos
+    - Posible agotamiento de recursos del sistema
+
+  Recomendación:
+    - Implementar rate limiting por chat_id (ej: max 5 msg/min)
+    - Usar token bucket o leaky bucket algorithm
+    - Rechazar mensajes si se excede el límite
+
+------------------------------------------------------------------------------
+A-3 [ALTO] Polling infinito sin heartbeat ni detección de token inválido
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-core/src/telegram/polling.rs:42-56
+  Severidad: ALTO
+  Descripción:
+    El polling loop es infinito. Si el token se revoca o la API de
+    Telegram devuelve errores 401/403, el bucle simplemente imprime
+    "Error en polling" con eprintln! y sigue intentando cada 1 segundo
+    para siempre. No hay manera de detectar externamente que el token
+    es inválido.
+
+  Código vulnerable:
+    Err(e) => {
+      eprintln!("Error en polling: {}", e);  // ← Solo logea
+      tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+  Impacto:
+    - El bot sigue "corriendo" pero nunca funciona
+    - El usuario no recibe feedback de que el token es inválido
+    - Consume recursos inútilmente
+
+  Recomendación:
+    - Distinguir errores HTTP (401/403 = token inválido → detener)
+    - Exponer un comando telegram_get_status que refleje errores
+    - Emitir evento a frontend cuando el token es inválido
+
+------------------------------------------------------------------------------
+A-4 [ALTO] Errores internos filtrados al frontend y Telegram
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:48-58, 67-77
+            src/hooks/useTelegramBridge.ts:64-67
+  Severidad: ALTO
+  Descripción:
+    Los errores internos (e.to_string()) se devuelven directamente al
+    frontend. En el bridge, los errores se envían de vuelta al usuario
+    de Telegram como texto, potencialmente exponiendo información
+    interna.
+
+  Código vulnerable:
+    // En telegram.rs:
+    .map_err(|e| e.to_string())?
+    
+    // En useTelegramBridge.ts:
+    await invoke("telegram_send_response", {
+      chatId: msg.chat_id,
+      text: `Error: ${errorMsg}`,
+    })
+
+  Impacto:
+    - Exposición de información interna del sistema
+    - Posible fuga de rutas de archivos, configuraciones, etc.
+
+  Recomendación:
+    - Errores genéricos para el usuario: "Error interno"
+    - Logging detallado en servidor para debugging
+    - No enviar errorMsg directamente a Telegram
+
+------------------------------------------------------------------------------
+A-5 [ALTO] Sin cifrado en la DB (SQLite sin encrypt)
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:50-58
+  Severidad: ALTO
+  Descripción:
+    La base de datos SQLite no está cifrada. Cualquier persona con
+    acceso al archivo .db puede leer el bot_token y otras configuraciones
+    sensibles.
+
+  Impacto:
+    - Exposición de tokens y configuraciones
+    - El archivo DB suele estar en ~/.local/share/ o similar
+
+  Recomendación:
+    - Usar SQLCipher o similar para cifrar la DB
+    - O al menos cifrar campos sensibles individualmente
+
+------------------------------------------------------------------------------
+M-1 [MEDIO] Sin validación de tipo de chat (grupos no controlados)
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:211-235
+  Severidad: MEDIO
+  Descripción:
+    handle_update() no verifica message.chat.chat_type. Si el bot es
+    añadido a un grupo, responderá a todos los mensajes del grupo,
+    exponiendo el LLM a múltiples usuarios no autorizados.
+
+  Código vulnerable:
+    async fn handle_update(update: Update, app: AppHandle, allowed_users: &[String]) {
+      if let Some(message) = update.message {
+        let user_id = message.from.id.to_string();
+        // ← No verifica chat_type
+
+  Recomendación:
+    - Rechazar mensajes de grupos (chat_type == "group" o "supergroup")
+      a menos que el usuario lo configure explícitamente
+    - Verificar que el remitente individual esté en allowed_users
+
+------------------------------------------------------------------------------
+M-2 [MEDIO] Sin sanitización del contenido de mensajes entrantes
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:224-232
+  Severidad: MEDIO
+  Descripción:
+    El texto del mensaje entrante se emite directamente al frontend
+    sin sanitización. Si Telegram permitiera inyectar contenido
+    malicioso en el texto, podría propagarse a la app.
+
+  Código vulnerable:
+    let payload = serde_json::json!({
+      "chat_id": message.chat.id,
+      "user_id": message.from.id,
+      "username": message.from.username,
+      "text": text,  // ← Sin sanitizar
+    });
+
+  Impacto:
+    - Potencial XSS si el texto se renderiza sin escapar
+    - Inyección de contenido manipulado
+
+  Recomendación:
+    - Sanitizar el texto (escapar HTML, limitar length)
+    - Tratar todo input de Telegram como no confiable
+
+------------------------------------------------------------------------------
+M-3 [MEDIO] Parada forzosa del polling (abort) sin graceful shutdown
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:127-129
+  Severidad: MEDIO
+  Descripción:
+    Al detener el bot, se usa handle.abort() que cancela el task
+    abruptamente. Esto puede dejar recursos sin limpiar (conexiones
+    HTTP abiertas, etc.).
+
+  Código vulnerable:
+    if let Some(handle) = task.take() {
+      handle.abort();  // ← Forzoso
+    }
+
+  Recomendación:
+    - Usar un CancellationToken para señalizar la parada
+    - Esperar a que el loop termine gracefulmente
+
+------------------------------------------------------------------------------
+B-1 [BAJO] Sin auditoría/log de accesos
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:211-235
+  Severidad: BAJO
+  Descripción:
+    No se registra quién envía mensajes, cuándo, ni qué consultan.
+    No hay trazabilidad de uso del bot.
+
+  Impacto:
+    - Imposible auditar uso indebido
+    - No se puede detectar patrones de ataque
+
+  Recomendación:
+    - Logging estructurado de todas las interacciones
+    - Almacenar en tabla de auditoría
+
+------------------------------------------------------------------------------
+B-2 [BAJO] Sin límite de tamaño de mensaje entrante
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-tauri/src/commands/telegram.rs:224
+  Severidad: BAJO
+  Descripción:
+    message.text puede tener hasta 4096 caracteres (límite de Telegram),
+    pero no hay verificación explícita en el código.
+
+  Recomendación:
+    - Validar longitud del texto
+    - Truncar o rechazar mensajes muy largos
+
+------------------------------------------------------------------------------
+B-3 [BAJO] Sin rotación de token
+------------------------------------------------------------------------------
+  Archivo:  General
+  Severidad: BAJO
+  Descripción:
+    No hay mecanismo para rotar el bot_token periódicamente.
+
+  Recomendación:
+    - Recordatorio al usuario para rotar el token
+    - Opcional: integración con BotFather para regenerar
+
+------------------------------------------------------------------------------
+B-4 [BAJO] Posible fuga del token en URLs de error
+------------------------------------------------------------------------------
+  Archivo:  crates/geonexus-core/src/telegram/polling.rs:11-18
+  Severidad: BAJO
+  Descripción:
+    Si reqwest incluye la URL en errores de conexión, el token
+    (que forma parte de la URL) podría filtrarse en logs.
+
+  Código vulnerable:
+    let url = format!("https://api.telegram.org/bot{}/getUpdates", token);
+
+  Impacto:
+    - Token visible en logs de error
+
+  Recomendación:
+    - Redactar el token en mensajes de error
+    - Usar logging seguro
+
+================================================================================
+RESUMEN DE HALLAZGOS POR ARCHIVO
+================================================================================
+
+  crates/geonexus-core/src/telegram/polling.rs:
+    [A-2] Sin rate limiting (línea 42-56)
+    [A-3] Polling infinito sin detección de token inválido (línea 50-52)
+    [B-4] URL con token en errores de conexión (línea 11)
+
+  crates/geonexus-core/src/telegram/sender.rs:  (sin hallazgos críticos)
+
+  crates/geonexus-core/src/telegram/mod.rs:
+    [C-1] Bot_token en struct sin protección (línea 8) -> raíz del problema
+
+  crates/geonexus-tauri/src/commands/telegram.rs:
+    [C-1] Token almacenado en texto plano (línea 48-53)
+    [C-3] Allowed users vacío permite acceso público (línea 216-218)
+    [A-4] Errores internos filtrados (línea 48,58,67,77)
+    [M-1] Sin validación de tipo de chat (línea 211)
+    [M-2] Sin sanitización de mensajes (línea 224-232)
+    [M-3] Abort forzoso (línea 127-129)
+
+  src/features/workspace/configuration/sections/TelegramIntegrationPanel.tsx:
+    [C-2] Token en fetch directo a Telegram (línea 118-119)
+    [C-3] UI permite usuarios vacíos (línea 271-273)
+
+  src/hooks/useTelegramBridge.ts:
+    [A-4] Errores enviados de vuelta al chat (línea 64-67)
+
+  src/hooks/TelegramBridgeMount.tsx:
+    [A-1] API key del LLM en frontend (línea 38)
+
+  src/api/telegram.ts:  (sin hallazgos directos - proxy delgado)
+
+================================================================================
+RECOMENDACIONES PRIORIZADAS
+================================================================================
+
+  INMEDIATO (resolver en 24h):
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ 1. Mover handleTest() al backend:                                   │
+  │    - Crear comando telegram_test_connection en Rust                 │
+  │    - El frontend llama invoke() en lugar de fetch()                 │
+  │    Archivo: TelegramIntegrationPanel.tsx líneas 118-119             │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │ 2. Exigir allowed_users no vacío en backend:                        │
+  │    - Rechazar telegram_save_config si allowed_users está vacío      │
+  │    - En UI, deshabilitar guardar si no hay usuarios                 │
+  │    - Nunca permitir "cualquier usuario" sin advertencia explícita   │
+  │    Archivos: telegram.rs:42 + TelegramIntegrationPanel.tsx:92-106   │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │ 3. Cifrar bot_token en DB:                                          │
+  │    - Usar AES-256-GCM antes de INSERT                              │
+  │    - Desencriptar en telegram_load_config                           │
+  │    Archivos: telegram.rs:48-53, 64-77                               │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  CORTO PLAZO (1 semana):
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ 4. Implementar rate limiting por chat_id                            │
+  │    - Máx 10 mensajes/minuto por usuario                             │
+  │    - Almacenar contadores en memoria (HashMap<chat_id, counter>)    │
+  │    Archivo: telegram.rs:211-235                                     │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │ 5. Detectar token inválido en polling                               │
+  │    - Si getUpdates devuelve 401, emitir evento "telegram:error"     │
+  │    - Detener polling automáticamente                                │
+  │    Archivos: polling.rs:43-53, telegram.rs:211-235                  │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │ 6. Mover API keys al backend                                        │
+  │    - Almacenar keys en DB backend-only                              │
+  │    - Frontend solo envía connector_id, no api_key                   │
+  │    Archivos: TelegramBridgeMount.tsx:25-43, send_message.rs         │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  MEDIANO PLAZO:
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ 7. Validar chat_type - bloquear grupos por defecto                  │
+  │ 8. Sanitizar texto de mensajes entrantes                            │
+  │ 9. Implementar auditoría de uso (logs estructurados)                │
+  │ 10. Graceful shutdown con CancellationToken                         │
+  │ 11. Limitar tamaño de mensajes entrantes                            │
+  └─────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+PUNTOS FUERTES (lo que está bien)
+================================================================================
+  ✅ SQL queries parametrizados (protegido contra SQL injection)
+  ✅ Bot token nunca está en código fuente (no hardcoded)
+  ✅ No se encontraron tokens reales en el repositorio
+  ✅ Comunicación vía HTTPS a Telegram API
+  ✅ Estado compartido con Mutex (thread-safe)
+  ✅ Manejo de estado de polling (is_running) correcto
+  ✅ Separación de capas (core, commands, frontend)
+  ✅ Escape de MarkdownV2 implementado correctamente
+  ✅ Prueba unitaria para escape_markdown_v2
+  ✅ Update ID tracking evita procesar mismo mensaje dos veces
+
+================================================================================
+CIERRE
+================================================================================
+  Total: 15 hallazgos (3 críticos, 5 altos, 3 medios, 4 bajos)
+  Archivos con problemas: 6/9
+  Prioridad máxima: Mover peticiones directas al backend (+ cifrar token)
+
+================================================================================

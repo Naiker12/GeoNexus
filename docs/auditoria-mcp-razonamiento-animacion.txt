@@ -1,0 +1,574 @@
+================================================================================
+  AUDITORÍA INTEGRAL: MCP + RAZONAMIENTO + ANIMACIONES UI
+  GeoNexus — Preparación para mejora visual del flujo de pensamiento
+================================================================================
+  Fecha: 2026-06-20
+  Alcance: Backend Rust, frontend React/Tauri, integración chat ↔ MCP ↔ timeline
+  Documentos relacionados:
+    - docs/analisis-mcp-completo.txt
+    - docs/07-gis-razonamiento.txt
+================================================================================
+
+RESUMEN EJECUTIVO
+================================================================================
+  GeoNexus tiene tres subsistemas que deberían sentirse como uno solo, pero hoy
+  están fragmentados:
+
+    1. MCP Runtime     → Registro, ping, discovery y ejecución HTTP funcional
+    2. Razonamiento    → Pipeline real en send_message.rs con eventos Tauri
+    3. Animaciones UI  → Componentes visuales parcialmente conectados y duplicados
+
+  El chat principal (send_message) NO usa herramientas MCP. Solo usa 4 tools
+  locales de código (read_file, search_code, list_directory, glob_files).
+  MCP vive en una vía paralela (agent.rs) que ejecuta todas las tools online
+  con argumentos genéricos, sin pasar por el LLM.
+
+  En la UI hay DOS sistemas de timeline de razonamiento (chat vs IDE) y un
+  tercer pipeline (useChatPipeline) que escucha eventos que el chat normal no
+  emite. Resultado: animaciones genéricas, iconos incorrectos, y componentes
+  muertos (ThinkingTextBlock, McpToolCallCard, toolCalls del pipeline).
+
+  Prioridad recomendada:
+    P0 — Unificar eventos backend → un solo bus de razonamiento
+    P1 — Conectar MCP al tool-calling loop del LLM
+    P2 — Rediseñar animaciones (ThinkingCard + ReasoningTimelineBlock)
+    P3 — Ejecución STDIO, seguridad tokens, tests
+
+================================================================================
+ÍNDICE DE HALLAZGOS
+================================================================================
+
+  CRÍTICOS (bloquean valor real de MCP + UX coherente)
+  [C-1] Chat send_message no integra herramientas MCP
+  [C-2] Dos pipelines de razonamiento desconectados (chat vs agent)
+  [C-3] useChatPipeline escucha agent:event pero el chat emite reasoning:*
+  [C-4] agent.rs ejecuta TODAS las tools MCP online sin criterio del LLM
+
+  ALTOS (afectan calidad visual y confianza del usuario)
+  [A-1] agent_type del backend no coincide con tipos del frontend
+  [A-2] Tres sistemas visuales paralelos sin unificación
+  [A-3] Componentes UI implementados pero no renderizados
+  [A-4] started_at en emit_reasoning_step se sobrescribe en cada emit
+  [A-5] call_mcp_tool rechaza servidores STDIO (solo HTTP)
+  [A-6] Timeline se colapsa automáticamente al terminar (isCollapsed: true)
+
+  MEDIOS
+  [M-1] Animaciones repetidas (3-dot bounce en 4+ componentes)
+  [M-2] ThinkingCard usa icono Bot genérico, no branding GeoAgents
+  [M-3] Sin soporte prefers-reduced-motion
+  [M-4] Sin animación de entrada escalonada en pasos del timeline
+  [M-5] Tokens MCP en SQLite sin cifrado (Stronghold pendiente)
+  [M-6] reasoning:thinking escuchado en frontend, nunca emitido en Rust
+  [M-7] Duplicación de hooks useReasoningTimeline (chat/ vs ide/)
+
+  BAJOS
+  [B-1] THINKING_TEXTS estáticos en español, no reflejan paso real
+  [B-2] max-h-24 en ThinkingCard puede recortar labels largos
+  [B-3] McpConsole: comandos register/delete declarados en help pero no implementados
+  [B-4] IDE ReasoningTimeline conserva comentario "datos de ejemplo eliminados F1"
+  [B-5] geo_utils.py y qgis-mcp siguen sin conexión (GIS pendiente)
+
+================================================================================
+SECCIÓN 1 — MCP (Model Context Protocol)
+================================================================================
+
+1.1 ARQUITECTURA ACTUAL
+--------------------------------------------------------------------------------
+
+  Backend (crate geonexus-mcp):
+    crates/geonexus-mcp/src/
+      types.rs      — McpServer, McpTool, McpTransport, allowlist
+      registry.rs   — CRUD SQLite, auto_discover_tools, audit_tool_call
+      pinger.rs     — Ping HTTP/SSE
+      executor.rs   — call_tool vía JSON-RPC HTTP (tools/call)
+      stdio.rs      — discover_tools (spawn + initialize + tools/list)
+      handshake.rs  — Cliente HTTP MCP
+
+  Comandos Tauri (handlers.rs):
+    list_mcp_servers, register_mcp_server, delete_mcp_server
+    ping_mcp_server, ping_mcp_server_url
+    list_mcp_tools, call_mcp_tool
+    import_mcp_config, export_mcp_config
+    upsert_allowlist, list_allowlist
+
+  Crate adicional geonexus-fs-mcp:
+    MCP de filesystem con guards de seguridad (path_guard, rate_guard,
+    confirm_gate). Separado del runtime MCP genérico.
+
+  Frontend:
+    src/features/workspace/mcp/     — Página servidores, registro, terminal
+    src/api/mcp.ts                  — Invocaciones Tauri
+    src/types/mcp.ts                — Tipos TypeScript
+    src/components/chat/McpConnectCard.tsx — Card inline en respuestas LLM
+
+1.2 LO QUE FUNCIONA BIEN
+--------------------------------------------------------------------------------
+
+  ✅ Registro de servidores HTTP y STDIO en SQLite
+  ✅ Auto-discovery de tools STDIO al registrar/importar
+  ✅ Ping HTTP con actualización de status, latencia, tools_count
+  ✅ Allowlist por tool + rate limiting en executor.rs
+  ✅ Auditoría de llamadas (mcp_tool_calls)
+  ✅ McpConsole terminal real (list, ping, tools, status) vía useMcpTerminal
+  ✅ Import/export formato Cursor/Claude (mcpServers JSON)
+  ✅ Templates predefinidos (filesystem, supabase, github, brave-search)
+
+1.3 BRECHAS Y RIESGOS
+--------------------------------------------------------------------------------
+
+  [C-1] CHAT NO USA MCP
+  ─────────────────────
+  Archivo: crates/geonexus-tauri/src/commands/chat/tools.rs
+  get_tool_definitions() expone solo 4 herramientas locales de filesystem.
+  execute_tool_call() no delega a geonexus_mcp::executor.
+
+  send_message.rs no importa ni referencia MCP (grep: 0 matches).
+  El LLM nunca ve las tools descubiertas en mcp_tools.
+
+  Impacto: El usuario registra servidores MCP, ve tools en la UI, pero el
+  chat no puede invocarlas. La promesa "GeoAgents + MCP" no se cumple en el
+  flujo principal.
+
+  [C-4] AGENT.RS EJECUTA MCP A CIEGAS
+  ────────────────────────────────────
+  Archivo: crates/geonexus-tauri/src/commands/agent.rs (líneas 154-211)
+
+  Para cada servidor online, itera TODAS las tools Ready y las llama con:
+    args: {"query": goal, "sources": sources}
+
+  Problemas:
+    - No hay selección semántica (el LLM no decide qué tool usar)
+    - Argumentos hardcodeados ignoran input_schema de cada tool
+    - Puede ejecutar decenas de tools innecesarias por request
+    - Solo funciona con servidores HTTP (salta stdio por url.is_empty())
+    - Coste/latencia impredecible
+
+  [A-5] STDIO NO EJECUTABLE
+  ─────────────────────────
+  call_mcp_tool (handlers.rs:182-184):
+    "No se puede llamar tools en servidores stdio a través de HTTP"
+
+  stdio.rs solo implementa discover_tools, no call_tool_stdio.
+  La mayoría de servidores MCP del ecosistema (filesystem, github, etc.)
+  son STDIO → registrables pero no invocables.
+
+  [M-5] SEGURIDAD TOKENS
+  ──────────────────────
+  auth_token se guarda en SQLite plano (migración 20260614000001).
+  Stronghold/keychain documentado como pendiente en analisis-mcp-completo.txt.
+
+1.4 FLUJO DE DATOS MCP (estado actual)
+--------------------------------------------------------------------------------
+
+  Registro UI → register_mcp_server → SQLite mcp_servers
+                    ↓ (si STDIO)
+              stdio::discover_tools → mcp_tools
+
+  Ping UI → ping_mcp_server → HTTP handshake → auto_discover_tools
+
+  Chat normal → send_message → tools locales (4) → SIN MCP
+
+  Agent mode → agent.rs → executor::call_tool (HTTP) → todas las tools
+
+  Manual → call_mcp_tool (Tauri) → executor (HTTP only)
+
+1.5 RECOMENDACIONES MCP
+--------------------------------------------------------------------------------
+
+  P0 — Integrar MCP en send_message tool loop:
+    1. Cargar tools de mcp_tools WHERE server NOT disabled AND status online
+    2. Convertir args_schema JSON → OpenAI function definitions
+    3. En execute_tool_call, detectar prefijo mcp:{server_id}:{tool_name}
+    4. Delegar a geonexus_mcp::executor::call_tool con allowlist check
+    5. Emitir reasoning:step con agent_type "tool" + McpToolCallCard en UI
+
+  P1 — Implementar stdio::call_tool:
+    Reutilizar proceso spawn de discover_tools o pool de procesos persistente
+
+  P2 — Eliminar ejecución ciega en agent.rs:
+    Reemplazar loop for tool in tools por dispatch del LLM
+
+  P3 — Cifrar tokens con Stronghold (patrón ya usado en connector_api_key)
+
+================================================================================
+SECCIÓN 2 — RAZONAMIENTO (Reasoning Pipeline)
+================================================================================
+
+2.1 BACKEND — send_message.rs
+--------------------------------------------------------------------------------
+
+  Eventos Tauri emitidos durante send_message:
+
+    reasoning:start     → { session_id }
+    reasoning:step      → { id, agent_name, agent_type, status, label,
+                          sub_items, duration_ms, started_at, completed_at }
+    reasoning:sub_item  → { step_id, text }
+    reasoning:end       → { session_id, total_ms }
+
+  Pasos emitidos (orden típico):
+    1. intent        — classify_intent() → QueryIntent (6 tipos GIS)
+    2. graph_context — nodos/aristas del grafo (si hay)
+    3. rag           — recall_chunks ChromaDB (top_k=4)
+    4. web_search    — si web search activo
+    5. skills        — si hay skills seleccionadas
+    6. generating    — tool-calling loop LLM (running → success)
+       └── sub_items: "Called tool: X (Nms)", "N tokens generados"
+
+  Otros eventos paralelos (no unificados):
+    chat:stream_event  → knowledge_lookup, deep_research, generating, tool_call
+    llm:tool_call      → { tool_name, tool_call_id, args }
+    llm:tool_result    → { tool_name, success, duration_ms }
+    llm:done            → { content_length, model }
+    chat:preview_chunk  → chunks RAG para preview
+
+  Archivo reasoning core: crates/geonexus-core/src/reasoning.rs
+    Solo define QueryIntent (6 variantes GIS) + AnalysisSession + ValidationResult.
+    No hay lógica de orquestación aquí; vive en send_message.rs.
+
+2.2 BACKEND — agent.rs (vía alternativa)
+--------------------------------------------------------------------------------
+
+  Emite agent:event (NO reasoning:*) con fases:
+    discovery → knowledge → mcp → reasoning → result
+
+  useChatPipeline escucha agent:event con STATUS_TO_KIND mapping.
+  Este flujo es del modo agente multi-fase, NO del chat estándar.
+
+  [C-2][C-3] DESCONEXIÓN
+  El chat normal emite reasoning:* pero useChatPipeline escucha agent:event.
+  Resultado: pipeline siempre null en chat → AgentLifeIndicator solo muestra
+  "thinking" genérico sin metadata de pasos.
+
+2.3 FRONTEND — Sistemas de timeline
+--------------------------------------------------------------------------------
+
+  SISTEMA A — Chat (activo en producción):
+    Hook:     src/hooks/useReasoningTimeline.ts
+    Tipos:    src/types/reasoning-timeline.ts
+    UI:       ReasoningTimelineBlock + ReasoningStepRow + AgentStepIcon
+    Eventos:  reasoning:start | step | sub_item | end
+    Usado en: AssistantMessage.tsx (solo mensaje streaming)
+
+  SISTEMA B — IDE Workspace (coding agent):
+    Hook:     src/features/workspace/ide/useReasoningTimeline.ts
+    Tipos:    src/features/workspace/ide/timeline-types.ts
+    UI:       ReasoningTimeline.tsx (cards con emojis, GenerationSummary)
+    Eventos:  useEventBus(sessionId) — bus interno, no Tauri
+    Usado en: WorkspaceIDE.tsx
+
+  SISTEMA C — Pipeline chat (parcialmente muerto):
+    Hook:     src/components/chat/hooks/useChatPipeline.ts
+    Tipos:    src/components/chat/reasoning/types.ts
+    Eventos:  agent:event (solo agent.rs), llm:tool_call, reasoning:thinking
+    UI:       NINGUNA — solo alimenta AgentLifeIndicator en ChatPanel
+    Dead:     thinkingText, toolCalls nunca retornados ni renderizados
+
+  [M-7] Mismo nombre useReasoningTimeline en dos rutas con APIs distintas.
+
+2.4 BUGS DE DATOS EN REASONING
+--------------------------------------------------------------------------------
+
+  [A-1] MISMATCH agent_type
+  ─────────────────────────
+  Backend emite:  "intent", "graph", "rag", "web", "skills", "llm"
+  Frontend espera: "planner", "discovery", "tool", "coding", "report",
+                   "terminal", "custom"
+
+  AgentStepIcon.tsx cae siempre en config.custom (Bot morado).
+  Los iconos por tipo (Search, Plug, Code2...) nunca se muestran.
+
+  Fix: Mapear en backend O ampliar AgentStepType en frontend.
+
+  [A-4] started_at SOBRESCRITO
+  ────────────────────────────
+  emit_reasoning_step (send_message.rs:73) siempre pone started_at: now_unix
+  incluso en updates de status "success". El timer step_timers calcula
+  duration_ms correctamente, pero started_at no es estable para UI.
+
+  [A-6] AUTO-COLAPSO
+  ───────────────────
+  useReasoningTimeline.ts línea 103: isCollapsed: true en reasoning:end.
+  El usuario no ve el desglose salvo que expanda manualmente.
+  Para la mejora visual, considerar: colapsar tras 3s con animación suave.
+
+  [M-6] reasoning:thinking HUÉRFANO
+  ─────────────────────────────────
+  useChatPipeline escucha reasoning:thinking → setThinkingText
+  Rust nunca emite este evento.
+  ThinkingTextBlock.tsx existe pero no se importa en ningún componente.
+
+2.5 INTENT CLASSIFICATION (GIS)
+--------------------------------------------------------------------------------
+
+  QueryIntent en reasoning.rs:
+    ConsultaNormativa, AnalisisEspacial, DescubrimientoDatos,
+    MemoriaProyecto, GeneracionEntregable, ConsultaGeneral
+
+  classify_intent() en classifier.rs alimenta build_graph_context().
+  Se emite como primer paso del timeline pero sin icono específico en UI.
+
+  GIS tools (GisToolPanel): 5 botones UI sin handler → documentado en
+  docs/07-gis-razonamiento.txt como pendiente.
+
+2.6 RECOMENDACIONES RAZONAMIENTO
+--------------------------------------------------------------------------------
+
+  P0 — Unificar bus de eventos:
+    Opción A: Migrar useChatPipeline a escuchar reasoning:* + chat:stream_event
+    Opción B: Deprecar useChatPipeline; todo vía useReasoningTimeline
+    Recomendado: B — menos duplicación, ReasoningTimelineBlock ya funciona
+
+  P1 — Corregir agent_type mapping (tabla abajo):
+
+    Backend          → Frontend AgentStepType
+    ─────────────────────────────────────────
+    intent           → planner
+    graph            → discovery
+    rag              → discovery
+    web              → discovery
+    skills           → tool
+    llm / generating → coding
+    mcp (futuro)     → terminal
+
+  P2 — Emitir reasoning:thinking desde sidecar LLM si el modelo soporta
+       chain-of-thought (opcional, para ThinkingTextBlock)
+
+  P3 — Fusionar IDE timeline con chat timeline (componente compartido
+       con variant="compact" | "expanded")
+
+================================================================================
+SECCIÓN 3 — ANIMACIONES Y UX VISUAL
+================================================================================
+
+3.1 COMPONENTES ACTUALES
+--------------------------------------------------------------------------------
+
+  ThinkingCard (src/components/chat/ThinkingCard.tsx)
+  ────────────────────────────────────────────────────
+  Cuándo:  isStreaming && !hasContent && !isPending
+  Qué:     Card con Bot icon + pulse verde + texto rotativo O label del paso
+  Animación:
+    - transition-all duration-300 (show/hide)
+    - opacity fade en textos (300ms cada 2s)
+    - 3 dots animate-bounce con delays 0/150/300ms
+  Problemas:
+    - Textos genéricos ("Analizando tu consulta...") si no hay paso running
+    - Bot icon inconsistente con GeoAgentsIcon del resto del chat
+    - max-h-24 limita contenido
+    - Oculta TODA la respuesta mientras showThinkingCard=true
+
+  ReasoningTimelineBlock (src/components/chat/ReasoningTimelineBlock.tsx)
+  ─────────────────────────────────────────────────────────────────────────
+  Cuándo:  timeline || timelineStreaming en AssistantMessage
+  Qué:     Header colapsable "Razonando... X.Xs · N pasos" + lista de pasos
+  Animación:
+    - Loader2 animate-spin (header, streaming)
+    - ChevronDown rotate en collapse
+    - useElapsedTime polling cada 100ms
+  Problemas:
+    - Sin animación de entrada/salida de pasos individuales
+    - Sin barra de progreso visual
+    - Colapsado al terminar por defecto
+
+  ReasoningStepRow (src/components/chat/ReasoningStepRow.tsx)
+  ─────────────────────────────────────────────────────────────
+  Qué:     Fila por paso con icono, nombre, label, status indicator
+  Animación:
+    - ChevronRight rotate-90 al expandir sub_items
+    - 3 dots bounce (blue) cuando status=running
+    - Check/X estáticos en success/failed
+  Problemas:
+    - Todos los iconos son Bot morado (bug agent_type)
+    - Sub_items aparecen sin transición
+
+  AgentLifeIndicator (src/components/chat/AgentLifeIndicator.tsx)
+  ───────────────────────────────────────────────────────────────
+  Ubicación: Header del ChatPanel (siempre visible)
+  Qué:     "GEO AGENTS · Procesando..." + dots bounce emerald
+  Estados: idle | thinking | using_skill | searching | done
+  Problemas:
+    - Desconectado del ReasoningTimelineBlock (info duplicada)
+    - "using_skill" se activa con tool_call del pipeline muerto
+
+  AgentStepsAccordion (src/components/chat/AgentStepsAccordion.tsx)
+  ─────────────────────────────────────────────────────────────────
+  Solo visible en modo agent (CodingAgentContext).
+  Animaciones más elaboradas: Loader2 spin, animate-ping en badge,
+  delayed collapse 2s post-done. Buen referente para el chat normal.
+
+  ThinkingTextBlock (src/components/chat/ThinkingTextBlock.tsx)
+  ───────────────────────────────────────────────────────────────
+  NO USADO. Cursor parpadeante animate-pulse, auto-scroll, italic.
+  Listo para integrar si se emite reasoning:thinking.
+
+  McpToolCallCard (src/components/chat/McpToolCallCard.tsx)
+  ─────────────────────────────────────────────────────────
+  NO USADO. Card indigo expandible para tool MCP con params/resultado.
+  Listo para integrar cuando MCP entre al chat.
+
+3.2 MAPA VISUAL DEL FLUJO ACTUAL (chat normal)
+--------------------------------------------------------------------------------
+
+  Usuario envía mensaje
+        │
+        ▼
+  ┌─────────────────────────────────────┐
+  │ AgentLifeIndicator: "Procesando..." │  ← genérico, sin pasos
+  └─────────────────────────────────────┘
+        │
+        ▼
+  ┌─────────────────────────────────────┐
+  │ ReasoningTimelineBlock              │  ← pasos reales del backend
+  │  "Razonando... 2.3s · 4 pasos"      │
+  │  ▼ Intent · RAG · Graph · Generating│  ← iconos todos Bot morado
+  └─────────────────────────────────────┘
+        │
+        ▼
+  ┌─────────────────────────────────────┐
+  │ ThinkingCard                        │  ← mientras no hay content
+  │  "Consultando el contexto..."       │  ← texto rotativo genérico
+  └─────────────────────────────────────┘
+        │
+        ▼ (llega content)
+  ┌─────────────────────────────────────┐
+  │ MarkdownContent (respuesta)         │
+  │ CitationsBlock / SearchSources      │
+  └─────────────────────────────────────┘
+        │
+        ▼
+  Timeline colapsado automáticamente
+
+3.3 PROPUESTA DE MEJORA VISUAL (para implementación)
+--------------------------------------------------------------------------------
+
+  OBJETIVO: Sensación tipo Cursor/Claude — fluido, informativo, branded.
+
+  FASE 1 — Quick wins (1-2 días)
+  ───────────────────────────────
+  1. Reemplazar Bot por GeoAgentsIcon en ThinkingCard
+  2. Corregir agent_type → iconos correctos por paso
+  3. Sincronizar ThinkingCard con lastRunningStep.label siempre
+     (eliminar textos rotativos genéricos cuando hay timeline activo)
+  4. Unificar color scheme: amber para razonamiento, emerald para agent,
+     indigo para MCP tools
+  5. Retrasar auto-colapso 3s con fade-out en lugar de colapso instantáneo
+
+  FASE 2 — Animaciones mejoradas (3-5 días)
+  ──────────────────────────────────────────
+  1. Staggered entrance: cada ReasoningStepRow entra con
+     opacity 0→1 + translateY(-4px→0), delay 50ms * index
+  2. Progress bar fina bajo header del timeline (% pasos completados)
+  3. Shimmer skeleton en ThinkingCard mientras no hay pasos
+  4. Pulse ring alrededor del avatar GeoAgents (no dot verde suelto)
+  5. Transición crossfade ThinkingCard → MarkdownContent (no hide brusco)
+  6. prefers-reduced-motion: desactivar bounce/spin, mantener opacity fades
+
+  FASE 3 — Integración MCP visual (depende de C-1)
+  ─────────────────────────────────────────────────
+  1. Nuevo paso reasoning "mcp" con icono terminal indigo
+  2. Renderizar McpToolCallCard inline bajo paso generating
+  3. Sub_items con nombre servidor/tool + duración
+  4. Badge "MCP" en tools externas vs "local" en file tools
+
+  FASE 4 — Consolidación (1 semana)
+  ──────────────────────────────────
+  1. Eliminar useChatPipeline o migrar a reasoning:*
+  2. Componente unificado ReasoningPanel variant="chat"|"ide"|"agent"
+  3. AgentLifeIndicator lee del mismo state que ReasoningTimelineBlock
+  4. Exportar timeline completado como "trace" en metadata del mensaje
+
+3.4 REFERENCIA DE ANIMACIONES EXISTENTES REUTILIZABLES
+--------------------------------------------------------------------------------
+
+  AgentStepsAccordion:
+    - delayedCollapse con setTimeout 2000ms post-done
+    - animate-ping en badge de notificación
+    - Patrón expand/collapse manual + auto
+
+  IDE ReasoningTimeline:
+    - TimelineCard con statusStyle por estado (border colors)
+    - ElapsedTimer por paso individual
+    - GenerationSummary con gradient bg
+    - ItemBadge con colores semánticos
+
+  DeepResearchPanel:
+    - Panel de búsqueda web con elapsed timer (referencia para web_search step)
+
+  ChatLoadingIndicator:
+    - Fases loadingPhase del submit (otro sistema más — evaluar merge)
+
+================================================================================
+SECCIÓN 4 — ARCHIVOS CLAVE PARA LA MEJORA
+================================================================================
+
+  BACKEND (emitir/corregir eventos):
+    crates/geonexus-tauri/src/commands/chat/send_message.rs
+    crates/geonexus-tauri/src/commands/chat/tools.rs
+    crates/geonexus-tauri/src/commands/chat/classifier.rs
+    crates/geonexus-tauri/src/commands/agent.rs
+    crates/geonexus-mcp/src/executor.rs
+    crates/geonexus-core/src/reasoning.rs
+
+  FRONTEND (animaciones — editar aquí primero):
+    src/components/chat/ThinkingCard.tsx
+    src/components/chat/ReasoningTimelineBlock.tsx
+    src/components/chat/ReasoningStepRow.tsx
+    src/components/chat/AssistantMessage.tsx
+    src/components/chat/AgentStepIcon.tsx
+    src/components/chat/AgentLifeIndicator.tsx
+    src/components/chat/McpToolCallCard.tsx          (conectar)
+    src/components/chat/ThinkingTextBlock.tsx        (conectar o eliminar)
+    src/hooks/useReasoningTimeline.ts
+    src/types/reasoning-timeline.ts
+
+  FRONTEND (MCP — editar para integración):
+    src/features/workspace/mcp/McpServersPage.tsx
+    src/api/mcp.ts
+    src/components/chat/hooks/useChatPipeline.ts     (deprecar/migrar)
+
+  FRONTEND (IDE — unificar después):
+    src/features/workspace/ide/ReasoningTimeline.tsx
+    src/features/workspace/ide/useReasoningTimeline.ts
+
+================================================================================
+SECCIÓN 5 — CHECKLIST DE IMPLEMENTACIÓN SUGERIDO
+================================================================================
+
+  [ ] 1. Fix agent_type en send_message.rs (o mapeo en AgentStepIcon)
+  [ ] 2. Fix started_at: solo set en primer emit "running" por step id
+  [ ] 3. ThinkingCard: GeoAgentsIcon + label del paso activo
+  [ ] 4. ReasoningTimelineBlock: progress bar + stagger animation
+  [ ] 5. Delay auto-collapse 3s + animación
+  [ ] 6. prefers-reduced-motion en CSS/Tailwind
+  [ ] 7. Conectar McpToolCallCard a llm:tool_call cuando tool es MCP
+  [ ] 8. get_tool_definitions(): merge tools MCP desde registry
+  [ ] 9. execute_tool_call(): delegar MCP a executor
+  [ ] 10. Emitir reasoning:step "mcp" al invocar tool externa
+  [ ] 11. Deprecar useChatPipeline → unificar en useReasoningTimeline
+  [ ] 12. Eliminar o conectar ThinkingTextBlock + reasoning:thinking
+  [ ] 13. stdio::call_tool para servidores STDIO
+  [ ] 14. Tests e2e: registrar MCP → preguntar en chat → ver tool call en UI
+
+================================================================================
+SECCIÓN 6 — MÉTRICAS DE ÉXITO POST-MEJORA
+================================================================================
+
+  Funcional:
+    - Usuario registra servidor MCP → chat invoca tool → resultado en respuesta
+    - Timeline muestra ≥1 paso MCP con duración cuando aplica
+    - 0 componentes UI muertos (grep McpToolCallCard import > 0)
+
+  Visual:
+    - Cada paso del timeline tiene icono semántico correcto
+    - Transición thinking → respuesta sin flash/layout shift
+    - Timeline visible ≥3s post-respuesta antes de colapsar
+    - Animaciones respetan prefers-reduced-motion
+
+  Técnico:
+    - 1 solo hook de timeline en chat (useReasoningTimeline)
+    - agent_type válidos en 100% de reasoning:step emits
+    - started_at estable por paso
+
+================================================================================
+FIN DEL DOCUMENTO
+================================================================================

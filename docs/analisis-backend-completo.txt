@@ -1,0 +1,474 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ANÁLISIS COMPLETO DEL BACKEND RUST EN GEONEXUS                        ║
+║   Incluye: 5 Crates + Tauri IPC Commands + Arquitectura General         ║
+║   Actualizado: Junio 2026 (verificado contra código real)               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ÍNDICE DE CRATES                                                      ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║   1. geonexus-core     → Tipos, eventos, workers, crypto, telegram      ║
+║   2. geonexus-db       → Repositorios SQLite + migraciones              ║
+║   3. geonexus-fs-mcp   → Servidor MCP de filesystem + seguridad         ║
+║   4. geonexus-mcp      → Protocolo MCP router + registro + ping         ║
+║   5. geonexus-tauri    → App Tauri + todos los comandos IPC             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CRATE 1: geonexus-core (v0.2.0)                                       ║
+║   Propósito: Tipos fundacionales, eventos, workers, telegram, crypto    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/lib.rs:
+     ├── Re-exporta todos los módulos públicos
+     └── pub use types::*
+
+  src/types/ (sub-módulos):
+     ├── asset.rs → DataAsset, AssetKind, AssetStatus, CacheState, AssetValidation
+     ├── chunk.rs → DocumentChunk (fragmento con token count + page)
+     ├── graph.rs → GraphNode, GraphEdge, GraphUpdatePayload
+     ├── sync.rs  → SyncEventType, SyncEvent (pipe de auditoría)
+     ├── task.rs  → AgentTask (tarea worker con retry)
+     ├── mod.rs   → Re-exporta todos
+     └── tests.rs → Tests de serialización
+
+  src/agent.rs:
+     ├── Agent struct: id, project_id, name, kind, config, model, provider
+     └── Tipos de agente: document, embedding, graph, classifier, chat
+
+  src/config.rs:
+     ├── GeoNexusConfig struct: toplevel con sub-configs
+     ├── McpConfig: default_servers, ping_interval_secs
+     ├── SkillsConfig: list
+     ├── LlmConfig: provider, model, api_key, max_tokens, temperature
+     └── SettingsConfig: various app settings
+
+  src/crypto.rs:
+     ├── AES-256-GCM encrypt/decrypt
+     ├── SHA-256 key derivation (machine ID o GEONEXUS_SECRET_KEY)
+     └── Protección de secrets en reposo
+
+  src/reasoning.rs:
+     ├── QueryIntent enum: ConsultaNormativa, AnalisisEspacial, etc.
+     └── ValidationResult struct
+
+  src/allowlist/:
+     ├── extension_permitida() → validar extensiones GIS/documentos
+     └── verificar_ruta() → anti path traversal
+
+  src/chat/:
+     ├── types.rs: Message, Conversation, SendMessageInput/Response
+     ├── ReasoningStepEvent, MessageStats, FileAttachment, ResearchSource
+     └── tests.rs
+
+  src/connector/:
+     ├── types.rs: ConnectorProvider enum, ConnectorConfig, ConnectorFile
+     ├── FileSyncStatus, SyncReport, RegisterLocalConnectorInput
+     └── local.rs: listar_archivos_locales(), calcular_diff()
+
+  src/events/:
+     ├── types.rs: Domain enum, EventType enum, GeoEvent, BusEvent
+     ├── Artifact, ArtifactType
+     └── bus.rs: EventBus (tokio broadcast + SQLite persistence)
+
+  src/telegram/:
+     ├── Tipos: TelegramConfig, Update, Message, User, Chat
+     ├── sender.rs: send_message(), send_chat_action(), get_me()
+     ├── escape_markdown_v2(), sanitize_incoming_text()
+     └── polling.rs: start_polling_loop(), PollingExit, PollingError
+
+  src/workers/:
+     ├── WorkerPool struct: poll agent_tasks, dispatch handlers
+     ├── WorkerConfig: concurrency, poll_interval_ms
+     ├── handler.rs: WorkerHandler trait (agent_type(), execute())
+     ├── tasks/indexer.rs: IndexerWorker (indexar assets)
+     ├── tasks/embedder.rs: EmbedderWorker (stub)
+     ├── tasks/graph.rs: GraphWorker (stub)
+     ├── tasks/classifier.rs: ClassifierWorker (stub)
+     └── tasks/mod.rs: default_handlers() → 4 workers
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CRATE 2: geonexus-db (v0.1.0)                                         ║
+║   Propósito: Repositorios SQLite, migraciones, acceso a datos           ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/lib.rs:
+     ├── Declara todos los módulos
+     └── Re-exporta DataRepository
+
+  src/data_repo/:
+     ├── mod.rs: DataRepository struct (wraps SqlitePool)
+     ├── init.rs: DataRepository::new() → init SQLite, migrations, seed
+     ├── assets.rs: CRUD DataAsset (list, get, insert, update, delete, search)
+     ├── chunks.rs: insert/search document chunks
+     ├── graph.rs: insert/get graph nodes/edges, clear graph
+     ├── metrics.rs: get_data_store_metrics() (asset/chunk/node counts)
+     └── tests.rs: integration tests
+
+  src/event_repo.rs:
+     ├── insert_event(), list_events(), count_events()
+     └── Tabla: legacy_events
+
+  src/geo_event_repo.rs:
+     ├── insert_geo_event(), list_geo_events()
+     └── Tabla: events (GeoEvent)
+
+  src/task_queue.rs:
+     ├── enqueue_task(), poll_next_task(), complete_task()
+     ├── fail_task(), reset_stale_tasks()
+     └── Tabla: agent_tasks
+
+  src/agent_repo.rs:
+     ├── list_agents(), toggle_agent(), upsert_agent(), delete_agent()
+     └── seed_default_agents()
+
+  src/artifact_repo.rs:
+     ├── insert_artifact(), list_artifacts(), get_artifact()
+     └── Tabla: artifacts
+
+  src/connector_repo/:
+     ├── configs.rs: insert/list connector configs
+     ├── files.rs: upsert/list/update connector files
+     └── tests.rs
+
+  src/chat_repo/:
+     ├── conversations.rs: create/list/delete/update conversations
+     ├── messages.rs: insert/list messages
+     └── tests.rs
+
+  src/analysis_repo/:
+     ├── metrics.rs: get_analysis_metrics, token_timeline, model_usage
+     ├── analysis runs, skill usage
+     ├── cost.rs: get_cost_by_timeframe, get_top_queries
+     └── export.rs: export_traces_as_csv/json
+
+  src/skills/:
+     ├── types.rs: Skill, SkillCategory, SkillFrontmatter
+     ├── parser.rs: parse_skill_md() (YAML frontmatter de SKILL.md)
+     ├── registry.rs: list/get/install/uninstall skills
+     └── injector.rs: select_skills_for_goal() (relevance scoring)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CRATE 3: geonexus-fs-mcp (v0.1.0)                                     ║
+║   Propósito: Servidor MCP de filesystem con pipeline de seguridad       ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/lib.rs:
+     ├── Re-exporta FilesystemConfig + security::*
+     └── Declara módulos
+
+  src/config.rs:
+     ├── FilesystemConfig: allowed_paths, defaults, denied_extensions
+     └── Security levels: Read < Write < Execute < Admin
+
+  src/facade.rs:
+     ├── FilesystemMcpFacade struct
+     ├── Orquesta: CommandFactory → GuardChain → AuditedOperation
+     └── Punto de entrada principal
+
+  src/worker.rs:
+     ├── FilesystemWorker: impl WorkerHandler
+     └── Agent type: "filesystem"
+
+  src/timeline.rs:
+     ├── FilesystemTimeline: ring buffer in-memory
+     ├── TimelineEntry, OperationStatus
+     └── Últimas N operaciones de filesystem
+
+  src/security/:
+     ├── mod.rs: GuardChain (encadena guards)
+     ├── path_guard.rs: PathGuard (valida contra allowed roots, anti traversal)
+     ├── level_guard.rs: LevelGuard (permisos jerárquicos)
+     ├── rate_guard.rs: RateGuard (token bucket rate limiting)
+     └── confirm_gate.rs: ConfirmGate (bloquea hasta confirmación usuario)
+
+  src/commands/:
+     ├── mod.rs: Command trait, FsMcpError, ToolResult, CommandFactory
+     ├── list_directories.rs
+     ├── list_files.rs
+     ├── search_files.rs
+     ├── read_file.rs (con warning de secretos)
+     ├── create_file.rs
+     ├── update_file.rs (con diff computation)
+     ├── delete_file.rs (Admin level + confirmación)
+     ├── copy_file.rs
+     ├── move_file.rs (Admin level + confirmación)
+     ├── create_folder.rs
+     ├── detect_framework.rs (detecta Rust/Node/Python/etc)
+     ├── analyze_project.rs (análisis completo de proyecto)
+     └── create_project.rs (scaffolding desde template)
+
+  src/indexer/:
+     ├── mod.rs: SearchStrategy trait, ScoredFile, IndexerError
+     ├── fts_index.rs: Fts5Strategy (búsqueda full-text con SQLite FTS5)
+     ├── embeddings.rs: EmbeddingStrategy (stub semántico)
+     └── hybrid_search.rs: HybridSearchStrategy (BM25 + semántico con RRF)
+
+  src/analyzer/:
+     ├── framework_detect.rs: detecta framework/lenguaje
+     ├── FrameworkInfo, ProjectAnalysis, ProjectType
+     └── templates/: TemplateFactory (scaffolding Rust/Node/Python)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CRATE 4: geonexus-mcp (v0.1.0)                                        ║
+║   Propósito: Protocolo MCP, registro, ping, ejecutor de herramientas    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/types.rs:
+     ├── McpServer: id, name, url, transport, status, command, args, env
+     ├── headers, auth_type, auth_ref, auth_token, disabled, auto_approve
+     ├── timeout_ms, tools_count, error_count, protocol_version, created_at
+     ├── McpTool: id, server_id, name, category, desc, args_schema, trigger
+     ├── McpTransport: Http | Stdio | Sse
+     ├── McpStatus: Online | Offline | Error | Pending | Degraded
+     ├── CallToolPayload, CallToolResult, PingResult
+     ├── RegisterServerPayload, UpsertAllowlistPayload, AllowlistRule
+     └── + tipos de métricas y estado
+
+  src/constants.rs:
+     ├── MCP_PROTOCOL_VERSION = "2025-03-26"
+     ├── MCP_CLIENT_NAME, MCP_CLIENT_VERSION
+
+  src/handshake.rs:
+     ├── build_initialize_payload(), build_initialized_notification()
+     ├── build_tools_list_payload(), build_base_url(), build_client()
+     └── Constructores JSON-RPC
+
+  src/registry.rs:
+     ├── CRUD servidores: list, get, register, update, delete
+     ├── CRUD tools: list, upsert, auto-discover
+     ├── Allowlist: list, upsert, check
+     ├── list_callable_mcp_tools()
+     ├── update_server_ping_result()
+     └── record_server_metric()
+
+  src/pinger.rs:
+     ├── ping_server(url) → PingResult (HTTP GET)
+     └── ping_server_with_auth(url, token) → PingResult (con header)
+
+  src/executor.rs:
+     ├── call_tool_for_server() → CallToolResult
+     ├── Resuelve allowlist (max_calls, allowed)
+     ├── POST JSON-RPC al servidor MCP
+     └── INSERT en mcp_tool_calls (auditoría)
+
+  src/stdio.rs:
+     ├── discover_tools(command, args, env, timeout_ms)
+     ├── Spawn proceso hijo
+     ├── Envía initialize + tools/list (JSON-RPC 2.0)
+     └── Devuelve Vec<StdioDiscoveredTool>
+
+  src/tool_catalog.rs:
+     ├── build_mcp_tool_name(), resolve_mcp_tool_name()
+     ├── mcp_tool_to_llm_definition() (convierte a schema LLM function calling)
+     ├── format_mcp_tool_result()
+     └── MCP_TOOL_PREFIX = "mcp__"
+
+  src/containers/:
+     ├── mod.rs: McpToolSchema, CONTAINERS_MCP_ID, CONTAINER_TOOLS lista
+     ├── schema.rs: schemas de 5 tools virtuales (container_list/get/search/sync/upload)
+     └── tests.rs
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   CRATE 5: geonexus-tauri (v0.1.5) — Entry Point + IPC Commands        ║
+║   Propósito: App Tauri, setup, y todos los comandos Tauri IPC           ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  src/main.rs:
+     ├── Punto de entrada Tauri
+     ├── AppState: db (SqlitePool), repo (DataRepository), db_path
+     ├── app_handle, event_bus (EventBus)
+     ├── Setup: plugins (opener, dialog, stronghold), AppState init
+     ├── Event forwarder → frontend
+     ├── Worker Pool (tokio background con Indexer/Embedder/Graph/Classifier)
+     ├── PermissionState + TelegramState
+     ├── FilesystemMcpFacade init
+     ├── Carga GeoNexusConfig → registra servidores MCP default
+     ├── Seed agentes default + built-in skills
+     ├── Background ping cada N segundos (con auto-discover tools)
+     └── generate_handler! con TODOS los comandos
+
+  src/builtin_skills.rs:
+     └── POT_ANALYZER_MD: SKILL.md embebido para pot-analyzer
+
+  src/commands/mod.rs:
+     └── Declaraciones de módulos para todos los sub-comandos
+
+  src/commands/ (cada archivo = grupo de comandos IPC):
+
+    analysis.rs:
+       ├── get_analysis_metrics, get_token_timeline
+       ├── get_model_usage, list_analysis_runs
+       ├── get_skill_usage, get_cost_by_timeframe
+       ├── get_top_queries, export_traces_as_csv/json
+
+    agent.rs:
+       ├── list_agents, toggle_agent, create_agent, delete_agent
+       └── run_agent_task + emisión de eventos
+
+    agent_identity.rs:
+       ├── read_identity_file (IDENTITY.md, USER.md, SOUL.md)
+       └── write_identity_file
+
+    audio.rs:
+       ├── transcribe_audio (whisper sidecar)
+       └── synthesize_speech (TTS sidecar)
+
+    coding_agent.rs:
+       ├── CodeGenerationState, PermissionState
+       ├── plan_filesystem_change, approve_filesystem_change
+       ├── generate_code, suggest_fix
+       └── Coding agent con flujo de permisos de filesystem
+
+    events.rs:
+       ├── list_events, count_events, list_geo_events
+       └── subscribe (event forwarder)
+
+    graph_events.rs:
+       ├── emit_graph_update, clear_ephemeral_nodes
+       └── get_recent_graph_events
+
+    notifications.rs:
+       ├── send_os_notification
+       └── request_notification_permission
+
+    oauth.rs:
+       ├── generate_pkce_challenge, exchange_oauth_code
+       ├── refresh_oauth_token, fetch_user_info, list_providers
+       └── Flujo OAuth PKCE completo
+
+    secure.rs:
+       ├── set_secure, get_secure, list_secure_keys, delete_secure
+       └── Almacenamiento cifrado (stronghold o app_settings fallback)
+
+    settings.rs:
+       ├── get_setting, set_setting
+       └── Key-value simple
+
+    skills.rs:
+       ├── list_skills, install_skill_from_file/url
+       ├── uninstall_skill, toggle_skill
+       └── read_skill_md, preview_skill_file
+
+    telegram.rs:
+       ├── save/load telegram config, test connection
+       ├── start/stop polling, get_status
+       └── send_chat_action, send_response
+
+    chat/:
+       ├── mod.rs: SidecarChatResult, ContextNode, ContextAsset, RecallChunk
+       ├── send_message.rs (~1078L): main LLM endpoint con intent classification
+       │    + graph context + RAG + skills injection + MCP tools + streaming
+       ├── messages.rs: build_messages() (construye array de mensajes)
+       ├── context.rs: build_graph_context() (filtra knowledge graph por intent)
+       ├── classifier.rs: classify_intent() (keyword-based)
+       ├── search.rs: extract_search_query()
+       ├── stats.rs: extract_message_stats()
+       ├── tools.rs: load_tool_catalog(), execute_tool_call()
+       ├── is_mcp_tool_name(), tool_display_label()
+       └── validator.rs: validate_response() (hallucination detection)
+
+    connector/:
+       ├── register.rs: register_local_connector
+       ├── list.rs: list_connector_files/configs
+       ├── sync.rs: cache_connector_file, sync_connector, get_sync_report
+       └── onedrive.rs + dropbox.rs: APIs específicas de cloud
+
+    containers_mcp/:
+       ├── mod.rs: init_containers_mcp, call_container_tool
+       ├── ContainerToolArgs, resolve_connector()
+       └── handlers.rs: 5 tools virtuales (list, get, search, sync, upload)
+
+    data/:
+       ├── assets.rs: CRUD DataAsset + search + metrics
+       └── queries.rs: get_mentionable_sources() (búsqueda unificada)
+
+    document/:
+       ├── indexer.rs: index_document, get_index_status, list_indexed_assets
+       ├── helpers.rs: unix_now(), insert_sync_event()
+       └── rebuild.rs: rebuild_knowledge_graph (clear + rebuild)
+
+    filesystem/:
+       ├── mod.rs: open_folder_picker, watch/unwatch folder
+       ├── upload_file, get_watched_folders
+       ├── config.rs: get/save filesystem config, is_first_launch
+       └── timeline.rs: get_filesystem_timeline
+
+    graph/:
+       ├── crud.rs: CRUD nodos/edges (create, update, delete, move, pin)
+       ├── bump_use_count
+       └── queries.rs: get/search graph, node details, related nodes, stats
+
+    llm/:
+       ├── mod.rs: LlmProviderConfig, LlmChatRequest/Result, LlmModelInfo
+       ├── commands.rs: ping_llm_provider, chat_llm, list_llm_models
+       ├── sidecar.rs: run_sidecar(), run_sidecar_streaming()
+       ├── fetchers.rs: fetch modelos de Ollama, OpenAI, OpenRouter, Anthropic
+       └── tests.rs
+
+    mcp/:
+       └── handlers.rs: 11 comandos MCP (list, register, update, delete, ping,
+            discover, allowlist CRUD, import/export, call tool)
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   ARQUITECTURA GENERAL — FLUJO DE DATOS                                 ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Frontend (React/TypeScript) ←→ Tauri IPC (geonexus-tauri commands)
+       ↓
+  Capa de Comandos (cada archivo en src/commands/)
+       ↓
+  geonexus-core     → tipos compartidos, eventos, workers, crypto
+  geonexus-db       → persistencia SQLite vía sqlx
+  geonexus-mcp      → comunicación con servidores MCP externos
+  geonexus-fs-mcp   → operaciones de filesystem con seguridad
+       ↓
+  SQLite (geonexus.db) + ChromaDB (vectores) + Servidores MCP externos
+
+  El flujo típico de un comando IPC:
+  1. Frontend llama a invoke("comando", { args })
+  2. Tauri deserializa y enruta al handler en geonexus-tauri
+  3. Handler usa repositorios (geonexus-db) o servicios (geonexus-mcp)
+  4. Resultado se serializa y devuelve al frontend
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   EVENT BUS SYSTEM                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  EventBus (geonexus-core/events/bus.rs):
+     ├── Tokio broadcast channel (suscripción en tiempo real)
+     ├── SQLite persistence (histórico)
+     ├── Domain enum + EventType enum (tipado fuerte)
+     └── Event forwarder → frontend (events::start_event_forwarder)
+
+  Flujo:
+     Worker/Command emite → EventBus → broadcast a suscriptores + SQLite
+                                  ↓
+                           Event forwarder → Tauri event → Frontend listener
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   WORKER POOL SYSTEM                                                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  WorkerPool (geonexus-core/workers/):
+     ├── Tokio runtime separado (2 worker threads)
+     ├── Poll cada 2s la tabla agent_tasks
+     ├── Dispatch a handler según agent_type
+     ├── 4 built-in handlers + 1 filesystem handler
+     └── EventBus integrado para notificar progreso
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   MCP ARCHITECTURE                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+  Dos caras del MCP:
+     1. geonexus-mcp crate: Cliente MCP que se conecta a servidores externos
+        (registro, ping, execute tool, allowlist)
+     2. geonexus-fs-mcp crate: Servidor MCP de filesystem (atiende tools locales)
+
+  Además: containers_mcp module → 5 tools virtuales sobre conectores cloud
+  Y: tool_catalog.rs → unifica tools locales + MCP para LLM function calling
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║   FIN DEL ANÁLISIS                                                      ║
+╚════════════════════════════════════════════════════════════════════════════╝
