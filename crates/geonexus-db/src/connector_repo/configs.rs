@@ -64,3 +64,11 @@ pub async fn list_connector_configs(
     }
     Ok(list)
 }
+
+pub async fn delete_connector_config(pool: &SqlitePool, connector_id: &str) -> Result<(), sqlx::Error> {
+    sqlx::query("DELETE FROM connector_configs WHERE id = ?")
+        .bind(connector_id)
+        .execute(pool)
+        .await?;
+    Ok(())
+}

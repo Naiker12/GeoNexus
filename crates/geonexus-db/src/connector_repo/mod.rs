@@ -4,7 +4,7 @@ use geonexus_core::connector::{ConnectorConfig, ConnectorFile, ConnectorProvider
 pub mod configs;
 pub mod files;
 
-pub use configs::{insert_connector_config, list_connector_configs};
+pub use configs::{delete_connector_config, insert_connector_config, list_connector_configs};
 pub use files::{upsert_connector_file, list_connector_files, update_file_sync_status};
 
 #[cfg(test)]

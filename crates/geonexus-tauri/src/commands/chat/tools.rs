@@ -1,5 +1,14 @@
 use std::path::PathBuf;
+
+use geonexus_mcp::executor;
+use geonexus_mcp::registry;
+use geonexus_mcp::tool_catalog::{
+    build_mcp_tool_name, format_mcp_tool_result, mcp_tool_to_llm_definition,
+    resolve_mcp_tool_name, MCP_TOOL_PREFIX,
+};
+use geonexus_mcp::types::{CallToolPayload, McpServer, McpTool};
 use serde_json::json;
+use sqlx::SqlitePool;
 
 use crate::commands::llm::project_root;
 
@@ -9,7 +18,28 @@ const TEXT_EXTENSIONS: &[&str] = &[
     "vue", "svelte", "astro", "mjs", "cjs", "mts", "cts",
 ];
 
-pub fn get_tool_definitions() -> Vec<serde_json::Value> {
+pub struct ToolCatalog {
+    pub definitions: Vec<serde_json::Value>,
+    pub mcp_tools: Vec<(McpServer, McpTool)>,
+}
+
+pub async fn load_tool_catalog(pool: &SqlitePool) -> ToolCatalog {
+    let mut definitions = local_tool_definitions();
+    let mcp_tools = registry::list_callable_mcp_tools(pool)
+        .await
+        .unwrap_or_default();
+
+    for (server, tool) in &mcp_tools {
+        definitions.push(mcp_tool_to_llm_definition(server, tool));
+    }
+
+    ToolCatalog {
+        definitions,
+        mcp_tools,
+    }
+}
+
+fn local_tool_definitions() -> Vec<serde_json::Value> {
     vec![
         json!({
             "type": "function",
@@ -83,10 +113,45 @@ pub fn get_tool_definitions() -> Vec<serde_json::Value> {
                 }
             }
         }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": "list_mcp_status",
+                "description": "Usa esta herramienta cuando el usuario pregunte que servidores MCP tiene configurados, cuales estan activos, cuantos tools exponen o el estado del MCP Router. No requiere argumentos.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            }
+        }),
     ]
 }
 
-pub fn execute_tool_call(tc: &serde_json::Value) -> String {
+pub fn is_mcp_tool_name(name: &str) -> bool {
+    name.starts_with(MCP_TOOL_PREFIX)
+}
+
+pub fn tool_display_label(name: &str) -> String {
+    match name {
+        "read_file" => "Leer archivo".into(),
+        "list_directory" => "Listar directorio".into(),
+        "search_code" => "Buscar en código".into(),
+        "glob_files" => "Glob de archivos".into(),
+        "list_mcp_status" => "Estado MCP".into(),
+        other if is_mcp_tool_name(other) => {
+            other.strip_prefix(MCP_TOOL_PREFIX).unwrap_or(other).replace("__", " · ")
+        }
+        other => other.into(),
+    }
+}
+
+pub async fn execute_tool_call(
+    pool: &SqlitePool,
+    trace_id: &str,
+    tc: &serde_json::Value,
+    catalog: &[(McpServer, McpTool)],
+) -> (String, bool) {
     let name = tc["function"]["name"].as_str().unwrap_or("").to_string();
     let args_str = tc["function"]["arguments"]
         .as_str()
@@ -94,15 +159,98 @@ pub fn execute_tool_call(tc: &serde_json::Value) -> String {
     let args: serde_json::Value =
         serde_json::from_str(args_str).unwrap_or(json!({}));
 
-    let root = project_root();
+    if is_mcp_tool_name(&name) {
+        return execute_mcp_tool_call(pool, trace_id, &name, args, catalog).await;
+    }
 
-    match name.as_str() {
+    let root = project_root();
+    let output = match name.as_str() {
         "read_file" => cmd_read_file(&args, &root),
         "search_code" => cmd_search_code(&args, &root),
         "list_directory" => cmd_list_directory(&args, &root),
         "glob_files" => cmd_glob_files(&args, &root),
+        "list_mcp_status" => return cmd_list_mcp_status(pool).await,
         _ => format!("Error: herramienta desconocida '{name}'"),
+    };
+    let success = !output.starts_with("Error:");
+    (output, success)
+}
+
+async fn execute_mcp_tool_call(
+    pool: &SqlitePool,
+    trace_id: &str,
+    llm_name: &str,
+    args: serde_json::Value,
+    catalog: &[(McpServer, McpTool)],
+) -> (String, bool) {
+    let Some((server, tool)) = resolve_mcp_tool_name(llm_name, catalog) else {
+        return (
+            format!("Error: herramienta MCP desconocida '{llm_name}'"),
+            false,
+        );
+    };
+
+    let payload = CallToolPayload {
+        server_id: server.id.clone(),
+        tool: tool.name.clone(),
+        args,
+        trace_id: trace_id.to_string(),
+        agent_name: Some("chat".to_string()),
+    };
+
+    match executor::call_tool_for_server(pool, server, payload).await {
+        Ok(result) if result.success => {
+            let text = result
+                .data
+                .as_ref()
+                .map(format_mcp_tool_result)
+                .unwrap_or_else(|| "OK".into());
+            (text, true)
+        }
+        Ok(result) => {
+            let err = result
+                .error
+                .unwrap_or_else(|| "La herramienta MCP devolvió un error".into());
+            (format!("Error MCP ({}): {err}", build_mcp_tool_name(&server.id, &tool.name)), false)
+        }
+        Err(e) => (format!("Error ejecutando MCP: {e}"), false),
     }
+}
+
+async fn cmd_list_mcp_status(pool: &SqlitePool) -> (String, bool) {
+    let servers = match registry::list_servers(pool).await {
+        Ok(servers) => servers,
+        Err(e) => return (format!("Error consultando servidores MCP: {e}"), false),
+    };
+
+    if servers.is_empty() {
+        return ("No hay servidores MCP registrados.".into(), true);
+    }
+
+    let mut rows = Vec::new();
+    for server in servers {
+        let tools_count = registry::list_tools(pool, &server.id)
+            .await
+            .map(|tools| tools.len())
+            .unwrap_or_else(|_| server.tools_count.unwrap_or(0).max(0) as usize);
+
+        rows.push(json!({
+            "id": server.id,
+            "name": server.name,
+            "transport": server.transport.as_str(),
+            "status": server.status.as_str(),
+            "disabled": server.disabled,
+            "tools_count": tools_count,
+            "latency_ms": server.latency_ms,
+            "error_count": server.error_count,
+            "last_error": server.last_error,
+        }));
+    }
+
+    (
+        serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".into()),
+        true,
+    )
 }
 
 fn is_text_file(path: &std::path::Path) -> bool {

@@ -21,6 +21,7 @@ pub struct MentionableSource {
 #[derive(Debug, serde::Serialize)]
 pub struct MentionableSources {
     pub connectors: Vec<MentionableSource>,
+    pub mcp_servers: Vec<MentionableSource>,
     pub assets: Vec<MentionableSource>,
     pub graph_nodes: Vec<MentionableSource>,
 }

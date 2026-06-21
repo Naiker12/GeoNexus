@@ -134,6 +134,7 @@ pub async fn get_mentionable_sources(
 
     let connectors: Vec<MentionableSource> = connector_rows
         .into_iter()
+        .filter(|row| row.is_active != 0)
         .filter(|row| {
             q.is_empty() || row.display_name.to_lowercase().contains(&q.to_lowercase())
         })
@@ -159,6 +160,52 @@ pub async fn get_mentionable_sources(
             }
         })
         .collect();
+
+    #[derive(sqlx::FromRow)]
+    struct McpServerRow {
+        id: String,
+        name: String,
+        status: String,
+        transport: String,
+        tools_count: Option<i64>,
+    }
+
+    let mcp_servers = sqlx::query_as::<_, McpServerRow>(
+        "SELECT id, name, status, transport, tools_count
+         FROM mcp_servers
+         WHERE disabled = 0
+         ORDER BY CASE status WHEN 'online' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END, name ASC
+         LIMIT 12"
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Error fetching MCP servers: {e}"))?
+    .into_iter()
+    .filter(|row| {
+        q.is_empty() || row.name.to_lowercase().contains(&q.to_lowercase()) || row.id.to_lowercase().contains(&q.to_lowercase())
+    })
+    .map(|row| {
+        let tools = row.tools_count.unwrap_or(0);
+        let state = match row.status.as_str() {
+            "online" => "activo",
+            "pending" => "pendiente",
+            "degraded" => "degradado",
+            _ => "offline",
+        };
+        MentionableSource {
+            id: row.id,
+            kind: "mcp_server".into(),
+            label: row.name,
+            sublabel: format!("{} · {} · {} tools", row.transport.to_uppercase(), state, tools),
+            icon: "Server".into(),
+            color: "#4F46E5".into(),
+            status: "mcp".into(),
+            last_synced: None,
+            asset_count: Some(tools),
+            provider: Some("mcp".into()),
+        }
+    })
+    .collect::<Vec<_>>();
 
     // Assets
     #[derive(sqlx::FromRow)]
@@ -228,5 +275,5 @@ pub async fn get_mentionable_sources(
     })
     .collect::<Vec<_>>();
 
-    Ok(MentionableSources { connectors, assets, graph_nodes })
+    Ok(MentionableSources { connectors, mcp_servers, assets, graph_nodes })
 }

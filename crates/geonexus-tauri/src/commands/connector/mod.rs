@@ -1,9 +1,11 @@
+pub mod delete;
 pub mod register;
 pub mod list;
 pub mod sync;
 pub mod dropbox;
 pub mod onedrive;
 
+pub use delete::*;
 pub use register::*;
 pub use list::*;
 pub use sync::*;
