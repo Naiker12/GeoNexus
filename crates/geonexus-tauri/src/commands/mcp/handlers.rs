@@ -13,6 +13,54 @@ fn is_http_server(server: &McpServer) -> bool {
     server.transport == McpTransport::Http || server.transport == McpTransport::Sse
 }
 
+async fn discover_stdio_tools_for_server(
+    state: &State<'_, AppState>,
+    server: &McpServer,
+) -> Result<usize, String> {
+    let cmd = server
+        .command
+        .clone()
+        .ok_or("El servidor STDIO no tiene comando definido")?;
+    let args = server.args.clone().unwrap_or_default();
+    let timeout = server.timeout_ms.unwrap_or(30000) as u64;
+    let env = server.env.as_ref().and_then(|v| v.as_object());
+    let tools = stdio::discover_tools(&cmd, &args, env, timeout).await?;
+    let count = tools.len();
+
+    for tool in &tools {
+        let category = registry::infer_tool_category(&tool.name, &tool.description);
+        let args_json = tool
+            .input_schema
+            .as_ref()
+            .map(|s| serde_json::to_string(s).unwrap_or_default())
+            .unwrap_or_default();
+        registry::upsert_tool(
+            &state.db,
+            &server.id,
+            &tool.name,
+            &category,
+            &tool.description,
+            &args_json,
+            "",
+        )
+        .await
+        .map_err(|e| format!("Error guardando tool '{}': {e}", tool.name))?;
+    }
+
+    let _ = registry::update_server_ping_result(
+        &state.db,
+        &server.id,
+        true,
+        None,
+        Some(count as i32),
+        None,
+        None,
+    )
+    .await;
+
+    Ok(count)
+}
+
 #[tauri::command]
 pub async fn list_mcp_servers(
     state: State<'_, AppState>,
@@ -33,6 +81,25 @@ pub async fn register_mcp_server(
         return Err("url es obligatoria para servidores HTTP".into());
     }
     let server = registry::register_server(&state.db, payload).await.map_err(|e| e.to_string())?;
+
+    if server.transport == McpTransport::Stdio {
+        if let Err(e) = discover_stdio_tools_for_server(&state, &server).await {
+            eprintln!("[mcp] Auto-discover de tools falló para {}: {}", server.id, e);
+            let _ = registry::update_server_ping_result(
+                &state.db,
+                &server.id,
+                false,
+                None,
+                Some(0),
+                None,
+                Some(&e),
+            )
+            .await;
+        }
+        return registry::get_server(&state.db, &server.id)
+            .await
+            .map_err(|e| e.to_string());
+    }
 
     // Auto-descubrir tools si es STDIO
     if server.transport == McpTransport::Stdio {
@@ -91,6 +158,46 @@ pub async fn ping_mcp_server(
     let server = registry::get_server(&state.db, &server_id)
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
+
+    if !is_http_server(&server) || server.url.is_empty() {
+        let started = std::time::Instant::now();
+        return match discover_stdio_tools_for_server(&state, &server).await {
+            Ok(count) => Ok(PingResult {
+                online: true,
+                latency_ms: Some(started.elapsed().as_millis() as u64),
+                error: None,
+                protocol_version: None,
+                tools_count: Some(count),
+                server_name: Some(server.name),
+            }),
+            Err(e) => {
+                let _ = registry::update_server_ping_result(
+                    &state.db,
+                    &server_id,
+                    false,
+                    None,
+                    Some(0),
+                    None,
+                    Some(&e),
+                )
+                .await;
+                let _ = sqlx::query(
+                    "UPDATE mcp_servers SET error_count = error_count + 1 WHERE id = ?1"
+                )
+                .bind(&server_id)
+                .execute(&state.db)
+                .await;
+                Ok(PingResult {
+                    online: false,
+                    latency_ms: None,
+                    error: Some(e),
+                    protocol_version: None,
+                    tools_count: Some(0),
+                    server_name: Some(server.name),
+                })
+            }
+        };
+    }
 
     // Saltar ping para servidores stdio (no tienen URL HTTP)
     if !is_http_server(&server) || server.url.is_empty() {
@@ -179,12 +286,7 @@ pub async fn call_mcp_tool(
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
 
-    if !is_http_server(&server) || server.url.is_empty() {
-        return Err("No se puede llamar tools en servidores stdio a través de HTTP".into());
-    }
-
-    let auth_token = get_auth_token(&server);
-    geonexus_mcp::executor::call_tool(&state.db, &server.url, payload, auth_token.as_deref()).await
+    geonexus_mcp::executor::call_tool_for_server(&state.db, &server, payload).await
 }
 
 // ── Import / Export ──────────────────────────────────────────────
@@ -341,6 +443,14 @@ pub async fn discover_mcp_tools(
     let server = registry::get_server(&state.db, &server_id)
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
+
+    if server.transport == McpTransport::Stdio {
+        let discovered = discover_stdio_tools_for_server(&state, &server).await?;
+        if discovered == 0 {
+            return Err("El servidor no reportó tools".into());
+        }
+        return Ok(discovered);
+    }
 
     let discovered = match server.transport {
         McpTransport::Stdio => {

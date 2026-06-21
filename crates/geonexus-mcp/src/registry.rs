@@ -155,6 +155,33 @@ pub async fn list_tools(pool: &SqlitePool, server_id: &str) -> Result<Vec<McpToo
     Ok(rows.into_iter().map(McpTool::from).collect())
 }
 
+/// Tools MCP listas para el LLM: servidores activos + tools Ready + allowlist permitida.
+pub async fn list_callable_mcp_tools(pool: &SqlitePool) -> Result<Vec<(McpServer, McpTool)>, sqlx::Error> {
+    let servers = list_servers(pool).await?;
+    let mut out = Vec::new();
+
+    for server in servers {
+        if server.disabled {
+            continue;
+        }
+        let tools = list_tools(pool, &server.id).await?;
+        for tool in tools {
+            if tool.status != ToolStatus::Ready {
+                continue;
+            }
+            let allowlist = check_allowlist(pool, &server.id, &tool.name).await?;
+            if let Some(ref rule) = allowlist {
+                if !rule.allowed {
+                    continue;
+                }
+            }
+            out.push((server.clone(), tool));
+        }
+    }
+
+    Ok(out)
+}
+
 pub async fn upsert_tool(pool: &SqlitePool, server_id: &str, name: &str, category: &str,
     description: &str, args: &str, result: &str) -> Result<(), sqlx::Error> {
     let existing: Option<(String,)> = sqlx::query_as(
@@ -168,11 +195,12 @@ pub async fn upsert_tool(pool: &SqlitePool, server_id: &str, name: &str, categor
     let tool_id = existing.map(|r| r.0).unwrap_or_else(|| Uuid::new_v4().to_string());
 
     sqlx::query(
-        "INSERT INTO mcp_tools (id, server_id, name, category, description, args, result, status)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'ready')
+        "INSERT INTO mcp_tools (id, server_id, name, category, description, args_schema, args, result, status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, 'ready')
          ON CONFLICT(id) DO UPDATE SET
            category = excluded.category,
            description = excluded.description,
+           args_schema = excluded.args_schema,
            args = excluded.args,
            result = excluded.result,
            status = 'ready',
@@ -300,7 +328,7 @@ pub fn infer_tool_category(name: &str, description: &str) -> String {
 
 pub async fn list_allowlist(pool: &SqlitePool, server_id: &str) -> Result<Vec<AllowlistRule>, sqlx::Error> {
     let rows = sqlx::query_as::<_, AllowlistRuleRow>(
-        "SELECT id, server_id, tool_name, allowed, rate_limit
+        "SELECT id, server_id, tool_name, allowed, rate_limit, last_called_at
          FROM mcp_allowlist WHERE server_id = ?1 ORDER BY tool_name ASC"
     )
     .bind(server_id)
@@ -333,7 +361,7 @@ pub async fn upsert_allowlist_rule(
     .await?;
 
     let row = sqlx::query_as::<_, AllowlistRuleRow>(
-        "SELECT id, server_id, tool_name, allowed, rate_limit
+        "SELECT id, server_id, tool_name, allowed, rate_limit, last_called_at
          FROM mcp_allowlist WHERE id = ?1"
     )
     .bind(&id)

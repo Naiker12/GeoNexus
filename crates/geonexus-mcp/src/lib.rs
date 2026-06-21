@@ -6,3 +6,4 @@ pub mod registry;
 pub mod pinger;
 pub mod executor;
 pub mod stdio;
+pub mod tool_catalog;
