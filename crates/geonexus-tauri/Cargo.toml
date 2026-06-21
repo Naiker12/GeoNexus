@@ -24,6 +24,7 @@ rand = "0.8"
 sha2 = "0.10"
 base64 = "0.22"
 notify-rust = "4"
+chrono = "0.4"
 
 [features]
 default = ["dialog"]

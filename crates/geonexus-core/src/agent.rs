@@ -11,6 +11,8 @@ pub struct Agent {
     pub config: String,
     pub model: Option<String>,
     pub provider: Option<String>,
+    pub model_name: Option<String>,
+    pub last_run_at: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
 }

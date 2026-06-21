@@ -27,6 +27,8 @@ pub async fn list_agents(pool: &SqlitePool) -> Result<Vec<Agent>, String> {
             config: r.get("config"),
             model: r.get("model"),
             provider: r.get("provider"),
+            model_name: r.get("model_name"),
+            last_run_at: r.get("last_run_at"),
             created_at: r.get("created_at"),
             updated_at: r.get("updated_at"),
         });

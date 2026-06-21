@@ -17,6 +17,7 @@ mod tests {
             web_search: false,
             mentioned_asset_ids: vec![],
             mentioned_connector_ids: vec![],
+            mentioned_mcp_server_ids: vec![],
             mentioned_node_ids: vec![],
             mentioned_agent_sources: vec![],
             skill_names: vec![],

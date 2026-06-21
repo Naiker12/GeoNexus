@@ -150,6 +150,8 @@ pub struct SendMessageInput {
     #[serde(default)]
     pub mentioned_connector_ids: Vec<String>,
     #[serde(default)]
+    pub mentioned_mcp_server_ids: Vec<String>,
+    #[serde(default)]
     pub mentioned_node_ids: Vec<String>,
     #[serde(default)]
     pub mentioned_agent_sources: Vec<String>,

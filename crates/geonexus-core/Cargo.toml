@@ -18,5 +18,10 @@ reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["time", "sync"] }
 sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio"] }
 tracing = "0.1"
+aes-gcm = "0.10"
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+hex = "0.4"
 
 [dev-dependencies]
