@@ -19,6 +19,7 @@ export type AiConnector = {
   endpoint: string
   apiKey?: string
   supportsTools: boolean
+  supportsEmbeddings?: boolean
   privacy: "local" | "keychain" | "localhost"
   latency: string
   description: string

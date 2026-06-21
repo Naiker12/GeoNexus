@@ -113,6 +113,7 @@ export function getMentionableSources(
   return invokeOrFallback("get_mentionable_sources", { projectId, query }, {
     assets: [],
     graph_nodes: [],
-    connectors: []
+    connectors: [],
+    mcp_servers: []
   })
 }

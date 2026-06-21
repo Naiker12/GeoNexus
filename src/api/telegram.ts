@@ -12,6 +12,20 @@ export interface TelegramStatus {
   error?: string;
 }
 
+export interface TelegramTestResult {
+  ok: boolean;
+  bot_username: string;
+  bot_id: number;
+  bot_name: string;
+}
+
+export interface TelegramConfigInfo {
+  has_config: boolean;
+  allowed_users?: string[];
+  response_mode?: string;
+  bot_configured?: boolean;
+}
+
 function isTauriAvailable(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined;
 }
@@ -25,15 +39,14 @@ export async function saveTelegramConfig(config: TelegramConfig): Promise<void> 
   });
 }
 
-export async function loadTelegramConfig(): Promise<TelegramConfig | null> {
+export async function loadTelegramConfig(): Promise<TelegramConfigInfo | null> {
   if (!isTauriAvailable()) return null;
-  const config = await invoke<any | null>("telegram_load_config");
-  if (!config) return null;
-  return {
-    botToken: config.bot_token,
-    allowedUsers: config.allowed_users,
-    responseMode: config.response_mode,
-  };
+  return await invoke<TelegramConfigInfo | null>("telegram_load_config");
+}
+
+export async function testTelegramConnection(token?: string): Promise<TelegramTestResult> {
+  if (!isTauriAvailable()) throw new Error("Tauri not available");
+  return await invoke<TelegramTestResult>("telegram_test_connection", { token: token ?? null });
 }
 
 export async function startTelegramPolling(): Promise<string> {
@@ -56,21 +69,4 @@ export async function getTelegramStatus(): Promise<TelegramStatus> {
     botName: status.bot_name,
     error: status.error,
   };
-}
-
-export async function sendTelegramMessage(chatId: number, text: string): Promise<void> {
-  if (!isTauriAvailable()) return;
-  await invoke("telegram_send_message", { chatId, text });
-}
-
-// === Coding Agent API ===
-export async function codingAgentStartGeneration(
-  description: string,
-  projectPath: string
-): Promise<string> {
-  if (!isTauriAvailable()) throw new Error("Tauri not available");
-  return await invoke<string>("coding_agent_start_generation", {
-    description,
-    projectPath,
-  });
 }

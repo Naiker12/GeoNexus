@@ -111,7 +111,7 @@ export function exportMcpConfig(): Promise<string> {
 
 export function discoverMcpTools(serverId: string): Promise<number> {
   if (!serverId.trim()) throw new Error("server_id requerido")
-  return invokeOrFallback("discover_mcp_tools", { serverId }, 0)
+  return invokeRequired("discover_mcp_tools", { serverId })
 }
 
 export interface PreviewTool {
