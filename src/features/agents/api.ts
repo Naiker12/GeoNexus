@@ -8,3 +8,7 @@ export function listAgents(): Promise<Agent[]> {
 export function toggleAgent(agentId: string, active: boolean): Promise<void> {
   return invoke("toggle_agent", { agentId, active })
 }
+
+export function setAgentModel(agentId: string, modelName: string | null): Promise<void> {
+  return invoke("set_agent_model", { agentId, modelName })
+}

@@ -8,6 +8,8 @@ export interface Agent {
   config: string
   model: string | null
   provider: string | null
+  model_name: string | null
+  last_run_at: number | null
   created_at: number
   updated_at: number
 }
