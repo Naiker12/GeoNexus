@@ -27,10 +27,10 @@ interface AllowedPathDialogProps {
 }
 
 const LEVELS = [
-  { value: "read", label: "Read only" },
-  { value: "write", label: "Read + Write" },
-  { value: "execute", label: "Execute" },
-  { value: "admin", label: "Admin" },
+  { value: "read", label: "Lectura", description: "El agente puede leer archivos pero no modificarlos" },
+  { value: "write", label: "Escritura", description: "El agente puede leer y crear/modificar archivos" },
+  { value: "execute", label: "Ejecución", description: "Incluye escritura + puede ejecutar scripts en esta ruta" },
+  { value: "admin", label: "Admin", description: "Acceso total incluyendo eliminar archivos (requiere confirmación)" },
 ]
 
 export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: AllowedPathDialogProps) {
@@ -74,17 +74,17 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base">
-                {entry ? "Edit allowed path" : "Add allowed path"}
+                {entry ? "Editar ruta permitida" : "Añadir ruta permitida"}
               </DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
-                Configure a directory that GeoNexus can access and its permission level.
+                Configura un directorio al que GeoNexus pueda acceder y su nivel de permiso.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <form className="grid gap-3 p-4" onSubmit={(e) => { e.preventDefault(); handleSave() }}>
           <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Path</label>
+            <label className="text-xs font-medium text-muted-foreground">Ruta</label>
             <div className="flex items-center gap-2">
               <Input
                 value={path}
@@ -94,20 +94,20 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
               />
               <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
                 <FolderOpen className="size-4 mr-1" />
-                Browse
+                Explorar
               </Button>
             </div>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Label</label>
+            <label className="text-xs font-medium text-muted-foreground">Etiqueta</label>
             <Input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="My Project"
+              placeholder="Mi proyecto"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Permission level</label>
+            <label className="text-xs font-medium text-muted-foreground">Nivel de permiso</label>
             <Select value={level} onValueChange={setLevel}>
               <SelectTrigger>
                 <SelectValue />
@@ -118,9 +118,14 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
                 ))}
               </SelectContent>
             </Select>
+            {LEVELS.find((l) => l.value === level)?.description && (
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                {LEVELS.find((l) => l.value === level)?.description}
+              </p>
+            )}
           </div>
           <DialogActions
-            submitLabel={entry ? "Save" : "Add"}
+            submitLabel={entry ? "Guardar" : "Añadir"}
             onCancel={() => onOpenChange(false)}
           />
         </form>

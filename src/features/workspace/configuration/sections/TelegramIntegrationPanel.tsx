@@ -7,23 +7,24 @@ import {
   XCircleIcon,
   PlayIcon,
   StopCircleIcon,
+  AlertTriangleIcon,
 } from "lucide-react"
 import { toast } from "sonner"
+import { listen } from "@tauri-apps/api/event"
 
 import { Button } from "@/components/ui/Button"
 import { Field } from "@/features/workspace/configuration/settings-ui"
 import {
   saveTelegramConfig,
-  loadTelegramConfig,
+  testTelegramConnection,
   startTelegramPolling,
   stopTelegramPolling,
   getTelegramStatus,
-  type TelegramConfig as ApiTelegramConfig,
+  loadTelegramConfig,
 } from "@/api/telegram"
 
 type TelegramConfig = {
   botToken: string
-  projectId: string
   responseMode: "text" | "sources" | "full"
   allowedUsers: string
   status: "disconnected" | "connecting" | "active" | "error"
@@ -33,7 +34,6 @@ type TelegramConfig = {
 
 const defaultConfig: TelegramConfig = {
   botToken: "",
-  projectId: "",
   responseMode: "sources",
   allowedUsers: "",
   status: "disconnected",
@@ -45,28 +45,46 @@ export function TelegramIntegrationPanel() {
   const [config, setConfig] = React.useState<TelegramConfig>(defaultConfig)
   const [loading, setLoading] = React.useState(true)
   const [testing, setTesting] = React.useState(false)
-  const [testError, setTestError] = React.useState<string | null>(null)
+  const [testResult, setTestResult] = React.useState<{
+    kind: "success" | "error" | null
+    message: string
+  }>({ kind: null, message: "" })
   const [startingPolling, setStartingPolling] = React.useState(false)
   const [stoppingPolling, setStoppingPolling] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [hasSavedConfig, setHasSavedConfig] = React.useState(false)
 
   React.useEffect(() => {
     loadData()
   }, [])
 
+  React.useEffect(() => {
+    let unlisten: (() => void) | undefined
+    listen<{ kind: string; message: string }>("telegram:error", (event) => {
+      toast.error(event.payload.message)
+      setConfig((prev) => ({ ...prev, status: "error", isPolling: false }))
+    }).then((fn) => {
+      unlisten = fn
+    })
+    return () => {
+      unlisten?.()
+    }
+  }, [])
+
   async function loadData() {
     try {
-      const savedConfig = await loadTelegramConfig()
-      if (savedConfig) {
+      const info = await loadTelegramConfig()
+      if (info?.has_config && info.allowed_users) {
+        setHasSavedConfig(true)
         setConfig({
           ...defaultConfig,
-          botToken: savedConfig.botToken,
-          responseMode: savedConfig.responseMode as any,
-          allowedUsers: savedConfig.allowedUsers.join(", "),
+          allowedUsers: info.allowed_users.join(", "),
+          responseMode: (info.response_mode as any) || "sources",
         })
       }
       const status = await getTelegramStatus()
-      if (status.botName) {
-        const botName: string = status.botName
+      const botName = status.botName
+      if (botName) {
         setConfig((prev) => ({
           ...prev,
           botName,
@@ -81,60 +99,80 @@ export function TelegramIntegrationPanel() {
     }
   }
 
-  const updateConfig = async (patch: Partial<TelegramConfig>) => {
-    setConfig((prev) => {
-      const next = { ...prev, ...patch }
-      saveToDb(next)
-      return next
-    })
+  const updateConfig = (patch: Partial<TelegramConfig>) => {
+    setConfig((prev) => ({ ...prev, ...patch }))
   }
 
-  async function saveToDb(cfg: TelegramConfig) {
+  async function handleSave() {
+    const usersArray = config.allowedUsers
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    if (usersArray.length === 0) {
+      toast.error("Debes añadir al menos un ID numérico de Telegram")
+      return
+    }
+
+    for (const user of usersArray) {
+      const normalized = user.startsWith("@") ? user.slice(1) : user
+      if (!/^\d+$/.test(normalized)) {
+        toast.error(`"${user}" no es un ID numérico válido`)
+        return
+      }
+    }
+
+    if (!config.botToken.trim()) {
+      toast.error("El token del bot es obligatorio")
+      return
+    }
+
+    setSaving(true)
     try {
-      const allowedUsersArray = cfg.allowedUsers
-        .split(",")
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
       await saveTelegramConfig({
-        botToken: cfg.botToken,
-        allowedUsers: allowedUsersArray,
-        responseMode: cfg.responseMode,
+        botToken: config.botToken,
+        allowedUsers: usersArray,
+        responseMode: config.responseMode,
       })
-    } catch (e) {
-      console.error("Error al guardar config:", e)
+      setHasSavedConfig(true)
+      toast.success("Configuración guardada")
+    } catch (e: any) {
+      toast.error(e?.message || "Error al guardar")
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleTest = async () => {
     if (!config.botToken.trim()) {
-      setTestError("Ingresa el token del bot")
+      setTestResult({ kind: "error", message: "Ingresa el token del bot" })
       return
     }
+
+    const usersArray = config.allowedUsers
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+
+    if (usersArray.length === 0) {
+      setTestResult({ kind: "error", message: "Añade al menos un ID numérico de Telegram" })
+      return
+    }
+
     setTesting(true)
-    setTestError(null)
+    setTestResult({ kind: null, message: "" })
     updateConfig({ status: "connecting" })
 
     try {
-      const res = await fetch(
-        `https://api.telegram.org/bot${config.botToken.trim()}/getMe`
-      )
-      const data = await res.json()
-      if (data.ok) {
-        const botName = data.result.username
-          ? `@${data.result.username}`
-          : data.result.first_name
-        updateConfig({
-          status: "active",
-          botName,
-        })
-        toast.success("Conexión exitosa!")
-      } else {
-        setTestError(data.description || "Token inválido")
-        updateConfig({ status: "error" })
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      setTestError(msg)
+      const result = await testTelegramConnection(config.botToken.trim())
+      const name = result.bot_username
+        ? `@${result.bot_username}`
+        : result.bot_name
+      updateConfig({ status: "active", botName: name })
+      setTestResult({ kind: "success", message: `Conectado como ${name}` })
+      toast.success("Conexión exitosa")
+    } catch {
+      setTestResult({ kind: "error", message: "No se pudo conectar. Verifica el token." })
       updateConfig({ status: "error" })
     } finally {
       setTesting(false)
@@ -187,6 +225,16 @@ export function TelegramIntegrationPanel() {
       </div>
     )
   }
+
+  const hasEmptyUsers = !config.allowedUsers.trim()
+  const hasInvalidUsers = config.allowedUsers
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .some((u) => {
+      const normalized = u.startsWith("@") ? u.slice(1) : u
+      return !/^\d+$/.test(normalized)
+    })
 
   const statusColor = {
     disconnected: "bg-gray-400",
@@ -261,22 +309,41 @@ export function TelegramIntegrationPanel() {
             </select>
           </Field>
 
-          <Field label="Usuarios permitidos (opcional)">
+          <Field label="Usuarios permitidos (IDs numéricos)">
             <input
               value={config.allowedUsers}
               onChange={(e) => updateConfig({ allowedUsers: e.target.value })}
-              placeholder="@username o chat ID (separados por coma)"
+              placeholder="12345678, 87654321"
               className="h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none transition focus:border-primary/50"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              Vacío = cualquier usuario puede consultar
+              IDs numéricos separados por coma. El bot solo responderá a estos usuarios.
             </p>
+            {hasEmptyUsers && (
+              <div className="mt-1 flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-600">
+                <AlertTriangleIcon className="mt-0.5 size-3 shrink-0" />
+                <span>Debes añadir al menos un ID para restringir el acceso</span>
+              </div>
+            )}
+            {hasInvalidUsers && (
+              <div className="mt-1 flex items-start gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-600">
+                <XCircleIcon className="mt-0.5 size-3 shrink-0" />
+                <span>Usa solo IDs numéricos (no @usernames — los usernames pueden cambiar)</span>
+              </div>
+            )}
           </Field>
 
-          {testError && (
+          {testResult.kind === "success" && (
+            <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-600">
+              <CheckIcon className="mt-0.5 size-4 shrink-0" />
+              <span>{testResult.message}</span>
+            </div>
+          )}
+
+          {testResult.kind === "error" && (
             <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               <XCircleIcon className="mt-0.5 size-4 shrink-0" />
-              <span>{testError}</span>
+              <span>{testResult.message}</span>
             </div>
           )}
 
@@ -307,6 +374,16 @@ export function TelegramIntegrationPanel() {
               )}
               {testing ? "Probando..." : "Probar conexión"}
             </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || hasEmptyUsers || hasInvalidUsers || !config.botToken.trim()}
+            >
+              {saving ? "Guardando..." : "Guardar configuración"}
+            </Button>
+
             {config.isPolling ? (
               <Button
                 variant="destructive"
@@ -326,7 +403,7 @@ export function TelegramIntegrationPanel() {
                 variant="default"
                 size="sm"
                 onClick={handleStartPolling}
-                disabled={startingPolling || config.status !== "active"}
+                disabled={startingPolling || !(hasSavedConfig || config.status === "active")}
               >
                 {startingPolling ? (
                   <RefreshCwIcon className="size-3.5 animate-spin" />

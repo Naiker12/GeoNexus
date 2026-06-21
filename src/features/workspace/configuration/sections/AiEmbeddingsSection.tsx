@@ -1,5 +1,6 @@
 import * as React from "react"
 import { NativeSelect } from "@/components/ui/native-select"
+import { Switch } from "@/components/ui/switch"
 import { AiModelsTable } from "@/features/workspace/configuration/AiModelsTable"
 import { ProviderCatalogDialog } from "@/features/workspace/ai-containers/ProviderCatalogDialog"
 import { ProviderSetupDialog } from "@/features/workspace/ai-containers/ProviderSetupDialog"
@@ -125,6 +126,13 @@ export function AiEmbeddingsSection() {
     ? configuredConnectors.find((c) => c.id === setupOption.id)
     : undefined
 
+  // Embedding-capable models: from static list OR from active connectors
+  const embeddingModelsFromConnectors = configuredConnectors
+    .filter(c => c.status === "online" && (c.model?.toLowerCase().includes("embed") || c.supportsTools === false))
+    .map(c => ({ value: c.model ?? c.name, label: `${c.model ?? c.name} (${c.name})`, provider: c.provider }))
+
+  const hasEmbeddingModels = EMBEDDING_MODELS.length > 0 || embeddingModelsFromConnectors.length > 0
+
   return (
     <>
       <div className="grid gap-4">
@@ -157,14 +165,29 @@ export function AiEmbeddingsSection() {
               value={embeddingsModel}
               onChange={(e) => handleSaveEmbeddings(e.target.value)}
             >
-              <option value="">Sin modelo de embeddings configurado</option>
+              <option value="">— Selecciona un modelo de embeddings —</option>
               {EMBEDDING_MODELS.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
+              {embeddingModelsFromConnectors.length > 0 && (
+                <optgroup label="Desde conectores activos">
+                  {embeddingModelsFromConnectors.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </NativeSelect>
           </Field>
+          {!hasEmbeddingModels && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              Para activar la búsqueda semántica, añade un modelo que soporte embeddings
+              (ej: <code className="text-[0.65rem]">text-embedding-3-small</code> de OpenAI, o <code className="text-[0.65rem]">nomic-embed-text</code> de Ollama).
+            </p>
+          )}
         </div>
       </div>
 

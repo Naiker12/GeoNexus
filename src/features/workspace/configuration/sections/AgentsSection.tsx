@@ -11,8 +11,10 @@ import {
   Loader2Icon,
 } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
-import { listAgents, toggleAgent } from "@/features/agents/api"
+import { NativeSelect } from "@/components/ui/native-select"
+import { listAgents, toggleAgent, setAgentModel } from "@/features/agents/api"
 import type { Agent } from "@/features/agents/types"
+import { useConnectors } from "@/contexts/ConnectorsContext"
 
 const KIND_ICON: Record<string, React.FC<{ className?: string }>> = {
   document: FileTextIcon,
@@ -38,6 +40,15 @@ const KIND_LABEL: Record<string, string> = {
   chat: "Chat",
 }
 
+function formatRelativeTime(ts: number | null): string {
+  if (!ts) return ""
+  const diff = Date.now() / 1000 - ts
+  if (diff < 60) return "hace segundos"
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`
+  return `hace ${Math.floor(diff / 86400)} d`
+}
+
 interface SystemAgent {
   id: string
   name: string
@@ -60,10 +71,12 @@ function AgentRow({
   agent,
   onToggle,
   toggling,
+  onSetModel,
 }: {
   agent: Agent
   onToggle: (id: string, active: boolean) => void
   toggling: boolean
+  onSetModel: (id: string, modelName: string | null) => void
 }) {
   const Icon = KIND_ICON[agent.kind] ?? FileTextIcon
   const color = KIND_COLOR[agent.kind] ?? "border-muted bg-muted/40 text-muted-foreground"
@@ -93,6 +106,31 @@ function AgentRow({
           {agent.provider && <span>Proveedor: {agent.provider}</span>}
           {!agent.model && !agent.provider && <span>Sin configuración de modelo</span>}
         </div>
+        {agent.is_active && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <NativeSelect
+              value={agent.model_name ?? ""}
+              onChange={(e) => onSetModel(agent.id, e.target.value || null)}
+              className="text-[10px] h-6"
+            >
+              <option value="">— Usar modelo por defecto —</option>
+              <option value="gpt-4o">gpt-4o</option>
+              <option value="gpt-4o-mini">gpt-4o-mini</option>
+              <option value="claude-3-opus">claude-3-opus</option>
+              <option value="claude-3-sonnet">claude-3-sonnet</option>
+              <option value="claude-3-haiku">claude-3-haiku</option>
+              <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+              <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+              <option value="llama-3.1-70b">llama-3.1-70b</option>
+              <option value="llama-3.1-8b">llama-3.1-8b</option>
+            </NativeSelect>
+            {agent.last_run_at ? (
+              <span className="text-[10px] text-muted-foreground/60">Última ejecución: {formatRelativeTime(agent.last_run_at)}</span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground/40">Nunca ejecutado</span>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex shrink-0 flex-col items-center gap-1">
         <Switch checked={agent.is_active} onCheckedChange={(c) => onToggle(agent.id, c)} />
@@ -109,6 +147,7 @@ export function AgentsSection() {
   const [agents, setAgents] = React.useState<Agent[]>([])
   const [loading, setLoading] = React.useState(true)
   const [toggling, setToggling] = React.useState<string | null>(null)
+  const { connectors: availableModels } = useConnectors()
 
   React.useEffect(() => {
     listAgents()
@@ -126,6 +165,15 @@ export function AgentsSection() {
       console.error("Error al cambiar estado del agente")
     } finally {
       setToggling(null)
+    }
+  }
+
+  const handleSetModel = async (id: string, modelName: string | null) => {
+    try {
+      await setAgentModel(id, modelName)
+      setAgents((prev) => prev.map((a) => (a.id === id ? { ...a, model_name: modelName } : a)))
+    } catch {
+      console.error("Error al asignar modelo")
     }
   }
 
@@ -151,9 +199,9 @@ export function AgentsSection() {
         </div>
       ) : (
         <>
-          <SectionGroup label="Procesamiento" agents={processing} onToggle={handleToggle} toggling={toggling} />
-          <SectionGroup label="Conocimiento" agents={knowledge} onToggle={handleToggle} toggling={toggling} />
-          <SectionGroup label="Interacción" agents={interaction} onToggle={handleToggle} toggling={toggling} />
+          <SectionGroup label="Procesamiento" agents={processing} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
+          <SectionGroup label="Conocimiento" agents={knowledge} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
+          <SectionGroup label="Interacción" agents={interaction} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
 
           <div>
             <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -193,11 +241,13 @@ function SectionGroup({
   agents,
   onToggle,
   toggling,
+  onSetModel,
 }: {
   label: string
   agents: Agent[]
   onToggle: (id: string, active: boolean) => void
   toggling: string | null
+  onSetModel: (id: string, modelName: string | null) => void
 }) {
   if (agents.length === 0) return null
   return (
@@ -207,7 +257,7 @@ function SectionGroup({
       </h4>
       <div className="flex flex-col gap-1.5">
         {agents.map((a) => (
-          <AgentRow key={a.id} agent={a} onToggle={onToggle} toggling={toggling === a.id} />
+          <AgentRow key={a.id} agent={a} onToggle={onToggle} toggling={toggling === a.id} onSetModel={onSetModel} />
         ))}
       </div>
     </div>

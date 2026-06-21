@@ -31,6 +31,7 @@ function ModelSettingsDialog({
     endpoint: string
     key: string
     status: string
+    supportsEmbeddings?: boolean
   }
 }) {
   const [provider, setProvider] = React.useState("")
@@ -38,6 +39,7 @@ function ModelSettingsDialog({
   const [endpoint, setEndpoint] = React.useState("")
   const [keychain, setKeychain] = React.useState("")
   const [isActive, setIsActive] = React.useState(true)
+  const [supportsEmbeddings, setSupportsEmbeddings] = React.useState(false)
 
   React.useEffect(() => {
     if (open) {
@@ -47,12 +49,14 @@ function ModelSettingsDialog({
         setEndpoint(initialData.endpoint)
         setKeychain(initialData.key)
         setIsActive(initialData.status === "Activo")
+        setSupportsEmbeddings(initialData.supportsEmbeddings ?? false)
       } else {
         setProvider("")
         setModel("")
         setEndpoint("")
         setKeychain("")
         setIsActive(true)
+        setSupportsEmbeddings(false)
       }
     }
   }, [open, editing, initialData])
@@ -67,6 +71,7 @@ function ModelSettingsDialog({
       endpoint,
       key: keychain || "Sin clave",
       status: isActive ? "Activo" : "Inactivo",
+      supportsEmbeddings,
     }
 
     if (editing && name) {
@@ -136,6 +141,12 @@ function ModelSettingsDialog({
               label="Activar este modelo al guardar"
               checked={isActive}
               onCheckedChange={setIsActive}
+            />
+            <CheckRow
+              label="Soporta embeddings"
+              description="Activar si este proveedor tiene endpoint /embeddings compatible"
+              checked={supportsEmbeddings}
+              onCheckedChange={setSupportsEmbeddings}
             />
           </div>
           <DialogActions

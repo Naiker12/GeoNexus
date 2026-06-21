@@ -34,7 +34,7 @@ export function McpRouterSection() {
             onPing={async () => { await ping(server.id) }}
             onEdit={() => console.log("Edit", server.id)}
             onDelete={async () => { await handleDelete(server.id) }}
-            onDiscoverTools={async () => { await discoverMcpTools(server.id) }}
+            onDiscoverTools={async () => { await discoverMcpTools(server.id); await refresh() }}
           />
         ))}
       </div>

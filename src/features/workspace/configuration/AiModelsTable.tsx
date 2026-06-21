@@ -1,9 +1,6 @@
 import {
   BrainCircuitIcon,
-  EyeIcon,
-  PencilIcon,
   Trash2Icon,
-  XCircleIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
@@ -50,7 +47,17 @@ export function AiModelsTable({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{item.provider}</p>
-                <p className="text-xs text-muted-foreground">{item.status}</p>
+                <button
+                  type="button"
+                  onClick={() => onToggleStatus(item.provider)}
+                  className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
+                    item.status === "Activo"
+                      ? "border-emerald-500/50 text-emerald-500 hover:border-emerald-500"
+                      : "border-gray-400/50 text-gray-400 hover:border-amber-500 hover:text-amber-500"
+                  }`}
+                >
+                  {item.status}
+                </button>
               </div>
               <p className="truncate text-sm text-muted-foreground">
                 {item.model}
@@ -62,7 +69,6 @@ export function AiModelsTable({
                 {item.key}
               </span>
               <RowActions
-                onDisable={() => onToggleStatus(item.provider)}
                 onDelete={() => onDelete(item.provider)}
               />
             </article>
@@ -78,17 +84,12 @@ export function AiModelsTable({
 }
 
 function RowActions({
-  onDisable,
   onDelete,
 }: {
-  onDisable: () => void
   onDelete: () => void
 }) {
   return (
     <div className="flex justify-end gap-1">
-      <Button variant="ghost" size="icon-xs" aria-label="Desactivar" onClick={onDisable}>
-        <XCircleIcon className="size-3.5" />
-      </Button>
       <Button variant="ghost" size="icon-xs" aria-label="Eliminar" onClick={onDelete}>
         <Trash2Icon className="size-3.5" />
       </Button>

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Plus, Trash2, Shield, ShieldCheck } from "lucide-react"
+import { Plus, Trash2, Shield, ShieldCheck, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { SettingGroup, SideMetric } from "@/features/workspace/configuration/settings-ui"
 import { AllowedPathDialog } from "@/features/workspace/configuration/AllowedPathDialog"
@@ -7,9 +7,9 @@ import { getFilesystemConfig, saveFilesystemConfig } from "@/api/filesystem-conf
 import type { AllowedPathEntry } from "@/api/filesystem-config"
 
 const LEVEL_LABELS: Record<string, string> = {
-  read: "Read",
-  write: "Write",
-  execute: "Execute",
+  read: "Lectura",
+  write: "Escritura",
+  execute: "Ejecución",
   admin: "Admin",
 }
 
@@ -18,6 +18,13 @@ const LEVEL_COLORS: Record<string, string> = {
   write: "bg-green-500/10 text-green-600 dark:text-green-400",
   execute: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",
+}
+
+const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+  read: "El agente puede leer archivos pero no modificarlos",
+  write: "El agente puede leer y crear/modificar archivos",
+  execute: "Incluye escritura + puede ejecutar scripts en esta ruta",
+  admin: "Acceso total incluyendo eliminar archivos (requiere confirmación)",
 }
 
 export function AllowedPathsSection() {
@@ -57,22 +64,35 @@ export function AllowedPathsSection() {
   return (
     <SettingGroup
       icon={ShieldCheck}
-      title="Allowed paths"
-      description="Directories that GeoNexus can access. Each path has a permission level."
+      title="Directorios permitidos"
+      description="Directorios a los que GeoNexus puede acceder. Cada ruta tiene un nivel de permiso."
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-muted-foreground">Configured paths</span>
+        <span className="text-xs text-muted-foreground">Rutas configuradas</span>
         <Button variant="outline" size="xs" onClick={() => { setEditingEntry(null); setDialogOpen(true) }}>
-          <Plus className="size-3.5 mr-1" /> Add path
+          <Plus className="size-3.5 mr-1" /> Añadir ruta
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground py-2">Loading...</p>
+        <p className="text-sm text-muted-foreground py-2">Cargando...</p>
       ) : paths.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-2">
-          No paths configured yet.
-        </p>
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <ShieldAlert size={32} className="text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">No hay rutas configuradas</p>
+          <p className="text-xs text-muted-foreground opacity-70 max-w-xs">
+            Los directorios permitidos controlan qué carpetas puede leer y escribir el agente
+            a través del servidor MCP de filesystem. Añade una ruta para empezar.
+          </p>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => { setEditingEntry(null); setDialogOpen(true) }}
+            className="mt-2"
+          >
+            <Plus className="size-3.5 mr-1" /> Añadir primera ruta
+          </Button>
+        </div>
       ) : (
         <div className="grid gap-2">
           {paths.map((entry) => (
@@ -95,7 +115,7 @@ export function AllowedPathsSection() {
                 onClick={() => { setEditingEntry(entry); setDialogOpen(true) }}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                Edit
+                Editar
               </button>
               <button
                 type="button"
@@ -109,7 +129,7 @@ export function AllowedPathsSection() {
         </div>
       )}
 
-      <SideMetric label="Total paths" value={String(paths.length)} />
+      <SideMetric label="Total de rutas" value={String(paths.length)} />
 
       <AllowedPathDialog
         open={dialogOpen}

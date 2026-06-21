@@ -15,13 +15,15 @@ export function ConfirmSettingsDialog({
   name,
   isDelete,
   isMcp,
+  description,
   onOpenChange,
   onConfirm,
 }: {
   open: boolean
   name: string
   isDelete: boolean
-  isMcp: boolean
+  isMcp?: boolean
+  description?: string
   onOpenChange: (open: boolean) => void
   onConfirm?: () => void
 }) {
@@ -50,19 +52,21 @@ export function ConfirmSettingsDialog({
                 {isDelete ? "Confirmar eliminación" : "Confirmar desactivación"}
               </DialogTitle>
               <DialogDescription className="mt-1 text-xs leading-5">
-                {isDelete
+                {description ?? (isDelete
                   ? `Esto eliminará ${name} de la configuración local.`
-                  : `Esto desactivará ${name} sin eliminar sus datos.`}
+                  : `Esto desactivará ${name} sin eliminar sus datos.`)}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-3 p-4">
-          <div className="rounded-lg border border-border bg-muted/45 p-3 text-[11px] leading-relaxed text-muted-foreground">
-            {isMcp
-              ? "Rust deberá actualizar el registry MCP y detener nuevas llamadas a sus tools."
-              : "Tauri deberá actualizar llm_configs y conservar la clave en keychain hasta borrado explícito."}
-          </div>
+          {!description && (
+            <div className="rounded-lg border border-border bg-muted/45 p-3 text-[11px] leading-relaxed text-muted-foreground">
+              {isMcp
+                ? "Rust deberá actualizar el registry MCP y detener nuevas llamadas a sus tools."
+                : "Tauri deberá actualizar llm_configs y conservar la clave en keychain hasta borrado explícito."}
+            </div>
+          )}
           <DialogActions
             destructive={isDelete}
             submitLabel={isDelete ? "Confirmar" : "Desactivar"}
