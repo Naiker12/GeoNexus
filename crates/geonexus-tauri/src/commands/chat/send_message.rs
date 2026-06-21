@@ -14,11 +14,12 @@ use uuid::Uuid;
 
 use super::classifier::classify_intent;
 use crate::commands::agent_identity::load_identity_context;
+use crate::commands::secure::read_secure_value;
 use super::context::{build_graph_context, ContextEdge};
 use super::messages::build_messages;
 use super::search::extract_search_query;
 use super::stats::extract_message_stats;
-use super::tools::{execute_tool_call, get_tool_definitions};
+use super::tools::{execute_tool_call, is_mcp_tool_name, load_tool_catalog, tool_display_label};
 use super::validator::validate_response;
 use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
 use crate::commands::graph::crud::bump_use_count;
@@ -48,8 +49,13 @@ fn emit_reasoning_step(
     status: &str,
     label: &str,
     step_timers: &mut std::collections::HashMap<String, std::time::Instant>,
+    step_started_at: &mut std::collections::HashMap<String, u64>,
 ) {
     let now_unix = now_unix_ms();
+    let started_at = *step_started_at
+        .entry(id.to_string())
+        .or_insert(now_unix);
+
     let (duration_ms, completed_at) = if status == "success" || status == "failed" {
         if let Some(start) = step_timers.remove(id) {
             (Some(start.elapsed().as_millis() as u64), Some(now_unix))
@@ -69,7 +75,7 @@ fn emit_reasoning_step(
             "label": label,
             "sub_items": [],
             "duration_ms": duration_ms,
-            "started_at": now_unix,
+            "started_at": started_at,
             "completed_at": completed_at,
         }));
     }
@@ -149,9 +155,24 @@ struct EdgeRow {
 #[tauri::command]
 pub async fn send_message(
     state: State<'_, AppState>,
-    input: SendMessageInput,
+    mut input: SendMessageInput,
 ) -> Result<SendMessageResponse, String> {
     input.validate()?;
+
+    if input.api_key.is_none() && !input.provider.trim().is_empty() {
+        let secure_key = format!("connector_api_key:{}", input.provider.trim());
+        if let Ok(Some(key)) = read_secure_value(
+            state.app_handle.as_ref().ok_or("App handle no disponible")?,
+            &state.db,
+            &secure_key,
+        )
+        .await
+        {
+            if !key.is_empty() {
+                input.api_key = Some(key);
+            }
+        }
+    }
 
     let chat_start = Instant::now();
     let trace_id = Uuid::new_v4().to_string();
@@ -160,13 +181,17 @@ pub async fn send_message(
     emit_reasoning_start(state.app_handle.as_ref(), &conversation_id);
 
     let mut step_timers: std::collections::HashMap<String, std::time::Instant> = std::collections::HashMap::new();
+    let mut step_started_at: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
 
     // === Intent Classification ===
+    emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", "Analizando consulta del usuario...");
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
-    emit_reasoning_step(state.app_handle.as_ref(), "intent", "Main Agent", "intent", "success", &format!("Intent: {}", intent_label), &mut step_timers);
+    emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", &format!("Intención: {}", intent_label));
+    emit_reasoning_step(state.app_handle.as_ref(), "intent", "Main Agent", "planner", "success", &format!("Intent: {}", intent_label), &mut step_timers, &mut step_started_at);
 
     // === Graph nodes + edges for enhanced context ===
+    emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", "Consultando grafo de conocimiento...");
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
         "SELECT id, name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
     )
@@ -198,7 +223,8 @@ pub async fn send_message(
     let (graph_context, graph_node_ids) = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
     if !graph_node_ids.is_empty() {
-        emit_reasoning_step(state.app_handle.as_ref(), "graph_context", "Main Agent", "graph", "success", &format!("Loaded {} graph nodes", graph_node_ids.len()), &mut step_timers);
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", &format!("{} nodos relevantes encontrados", graph_node_ids.len()));
+        emit_reasoning_step(state.app_handle.as_ref(), "graph_context", "Main Agent", "discovery", "success", &format!("Loaded {} graph nodes", graph_node_ids.len()), &mut step_timers, &mut step_started_at);
         let _ = bump_use_count(&state.db, &graph_node_ids).await;
     }
 
@@ -236,6 +262,7 @@ pub async fn send_message(
             .collect();
         all.join(",")
     };
+    emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", "Buscando en base vectorial...");
     let recall_chunks: Vec<RecallChunk> = {
         let mut args = vec![
             "--action", "recall_chunks",
@@ -301,16 +328,18 @@ pub async fn send_message(
     };
 
     let rag_context = if recall_chunks.is_empty() {
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", "Sin resultados en base vectorial");
         String::new()
     } else {
         let rag_event_id = format!("rag-{}", stream_event_id());
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", &format!("{} fragmentos recuperados", recall_chunks.len()));
         let context_text = recall_chunks
             .iter()
             .enumerate()
             .map(|(i, c)| format!("[{}] {}", i + 1, c.text))
             .collect::<Vec<_>>()
             .join("\n\n");
-        emit_reasoning_step(state.app_handle.as_ref(), "rag", "Main Agent", "rag", "success", &format!("Retrieved {} chunks from RAG", recall_chunks.len()), &mut step_timers);
+        emit_reasoning_step(state.app_handle.as_ref(), "rag", "Main Agent", "discovery", "success", &format!("Retrieved {} chunks from RAG", recall_chunks.len()), &mut step_timers, &mut step_started_at);
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "knowledge_lookup",
             "event_id": rag_event_id,
@@ -363,6 +392,45 @@ pub async fn send_message(
                         "[CONTEXTO ADJUNTO: Conector \"{}\" — usar sus documentos como fuente prioritaria]",
                         n
                     ));
+                }
+            }
+        }
+
+        if !input.mentioned_mcp_server_ids.is_empty() {
+            for sid in &input.mentioned_mcp_server_ids {
+                #[derive(sqlx::FromRow)]
+                struct MentionedMcpServer {
+                    name: String,
+                    status: String,
+                    transport: String,
+                    tools_count: Option<i32>,
+                    last_error: Option<String>,
+                }
+
+                let server: Option<MentionedMcpServer> = sqlx::query_as(
+                    "SELECT name, status, transport, tools_count, last_error
+                     FROM mcp_servers
+                     WHERE id = ? AND disabled = 0"
+                )
+                .bind(sid)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+
+                if let Some(s) = server {
+                    let tools = s.tools_count.unwrap_or(0);
+                    let mut detail = format!(
+                        "[CONTEXTO ADJUNTO: Servidor MCP \"{}\" ({}) — transporte {}, estado {}, {} tools disponibles]",
+                        s.name,
+                        sid,
+                        s.transport,
+                        s.status,
+                        tools
+                    );
+                    if let Some(err) = s.last_error.filter(|e| !e.trim().is_empty()) {
+                        detail.push_str(&format!(" Último error: {}", err));
+                    }
+                    parts.push(detail);
                 }
             }
         }
@@ -420,6 +488,7 @@ pub async fn send_message(
     let search_query = extract_search_query(&input.content);
     let web_event_id = format!("deep-{}", stream_event_id());
     let research_sources: Vec<ResearchSource> = if input.web_search {
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("Buscando en internet: {}", search_query));
         emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "deep_research",
             "event_id": web_event_id,
@@ -439,7 +508,8 @@ pub async fn send_message(
         ]);
         match &result {
             Ok(srcs) => {
-                emit_reasoning_step(state.app_handle.as_ref(), "web_search", "Main Agent", "web", "success", &format!("Web search: {} sources", srcs.len()), &mut step_timers);
+                emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("{} fuentes encontradas", srcs.len()));
+                emit_reasoning_step(state.app_handle.as_ref(), "web_search", "Main Agent", "discovery", "success", &format!("Web search: {} sources", srcs.len()), &mut step_timers, &mut step_started_at);
                 emit_stream_event(state.app_handle.as_ref(), &json!({
                     "type": "deep_research",
                     "event_id": web_event_id,
@@ -501,21 +571,37 @@ pub async fn send_message(
         lines.join("\n")
     };
 
-    // === Tool definitions ===
-    let tools = get_tool_definitions();
-    let tools_json = serde_json::to_string(&tools)
+    // === Tool definitions (locales + MCP en el mismo array para el LLM) ===
+    let tool_catalog = load_tool_catalog(&state.db).await;
+    if !tool_catalog.mcp_tools.is_empty() {
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "mcp", "Cargando herramientas MCP...");
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "mcp", &format!("{} herramientas MCP disponibles", tool_catalog.mcp_tools.len()));
+        emit_reasoning_step(
+            state.app_handle.as_ref(),
+            "mcp",
+            "Main Agent",
+            "terminal",
+            "success",
+            &format!("{} herramientas MCP disponibles", tool_catalog.mcp_tools.len()),
+            &mut step_timers,
+            &mut step_started_at,
+        );
+    }
+    let tools_json = serde_json::to_string(&tool_catalog.definitions)
         .map_err(|e| format!("Error serializando tools: {e}"))?;
 
     // === Skills context ===
     let skills_context = {
         let mut contents: Vec<String> = Vec::new();
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "skills", "Inyectando skills activos...");
         for skill_name in &input.skill_names {
             if let Ok(content) = geonexus_db::skills::registry::read_skill_md(&state.db, skill_name).await {
                 contents.push(content);
             }
         }
         if !contents.is_empty() {
-            emit_reasoning_step(state.app_handle.as_ref(), "skills", "Main Agent", "skills", "success", &format!("Injected {} skills", input.skill_names.len()), &mut step_timers);
+            emit_reasoning_sub_item(state.app_handle.as_ref(), "skills", &format!("{} skills inyectados", input.skill_names.len()));
+            emit_reasoning_step(state.app_handle.as_ref(), "skills", "Main Agent", "tool", "success", &format!("Injected {} skills", input.skill_names.len()), &mut step_timers, &mut step_started_at);
         }
         if contents.is_empty() {
             String::new()
@@ -560,7 +646,8 @@ pub async fn send_message(
             );
         }
 
-        emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "llm", "running", &format!("Generating with {}", input.model), &mut step_timers);
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", "Preparando generación de respuesta...");
+        emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "coding", "running", &format!("Generating with {}", input.model), &mut step_timers, &mut step_started_at);
 
         let gen_event_id = format!("gen-{}", stream_event_id());
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
@@ -646,13 +733,7 @@ pub async fn send_message(
                     .cloned()
                     .unwrap_or(json!(null));
 
-                let display_name = match tool_name {
-                    "read_file" => "Leer archivo",
-                    "list_directory" => "Listar directorio",
-                    "search_code" => "Buscar en código",
-                    "glob_files" => "Glob de archivos",
-                    _ => tool_name,
-                };
+                let display_name = tool_display_label(tool_name);
                 let subtitle: Option<String> = tc.get("function")
                     .and_then(|f| f.get("arguments"))
                     .and_then(|a| a.as_str())
@@ -660,9 +741,12 @@ pub async fn send_message(
                     .and_then(|v| {
                         v.get("path")
                             .or_else(|| v.get("pattern"))
+                            .or_else(|| v.get("query"))
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string())
                     });
+
+                let step_id = if is_mcp_tool_name(tool_name) { "mcp" } else { "generating" };
 
                 let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
                     "type": "tool_call",
@@ -677,7 +761,12 @@ pub async fn send_message(
                 emit_tool_call(state.app_handle.as_ref(), tool_name, &tool_call_id, &tool_args);
 
                 let t_start = Instant::now();
-                let result = execute_tool_call(tc);
+                let (result, tool_success) = execute_tool_call(
+                    &state.db,
+                    &trace_id,
+                    tc,
+                    &tool_catalog.mcp_tools,
+                ).await;
                 let t_dur = t_start.elapsed().as_millis() as u64;
 
                 // Emit tool_call complete
@@ -690,16 +779,23 @@ pub async fn send_message(
                     "type": "tool_call",
                     "event_id": tool_event_id,
                     "conversation_id": conversation_id,
-                    "status": "complete",
+                    "status": if tool_success { "complete" } else { "error" },
                     "tool_name": tool_name,
                     "display_name": display_name,
                     "subtitle": subtitle,
                     "lines_read": lines_read,
                 }));
 
-                emit_tool_result(state.app_handle.as_ref(), tool_name, true, t_dur);
+                emit_tool_result(state.app_handle.as_ref(), tool_name, tool_success, t_dur);
 
-                emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("Called tool: {} ({}ms)", tool_name, t_dur));
+                emit_reasoning_sub_item(
+                    state.app_handle.as_ref(),
+                    step_id,
+                    &format!("{} ({}{})",
+                        display_name,
+                        t_dur,
+                        if tool_success { "ms" } else { "ms — error" }),
+                );
                 messages.push(json!({
                     "role": "tool",
                     "tool_call_id": tool_call_id,
@@ -718,6 +814,7 @@ pub async fn send_message(
 
         let response_token_count = (content.len() as f64 / 4.0).ceil() as u32;
         emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("{} tokens generados", response_token_count));
+        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", "Respuesta completa");
 
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "generating",
@@ -953,7 +1050,7 @@ pub async fn send_message(
     };
 
     // Mark generating step as complete
-    emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "llm", "success", "Generation complete", &mut step_timers);
+    emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "coding", "success", "Generation complete", &mut step_timers, &mut step_started_at);
 
     let total_duration = chat_start.elapsed().as_millis() as u64;
     emit_reasoning_end(state.app_handle.as_ref(), &conversation_id, total_duration);
