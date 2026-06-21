@@ -8,6 +8,7 @@ import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { ThinkingCard } from "@/components/chat/ThinkingCard"
+import { TraceTreeView } from "@/components/chat/TraceTreeView"
 
 import { ReasoningTimelineBlock } from "@/components/chat/ReasoningTimelineBlock"
 import { useReasoningTimeline } from "@/hooks/useReasoningTimeline"
@@ -32,7 +33,7 @@ export function AssistantMessage({
   onSendMessage,
   cumulativeContext,
 }: AssistantMessageProps) {
-  const { timeline, isStreaming: timelineStreaming, thinkingText, isCollapsing, toggleCollapse } =
+  const { timeline, traceEvents, isStreaming: timelineStreaming, thinkingText, isCollapsing, toggleCollapse } =
     useReasoningTimeline(isStreaming ? message.conversation_id ?? null : null)
 
   const { mainContent, suggestions } = isStreaming
@@ -63,15 +64,20 @@ export function AssistantMessage({
           </span>
         </div>
 
-        {/* Reasoning Timeline */}
-        {(timeline || timelineStreaming) && (
+        {/* Reasoning Trace Tree */}
+        {((traceEvents?.length ?? 0) > 0 || (message.reasoning_events?.length ?? 0) > 0) ? (
+          <TraceTreeView 
+            events={timelineStreaming ? traceEvents : message.reasoning_events}
+            isStreaming={timelineStreaming}
+          />
+        ) : (timeline || timelineStreaming) ? (
           <ReasoningTimelineBlock
             timeline={timeline}
             isStreaming={timelineStreaming}
             isCollapsing={isCollapsing}
             onToggle={toggleCollapse}
           />
-        )}
+        ) : null}
 
         {/* ─── THINKING CARD ─── */}
         <ThinkingCard

@@ -129,6 +129,8 @@ pub struct Message {
     pub stats: Option<MessageStats>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub attachments: Vec<FileAttachment>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_events: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

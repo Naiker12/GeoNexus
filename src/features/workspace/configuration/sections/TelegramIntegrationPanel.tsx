@@ -22,6 +22,7 @@ import {
   getTelegramStatus,
   loadTelegramConfig,
 } from "@/api/telegram"
+import { TelegramQrPairing } from "./TelegramQrPairing"
 
 type TelegramConfig = {
   botToken: string
@@ -414,6 +415,11 @@ export function TelegramIntegrationPanel() {
               </Button>
             )}
           </div>
+
+          <TelegramQrPairing
+            botUsername={config.botName || null}
+            enabled={hasSavedConfig || config.status === "active"}
+          />
         </div>
       </div>
     </div>

@@ -48,6 +48,20 @@ export type FileAttachment = {
   previewUrl?: string
 }
 
+export type AgentTraceEvent = {
+  type: string
+  id: string
+  parent_id?: string | null
+  category: string
+  title: string
+  log?: string
+  payload?: Record<string, unknown>
+  duration?: number
+  user_friendly_summary?: string
+  error?: string
+  timestamp: string
+}
+
 export type Message = {
   id: string
   conversation_id: string
@@ -70,6 +84,7 @@ export type Message = {
   knowledgeSteps?: KnowledgeLookupStep[]
   stats?: MessageStats
   attachments?: FileAttachment[]
+  reasoning_events?: AgentTraceEvent[]
 }
 
 export type RecallChunk = {

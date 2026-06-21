@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { sendMessage } from "@/api/chat"
 import { getTelegramStatus, type TelegramStatus } from "@/api/telegram"
 import { useTelegramBridge } from "./useTelegramBridge"
 import { DEFAULT_PROJECT_ID } from "@/api/data"
+import { toast } from "sonner"
 
 interface TelegramErrorEvent {
   kind: string
@@ -13,7 +14,7 @@ interface TelegramErrorEvent {
 export function TelegramBridgeMount() {
   const { connectors, activeConnectorId } = useConnectors()
   const [status, setStatus] = useState<TelegramStatus>({ isRunning: false })
-  const [error, setError] = useState<string | null>(null)
+  const previousError = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -22,7 +23,10 @@ export function TelegramBridgeMount() {
         const s = await getTelegramStatus()
         if (!cancelled) {
           setStatus(s)
-          if (s.error) setError(s.error)
+          if (s.error && s.error !== previousError.current) {
+            previousError.current = s.error
+            toast.error("Telegram", { description: s.error })
+          }
         }
       } catch { /* ignore */ }
     }
@@ -32,7 +36,7 @@ export function TelegramBridgeMount() {
   }, [])
 
   const handleError = useCallback((evt: TelegramErrorEvent) => {
-    setError(evt.message)
+    toast.error("Telegram", { description: evt.message })
   }, [])
 
   const sendToLlm = useCallback(async (text: string): Promise<string> => {

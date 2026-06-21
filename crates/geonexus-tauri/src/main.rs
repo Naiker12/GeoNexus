@@ -8,6 +8,7 @@ pub mod commands;
 mod builtin_skills;
 
 use commands::coding_agent::PermissionState;
+use commands::telegram::pairing::PairingState;
 use commands::telegram::TelegramState;
 
 pub struct AppState {
@@ -98,6 +99,7 @@ fn main() {
             }
             app.manage(PermissionState::new());
             app.manage(TelegramState::default());
+            app.manage(PairingState::default());
 
             // Inicializar FilesystemMcpFacade (Filesystem MCP security pipeline)
             let fs_config = geonexus_fs_mcp::FilesystemConfig::load()
@@ -345,14 +347,16 @@ fn main() {
             commands::audio::audio_synthesize,
             
             // Telegram
-            commands::telegram::telegram_save_config,
-            commands::telegram::telegram_load_config,
-            commands::telegram::telegram_test_connection,
-            commands::telegram::telegram_start_polling,
-            commands::telegram::telegram_stop_polling,
-            commands::telegram::telegram_get_status,
-            commands::telegram::telegram_send_chat_action,
-            commands::telegram::telegram_send_response,
+            commands::telegram::config::telegram_save_config,
+            commands::telegram::config::telegram_load_config,
+            commands::telegram::config::telegram_test_connection,
+            commands::telegram::polling::telegram_start_polling,
+            commands::telegram::polling::telegram_stop_polling,
+            commands::telegram::polling::telegram_get_status,
+            commands::telegram::config::telegram_send_chat_action,
+            commands::telegram::config::telegram_send_response,
+            commands::telegram::pairing::telegram_generate_pairing_code,
+            commands::health_check::run_health_check,
             
             // Coding Agent
             commands::coding_agent::coding_agent_clarify,

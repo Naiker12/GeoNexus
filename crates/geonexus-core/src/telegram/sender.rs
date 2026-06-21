@@ -1,19 +1,28 @@
-use super::{GetMeResponse, SendMessageResponse, User};
+use super::{GetMeResponse, SendMessageResponse, SimpleResponse, User};
 use reqwest::Client;
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct BotCommand {
+    command: String,
+    description: String,
+}
 
 pub fn escape_markdown_v2(text: &str) -> String {
     let mut result = String::with_capacity(text.len() + 8);
     let mut in_code = false;
-    let bytes = text.as_bytes();
-    let len = bytes.len();
-    let mut i = 0;
+    let mut chars = text.chars().peekable();
 
-    while i < len {
-        if bytes[i] == b'`' {
-            let mut count = 0;
-            while i < len && bytes[i] == b'`' {
-                count += 1;
-                i += 1;
+    while let Some(c) = chars.next() {
+        if c == '`' {
+            let mut count = 1;
+            while let Some(next_c) = chars.peek() {
+                if *next_c == '`' {
+                    count += 1;
+                    chars.next();
+                } else {
+                    break;
+                }
             }
             if count >= 3 {
                 in_code = !in_code;
@@ -25,15 +34,14 @@ pub fn escape_markdown_v2(text: &str) -> String {
         }
 
         if !in_code {
-            match bytes[i] {
-                b'_' | b'*' | b'[' | b']' | b'(' | b')' | b'~' | b'>'
-                | b'#' | b'+' | b'-' | b'=' | b'|' | b'{' | b'}' | b'.'
-                | b'!' => result.push('\\'),
+            match c {
+                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '>'
+                | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.'
+                | '!' => result.push('\\'),
                 _ => {}
             }
         }
-        result.push(bytes[i] as char);
-        i += 1;
+        result.push(c);
     }
 
     result
@@ -88,7 +96,7 @@ pub async fn send_chat_action(
         .await
         .map_err(|e| format!("Error al enviar chat action: {}", e))?;
 
-    let send_response: SendMessageResponse = response
+    let send_response: SimpleResponse = response
         .json()
         .await
         .map_err(|e| format!("Error al parsear chat action: {}", e))?;
@@ -107,18 +115,79 @@ pub async fn get_me(client: &Client, token: &str) -> Result<User, String> {
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("Error al obtener info del bot: {}", e))?;
+        .map_err(|e| format!("Error al obtener info del bot: {e}"))?;
 
     let get_me_response: GetMeResponse = response
         .json()
         .await
-        .map_err(|e| format!("Error al parsear getMe: {}", e))?;
+        .map_err(|e| format!("Error al parsear getMe: {e}"))?;
 
     if !get_me_response.ok {
         return Err("Respuesta no ok de getMe".into());
     }
 
     Ok(get_me_response.result)
+}
+
+pub async fn register_slash_commands(client: &Client, token: &str) -> Result<(), String> {
+    let commands = vec![
+        BotCommand {
+            command: "estado".into(),
+            description: "Estado general del sistema".into(),
+        },
+        BotCommand {
+            command: "modelo".into(),
+            description: "Ver o cambiar el LLM activo".into(),
+        },
+        BotCommand {
+            command: "mcp".into(),
+            description: "Listar o recargar servidores MCP".into(),
+        },
+        BotCommand {
+            command: "agentes".into(),
+            description: "Ver estado de los agentes".into(),
+        },
+        BotCommand {
+            command: "memoria".into(),
+            description: "Estadísticas de ChromaDB".into(),
+        },
+        BotCommand {
+            command: "tarea".into(),
+            description: "Crear o listar tareas del agente".into(),
+        },
+        BotCommand {
+            command: "logs".into(),
+            description: "Últimas líneas de log".into(),
+        },
+        BotCommand {
+            command: "version".into(),
+            description: "Versión de GeoNexus".into(),
+        },
+        BotCommand {
+            command: "ayuda".into(),
+            description: "Lista de comandos disponibles".into(),
+        },
+    ];
+
+    let url = format!("https://api.telegram.org/bot{}/setMyCommands", token);
+    let response = client
+        .post(&url)
+        .json(&serde_json::json!({ "commands": commands }))
+        .send()
+        .await
+        .map_err(|e| format!("Error al registrar comandos: {e}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let status_text = response.text().await.unwrap_or_else(|_| "".into());
+        return Err(format!(
+            "setMyCommands falló ({}): {}",
+            status,
+            status_text
+        ));
+    }
+
+    Ok(())
 }
 
 pub fn sanitize_incoming_text(text: &str) -> String {

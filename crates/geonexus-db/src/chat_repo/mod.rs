@@ -22,12 +22,15 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
     let sources_raw: Option<String> = row.get("sources_json");
     let research_raw: Option<String> = row.get("research_sources");
     let attachments_raw: Option<String> = row.get("attachments_json");
+    let reasoning_events_raw: Option<String> = row.get("reasoning_events");
     let research: Vec<geonexus_core::chat::ResearchSource> =
         serde_json::from_str(research_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default();
     let attachments: Vec<FileAttachment> = 
         serde_json::from_str(attachments_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default();
+    let reasoning_events: Option<Vec<serde_json::Value>> =
+        reasoning_events_raw.and_then(|s| serde_json::from_str(&s).ok());
 
     let it: Option<i64> = row.get("input_tokens");
     let stats = it.map(|_| geonexus_core::chat::MessageStats {
@@ -61,6 +64,7 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
         research_sources: if research.is_empty() { None } else { Some(research) },
         stats,
         attachments,
+        reasoning_events,
     })
 }
 

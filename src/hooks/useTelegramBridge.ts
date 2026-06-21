@@ -7,6 +7,10 @@ interface TelegramMessage {
   user_id: number
   username: string | null
   text: string
+  content_type: "text" | "voice" | "photo" | "document" | "sticker" | "audio" | "video"
+  content_summary: string
+  file_id: string | null
+  caption: string | null
 }
 
 interface TelegramErrorEvent {
@@ -49,6 +53,38 @@ export function useTelegramBridge({ enabled, sendToLlm, onError }: UseTelegramBr
               chatId: msg.chat_id,
               action: "typing",
             })
+
+            if (msg.content_type === "sticker") {
+              await invoke("telegram_send_response", {
+                chatId: msg.chat_id,
+                text: `¡Qué lindo sticker${msg.content_summary.includes("✨") ? "!" : " " + msg.content_summary.slice(7)}!`,
+              })
+              return
+            }
+
+            if (msg.content_type === "voice") {
+              await invoke("telegram_send_response", {
+                chatId: msg.chat_id,
+                text: `Recibí tu ${msg.content_summary}. La transcripción de voz no está disponible aún, pero puedes escribirme el mensaje.`,
+              })
+              return
+            }
+
+            if (msg.content_type === "photo") {
+              await invoke("telegram_send_response", {
+                chatId: msg.chat_id,
+                text: `${msg.content_summary}. El análisis de imágenes no está disponible aún.`,
+              })
+              return
+            }
+
+            if (msg.content_type === "document" || msg.content_type === "audio" || msg.content_type === "video") {
+              await invoke("telegram_send_response", {
+                chatId: msg.chat_id,
+                text: `Recibí tu ${msg.content_summary}. El procesamiento de este tipo de archivo no está disponible aún.`,
+              })
+              return
+            }
 
             const response = await sendToLlm(msg.text)
 

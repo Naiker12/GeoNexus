@@ -1,4 +1,4 @@
-use super::{GetUpdatesResponse, Update};
+use super::{GetUpdatesResponse, Update, sender};
 use reqwest::Client;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -175,6 +175,12 @@ where
     Fut: std::future::Future<Output = ()> + Send + 'static,
 {
     let client = Client::new();
+    
+    // Register slash commands first!
+    if let Err(e) = sender::register_slash_commands(&client, &token).await {
+        tracing::warn!("[telegram] No se pudieron registrar los comandos slash: {}", e);
+    }
+    
     let mut offset: i64 = 0;
     let mut backoff = BackoffState::new();
     let rate_limiter = RateLimiter::new();

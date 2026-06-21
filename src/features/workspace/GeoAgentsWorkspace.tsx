@@ -10,8 +10,6 @@ import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
 import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 
-import { useConnectors } from "@/contexts/ConnectorsContext"
-
 type GeoAgentsWorkspaceProps = {
   activeRoute: string
   configOpen: boolean
@@ -19,13 +17,6 @@ type GeoAgentsWorkspaceProps = {
 }
 
 export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange }: GeoAgentsWorkspaceProps) {
-  const { connectors, activeConnectorId } = useConnectors()
-  const activeConnector =
-    connectors.find((c) => c.id === activeConnectorId) ?? {
-      name: "Sin proveedor",
-      model: "Sin modelo",
-      status: "offline" as const,
-    }
 
   useEffect(() => {
     const handleOpenRegister = () => {
@@ -66,11 +57,7 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-      <AppTopbar
-        connector={activeConnector.name}
-        model={activeConnector.model}
-        status={activeConnector.status}
-      />
+      <AppTopbar />
 
       <main className="relative min-h-0 flex-1 overflow-hidden bg-background flex flex-col">
         <MapBackdrop />

@@ -1,13 +1,12 @@
 import * as React from "react"
 import { NativeSelect } from "@/components/ui/native-select"
-import { Switch } from "@/components/ui/switch"
 import { AiModelsTable } from "@/features/workspace/configuration/AiModelsTable"
 import { ProviderCatalogDialog } from "@/features/workspace/ai-containers/ProviderCatalogDialog"
 import { ProviderSetupDialog } from "@/features/workspace/ai-containers/ProviderSetupDialog"
 import { providerOptions, type ProviderOption } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/types/workspace-types"
 import { useConnectors } from "@/contexts/ConnectorsContext"
-import { pingLlmProvider } from "@/api/llm"
+import { getSetting, setSetting } from "@/api/settings"
 import { Field } from "@/features/workspace/configuration/settings-ui"
 
 const EMBEDDING_MODELS = [
@@ -18,6 +17,8 @@ const EMBEDDING_MODELS = [
   { value: "text-embedding-3-large", label: "text-embedding-3-large (OpenAI)", provider: "openai" },
   { value: "custom", label: "Endpoint personalizado...", provider: "custom" },
 ]
+
+const EMBEDDINGS_SETTING_KEY = "embeddings_model"
 
 export function AiEmbeddingsSection() {
   const {
@@ -32,17 +33,14 @@ export function AiEmbeddingsSection() {
   const [embeddingsModel, setEmbeddingsModel] = React.useState<string>("")
 
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem("geonexus.embeddingsModel")
+    getSetting(EMBEDDINGS_SETTING_KEY).then((saved) => {
       if (saved) setEmbeddingsModel(saved)
-    } catch {}
+    })
   }, [])
 
   const handleSaveEmbeddings = (value: string) => {
     setEmbeddingsModel(value)
-    try {
-      localStorage.setItem("geonexus.embeddingsModel", value)
-    } catch {}
+    setSetting(EMBEDDINGS_SETTING_KEY, value)
   }
 
   const handleCatalogSelect = (option: ProviderOption) => {

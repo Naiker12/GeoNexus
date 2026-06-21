@@ -101,37 +101,6 @@ pub async fn register_mcp_server(
             .map_err(|e| e.to_string());
     }
 
-    // Auto-descubrir tools si es STDIO
-    if server.transport == McpTransport::Stdio {
-        if let Some(ref cmd) = server.command {
-            let args = server.args.clone().unwrap_or_default();
-            let timeout = server.timeout_ms.unwrap_or(30000) as u64;
-            let env = server.env.as_ref().and_then(|v| v.as_object());
-            match stdio::discover_tools(cmd, &args, env, timeout).await {
-                Ok(tools) => {
-                    for tool in &tools {
-                        let category = registry::infer_tool_category(&tool.name, &tool.description);
-                        let args_json = tool.input_schema.as_ref()
-                            .map(|s| serde_json::to_string(s).unwrap_or_default())
-                            .unwrap_or_default();
-                        let _ = registry::upsert_tool(
-                            &state.db, &server.id, &tool.name, &category,
-                            &tool.description, &args_json, "",
-                        ).await;
-                    }
-                    let _ = sqlx::query("UPDATE mcp_servers SET tools_count = ?1 WHERE id = ?2")
-                        .bind(tools.len() as i32)
-                        .bind(&server.id)
-                        .execute(&state.db)
-                        .await;
-                }
-                Err(e) => {
-                    eprintln!("[mcp] Auto-discover de tools falló para {}: {}", server.id, e);
-                }
-            }
-        }
-    }
-
     Ok(server)
 }
 
@@ -338,27 +307,8 @@ pub async fn import_mcp_config(
                 imported += 1;
                 // Auto-descubrir tools para STDIO
                 if server.transport == McpTransport::Stdio {
-                    if let Some(ref cmd) = server.command {
-                        let args = server.args.clone().unwrap_or_default();
-                        let timeout = server.timeout_ms.unwrap_or(30000) as u64;
-                        let env = server.env.as_ref().and_then(|v| v.as_object());
-                        if let Ok(tools) = stdio::discover_tools(cmd, &args, env, timeout).await {
-                            for tool in &tools {
-                                let category = registry::infer_tool_category(&tool.name, &tool.description);
-                                let args_json = tool.input_schema.as_ref()
-                                    .map(|s| serde_json::to_string(s).unwrap_or_default())
-                                    .unwrap_or_default();
-                                let _ = registry::upsert_tool(
-                                    &state.db, &server.id, &tool.name, &category,
-                                    &tool.description, &args_json, "",
-                                ).await;
-                            }
-                            let _ = sqlx::query("UPDATE mcp_servers SET tools_count = ?1 WHERE id = ?2")
-                                .bind(tools.len() as i32)
-                                .bind(&server.id)
-                                .execute(&state.db)
-                                .await;
-                        }
+                    if let Err(e) = discover_stdio_tools_for_server(&state, &server).await {
+                        eprintln!("[mcp] Auto-discover de tools falló para {}: {}", server.id, e);
                     }
                 }
             }
@@ -444,35 +394,8 @@ pub async fn discover_mcp_tools(
         .await
         .map_err(|e| format!("Servidor no encontrado: {e}"))?;
 
-    if server.transport == McpTransport::Stdio {
-        let discovered = discover_stdio_tools_for_server(&state, &server).await?;
-        if discovered == 0 {
-            return Err("El servidor no reportó tools".into());
-        }
-        return Ok(discovered);
-    }
-
     let discovered = match server.transport {
-        McpTransport::Stdio => {
-            let cmd = server.command.clone()
-                .ok_or("El servidor STDIO no tiene comando definido")?;
-            let args = server.args.clone().unwrap_or_default();
-            let timeout = server.timeout_ms.unwrap_or(30000) as u64;
-            let env = server.env.as_ref().and_then(|v| v.as_object());
-            let tools = geonexus_mcp::stdio::discover_tools(&cmd, &args, env, timeout).await?;
-            let count = tools.len();
-            for tool in &tools {
-                let category = registry::infer_tool_category(&tool.name, &tool.description);
-                let args_json = tool.input_schema.as_ref()
-                    .map(|s| serde_json::to_string(s).unwrap_or_default())
-                    .unwrap_or_default();
-                let _ = registry::upsert_tool(
-                    &state.db, &server_id, &tool.name, &category,
-                    &tool.description, &args_json, "",
-                ).await;
-            }
-            count
-        }
+        McpTransport::Stdio => discover_stdio_tools_for_server(&state, &server).await?,
         McpTransport::Http | McpTransport::Sse => {
             let auth_token = get_auth_token(&server);
             registry::auto_discover_tools(

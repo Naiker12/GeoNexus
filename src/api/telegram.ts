@@ -59,6 +59,16 @@ export async function stopTelegramPolling(): Promise<void> {
   await invoke("telegram_stop_polling");
 }
 
+export interface PairingCodeInfo {
+  code: string;
+  expires_in_secs: number;
+}
+
+export async function generatePairingCode(): Promise<PairingCodeInfo> {
+  if (!isTauriAvailable()) throw new Error("Tauri not available");
+  return await invoke<PairingCodeInfo>("telegram_generate_pairing_code");
+}
+
 export async function getTelegramStatus(): Promise<TelegramStatus> {
   if (!isTauriAvailable()) {
     return { isRunning: false };

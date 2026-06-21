@@ -9,5 +9,6 @@ pub mod telegram;
 pub mod events;
 pub mod workers;
 pub mod crypto;
+pub mod security;
 
 pub use types::*;

@@ -1,10 +1,11 @@
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use geonexus_core::chat::{
     ChunkReference, Message, MessageRole, ResearchSource,
     SendMessageInput, SendMessageResponse, SessionSummary,
 };
 use geonexus_core::reasoning::QueryIntent;
+use geonexus_core::telegram::AgentTraceEvent;
 use geonexus_core::{GraphUpdatePayload, GraphEdge};
 use geonexus_db::chat_repo;
 use serde_json::json;
@@ -25,6 +26,25 @@ use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
 use crate::commands::graph::crud::bump_use_count;
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
+
+fn now_iso() -> String {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        .to_string()
+}
+
+fn emit_trace_event(
+    handle: Option<&tauri::AppHandle>,
+    event: AgentTraceEvent,
+    events: &mut Vec<AgentTraceEvent>,
+) {
+    events.push(event.clone());
+    if let Some(h) = handle {
+        let _ = h.emit("agent:event", event);
+    }
+}
 
 fn emit_reasoning_start(handle: Option<&tauri::AppHandle>, session_id: &str) {
     if let Some(h) = handle {
@@ -145,6 +165,24 @@ fn stream_event_id() -> String {
     uuid[..8].to_string()
 }
 
+fn scan_for_prompt_injection(content: &str) -> bool {
+    let patterns = vec![
+        "ignore the previous instructions",
+        "ignore prior instructions",
+        "forget the previous instructions",
+        "system prompt",
+        "ignore previous",
+        "disregard previous",
+        "above instructions",
+        "your instructions",
+        "pretend you are",
+        "act as if",
+    ];
+    
+    let content_lower = content.to_lowercase();
+    patterns.iter().any(|&p| content_lower.contains(p))
+}
+
 #[derive(Debug, sqlx::FromRow)]
 struct EdgeRow {
     source_label: String,
@@ -177,20 +215,107 @@ pub async fn send_message(
     let chat_start = Instant::now();
     let trace_id = Uuid::new_v4().to_string();
     let conversation_id = ensure_conversation(&state, &input).await?;
+    let mut trace_events: Vec<AgentTraceEvent> = Vec::new();
 
     emit_reasoning_start(state.app_handle.as_ref(), &conversation_id);
 
     let mut step_timers: std::collections::HashMap<String, std::time::Instant> = std::collections::HashMap::new();
     let mut step_started_at: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
 
+    let start_time = now_unix_ms();
     // === Intent Classification ===
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "started".into(),
+            id: "validate".into(),
+            parent_id: None,
+            category: "security".into(),
+            title: "Input Validation".into(),
+            log: None,
+            payload: Some(serde_json::json!({ "startTime": start_time })),
+            duration: None,
+            user_friendly_summary: None,
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
     emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", "Analizando consulta del usuario...");
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "completed".into(),
+            id: "validate".into(),
+            parent_id: None,
+            category: "security".into(),
+            title: "Input Validation".into(),
+            log: Some("Input validated successfully".into()),
+            payload: None,
+            duration: Some(chat_start.elapsed().as_millis() as u64),
+            user_friendly_summary: Some("Input validated".into()),
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "started".into(),
+            id: "intent".into(),
+            parent_id: None,
+            category: "agent".into(),
+            title: "Intent Classification".into(),
+            log: Some(format!("Analyzing user query: {}", input.content)),
+            payload: None,
+            duration: None,
+            user_friendly_summary: None,
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
     emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", &format!("Intención: {}", intent_label));
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "completed".into(),
+            id: "intent".into(),
+            parent_id: None,
+            category: "agent".into(),
+            title: "Intent Classification".into(),
+            log: Some(format!("Intent identified: {}", intent_label)),
+            payload: None,
+            duration: None,
+            user_friendly_summary: Some(format!("Intent: {}", intent_label)),
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
     emit_reasoning_step(state.app_handle.as_ref(), "intent", "Main Agent", "planner", "success", &format!("Intent: {}", intent_label), &mut step_timers, &mut step_started_at);
 
     // === Graph nodes + edges for enhanced context ===
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "started".into(),
+            id: "graph_context".into(),
+            parent_id: None,
+            category: "database".into(),
+            title: "Graph Context".into(),
+            log: Some("Querying knowledge graph...".into()),
+            payload: None,
+            duration: None,
+            user_friendly_summary: None,
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
     emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", "Consultando grafo de conocimiento...");
     let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
         "SELECT id, name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
@@ -223,6 +348,23 @@ pub async fn send_message(
     let (graph_context, graph_node_ids) = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
     if !graph_node_ids.is_empty() {
+        emit_trace_event(
+            state.app_handle.as_ref(),
+            AgentTraceEvent {
+                r#type: "completed".into(),
+                id: "graph_context".into(),
+                parent_id: None,
+                category: "database".into(),
+                title: "Graph Context".into(),
+                log: Some(format!("Found {} relevant graph nodes", graph_node_ids.len())),
+                payload: Some(serde_json::json!({"nodes": graph_node_ids.len()})),
+                duration: None,
+                user_friendly_summary: Some(format!("Found {} relevant graph nodes", graph_node_ids.len())),
+                error: None,
+                timestamp: now_iso(),
+            },
+            &mut trace_events,
+        );
         emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", &format!("{} nodos relevantes encontrados", graph_node_ids.len()));
         emit_reasoning_step(state.app_handle.as_ref(), "graph_context", "Main Agent", "discovery", "success", &format!("Loaded {} graph nodes", graph_node_ids.len()), &mut step_timers, &mut step_started_at);
         let _ = bump_use_count(&state.db, &graph_node_ids).await;
@@ -244,6 +386,7 @@ pub async fn send_message(
         research_sources: None,
         stats: None,
         attachments: input.attachments.clone(),
+        reasoning_events: None,
     };
 
     chat_repo::insert_message(&state.db, &user_msg).await?;
@@ -254,6 +397,23 @@ pub async fn send_message(
     }
 
     // === RAG context ===
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "started".into(),
+            id: "rag_recall".into(),
+            parent_id: None,
+            category: "database".into(),
+            title: "RAG Recall".into(),
+            log: Some("Searching vector database...".into()),
+            payload: None,
+            duration: None,
+            user_friendly_summary: None,
+            error: None,
+            timestamp: now_iso(),
+        },
+        &mut trace_events,
+    );
     let mentioned_asset_ids_str = if input.mentioned_asset_ids.is_empty() && input.mentioned_connector_ids.is_empty() {
         String::new()
     } else {
@@ -328,9 +488,53 @@ pub async fn send_message(
     };
 
     let rag_context = if recall_chunks.is_empty() {
+        emit_trace_event(
+            state.app_handle.as_ref(),
+            AgentTraceEvent {
+                r#type: "completed".into(),
+                id: "rag_recall".into(),
+                parent_id: None,
+                category: "database".into(),
+                title: "RAG Recall".into(),
+                log: Some("No results in vector database".into()),
+                payload: Some(serde_json::json!({"chunks": 0})),
+                duration: None,
+                user_friendly_summary: Some("No vector DB results found".into()),
+                error: None,
+                timestamp: now_iso(),
+            },
+            &mut trace_events,
+        );
         emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", "Sin resultados en base vectorial");
         String::new()
     } else {
+        // Check for prompt injection in RAG chunks
+        let suspicious_chunks: Vec<_> = recall_chunks
+            .iter()
+            .filter(|c| scan_for_prompt_injection(&c.text))
+            .collect();
+        
+        if !suspicious_chunks.is_empty() {
+            tracing::warn!("[security] Found {} suspicious RAG chunks with potential prompt injection patterns", suspicious_chunks.len());
+        }
+        
+        emit_trace_event(
+            state.app_handle.as_ref(),
+            AgentTraceEvent {
+                r#type: "completed".into(),
+                id: "rag_recall".into(),
+                parent_id: None,
+                category: "database".into(),
+                title: "RAG Recall".into(),
+                log: Some(format!("Retrieved {} chunks", recall_chunks.len())),
+                payload: Some(serde_json::json!({"chunks": recall_chunks.len()})),
+                duration: None,
+                user_friendly_summary: Some(format!("Found {} relevant chunks", recall_chunks.len())),
+                error: None,
+                timestamp: now_iso(),
+            },
+            &mut trace_events,
+        );
         let rag_event_id = format!("rag-{}", stream_event_id());
         emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", &format!("{} fragmentos recuperados", recall_chunks.len()));
         let context_text = recall_chunks
@@ -488,6 +692,23 @@ pub async fn send_message(
     let search_query = extract_search_query(&input.content);
     let web_event_id = format!("deep-{}", stream_event_id());
     let research_sources: Vec<ResearchSource> = if input.web_search {
+        emit_trace_event(
+            state.app_handle.as_ref(),
+            AgentTraceEvent {
+                r#type: "started".into(),
+                id: "web_search".into(),
+                parent_id: None,
+                category: "search".into(),
+                title: "Web Search".into(),
+                log: None,
+                payload: None,
+                duration: None,
+                user_friendly_summary: None,
+                error: None,
+                timestamp: now_iso(),
+            },
+            &mut trace_events,
+        );
         emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("Buscando en internet: {}", search_query));
         emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "deep_research",
@@ -508,6 +729,42 @@ pub async fn send_message(
         ]);
         match &result {
             Ok(srcs) => {
+                for (i, src) in srcs.iter().enumerate() {
+                    emit_trace_event(
+                        state.app_handle.as_ref(),
+                        AgentTraceEvent {
+                            r#type: "completed".into(),
+                            id: format!("web_search_result_{i}"),
+                            parent_id: Some("web_search".into()),
+                            category: "search".into(),
+                            title: src.url.clone().replace("https://", "").replace("http://", "").split('/').next().unwrap_or("unknown").to_string(),
+                            log: None,
+                            payload: None,
+                            duration: None,
+                            user_friendly_summary: Some(src.title.clone()),
+                            error: None,
+                            timestamp: now_iso(),
+                        },
+                        &mut trace_events,
+                    );
+                }
+                emit_trace_event(
+                    state.app_handle.as_ref(),
+                    AgentTraceEvent {
+                        r#type: "completed".into(),
+                        id: "web_search".into(),
+                        parent_id: None,
+                        category: "search".into(),
+                        title: "Web Search".into(),
+                        log: None,
+                        payload: Some(serde_json::json!({ "sources_count": srcs.len() })),
+                        duration: None,
+                        user_friendly_summary: Some(format!("{} fuentes encontradas en la web", srcs.len())),
+                        error: None,
+                        timestamp: now_iso(),
+                    },
+                    &mut trace_events,
+                );
                 emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("{} fuentes encontradas", srcs.len()));
                 emit_reasoning_step(state.app_handle.as_ref(), "web_search", "Main Agent", "discovery", "success", &format!("Web search: {} sources", srcs.len()), &mut step_timers, &mut step_started_at);
                 emit_stream_event(state.app_handle.as_ref(), &json!({
@@ -537,6 +794,23 @@ pub async fn send_message(
                 eprintln!("[DEBUG] search_web OK: {} sources", srcs.len());
             },
             Err(e) => {
+                emit_trace_event(
+                    state.app_handle.as_ref(),
+                    AgentTraceEvent {
+                        r#type: "failed".into(),
+                        id: "web_search".into(),
+                        parent_id: None,
+                        category: "search".into(),
+                        title: "Web Search".into(),
+                        log: None,
+                        payload: None,
+                        duration: None,
+                        user_friendly_summary: None,
+                        error: Some(e.to_string()),
+                        timestamp: now_iso(),
+                    },
+                    &mut trace_events,
+                );
                 let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
                     "type": "deep_research",
                     "event_id": web_event_id,
@@ -555,6 +829,16 @@ pub async fn send_message(
     let web_context = if research_sources.is_empty() {
         String::new()
     } else {
+        // Check for prompt injection in web search snippets
+        let suspicious_sources: Vec<_> = research_sources
+            .iter()
+            .filter(|s| s.snippet.as_ref().map_or(false, |sn| scan_for_prompt_injection(sn)))
+            .collect();
+        
+        if !suspicious_sources.is_empty() {
+            tracing::warn!("[security] Found {} suspicious web search snippets with potential prompt injection patterns", suspicious_sources.len());
+        }
+        
         let lines: Vec<String> = research_sources
             .iter()
             .enumerate()
@@ -883,6 +1167,12 @@ pub async fn send_message(
     // === Save assistant message ===
     let sources: Vec<String> = recall_chunks.iter().map(|c| c.source.clone()).collect();
 
+    // Convert AgentTraceEvents to serde_json::Value
+    let reasoning_events_value: Vec<serde_json::Value> = trace_events
+        .into_iter()
+        .filter_map(|e| serde_json::to_value(e).ok())
+        .collect();
+
     let assistant_msg = Message {
         id: Uuid::new_v4().to_string(),
         conversation_id: conversation_id.clone(),
@@ -903,6 +1193,11 @@ pub async fn send_message(
         },
         stats: msg_stats.clone(),
         attachments: vec![],
+        reasoning_events: if reasoning_events_value.is_empty() {
+            None
+        } else {
+            Some(reasoning_events_value)
+        },
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;

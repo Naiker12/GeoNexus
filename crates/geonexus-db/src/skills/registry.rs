@@ -3,6 +3,24 @@ use std::path::PathBuf;
 
 use crate::skills::{parser, types::*};
 
+fn sanitize_skill_name(name: &str) -> Result<String, String> {
+    // Rechazar nombres con path traversal o caracteres peligrosos
+    if name.contains("..") || name.contains('/') || name.contains('\\') || name.contains(std::path::MAIN_SEPARATOR) {
+        return Err("El nombre del skill contiene caracteres inválidos (no se permiten .., / ni \\)".into());
+    }
+    
+    // Filtrar caracteres de control y otros no permitidos en nombres de archivos
+    let sanitized: String = name.chars()
+        .filter(|c| !c.is_control() && !matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*'))
+        .collect();
+        
+    if sanitized.trim().is_empty() {
+        return Err("El nombre del skill no puede estar vacío después de sanitizar".into());
+    }
+    
+    Ok(sanitized)
+}
+
 pub async fn list_skills(pool: &SqlitePool) -> Result<Vec<Skill>, String> {
     let rows = sqlx::query(
         "SELECT id, name, description, version, category, author,
@@ -53,8 +71,19 @@ pub async fn install_from_file(
     let (frontmatter, _body) = parser::parse_skill_md(&content)?;
     let hash = parser::compute_hash(&content);
 
-    // Directorio destino: skills_dir / name / SKILL.md
-    let dest_dir = skills_dir.join(&frontmatter.name);
+    // Sanitizar el nombre del skill para evitar path traversal
+    let sanitized_name = sanitize_skill_name(&frontmatter.name)?;
+
+    // Directorio destino: skills_dir / sanitized_name / SKILL.md
+    let dest_dir = skills_dir.join(&sanitized_name);
+    
+    // Validar que el directorio destino está dentro de skills_dir (defensa en profundidad)
+    let dest_dir_canon = dest_dir.canonicalize().map_err(|e| format!("Error canonicalizando destino: {e}"))?;
+    let skills_dir_canon = skills_dir.canonicalize().map_err(|e| format!("Error canonicalizando skills_dir: {e}"))?;
+    if !dest_dir_canon.starts_with(&skills_dir_canon) {
+        return Err("Path traversal detectado: el skill intentaría escribirse fuera del directorio de skills".into());
+    }
+    
     std::fs::create_dir_all(&dest_dir)
         .map_err(|e| format!("Error creando directorio {dest_dir:?}: {e}"))?;
 
@@ -86,8 +115,8 @@ pub async fn install_from_file(
            builtin          = excluded.builtin,
            updated_at       = excluded.updated_at"
     )
-    .bind(&frontmatter.name)  // id = name
-    .bind(&frontmatter.name)
+    .bind(&sanitized_name)  // id = sanitized_name
+    .bind(&sanitized_name)
     .bind(&frontmatter.description)
     .bind(&version)
     .bind(&category)
@@ -104,7 +133,7 @@ pub async fn install_from_file(
     .await
     .map_err(|e| format!("Error insertando skill: {e}"))?;
 
-    get_skill(pool, &frontmatter.name)
+    get_skill(pool, &sanitized_name)
         .await
         .map(|opt| opt.ok_or_else(|| "Skill insertado pero no encontrado".to_string()))?
 }

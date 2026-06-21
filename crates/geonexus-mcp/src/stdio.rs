@@ -4,6 +4,29 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 use crate::handshake;
 
+const ALLOWED_ENV_PASSTHROUGH: &[&str] = &[
+    "PATH", "HOME", "USER", "LANG", "LC_ALL", "TERM", "SHELL", "TMPDIR",
+];
+
+fn build_mcp_subprocess_env(
+    server_env: Option<&serde_json::Map<String, Value>>,
+) -> Vec<(String, String)> {
+    let mut env: Vec<(String, String)> = std::env::vars()
+        .filter(|(k, _)| {
+            ALLOWED_ENV_PASSTHROUGH.contains(&k.as_str()) || k.starts_with("XDG_")
+        })
+        .collect();
+
+    if let Some(env_map) = server_env {
+        for (key, val) in env_map {
+            if let Some(val_str) = val.as_str() {
+                env.push((key.clone(), val_str.to_string()));
+            }
+        }
+    }
+    env
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct StdioDiscoveredTool {
     pub name: String,
@@ -23,15 +46,9 @@ pub async fn discover_tools(
     cmd.args(args)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-
-    if let Some(env_map) = env {
-        for (key, val) in env_map {
-            if let Some(val_str) = val.as_str() {
-                cmd.env(key, val_str);
-            }
-        }
-    }
+        .stderr(std::process::Stdio::piped())
+        .env_clear()
+        .envs(build_mcp_subprocess_env(env));
 
     let mut child = cmd.spawn().map_err(|e| format!("Error iniciando proceso: {e}"))?;
 
@@ -92,15 +109,9 @@ pub async fn call_tool(
     cmd.args(args)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped());
-
-    if let Some(env_map) = env {
-        for (key, val) in env_map {
-            if let Some(val_str) = val.as_str() {
-                cmd.env(key, val_str);
-            }
-        }
-    }
+        .stderr(std::process::Stdio::piped())
+        .env_clear()
+        .envs(build_mcp_subprocess_env(env));
 
     let mut child = cmd.spawn().map_err(|e| format!("Error iniciando proceso: {e}"))?;
 
