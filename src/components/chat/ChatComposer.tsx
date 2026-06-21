@@ -42,7 +42,7 @@ import type { MentionSource, MentionableSourcesResponse, MentionKind } from "@/t
 import type { AgentSourceType } from "@/types/agents"
 import { parseMentions } from "@/features/workspace/chat/MentionPicker"
 import { ToolMenu } from "@/components/chat/ToolMenu"
-import { useCodingAgent } from "@/contexts/CodingAgentContext"
+import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
 import { AttachmentChips, type Chip } from "@/components/chat/AttachmentChips"
 
 export type ChatComposerProps = {
@@ -51,7 +51,7 @@ export type ChatComposerProps = {
   activeProvider: { provider: string; model: string; endpoint: string } | null
   error: string | null
   pending: boolean
-  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }, attachments?: FileAttachment[]) => void
+  onSubmit: (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds: string[]; nodeIds: string[]; agentSources?: AgentSourceType[]; skillNames?: string[] }, attachments?: FileAttachment[]) => void
   onStop?: () => void
   onToggleContext: () => void
   contextActive: boolean
@@ -98,7 +98,9 @@ export function ChatComposer({
   sessionSummary,
 }: ChatComposerProps) {
   // Picker state (unified @ and /)
-  const { state: agentState, dispatch } = useCodingAgent()
+  const createTask = useAgentTaskStore((s) => s.createTask)
+  const agentMode = useAgentTaskStore((s) => s.mode)
+  const setAgentMode = useAgentTaskStore((s) => s.setMode)
   const [chips, setChips] = React.useState<Chip[]>([])
   const [cursorPos, setCursorPos] = React.useState(0)
   const [selectedPickerIndex, setSelectedPickerIndex] = React.useState(0)
@@ -152,6 +154,18 @@ export function ChatComposer({
           contextPayload: { type: "connector", id: c.id },
         })
       }
+      for (const m of rawSources.mcp_servers ?? []) {
+        result.push({
+          id: m.id,
+          kind: "mcp_server",
+          label: m.label,
+          sublabel: m.sublabel,
+          icon: m.icon,
+          color: m.color,
+          status: m.status,
+          contextPayload: { type: "mcp_server", id: m.id },
+        })
+      }
       for (const a of rawSources.assets) {
         result.push({
           id: a.id,
@@ -180,25 +194,6 @@ export function ChatComposer({
       result.push(s)
     }
 
-    const AGENT_SOURCES: { id: AgentSourceType; label: string; sublabel: string; icon: string; color: string }[] = [
-      { id: "arcgis",     label: "ArcGIS",      sublabel: "ArcGIS Online / Portal",         icon: "Globe",        color: "#3B82F6" },
-      { id: "onedrive",   label: "OneDrive",    sublabel: "Buscar en OneDrive",             icon: "Cloud",        color: "#F59E0B" },
-      { id: "filesystem", label: "Archivos",    sublabel: "Carpetas locales",               icon: "Folder",       color: "#6B7280" },
-      { id: "graph",      label: "Grafo",       sublabel: "Knowledge Graph",                icon: "GitFork",      color: "#EC4899" },
-      { id: "github",     label: "GitHub",      sublabel: "Repositorios Git",               icon: "Code2",        color: "#1F2937" },
-    ]
-    for (const s of AGENT_SOURCES) {
-      result.push({
-        id: s.id,
-        kind: "agent_source" as MentionKind,
-        label: s.label,
-        sublabel: s.sublabel,
-        icon: s.icon,
-        color: s.color,
-        contextPayload: { type: "agent_source" as MentionKind, id: s.id },
-      })
-    }
-
     return result
   }, [rawSources, skillSources])
 
@@ -209,6 +204,7 @@ export function ChatComposer({
 
     const assetIds: string[] = []
     const connectorIds: string[] = []
+    const mcpServerIds: string[] = []
     const nodeIds: string[] = []
     const agentSources: AgentSourceType[] = []
     const skillNamesFromChips: string[] = []
@@ -234,6 +230,7 @@ export function ChatComposer({
         }
       }
       else if (chip.kind === "connector") connectorIds.push(chip.id)
+      else if (chip.kind === "mcp_server") mcpServerIds.push(chip.id)
       else if (chip.kind === "graph_node") nodeIds.push(chip.id)
       else if (chip.kind === "agent_source") agentSources.push(chip.id as AgentSourceType)
       else if (chip.kind === "skill") skillNamesFromChips.push(chip.id)
@@ -248,7 +245,7 @@ export function ChatComposer({
     closePicker()
 
     const allSkillNames = skillNamesFromChips.length > 0 ? skillNamesFromChips : undefined
-    onSubmit(finalContent, { assetIds, connectorIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames }, attachments.length > 0 ? attachments : undefined)
+    onSubmit(finalContent, { assetIds, connectorIds, mcpServerIds, nodeIds, agentSources: allAgentSources.length > 0 ? allAgentSources : undefined, skillNames: allSkillNames }, attachments.length > 0 ? attachments : undefined)
   }
 
   function estimateCursorPosition(textarea: HTMLTextAreaElement): { x: number; y: number } {
@@ -314,7 +311,7 @@ export function ChatComposer({
     mcp_server: "Servidores MCP",
   }
 
-  const mentionKindOrder: MentionKind[] = ["connector", "mcp_server", "asset", "graph_node", "skill", "agent_source"]
+  const mentionKindOrder: MentionKind[] = ["connector", "mcp_server", "asset", "graph_node", "skill"]
 
   const slashCommands: { id: string; group: string; label: string; subtitle: string; icon: React.ReactNode; run: () => void }[] = [
     { id: "attach-file", group: "Contexto", label: "Adjuntar archivo", subtitle: "Sube un documento", icon: <PaperclipIcon className="size-3.5" />, run: () => fileInputRef.current?.click() },
@@ -325,7 +322,7 @@ export function ChatComposer({
     { id: "export-chat", group: "Chat", label: "Exportar chat", subtitle: "Descarga como Markdown", icon: <DownloadIcon className="size-3.5" />, run: () => onExportChat?.() },
     { id: "mode-research", group: "Modo", label: "Modo investigación", subtitle: "Búsqueda web profunda", icon: <SearchIcon className="size-3.5" />, run: () => { if (!webSearchEnabled) onToggleWebSearch() } },
     { id: "mode-fast", group: "Modo", label: "Modo rápido", subtitle: "Respuestas sin fuentes", icon: <ZapIcon className="size-3.5" />, run: () => { if (webSearchEnabled) onToggleWebSearch() } },
-    { id: "toggle-agent", group: "Modo", label: "Alternar modo agente", subtitle: "Chat ↔ Agente", icon: <ZapIcon className="size-3.5" />, run: () => dispatch({ type: "SET_MODE", payload: agentState.mode === "agent" ? "chat" : "agent" }) },
+    { id: "toggle-agent", group: "Modo", label: "Alternar modo agente", subtitle: "Chat ↔ Agente", icon: <ZapIcon className="size-3.5" />, run: () => setAgentMode(agentMode === "agent" ? "chat" : "agent") },
     { id: "reindex", group: "Sistema", label: "Reindexar", subtitle: "Reindexa el catálogo", icon: <RefreshCwIcon className="size-3.5" />, run: () => onReindex?.() },
   ]
 
@@ -381,7 +378,7 @@ export function ChatComposer({
     }
 
     return result
-  }, [trigger, query, mentionSources, value, closePicker, webSearchEnabled, onToggleContext, onToggleWebSearch, onNewChat, onClearChat, onExportChat, onReindex, dispatch, agentState.mode])
+  }, [trigger, query, mentionSources, value, closePicker, webSearchEnabled, onToggleContext, onToggleWebSearch, onNewChat, onClearChat, onExportChat, onReindex, setAgentMode, agentMode])
 
   // Reset selected index when items change
   React.useEffect(() => {
@@ -501,6 +498,7 @@ export function ChatComposer({
               webSearchEnabled={webSearchEnabled}
               onToggleWebSearch={onToggleWebSearch}
               connectors={rawSources?.connectors ?? []}
+              mcpServers={rawSources?.mcp_servers ?? []}
               refreshSources={refreshSources}
               onAttachFiles={() => fileInputRef.current?.click()}
             />
@@ -530,7 +528,7 @@ export function ChatComposer({
                 value={value}
                 autoComplete="off"
                 className="max-h-28 min-h-8 border-0 bg-transparent px-1 py-1.5 text-base leading-5 shadow-none focus-visible:ring-0 md:text-sm"
-                placeholder={agentState.mode === "agent" ? (agentState.status === "planning_review" ? "Revisa el plan pendiente antes de continuar..." : "Describe la tarea que quieres que realice el agente...") : "Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"}
+                placeholder={agentMode === "agent" ? "Describe la tarea que quieres que realice el agente..." : "Pregunta lo que quieras   ·   / para comandos   ·   @ para adjuntar fuentes"}
                 onChange={(event) => handleComposerChange(event.target.value, event)}
                 onKeyDown={handleKeyDown}
               />
@@ -615,9 +613,9 @@ export function ChatComposer({
           </div>
         )}
 
-        {(error || (agentState.mode === "agent" && agentState.error)) ? (
+        {(error) ? (
           <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {agentState.mode === "agent" && agentState.error ? agentState.error : error}
+            {error}
           </p>
         ) : null}
       </form>

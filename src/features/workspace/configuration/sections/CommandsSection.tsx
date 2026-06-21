@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react"
 import { SearchIcon, HashIcon, MessageSquareIcon, MapIcon, DatabaseIcon, GitBranchIcon, BarChart3Icon, FileTextIcon, GlobeIcon, SparklesIcon, KeyboardIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SLASH_COMMANDS } from "@/features/workspace/commands/slash-commands"
 
 type Status = "hecho" | "progreso" | "planeado"
 
@@ -19,6 +20,12 @@ type ShortcutEntry = {
   category: string
 }
 
+type MergedShortcut = {
+  shortcuts: string[][]
+  description: string
+  category: string
+}
+
 const statusColors: Record<Status, string> = {
   hecho: "bg-emerald-500/15 text-emerald-600 border-emerald-200 dark:border-emerald-800",
   progreso: "bg-amber-500/15 text-amber-600 border-amber-200 dark:border-amber-800",
@@ -26,31 +33,21 @@ const statusColors: Record<Status, string> = {
 }
 
 const statusLabels: Record<Status, string> = {
-  hecho: "Hecho",
-  progreso: "En progreso",
+  hecho: "Disponible",
+  progreso: "En desarrollo",
   planeado: "Planeado",
 }
 
-const commands: CommandEntry[] = [
-  { command: "/ayuda", description: "Muestra todos los comandos disponibles", params: "", example: "/ayuda", category: "General", status: "hecho" },
-  { command: "/limpiar", description: "Limpia el historial de la conversación actual", params: "", example: "/limpiar", category: "General", status: "hecho" },
-  { command: "/grafica", description: "Genera una gráfica con los datos proporcionados", params: "[tipo] [datos]", example: "/grafica barras JS 65 Python 58", category: "Gráficas", status: "planeado" },
-  { command: "/chart", description: "Alias de /grafica, genera visualización de datos", params: "[tipo] [datos]", example: "/chart pastel JS 65 Python 58", category: "Gráficas", status: "planeado" },
-  { command: "/mapa", description: "Abre o consulta información en el mapa interactivo", params: "[consulta]", example: "/mapa zona Z1", category: "GIS", status: "planeado" },
-  { command: "/capa", description: "Muestra información sobre una capa GIS específica", params: "[nombre]", example: "/capa estratificación", category: "GIS", status: "planeado" },
-  { command: "/zona", description: "Consulta información de una zona territorial", params: "[nombre]", example: "/zona Zona Residencial Z1", category: "GIS", status: "planeado" },
-  { command: "/norma", description: "Busca normas o artículos del plan de ordenamiento", params: "[búsqueda]", example: "/norma alturas máximas", category: "Normas", status: "planeado" },
-  { command: "/documento", description: "Muestra contenido de un documento indexado", params: "[id]", example: "/documento doc-123", category: "Documentos", status: "planeado" },
-  { command: "/grafo", description: "Abre la red de conocimiento o consulta un nodo", params: "[nodo_id]", example: "/grafo node-zona-1", category: "Conocimiento", status: "planeado" },
-  { command: "/nodo", description: "Muestra el detalle de un nodo del grafo", params: "[id]", example: "/nodo node-norma-1", category: "Conocimiento", status: "planeado" },
-  { command: "/analizar", description: "Analiza un documento con IA", params: "[id]", example: "/analizar doc-456", category: "Análisis", status: "planeado" },
-  { command: "/resumir", description: "Genera un resumen del documento o conversación", params: "[id]", example: "/resumir doc-456", category: "Análisis", status: "planeado" },
-  { command: "/buscar", description: "Busca en todos los documentos indexados", params: "[términos]", example: "/buscar uso del suelo", category: "Búsqueda", status: "planeado" },
-  { command: "/conectar", description: "Conecta fuente de datos externa (WMS, shapefile)", params: "[tipo] [url]", example: "/conectar wms https://ejemplo.com/wms", category: "Datos", status: "planeado" },
-  { command: "/exportar", description: "Exporta resultado en JSON, CSV o PDF", params: "[formato]", example: "/exportar csv", category: "Datos", status: "planeado" },
-  { command: "/gis", description: "Abre el panel de herramientas GIS", params: "", example: "/gis", category: "GIS", status: "planeado" },
-  { command: "/ia", description: "Abre configuración de modelos de IA", params: "[modelo]", example: "/ia gpt-4o", category: "IA", status: "planeado" },
-]
+const IMPLEMENTED = new Set(["/ayuda", "/limpiar", "/analizar", "/resumir", "/documento", "/buscar", "/norma", "/grafo", "/nodo", "/exportar", "/gis", "/ia", "/conectar"])
+
+const commands: CommandEntry[] = SLASH_COMMANDS.map(c => ({
+  command: c.command,
+  description: c.description,
+  params: c.params,
+  example: c.example,
+  category: c.category,
+  status: IMPLEMENTED.has(c.command) ? "hecho" as const : "planeado" as const,
+}))
 
 const shortcuts: ShortcutEntry[] = [
   { keys: ["/"], description: "Abrir paleta de comandos", category: "General" },
@@ -124,11 +121,22 @@ export function CommandsSection() {
   }, [filteredCommands])
 
   const groupedShortcuts = useMemo(() => {
-    const map = new Map<string, ShortcutEntry[]>()
+    // Merge shortcuts with same description
+    const merged = new Map<string, MergedShortcut>()
     for (const s of filteredShortcuts) {
-      const list = map.get(s.category) ?? []
-      list.push(s)
-      map.set(s.category, list)
+      const key = `${s.category}::${s.description}`
+      if (merged.has(key)) {
+        merged.get(key)!.shortcuts.push(s.keys)
+      } else {
+        merged.set(key, { shortcuts: [s.keys], description: s.description, category: s.category })
+      }
+    }
+    // Group by category
+    const map = new Map<string, MergedShortcut[]>()
+    for (const [, ms] of merged) {
+      const list = map.get(ms.category) ?? []
+      list.push(ms)
+      map.set(ms.category, list)
     }
     return Array.from(map.entries())
   }, [filteredShortcuts])
@@ -184,14 +192,19 @@ export function CommandsSection() {
               <div key={cat}>
                 {items.map((s, i) => (
                   <div
-                    key={`${s.keys.join("-")}-${i}`}
+                    key={`${s.shortcuts.map(k => k.join("+")).join("|")}-${i}`}
                     className="flex items-center justify-between rounded-lg border border-border/70 bg-background/60 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-background"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="flex items-center gap-0.5 shrink-0">
-                        {s.keys.map((key, ki) => (
-                          <span key={ki} className="inline-flex h-5 items-center rounded border border-border/80 bg-muted/80 px-1.5 text-[0.6rem] font-mono font-semibold text-foreground/80 shadow-sm">
-                            {key === " " ? "Space" : key}
+                        {s.shortcuts.map((keys, si) => (
+                          <span key={si} className="flex items-center gap-0.5">
+                            {keys.map((key, ki) => (
+                              <span key={ki} className="inline-flex h-5 items-center rounded border border-border/80 bg-muted/80 px-1.5 text-[0.6rem] font-mono font-semibold text-foreground/80 shadow-sm">
+                                {key === " " ? "Space" : key}
+                              </span>
+                            ))}
+                            {si < s.shortcuts.length - 1 && <span className="text-[0.5rem] text-muted-foreground/40 mx-0.5">ó</span>}
                           </span>
                         ))}
                       </div>

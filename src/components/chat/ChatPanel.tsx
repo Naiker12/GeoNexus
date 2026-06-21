@@ -14,17 +14,12 @@ import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
-import { useCodingAgent } from "@/contexts/CodingAgentContext"
+import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
 import type { AiConnector } from "@/types/workspace-types"
 import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
-import { useCodingAgentEvents } from "@/hooks/useCodingAgent"
-import { CodingAgentPanel } from "@/components/chat/CodingAgentPanel"
-import { AgentStepsAccordion } from "@/components/chat/AgentStepsAccordion"
-import { ClarifyingQuestions } from "@/components/chat/ClarifyingQuestions"
-import { useSidebar } from "@/components/ui/sidebar"
-
-
+import { AgentTaskPanel } from "@/features/agent/components/AgentTaskPanel"
+import { handleSlashCommand, handleAsyncSlashCommand } from "@/features/workspace/commands/slash-commands"
 const PROJECT_ID = "project-default"
 
 type ChatPanelProps = {
@@ -35,7 +30,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { toast } = useToast()
   const { connectors, activeConnectorId, setActiveConnectorId } =
     useConnectors()
-  const { state: agentState } = useCodingAgent()
+  const agentStoreMode = useAgentTaskStore((s) => s.mode)
   const {
     activeProvider,
     conversationId,
@@ -50,8 +45,6 @@ export function ChatPanel(_props: ChatPanelProps) {
     setWebSearchEnabled,
     submitTime,
     sessionSummary,
-    lastIntent,
-    pipeline,
     submit,
     regenerate,
     loadConversation,
@@ -59,8 +52,6 @@ export function ChatPanel(_props: ChatPanelProps) {
     stop,
     addSystemMessage,
   } = useChatSession(activeConnectorId, connectors)
-
-  const agentActions = useCodingAgentEvents(conversationId || undefined)
 
   const handleNewConversation = React.useCallback(() => {
     newConversation()
@@ -74,6 +65,7 @@ export function ChatPanel(_props: ChatPanelProps) {
     }
     return true
   })
+  const [newChatCounter, setNewChatCounter] = React.useState(0)
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
   const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
 
@@ -100,77 +92,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   }, [])
 
   const sidebarWidth = sidebarOpen ? 220 : 44
-  const { setOpen: setAppSidebarOpen, open: appSidebarOpen } = useSidebar()
-  const prevSidebarRef = React.useRef<boolean | null>(null)
-
-  React.useEffect(() => {
-    if (agentPanelOpen && agentState.mode === "agent") {
-      if (appSidebarOpen) {
-        prevSidebarRef.current = true
-        setAppSidebarOpen(false)
-      } else {
-        prevSidebarRef.current = false
-      }
-    } else if (prevSidebarRef.current === true) {
-      setAppSidebarOpen(true)
-      prevSidebarRef.current = null
-    }
-  }, [agentPanelOpen, agentState.mode, setAppSidebarOpen])
-
   const [composerValue, setComposerValue] = React.useState("")
-  const [clarifyingPrompt, setClarifyingPrompt] = React.useState<string | null>(null)
-  const [showEditInput, setShowEditInput] = React.useState(false)
-
-  const planRef = React.useRef(agentState.currentPlan)
-  planRef.current = agentState.currentPlan
-
-  const prevAgentStatus = React.useRef(agentState.status)
-
-  React.useEffect(() => {
-    if (agentState.status === "planning_review" && agentState.currentPlan) {
-      const fileList = agentState.currentPlan.files.map((f) =>
-        `  • ${f.path} ${f.risk === "high" ? "⚠" : ""} — ${f.shortDescription}`
-      ).join("\n")
-      addSystemMessage(
-        `📋 **Plan generado**: ${agentState.currentPlan.summary}\n\nArchivos propuestos:\n${fileList}`
-      )
-    }
-    if (agentState.status === "done" && prevAgentStatus.current !== "done") {
-      const fileCount = agentState.files.filter((f) => f.type === "file").length
-      addSystemMessage(
-        `✅ **Agente completado**: ${fileCount} archivo(s) generados en total.`
-      )
-    }
-    if (agentState.status === "error" && agentState.error) {
-      addSystemMessage(
-        `❌ **Error del agente**: ${agentState.error}`
-      )
-    }
-    prevAgentStatus.current = agentState.status
-  }, [agentState.status, agentState.currentPlan, agentState.files, agentState.error, addSystemMessage])
-
-  React.useEffect(() => {
-    const onApprove = (e: Event) => {
-      const plan = (e as CustomEvent).detail ?? planRef.current
-      if (plan) agentActions.approvePlan(plan)
-    }
-    const onEdit = () => setShowEditInput(true)
-    const onReject = () => agentActions.rejectPlan()
-    const onResolvePermission = (e: Event) => {
-      const { requestId, granted } = (e as CustomEvent).detail
-      agentActions.resolvePermission(requestId, granted)
-    }
-    window.addEventListener("geonexus:approve-plan", onApprove)
-    window.addEventListener("geonexus:edit-plan", onEdit)
-    window.addEventListener("geonexus:reject-plan", onReject)
-    window.addEventListener("geonexus:resolve-permission", onResolvePermission)
-    return () => {
-      window.removeEventListener("geonexus:approve-plan", onApprove)
-      window.removeEventListener("geonexus:edit-plan", onEdit)
-      window.removeEventListener("geonexus:reject-plan", onReject)
-      window.removeEventListener("geonexus:resolve-permission", onResolvePermission)
-    }
-  }, [agentActions])
 
   const lastUserMessage = React.useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -188,7 +110,7 @@ export function ChatPanel(_props: ChatPanelProps) {
   }, [regenerate])
 
   return (
-    <section className={`relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden ${agentState.mode === "agent" ? "border-l-2 border-amber-500" : ""}`}>
+    <section className={`relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden ${agentStoreMode === "agent" ? "border-l-2 border-amber-500" : ""}`}>
       {/* Sidebar */}
       <div
         className="shrink-0 flex flex-col border-r border-border bg-muted/30 transition-all duration-150 ease-in-out overflow-hidden"
@@ -252,32 +174,21 @@ export function ChatPanel(_props: ChatPanelProps) {
 
         {/* Agent life indicator */}
         <div className="flex shrink-0 items-center gap-2 border-b border-border/30 bg-muted/20 px-3 h-7">
-          {agentState.mode === "agent" && (
+          {agentStoreMode === "agent" && (
             <button
               type="button"
               onClick={() => setAgentPanelOpen(v => !v)}
               className="relative inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-200 transition-colors cursor-pointer"
             >
-              {agentState.status === "idle" ? "⚡ AGENTE" : agentState.status === "done" ? "✅ AGENTE" : "⚡ AGENTE"}
-              {(agentState.status === "planning_review" || agentState.pendingPermissions.length > 0) && (
-                <span className="absolute -top-1 -right-1 flex size-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex size-3 rounded-full bg-red-500 text-[7px] font-bold text-white items-center justify-center">
-                    !
-                  </span>
-                </span>
-              )}
+              Tareas
             </button>
           )}
           <AgentLifeIndicator
-            status={agentState.mode === "agent" ? (agentState.status === "idle" ? "idle" : agentState.status === "done" ? "done" : agentState.status === "error" ? "idle" : "thinking") : pending ? (pipeline?.steps.some(s => s.kind === "web_search") ? "searching" : pipeline?.steps.some(s => s.kind === "tool_call") ? "using_skill" : "thinking") : "idle"}
+            status={pending
+              ? (webSearchEnabled ? "searching" : "thinking")
+              : "idle"}
             conversationCount={messages.filter(m => m.role === "user").length}
           />
-          {agentState.mode === "agent" && agentState.status !== "idle" && agentState.status !== "done" && agentState.events.length > 0 && (
-            <span className="text-[11px] text-amber-600 truncate max-w-[200px]">
-              {agentState.events[agentState.events.length - 1]?.label}
-            </span>
-          )}
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -299,40 +210,13 @@ export function ChatPanel(_props: ChatPanelProps) {
               onEditLastUserMessage={handleEditLastUserMessage}
               onRegenerateLastMessage={handleRegenerate}
             />
-            {agentState.clarifyingQuestions && clarifyingPrompt && (
-              <ClarifyingQuestions
-                originalPrompt={clarifyingPrompt}
-                onSkip={() => {
-                  setClarifyingPrompt(null)
-                  agentActions.startGeneration(clarifyingPrompt)
-                }}
-                onSubmit={(prompt, questions) => {
-                  setClarifyingPrompt(null)
-                  agentActions.submitClarification(prompt, questions)
-                }}
-              />
-            )}
-            <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-              <AgentStepsAccordion />
-            </div>
             </>
-          ) : agentState.mode === "agent" ? (
+          ) : agentStoreMode === "agent" ? (
             <div className="flex min-h-full items-center justify-center pb-16 pt-10">
-              <div className="w-full max-w-3xl px-4">
-                {agentState.clarifyingQuestions && clarifyingPrompt && (
-                  <ClarifyingQuestions
-                    originalPrompt={clarifyingPrompt}
-                    onSkip={() => {
-                      setClarifyingPrompt(null)
-                      agentActions.startGeneration(clarifyingPrompt)
-                    }}
-                    onSubmit={(prompt, questions) => {
-                      setClarifyingPrompt(null)
-                      agentActions.submitClarification(prompt, questions)
-                    }}
-                  />
-                )}
-                <AgentStepsAccordion />
+              <div className="w-full max-w-3xl px-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Cambia a modo agente en el menú <strong>+</strong> y escribe una tarea
+                </p>
               </div>
             </div>
           ) : (
@@ -341,7 +225,7 @@ export function ChatPanel(_props: ChatPanelProps) {
         </div>
 
         <ChatComposer
-          key={conversationId ?? "new"}
+          key={conversationId ?? `new-${newChatCounter}`}
           value={composerValue}
           onValueChange={setComposerValue}
           activeProvider={activeProvider}
@@ -350,11 +234,36 @@ export function ChatPanel(_props: ChatPanelProps) {
           activeSkills={activeSkills}
           sessionSummary={sessionSummary}
           onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
-          onSubmit={(content, mentions, attachments) => {
+          onSubmit={async (content, mentions, attachments) => {
             setComposerValue("")
-            if (agentState.mode === "agent") {
-              setClarifyingPrompt(content)
-              agentActions.clarify(content)
+            // Slash command interception
+            const syncResult = handleSlashCommand(content)
+            if (syncResult.handled) {
+              if (syncResult.type === "message") {
+                addSystemMessage(syncResult.content)
+              } else if (syncResult.type === "action") {
+                if (syncResult.action === "clear") {
+                  newConversation()
+                }
+              }
+              return
+            }
+            if (content.startsWith("/")) {
+              const asyncResult = await handleAsyncSlashCommand(content)
+              if (asyncResult.handled) {
+                if (asyncResult.type === "message") {
+                  addSystemMessage(asyncResult.content)
+                }
+                return
+              }
+            }
+            if (agentStoreMode === "agent") {
+              await useAgentTaskStore.getState().createTask({
+                title: content.slice(0, 80),
+                notes: content.length > 80 ? content : undefined,
+                priority: "normal",
+              })
+              setAgentPanelOpen(true)
               return
             }
             const fromActive = activeSkills.map(s => s.name)
@@ -385,8 +294,8 @@ export function ChatPanel(_props: ChatPanelProps) {
               })
             }
           }}
-          onNewChat={() => { setComposerValue(""); newConversation() }}
-          onClearChat={() => { setComposerValue(""); newConversation() }}
+          onNewChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
+          onClearChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
           onExportChat={() => {
             const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
             const blob = new Blob([text], { type: "text/markdown" })
@@ -405,14 +314,8 @@ export function ChatPanel(_props: ChatPanelProps) {
 
       
 
-      {agentState.mode === "agent" && agentPanelOpen && (
-        <CodingAgentPanel
-          onApprovePlan={agentActions.approvePlan}
-          onRejectPlan={agentActions.rejectPlan}
-          onEditPlan={agentActions.editPlan}
-          onResolvePermission={agentActions.resolvePermission}
-          onReset={agentActions.reset}
-        />
+      {agentStoreMode === "agent" && agentPanelOpen && (
+        <AgentTaskPanel />
       )}
 
       <ProjectContextPanel
