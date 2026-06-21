@@ -16,6 +16,8 @@ pub struct LlmProviderConfig {
     pub name: Option<String>,
     pub model: Option<String>,
     pub endpoint: String,
+    #[serde(default)]
+    pub supports_embeddings: bool,
 }
 
 #[derive(Debug, serde::Deserialize)]

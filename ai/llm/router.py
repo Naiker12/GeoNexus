@@ -414,6 +414,9 @@ def chat_llm_provider_stream(
                     if content:
                         full_content += content
                         yield {"type": "delta", "content": content}
+                    reasoning = delta.get("reasoning_content", "")
+                    if reasoning:
+                        yield {"type": "thinking", "content": reasoning}
                     tc_deltas = delta.get("tool_calls")
                     if tc_deltas:
                         for tc in tc_deltas:
@@ -472,6 +475,9 @@ def chat_llm_provider_stream(
                     if content:
                         full_content += content
                         yield {"type": "delta", "content": content}
+                    reasoning = delta.get("reasoning_content", "")
+                    if reasoning:
+                        yield {"type": "thinking", "content": reasoning}
                     tc_deltas = delta.get("tool_calls")
                     if tc_deltas:
                         for tc in tc_deltas:
@@ -520,13 +526,26 @@ def chat_llm_provider_stream(
                 data_str = line[6:].strip()
                 try:
                     chunk = json.loads(data_str)
-                    if chunk.get("type") == "content_block_delta":
+                    ctype = chunk.get("type")
+                    if ctype == "content_block_delta":
                         delta = chunk.get("delta", {})
                         text = delta.get("text", "")
+                        thinking = delta.get("thinking", "")
                         if text:
                             full_content += text
                             yield {"type": "delta", "content": text}
-                    elif chunk.get("type") == "message_delta":
+                        if thinking:
+                            yield {"type": "thinking", "content": thinking}
+                    elif ctype == "content_block_start":
+                        block = chunk.get("content_block", {})
+                        btype = block.get("type")
+                        if btype == "thinking":
+                            thinking_text = block.get("thinking", "")
+                            if thinking_text:
+                                yield {"type": "thinking", "content": thinking_text}
+                        elif btype == "redacted_thinking":
+                            yield {"type": "thinking", "content": "[thinking redacted by Anthropic]"}
+                    elif ctype == "message_delta":
                         usage = chunk.get("usage")
                         msg = {"role": "assistant", "content": full_content}
                         stop_reason = chunk.get("delta", {}).get("stop_reason")
@@ -534,12 +553,8 @@ def chat_llm_provider_stream(
                             pass
                         yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
                         return
-                    elif chunk.get("type") == "message_start":
+                    elif ctype == "message_start":
                         pass
-                    elif chunk.get("type") == "content_block_start":
-                        block = chunk.get("content_block", {})
-                        if block.get("type") == "tool_use":
-                            pass
                 except json.JSONDecodeError:
                     continue
         else:

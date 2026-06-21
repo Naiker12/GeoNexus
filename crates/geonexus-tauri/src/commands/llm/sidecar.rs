@@ -116,11 +116,20 @@ pub fn run_sidecar_streaming(
                         if let Some(sid) = step_id {
                             if last_subitem_emit.elapsed().as_millis() > 500 {
                                 let _ = app_handle.map(|h| h.emit("reasoning:sub_item", json!({
-                                    "id": sid,
+                                    "step_id": sid,
                                     "text": format!("{} tokens generados...", token_count),
                                 })));
                                 last_subitem_emit = std::time::Instant::now();
                             }
+                        }
+                    }
+                }
+                Some("thinking") => {
+                    if let Some(content) = val["content"].as_str() {
+                        if let Some(handle) = app_handle {
+                            let _ = handle.emit("reasoning:thinking", json!({
+                                "content": content,
+                            }));
                         }
                     }
                 }

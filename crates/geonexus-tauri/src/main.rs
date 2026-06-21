@@ -218,6 +218,8 @@ fn main() {
 
             // Fase 2
             commands::connector::register_local_connector,
+            commands::connector::delete_connector,
+            commands::connector::update_connector,
             commands::connector::list_connector_files,
             commands::connector::cache_connector_file,
             commands::connector::sync_local_connector,
@@ -283,7 +285,14 @@ fn main() {
             // Agents
             commands::agent::list_agents,
             commands::agent::toggle_agent,
+            commands::agent::set_agent_model,
             commands::agent::run_agent_pipeline,
+            commands::agent::agent_list_tasks,
+            commands::agent::agent_create_task,
+            commands::agent::agent_start_task,
+            commands::agent::agent_cancel_task,
+            commands::agent::agent_retry_task,
+            commands::agent::agent_delete_task,
             // Agent Identity
             commands::agent_identity::read_identity_file,
             commands::agent_identity::write_identity_file,
@@ -338,10 +347,10 @@ fn main() {
             // Telegram
             commands::telegram::telegram_save_config,
             commands::telegram::telegram_load_config,
+            commands::telegram::telegram_test_connection,
             commands::telegram::telegram_start_polling,
             commands::telegram::telegram_stop_polling,
             commands::telegram::telegram_get_status,
-            commands::telegram::telegram_send_message,
             commands::telegram::telegram_send_chat_action,
             commands::telegram::telegram_send_response,
             

@@ -38,11 +38,10 @@ pub async fn set_secure(
     Ok(())
 }
 
-#[command]
-pub async fn get_secure(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    key: String,
+pub async fn read_secure_value(
+    app: &AppHandle,
+    db: &sqlx::SqlitePool,
+    key: &str,
 ) -> Result<Option<String>, String> {
     #[cfg(feature = "stronghold")]
     {
@@ -59,18 +58,27 @@ pub async fn get_secure(
         }
     }
 
-    let _ = &app;
+    let _ = app;
 
     let db_key = format!("{SECURE_PREFIX}{key}");
     let row = sqlx::query_as::<_, (String,)>(
         "SELECT value FROM app_settings WHERE key = ?1"
     )
     .bind(&db_key)
-    .fetch_optional(&state.db)
+    .fetch_optional(db)
     .await
     .map_err(|e| format!("Error al leer del almacén seguro: {e}"))?;
 
     Ok(row.map(|r| r.0))
+}
+
+#[command]
+pub async fn get_secure(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    key: String,
+) -> Result<Option<String>, String> {
+    read_secure_value(&app, &state.db, &key).await
 }
 
 #[command]
