@@ -14,11 +14,11 @@ pub struct CreateProject {
 }
 
 impl CreateProject {
-    pub fn from_args(args: &serde_json::Value) -> Result<Self, FsMcpError> {
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
         Ok(Self {
-            path: arg_string(args, "path")?,
-            template: arg_string(args, "template")?,
-            project_name: arg_optional_string(args, "projectName"),
+            path: arg_string(&args, "path")?,
+            template: arg_string(&args, "template")?,
+            project_name: arg_optional_string(&args, "projectName"),
         })
     }
 }

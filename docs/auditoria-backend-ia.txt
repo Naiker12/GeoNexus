@@ -1,0 +1,337 @@
+╔══════════════════════════════════════════════════════════════════╗
+║         AUDITORÍA BACKEND IA — PYTHON AI SIDECAR               ║
+║         GeoNexus / Geo Agents                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. VISIÓN GENERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El backend IA es un sidecar Python (CLI) que Tauri invoca como
+subproceso. Su función principal: LLM routing, RAG, knowledge
+graphs, embeddings, web search, audio, y extracción GIS.
+
+No es un servidor web — es un dispatcher CLI puro invocado por
+la aplicacion Rust mediante `sidecar.py --action <accion> [args]`.
+
+Ruta base: D:\GeoNexus\ai\
+Intérprete: .venv\Scripts\python.exe (virtual env)
+Entry point: sidecar.py (CLI dispatcher principal)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. ESTRUCTURA DE DIRECTORIOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ai/
+├── .venv/                          # Virtual environment Python
+├── context/
+│   └── builder.py                  # Construye contexto de proyecto para LLM
+├── docs/
+│   ├── chunker.py                  # Divide texto en chunks (por palabras)
+│   └── reader.py                   # Lee TXT/PDF/DOCX con fallbacks
+├── extractors/
+│   └── shapefile_extractor.py      # Extrae metadatos GIS (SHP, GPKG, GeoJSON)
+├── graph/
+│   ├── chat_extractor.py           # Extrae entidades del grafo desde chat
+│   ├── extractor.py                # Extrae nodos/aristas desde documentos
+│   ├── graph.py                    # Placeholder para operaciones del grafo
+│   ├── layout.py                   # Posicionamiento radial de nodos
+│   └── memory.py                   # Algoritmo Ebbinghaus de memoria/decay
+├── llm/
+│   └── router.py                   # Router LLM: OpenAI, Anthropic, Ollama, OpenRouter, LMStudio
+├── memory/
+│   ├── chroma.py                   # ChromaDB + Mock local para vector store
+│   └── embeddings.py               # Generación de embeddings (OpenAI, Ollama, determinista)
+├── pipeline/
+│   └── indexer.py                  # Pipeline completo de indexación documental
+├── recall/
+│   └── keyword_extractor.py        # Extracción de keywords GIS para RAG
+├── fs_embed.py                     # Embedding CLI tool (determinista, cache local)
+├── sidecar.py                      # CLI dispatcher PRINCIPAL (17 acciones)
+├── web_search.py                   # Web search (DuckDuckGo, Google, Bing, SerpAPI)
+└── requirements.txt                # Dependencias Python
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. SIDECAR — DISPATCHER PRINCIPAL (sidecar.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Archivo: sidecar.py
+Paradigma: CLI argparse con --action <accion>
+
+17 ACCIONES DISPONIBLES:
+
+┌─────────────────────────┬──────────────────────────────────────────────┐
+│ Acción                  │ Descripción                                  │
+├─────────────────────────┼──────────────────────────────────────────────┤
+│ index                   │ Indexa un documento completo (pipeline)       │
+│ extract                 │ Extrae texto de un archivo                    │
+│ ping_llm                │ Verifica conectividad con proveedor LLM       │
+│ chat_llm                │ Chat sincrónico con LLM                       │
+│ chat_llm_stream         │ Chat streaming con LLM                        │
+│ list_llm_models         │ Lista modelos disponibles del proveedor       │
+│ recall_chunks           │ Recupera chunks relevantes (RAG)              │
+│ build_project_context   │ Construye resumen del proyecto para prompt    │
+│ search_web              │ Búsqueda web (standard/deep)                  │
+│ extract_chat_entities   │ Extrae entidades del grafo desde texto chat   │
+│ extract_graph_entities  │ Extrae entidades del grafo desde chunks       │
+│ extract_shapefile       │ Extrae metadatos de archivos GIS              │
+│ extract_keywords        │ Extrae keywords GIS para RAG                  │
+│ update_memory_scores    │ Actualiza scores de memoria en grafo          │
+│ audio_transcribe        │ Transcribe audio con Whisper API              │
+│ audio_synthesize        │ Sintetiza texto a audio con TTS API           │
+└─────────────────────────┴──────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. LLM ROUTER (llm/router.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROVEEDORES SOPORTADOS:
+
+┌──────────────┬──────────┬──────────────┬───────────────────────────────┐
+│ Proveedor    │ Chat     │ Streaming    │ Ping / Models                │
+├──────────────┼──────────┼──────────────┼───────────────────────────────┤
+│ OpenAI       │ ✓        │ ✓            │ ✓ (GET /models)              │
+│ Anthropic    │ ✗        │ ✓            │ ✓ (POST /v1/messages)        │
+│ Ollama       │ ✓        │ ✓            │ ✓ (GET /api/tags)            │
+│ OpenRouter   │ ✓        │ ✓            │ ✓ (POST /chat/completions)   │
+│ LMStudio     │ ✓        │ ✓            │ ✓ (GET /models)              │
+│ Custom API   │ ✓        │ ✓            │ ✓ (GET /models)              │
+└──────────────┴──────────┴──────────────┴───────────────────────────────┘
+
+Características del router:
+- Tool calling soportado (function calling) en chat sincrónico y streaming
+- Tool calls se agregan incrementalmente durante streaming (por índice)
+- Reasoning content (thinking) expuesto via streaming para Anthropic/OpenAI
+- Rate limiting para proveedores locales (3K context window, 1K max tokens)
+- Fallback a determinista si no hay API key configurada
+- Normalización de usage (prompt/completion tokens) entre proveedores
+
+Variables de entorno requeridas según proveedor:
+- OPENAI_API_KEY
+- ANTHROPIC_API_KEY
+- OPENROUTER_API_KEY
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. MEMORIA VECTORIAL (memory/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+chroma.py:
+- Cliente ChromaDB real con fallback a MockChromaClient local (JSON files)
+- Mock almacena embeddings en archivos JSON bajo ./chroma_db/
+- Operaciones: upsert, query con filtro where
+- Cálculo de similitud: coseno (manual en mock, nativo en ChromaDB real)
+- Distancia = 1 - similitud
+
+embeddings.py:
+- Tres estrategias en orden de prioridad:
+  1. OpenAI embeddings (text-embedding-3-*)
+  2. Ollama embeddings (http://localhost:11434/api/embeddings)
+  3. Determinista (SHA-256 → seed → RNG gauss → normalizar a vector unitario)
+- Dimension por defecto: 1536 (OpenAI ada-002)
+- Variables de entorno: GEONEXUS_OPENAI_EMBEDDING_MODEL,
+  GEONEXUS_OLLAMA_EMBEDDING_MODEL, GEONEXUS_OLLAMA_EMBEDDING_URL
+
+fs_embed.py (CLI independiente):
+- Embedding determinista local (SHA-256 como seed)
+- Cache en .fs_embed_cache/ (archivos JSON por archivo)
+- Comandos: ping, index, search
+- Dimensión: 384 (más pequeña que embeddings.py)
+- Búsqueda por similitud coseno sobre cache local
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. PIPELINE DE INDEXACIÓN (pipeline/indexer.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Flujo completo:
+1. extract_text(file_path) → texto plano (reader.py soporta TXT, PDF, DOCX)
+2. chunk_text(text) → lista de chunks (docs/chunker.py)
+   - chunk_size: 800 palabras, overlap: 150 palabras
+   - Preserva marcadores [PAGINA N]
+3. generate_embeddings(chunks) → vectores (embeddings.py)
+4. upsert_chunks_to_vector_store(ids, embeddings, documents, metadatas) → ChromaDB
+5. extract_graph_entities(chunks) → nodos + aristas (graph/extractor.py)
+
+Reader.py soporta:
+- .txt → UTF-8 con fallback Latin-1
+- .pdf → pypdf con fallback binario (regex sobre bytes crudos)
+- .docx → python-docx con fallback
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. KNOWLEDGE GRAPH (graph/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+extractor.py (desde documentos):
+- Detecta: Artículos (Art. N), Zonas (Zona/Sector Nombre), conceptos
+  predefinidos (20 conceptos GIS colombianos como "retiro hidrico")
+- Aristas: "aplica en", "define", "afecta", "asociado con"
+- Posiciones iniciales por tipo (norma, zona, concepto, documento, capa)
+
+chat_extractor.py (desde chat):
+- Detecta: patrones de definición ("X es un..."), acrónimos (3-6 mayus),
+  términos multi-word con mayúscula, tecnologías comunes (Python, Rust, etc.)
+- Stop phrases y stop definitions para evitar falsos positivos
+- Aristas entre todos los nodos co-ocurrentes (fully connected por turno)
+
+layout.py:
+- Posicionamiento radial por clusters semánticos
+- Orden: concepto → norma → zona → capa → documento → chat_turn →
+  web_search → upload → connector → rag_recall
+- Jitter aleatorio para evitar solapamiento (< 1.5%)
+
+memory.py:
+- Algoritmo Ebbinghaus: score = base_weight * e^(-t/stability) + frequency_bonus
+- Nodos pinned: score mínimo 5.0
+- Decay de peso según días sin uso
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. WEB SEARCH (web_search.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROVEEDORES:
+┌────────────┬──────────┬────────────────────────────────────────┐
+│ Proveedor  │ API Key  │ Notas                                  │
+├────────────┼──────────┼────────────────────────────────────────┤
+│ DuckDuckGo │ No       │ Por defecto. Usa ddgs + fallback lite  │
+│ Google     │ Sí       │ Custom Search API + CSE ID             │
+│ Bing       │ Sí       │ Bing Search API v7                     │
+│ SerpAPI    │ Sí       │ API key de serpapi.com                 │
+└────────────┴──────────┴────────────────────────────────────────┘
+
+search_web_deep(): multi-query (3 queries relacionadas), dedup por URL
+Fallback automático: si proveedor pago falla, cae a DuckDuckGo
+Número máximo de reintentos DDG: 2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. EXTRACTORES GIS (extractors/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+shapefile_extractor.py:
+- Formatos: .shp, .gpkg, .geojson
+- Estrategias: fiona (GDAL) → geopandas → fallback mínimo
+- Extrae: CRS, schema (geometría + atributos), feature_count, bounds, driver
+- Convierte metadata a chunks indexables (3 chunks por capa)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. KEYWORD EXTRACTOR (recall/keyword_extractor.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- 39+ keywords GIS predefinidas (capas, shapefile, pot, uso, suelo, etc.)
+- Prioriza: GIS keywords > Proper nouns (capitalized)
+- score_chunk_by_keywords: boosting de score por keyword match
+- Máximo 8 keywords por consulta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. CONTEXT BUILDER (context/builder.py)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Consulta SQLite para assets indexados (top 10) + nodos del grafo (top 8)
+- Construye resumen de proyecto para inyectar en prompt del LLM
+- Nunca lanza excepción (try/except general)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. REQUISITOS Y DEPENDENCIAS (requirements.txt)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+openai>=1.0.0           # LLM + Audio APIs
+requests>=2.31.0        # HTTP client
+chromadb>=0.4.0         # Vector store (opcional, con mock)
+numpy                   # Matemáticas (no usado directamente aún)
+pandas                  # Data processing
+geopandas               # GIS data
+shapely                 # Geometrías GIS
+python-dotenv           # Env vars
+fastapi                 # No usado (residual?)
+uvicorn                 # No usado (residual?)
+pypdf>=4.0.0            # PDF extraction
+python-docx>=1.0.0      # DOCX extraction
+ddgs>=9.0.0             # DuckDuckGo search
+
+NOTA: fastapi y uvicorn están en requirements pero NO se usan.
+El sidecar no es un servidor web.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. INTEGRACIÓN CON TAURI (Rust → Python)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La comunicación es unidireccional:
+- Tauri invoca sidecar.py como subproceso vía std::process::Command
+- Pasa argumentos CLI: --action <accion> --param1 valor1 --param2 valor2
+- Lee JSON de stdout
+- La variable GEONEXUS_DB_PATH se pasa al entorno del subproceso
+- Tauri espera la respuesta como JSON en una línea de stdout
+
+No hay comunicación bidireccional ni streaming entre Rust y Python
+(el streaming se hace desde el LLM directamente al frontend via Tauri events)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. FORTALEZAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Multi-proveedor LLM (6 proveedores, 4 modos: ping/chat/stream/models)
+✓ Fallback embedding determinista (sin depender de APIs externas)
+✓ ChromaDB real con mock local (funciona sin instalar chromadb)
+✓ Pipeline documental completo (lectura → chunking → embedding → graph)
+✓ Knowledge graph con algoritmo Ebbinghaus de memoria/decay
+✓ Web search multi-proveedor con fallback automático
+✓ Soporte GIS (shapefile, geopackage, geojson)
+✓ Audio transcribe/synthesize (Whisper + TTS APIs)
+✓ Diseño modular (cada módulo es independiente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. DEBILIDADES / RIESGOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✗ No hay servidor web (FastAPI/Uvicorn en requirements pero no usados)
+✗ Embeddings deterministas NO son semánticos (solo hash → vector aleatorio)
+✗ Mock ChromaDB no escala (archivos JSON, sin índices reales)
+✗ Sin tests unitarios ni de integración en Python (solo Rust tiene tests)
+✗ Manejo de errores básico (try/except genéricos sin logging estructurado)
+✗ Sin type hints completos en todos los módulos
+✗ Sin rate limiting del lado Python (depende de Tauri)
+✗ El sidecar no soporta streaming bidireccional (solo request/response)
+✗ Dependencias no usadas (fastapi, uvicorn)
+✗ Sin configuración centralizada (usa env vars dispersas)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. TECNOLOGÍAS Y LIBRERÍAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────┬────────────────────────────────────────────────┐
+│ Tecnología      │ Uso                                            │
+├─────────────────┼────────────────────────────────────────────────┤
+│ Python 3.x      │ Lenguaje del sidecar                           │
+│ OpenAI API      │ Chat, embeddings, Whisper, TTS                 │
+│ Anthropic API   │ Chat streaming (Claude)                        │
+│ Ollama API      │ LLM local (llama, mistral, etc.)               │
+│ ChromaDB        │ Vector store (real + mock)                     │
+│ pypdf           │ Extracción de PDFs                             │
+│ python-docx     │ Extracción de DOCX                             │
+│ ddgs            │ DuckDuckGo search wrapper                      │
+│ requests        │ HTTP client universal                          │
+│ Fiona/GeoPandas │ GIS data extraction                            │
+│ SHA-256/RNG     │ Embeddings deterministas (fallback)             │
+└─────────────────┴────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. CONTENEDORES MCP (mcp-servers/containers-mcp/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Nota: Este es un servidor MCP separado, NO parte del sidecar ai/.
+Es un servidor STDIO MCP independiente, escrito en Python.
+
+Archivos:
+- server.py: STDIO MCP server (tools/list, tools/call)
+- tools.py: 5 tools definidas (container_list, container_get,
+  container_search, container_sync, container_upload)
+- handlers.py: Implementación de las 5 tools
+- permissions.py: Sistema de permisos (extensiones permitidas,
+  path validation, confirmación para escritura)
+
+Extensiones permitidas GIS: .geojson, .shp, .shx, .dbf, .prj,
+.dxf, .dwg, .kml, .kmz, .gpx, .gpkg, .tif, .geotiff, .csv,
+.pdf, .xlsx, .zip, .json, .docx, etc.
+
+Soporta proveedores: local, onedrive, google_drive, sharepoint,
+dropbox, s3 (solo local implementado en Fase 4)
+
+Fin del reporte de auditoría — Backend IA Python.

@@ -11,7 +11,7 @@ pub struct ListDirectories {
 }
 
 impl ListDirectories {
-    pub fn from_args(args: Value) -> Result<Self, FsMcpError> {
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
         let path = arg_string(&args, "path")?;
         Ok(Self { path })
     }

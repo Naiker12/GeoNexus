@@ -2,11 +2,13 @@ use async_trait::async_trait;
 
 use crate::config::FilesystemConfig;
 use crate::facade::FilesystemMcpFacade;
+use geonexus_core::workers::handler::WorkerHandler;
+use geonexus_core::AgentTask;
 
 pub struct FilesystemWorker;
 
 #[async_trait]
-impl geonexus_core::workers::handler::WorkerHandler for FilesystemWorker {
+impl WorkerHandler for FilesystemWorker {
     fn agent_type(&self) -> &'static str {
         "filesystem"
     }
@@ -17,7 +19,7 @@ impl geonexus_core::workers::handler::WorkerHandler for FilesystemWorker {
 
     async fn execute(
         &self,
-        task: &geonexus_core::types::task::AgentTask,
+        task: &AgentTask,
         _db: sqlx::SqlitePool,
     ) -> Result<String, String> {
         let payload: serde_json::Value = serde_json::from_str(&task.payload)

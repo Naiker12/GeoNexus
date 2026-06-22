@@ -13,9 +13,9 @@ pub struct DetectFramework {
 }
 
 impl DetectFramework {
-    pub fn from_args(args: &serde_json::Value) -> Result<Self, FsMcpError> {
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
         Ok(Self {
-            path: arg_string(args, "path")?,
+            path: arg_string(&args, "path")?,
             deep: args.get("deep").and_then(|v| v.as_bool()).unwrap_or(false),
         })
     }

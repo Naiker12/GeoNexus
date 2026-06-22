@@ -1,0 +1,595 @@
+╔══════════════════════════════════════════════════════════════════╗
+║   AUDITORÍA CLI, COMANDOS, ARQUITECTURA Y APLICACIÓN ESCRITORIO ║
+║         GeoNexus / Geo Agents                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ARQUITECTURA GENERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────────────────────────────────────────────────────┐
+│                     ARQUITECTURA GEONEXUS                         │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │              FRONTEND (React 18 + TypeScript)            │    │
+│  │  Vite 5 + TailwindCSS v4 + shadcn/ui + Framer Motion     │    │
+│  │  16 API modules, 11 hooks, 13 type definitions           │    │
+│  │  Router: hash-based (10 rutas)                           │    │
+│  └──────────────────────┬──────────────────────────────────┘    │
+│                         │ Tauri invoke() IPC                     │
+│                         ▼                                       │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │          TAURI v2 (Rust — geonexus-tauri)               │    │
+│  │  104+ comandos, 5 plugins, AppState, EventBus,          │    │
+│  │  WorkerPool, BackgroundPinger, Config Manager            │    │
+│  └──┬────────────┬────────────┬─────────────────────────┬──┘    │
+│     │            │            │                         │        │
+│     ▼            ▼            ▼                         ▼        │
+│  ┌──────┐  ┌──────────┐  ┌─────────┐  ┌─────────────────────┐  │
+│  │ CORE │  │    DB    │  │ MCP CLI │  │ FS-MCP (Filesystem) │  │
+│  │Config│  │ SQLite   │  │ HTTP/   │  │ Seguridad por       │  │
+│  │Crypto│  │ 8 tablas │  │ STDIO   │  │ niveles, Timeline   │  │
+│  │Agent │  │ Repos    │  │ Router  │  │ Indexing, GuardChain│  │
+│  └──────┘  └──────────┘  └─────────┘  └─────────────────────┘  │
+│                         │                                        │
+│                         ▼                                        │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │         PYTHON SIDECAR (ai/sidecar.py)                  │    │
+│  │  17 acciones: LLM, RAG, Graph, Audio, Web, GIS          │    │
+│  │  Invocado como subproceso CLI                           │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │         MCP SERVERS (Python containers-mcp)             │    │
+│  │  STDIO MCP server: 5 tools para archivos GIS            │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. FRONTEND — SRC/ DIRECTORY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+src/
+├── __tests__/                     # Tests Vitest
+│   ├── api/                       # Tests de API calls
+│   ├── components/                # Tests de componentes
+│   └── lib/                       # Tests de utilidades
+├── api/                           # 16 módulos API (capa de comunicación)
+│   ├── analysis.ts                # Análisis y métricas
+│   ├── audio.ts                   # Audio transcribe/synthesize
+│   ├── chat.ts                    # Chat, conversaciones, mensajes
+│   ├── connector.ts               # Conectores cloud (Dropbox, OneDrive)
+│   ├── data.ts                    # Data assets y store
+│   ├── events.ts                  # Event Bus y Artifacts
+│   ├── filesystem-config.ts       # Config filesystem
+│   ├── filesystem-timeline.ts     # Timeline de operaciones FS
+│   ├── health.ts                  # Health check
+│   ├── llm.ts                     # LLM providers
+│   ├── mcp.ts                     # MCP servers y tools
+│   ├── notifications.ts           # Notificaciones OS
+│   ├── secure.ts                  # Secure store (encrypted)
+│   ├── settings.ts                # Settings KV
+│   ├── skills.ts                  # Skills registry
+│   └── telegram.ts                # Telegram integration
+├── assets/brand/                  # Assets de marca
+├── components/                    # Componentes UI
+│   ├── ui/                        # shadcn/ui components
+│   ├── chat/                      # ChatPanel, Composer, Transcript, etc
+│   ├── layout/                    # Layout system
+│   ├── app-sidebar.tsx            # Sidebar principal
+│   ├── ErrorBoundary.tsx          # Manejo de errores
+│   ├── LoadingModal.tsx           # Modal de carga
+│   ├── nav-main.tsx               # Navegación principal
+│   ├── nav-projects.tsx           # Navegación de proyectos
+│   ├── team-switcher.tsx          # Switcher de equipos
+│   └── UpdateBanner.tsx           # Banner de actualización
+├── config/
+│   └── oauth.ts                   # Config OAuth (Dropbox, OneDrive)
+├── constants/
+│   └── workspace.ts               # Constantes de workspace
+├── contexts/
+│   ├── ConnectorsContext.tsx       # Estado de conectores
+│   └── NotificationSettingsContext.tsx  # Config de notificaciones
+├── features/                      # Módulos de funcionalidad
+│   ├── agent/                     # Agent pipeline UI
+│   ├── agents/                    # Agent management
+│   ├── ai/                        # AI settings
+│   ├── map/                       # GIS Map component
+│   ├── theme/                     # Sistema de 8 temas
+│   ├── tools/                     # Tools panel
+│   └── workspace/                 # Workspace management
+├── hooks/                         # Custom hooks (11)
+│   ├── use-mobile.ts              # Detección mobile
+│   ├── useAudioRecorder.ts        # Grabación de audio
+│   ├── useEventBus.ts             # Event Bus frontend
+│   ├── useFilesystemTimeline.ts   # Timeline FS
+│   ├── useNotifications.ts        # Notificaciones
+│   ├── useOnboarding.ts           # Onboarding wizard
+│   ├── usePickerTrigger.ts        # File picker
+│   ├── useReasoningTimeline.ts    # Reasoning timeline
+│   ├── useTelegramBridge.ts       # Telegram bridge
+│   └── useUpdater.ts              # Auto-updater
+├── lib/
+│   └── utils.ts                   # Utilidades (cn, etc.)
+├── types/                         # TypeScript types (13 archivos)
+│   ├── agents.ts                  # Agent types
+│   ├── analysis.ts                # Analysis types
+│   ├── chat.ts                    # Chat types
+│   ├── connector.ts               # Connector types
+│   ├── data.ts                    # Data types
+│   ├── files.ts                   # Filesystem types
+│   ├── graph.ts                   # Graph types
+│   ├── llm.ts                     # LLM types
+│   ├── mcp.ts                     # MCP types
+│   ├── notifications.ts           # Notification types
+│   ├── reasoning-timeline.ts      # Reasoning types
+│   ├── skills.ts                  # Skill types
+│   └── workspace-types.ts         # Workspace types
+├── utils/
+│   ├── parseContent.ts            # Parseo de contenido
+│   └── parseSuggestions.ts        # Parseo de sugerencias
+├── App.tsx                        # Componente raíz
+├── index.css                      # Estilos globales + Tailwind
+├── main.tsx                       # Entry point
+└── vite-env.d.ts                  # Vite types
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. RUTAS DEL FRONTEND (Hash-based)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Según docs/02-chat-arquitectura.txt, 10 rutas hash:
+
+┌─────────────────┬────────────────────────────────────────────────┐
+│ Ruta            │ Pantalla                                      │
+├─────────────────┼────────────────────────────────────────────────┤
+│ #chat           │ Chat principal con IA                          │
+│ #graph          │ Grafo de conocimiento                          │
+│ #analysis       │ Panel de análisis y métricas                   │
+│ #data           │ Data store y assets                            │
+│ #documents      │ Documentos indexados                           │
+│ #connectors     │ Conectores (local, Dropbox, OneDrive, etc.)    │
+│ #mcp            │ Servidores MCP y herramientas                  │
+│ #ai-containers  │ Contenedores MCP GIS                          │
+│ #tools          │ Herramientas GIS                               │
+│ #settings       │ Configuración (8 temas, LLM, skills, etc.)    │
+└─────────────────┴────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. COMANDOS CLI DISPONIBLES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1. SIDECAR PYTHON (ai/sidecar.py)
+──────────────────────────────────────────
+
+Modo de uso: python sidecar.py --action <accion> [args]
+
+$ python sidecar.py --action index --file <path> --project_id <id>
+$ python sidecar.py --action extract --file <path>
+$ python sidecar.py --action ping_llm --provider_type <tipo> --base_url <url>
+$ python sidecar.py --action chat_llm --provider_type openai --model gpt-4o --prompt "Hola"
+$ python sidecar.py --action chat_llm_stream --provider_type openai --model gpt-4o --prompt "Hola"
+$ python sidecar.py --action list_llm_models --provider_type ollama --base_url http://localhost:11434
+$ python sidecar.py --action recall_chunks --query "normas urbanisticas" --top_k 4
+$ python sidecar.py --action build_project_context --project_id project-default
+$ python sidecar.py --action search_web --query "POT Bogota 2024" --search_provider duckduckgo
+$ python sidecar.py --action extract_chat_entities --query "El POT define usos de suelo"
+$ python sidecar.py --action extract_graph_entities --chunks_json '[...]'
+$ python sidecar.py --action extract_shapefile --file "capa.shp"
+$ python sidecar.py --action extract_keywords --query "normas de construccion"
+$ python sidecar.py --action update_memory_scores --threshold 0.3
+$ python sidecar.py --action audio_transcribe --audio_base64 <base64> --mime_type audio/webm
+$ python sidecar.py --action audio_synthesize --text "Hola mundo" --voice alloy
+$ python sidecar.py --action update_memory_scores
+
+4.2. FS_EMBED CLI (ai/fs_embed.py)
+──────────────────────────────────────────
+
+$ python fs_embed.py ping
+$ python fs_embed.py index <file_path> <content>
+$ python fs_embed.py search <query> [limit]
+
+4.3. CONTAINERS-MCP STDIO (mcp-servers/containers-mcp/server.py)
+────────────────────────────────────────────────────────────────
+
+Modo servidor STDIO (invocado por Rust):
+$ python server.py  # Lee JSON-RPC de stdin, escribe JSON-RPC a stdout
+
+Tools disponibles:
+  - container_list(provider, path)
+  - container_get(provider, file_id)
+  - container_search(provider, query)
+  - container_sync(provider, remote_path, local_dir, confirmed)
+  - container_upload(provider, path, local_path, confirmed)
+
+4.4. COMANDOS DE DESARROLLO (package.json)
+──────────────────────────────────────────────────
+
+$ pnpm dev              # Desarrollo frontend (Vite dev server)
+$ pnpm build            # Build frontend
+$ pnpm preview          # Preview build
+$ pnpm test             # Tests (Vitest)
+$ pnpm test:watch       # Tests en modo watch
+$ pnpm tauri:dev        # Desarrollo Tauri (app completa)
+$ pnpm tauri:build      # Build producción Tauri
+
+4.5. COMANDOS RUST/CARGO
+──────────────────────────────────────────────────
+
+$ cargo build            # Build workspace completo
+$ cargo test             # Tests unitarios Rust
+$ cargo doc --open       # Documentación
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. FLUJO DE CHAT COMPLETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Según docs/02-chat-arquitectura.txt, el flujo send_message tiene 15 pasos:
+
+1. Frontend → invoke("send_message", {conversation_id, content})
+2. Tauri inserta mensaje usuario en DB
+3. Recupera contexto del proyecto (build_project_context)
+4. Recupera chunks relevantes (RAG recall_chunks)
+5. Recupera historial de mensajes
+6. Construye prompt con contexto + RAG + historial
+7. Skills activos se inyectan en el system prompt
+8. Tools MCP registradas se agregan como function calling
+9. Envía a LLM (chat_llm o chat_llm_stream)
+10. Procesa respuesta streaming (eventos "delta" al frontend)
+11. Si hay tool_calls → ejecuta tools MCP → retroalimenta al LLM
+12. Extrae entidades del grafo (extract_chat_entities)
+13. Guarda mensaje del asistente en DB
+14. Emite evento de conversación completada
+15. Retorna respuesta final al frontend
+
+NOTA: Este flujo está diseñado pero NO COMPLETAMENTE implementado.
+Partes como tool_calls loop y grafo automático están en desarrollo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. BASE DE DATOS SQLITE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ubicación: app_data_dir/geonexus.db (~/.geonexus/ en Linux,
+  %APPDATA%/GeoNexus/ en Windows)
+
+Tablas identificadas en el código:
+
+┌─────────────────────┬────────────────────────────────────────────┐
+│ Tabla               │ Propósito                                  │
+├─────────────────────┼────────────────────────────────────────────┤
+│ agents              │ Agentes del sistema (5 por defecto)         │
+│ agent_tasks         │ Cola de tareas de agentes                  │
+│ mcp_servers         │ Servidores MCP registrados                 │
+│ mcp_tools           │ Tools MCP descubiertas                    │
+│ mcp_allowlist       │ Reglas de allowlist por tool              │
+│ mcp_tool_calls      │ Auditoría de llamadas a tools             │
+│ mcp_server_metrics  │ Métricas de servidores MCP                │
+│ legacy_events       │ Eventos del bus (por dominio)              │
+│ events              │ Eventos geo-espaciales (GeoEvent)          │
+│ artifacts           │ Artefactos generados en sesiones           │
+│ conversations       │ Conversaciones de chat                     │
+│ messages            │ Mensajes individuales                      │
+│ graph_nodes         │ Nodos del grafo de conocimiento            │
+│ graph_edges         │ Aristas del grafo                          │
+│ assets              │ Assets indexados                           │
+│ workspaces          │ Workspaces                                 │
+│ skills              │ Skills instalados                          │
+│ settings            │ Key-value settings                         │
+│ secure_store        │ Almacén cifrado (tokens, secrets)          │
+│ connectors          │ Conectores cloud                           │
+│ oauth_tokens        │ Tokens OAuth                              │
+└─────────────────────┴────────────────────────────────────────────┘
+
+Motor: SQLite vía sqlx con migraciones
+Pool: conexión única compartida vía AppState
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. SISTEMA DE CONFIGURACIÓN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Archivos de configuración:
+
+┌──────────────────────────┬──────────┬────────────────────────────┐
+│ Archivo                  │ Formato  │ Propósito                  │
+├──────────────────────────┼──────────┼────────────────────────────┤
+│ geonexus.config.toml     │ TOML     │ Config general (MCP, LLM, │
+│                          │          │ Skills, Settings)          │
+│ filesystem.config.json   │ JSON     │ Permisos FS, indexing     │
+│ tauri.conf.json          │ JSON     │ App Tauri (ventana,       │
+│                          │          │ bundle, plugins)           │
+│ components.json          │ JSON     │ shadcn/ui config          │
+│ capabilities/default.json│ JSON     │ Permisos Tauri v2         │
+│ .env / variables entorno │ Key=Val  │ API keys (OPENAI_API_KEY, │
+│                          │          │ ANTHROPIC_API_KEY, etc.)   │
+└──────────────────────────┴──────────┴────────────────────────────┘
+
+Variables de entorno usadas:
+  GEONEXUS_DB_PATH           — Ruta a SQLite DB
+  GEONEXUS_LOCAL_ROOT        — Root para containers-mcp
+  GEONEXUS_SECRET_KEY        — Key base64 para AES-256 (opcional)
+  GEONEXUS_OPENAI_EMBEDDING_MODEL — Modelo de embeddings
+  GEONEXUS_OLLAMA_EMBEDDING_MODEL — Modelo Ollama embeddings
+  GEONEXUS_OLLAMA_EMBEDDING_URL   — URL Ollama embeddings
+  OPENAI_API_KEY             — API key OpenAI
+  ANTHROPIC_API_KEY          — API key Anthropic
+  OPENROUTER_API_KEY         — API key OpenRouter
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. SISTEMA DE PLUGINS / PLATAFORMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Skills:
+- Skills en formato Markdown con frontmatter (YAML)
+- Instalación desde archivo .md o GitHub
+- Almacenados en app_data_dir/skills/
+- Built-in: pot-analyzer (POT colombianos)
+- Toggle: activar/desactivar por skill
+
+MCP (Model Context Protocol):
+- Protocolo estándar: JSON-RPC 2.0
+- Transportes: HTTP, STDIO, SSE (declarado)
+- Auto-descubrimiento de tools en servidores HTTP
+- Allowlist por tool con rate limiting
+- Auditoría completa de llamadas
+- Formato LLM: function calling con prefijo mcp__
+- Import/export config compatible con Claude Desktop
+
+Coding Agent:
+- Workflow: clarify → start_generation → approve_plan → resolve_permission
+- Sistema de permisos para ejecutar código
+- Estado compartido via PermissionState
+
+Telegram:
+- Polling de mensajes desde bot de Telegram
+- Pairing via código
+- Envío de respuestas y chat actions
+- Almacenamiento cifrado de tokens (AES-256-GCM)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. OTRAS INTEGRACIONES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dropbox:
+- OAuth PKCE flow (challenge + verifier)
+- List folder, download file
+- Token storage en secure_store
+
+OneDrive:
+- Drive info, list folder, download file
+- OAuth similar a Dropbox
+
+OAuth genérico:
+- PKCE challenge generation
+- URL building, code exchange
+- User info retrieval
+- Token persistente
+
+Audio:
+- Transcripción: Whisper API (OpenAI)
+- Síntesis: TTS API (OpenAI) — 6 voces
+- Entrada: base64 (audio/webm, mp4, wav)
+
+Notificaciones OS:
+- notify-rust para notificaciones desktop
+- Solicitud de permisos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. TECNOLOGÍAS DEL FRONTEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────┬────────────────────────────────────────────┐
+│ Tecnología          │ Uso                                        │
+├─────────────────────┼────────────────────────────────────────────┤
+│ React 18            │ UI Framework                               │
+│ TypeScript 5.4      │ Lenguaje                                   │
+│ Vite 5              │ Build tool + dev server                    │
+│ TailwindCSS v4      │ Estilos utilitarios                        │
+│ shadcn/ui (Radix)   │ Componentes accesibles                     │
+│ Framer Motion       │ Animaciones                                │
+│ Zustand             │ Estado global                              │
+│ d3-force            │ Grafo de conocimiento (force layout)        │
+│ Recharts            │ Gráficos y métricas                        │
+│ React Markdown      │ Renderizado de markdown                    │
+│ Lucide React        │ Iconos                                    │
+│ Sonner              │ Toast notifications                        │
+│ jspdf               │ Generación de PDFs                         │
+│ cmdk                │ Command palette                            │
+│ msw                 │ API mocking (tests)                        │
+│ Vitest              │ Testing framework                          │
+│ qrcode.react        │ QR codes (Telegram pairing)                │
+│ Tauri API (JS)      │ invoke() para comunicación con Rust        │
+└─────────────────────┴────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. GIT / CI/CD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.github/workflows/release.yml:
+- Trigger: tags v*
+- Platform: windows-latest
+- Steps: pnpm install → Rust stable → Node 22 → build → tauri-action release
+- Build targets: msi, nsis
+
+.gitignore:
+  node_modules, dist, .env, target/, .venv, __pycache__,
+  *.db, chroma/, local-data/, .DS_Store, thumbs.db, *.log,
+  .vscode/, .idea/, *.swp, *.swo, *~
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. SOPORTE MULTIPLATAFORMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Windows:
+  ✅ Tauri compile con MSVC
+  ✅ MSI + NSIS installers
+  ✅ Crypto: MachineGuid desde registro
+  ✅ CI/CD: windows-latest
+  ✅ Tauri devtools en debug
+
+Linux:
+  ⚠️ Bundle AppImage declarado en tauri.conf.json
+  ⚠️ crypto.rs: /etc/machine-id
+  ❌ Sin CI/CD para Linux
+  ❌ Sin scripts .sh para desarrollo
+  ❌ Sin pruebas en Linux
+
+macOS:
+  ⚠️ Bundle DMG declarado
+  ❌ Sin CI/CD
+  ❌ Sin machine-id implementation (fallback string)
+  ❌ Sin pruebas
+
+NOTA: El proyecto está claramente enfocado en Windows.
+Linux y macOS son compatibles en papel pero no probados.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+13. DOCUMENTACIÓN (docs/)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+21 archivos .txt (en español):
+
+01-configuracion-proyecto.txt     — Resumen del proyecto
+02-chat-arquitectura.txt          — Arquitectura del chat (273 líneas)
+03-chat-web-search.txt            — Web search integration
+04-grafo-conocimiento.txt         — Knowledge graph
+05-analisis.txt                   — Análisis y métricas
+06-backend-datos.txt              — Data backend
+07-gis-razonamiento.txt           — GIS y razonamiento
+08-llm-proveedores.txt            — Proveedores LLM
+09-estado-implementacion.txt      — Estado de implementación
+10-analisis-config-vs-plan.txt    — Config vs plan
+11-data-page.txt                  — Página de datos
+12-documents-page.txt             — Página de documentos
+13-conectores-configuracion.txt   — Conectores
+14-analysis-page.txt              — Página de análisis
+15-evento-preview-streaming.txt   — Streaming y eventos
+17-analisis-telegram.txt          — Integración Telegram
+18-analisis-coding-agent.txt      — Coding agent
+audit-skills-mcp-chat.txt         — Auditoría skills/MCP/chat
+auditoria-mcp-razonamiento-animacion.txt — Auditoría MCP
+sistema-razonamiento-completo.txt — Sistema de razonamiento
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. MAPA DE DEPENDENCIAS ENTRE COMPONENTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+React Frontend
+  └── Tauri invoke() ──────────────────────────────────┐
+       ├── geonexus-tauri (commands/)                  │
+       │   ├── geonexus-core (config, crypto, agent)   │
+       │   ├── geonexus-db (SQLite repos)              │
+       │   ├── geonexus-mcp (MCP client/router)        │
+       │   │   └── reqwest (HTTP MCP)                  │
+       │   │   └── tokio::process (STDIO MCP)          │
+       │   │       └── Python containers-mcp server    │
+       │   └── geonexus-fs-mcp (Filesystem security)   │
+       │       └── GuardChain (security modules)       │
+       └── std::process::Command ─────────────────      │
+           └── Python sidecar.py (17 acciones)          │
+               ├── LLM Router (OpenAI, Anthropic, etc.) │
+               ├── ChromaDB (vector store)              │
+               ├── Knowledge Graph (extractor)          │
+               ├── Web Search (DDG, Google, etc.)       │
+               ├── GIS Extractor (fiona/geopandas)      │
+               └── Audio (Whisper/TTS)                  │
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+15. ESTADO DE IMPLEMENTACIÓN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Basado en el código existente vs. módulos declarados pero no implementados:
+
+✅ COMPLETO (con código fuente verificado):
+  - Tauri setup + 104+ comandos
+  - MCP client (HTTP + STDIO)
+  - MCP registry + allowlist + audit
+  - Crypto (AES-256-GCM)
+  - Python sidecar (17 acciones)
+  - LLM router (6 proveedores)
+  - Document pipeline (read → chunk → embed → graph)
+  - Knowledge graph extractors
+  - ChromaDB vector store (real + mock)
+  - Web search (4 proveedores)
+  - Shapefile/GIS extraction
+  - Filesystem config + timeline
+  - Chat sessions + messages DB
+  - Telegram integration
+  - Coding agent workflow
+  - OAuth (Dropbox, OneDrive)
+  - Audio (Whisper + TTS)
+  - Skills system (pot-analyzer built-in)
+  - Agent system (5 default agents + task queue)
+  - Analysis/metrics commands
+
+🔶 PARCIAL (estructura declarada, implementación incompleta):
+  - EventBus (referenciado, sin implementación real)
+  - WorkerPool (referenciado, sin implementación)
+  - DataRepository (usado pero no existe)
+  - FilesystemMcpFacade guard chain (security/ faltante)
+  - CommandFactory (commands/ faltante)
+  - geonexus-core::events, workers, chat, connector, types
+
+❌ PENDIENTE (declarado en plan pero sin código):
+  - File watcher (feature "watcher" en Cargo.toml, depende de notify)
+  - tauri-plugin-stronghold (feature gate)
+  - Implementación completa de streaming bidireccional Rust-Python
+  - CI/CD para Linux/Mac
+  - Tests de integración frontend-backend
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+16. FORTALEZAS GENERALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Arquitectura híbrida inteligente (Rust performance + Python flexibilidad)
+✓ Tauri v2 con plugins modernos (opener, dialog, updater)
+✓ MCP protocol support (compatible con ecosistema Claude Desktop)
+✓ Multi-proveedor LLM con fallback embedding determinista
+✓ Sistema de skills extensible (archivos MD con frontmatter)
+✓ Knowledge graph con memoria Ebbinghaus
+✓ GIS-first design (shapefile, CRS, POT colombianos)
+✓ Audio (transcripción y síntesis por voz)
+✓ Telegram bridge para interacción remota
+✓ OAuth integrado (Dropbox, OneDrive)
+✓ 21 documentos técnicos en español detallando la arquitectura
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+17. DEBILIDADES GENERALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✗ EL PROYECTO NO COMPILA — múltiples módulos faltantes
+✗ Sin tests de frontend (solo estructura __tests__/ creada)
+✗ Sin integración continua para Linux/Mac
+✗ Sin documentación de API o guías de desarrollo
+✗ Sin Docker/deployment para el sidecar Python
+✗ Dependencias no usadas (fastapi, uvicorn en requirements.txt)
+✗ Embeddings deterministas no semánticos
+✗ Sin rate limiting del lado Python
+✗ Sin manejo de errores unificado
+✗ La documentación .txt está desactualizada vs el código real
+✗ Sin CLI standalone (todo depende de Tauri)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+18. RECOMENDACIONES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ALTA PRIORIDAD:
+1. Implementar módulos faltantes (events, workers, types, security, commands)
+2. Crear DataRepository real (es referenced pero no existe)
+3. Hacer compilar el proyecto completo
+4. Agregar tests de integración Rust-Python
+
+MEDIA PRIORIDAD:
+5. Implementar EventBus funcional
+6. Implementar WorkerPool completo
+7. Reemplazar embeddings deterministas por reales (OpenAI/Ollama)
+8. Migrar sidecar a servidor asíncrono (FastAPI real) para streaming
+9. Agregar CI/CD para Linux y macOS
+10. Estandarizar manejo de errores con thiserror
+
+BAJA PRIORIDAD:
+11. Agregar Docker para el sidecar Python
+12. Migrar documentación .txt a .md
+13. Agregar guías de contribución
+14. Implementar file watcher (feature watcher)
+15. Agregar rate limiting del lado Python
+
+Fin del reporte de auditoría — CLI, Comandos y Arquitectura General.

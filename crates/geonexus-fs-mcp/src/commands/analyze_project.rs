@@ -12,9 +12,9 @@ pub struct AnalyzeProject {
 }
 
 impl AnalyzeProject {
-    pub fn from_args(args: &serde_json::Value) -> Result<Self, FsMcpError> {
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
         Ok(Self {
-            path: arg_string(args, "path")?,
+            path: arg_string(&args, "path")?,
         })
     }
 }

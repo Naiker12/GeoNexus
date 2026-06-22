@@ -12,8 +12,8 @@ pub struct ReadFile {
 }
 
 impl ReadFile {
-    pub fn from_args(args: &serde_json::Value) -> Result<Self, FsMcpError> {
-        let path = arg_string(args, "path")?;
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
+        let path = arg_string(&args, "path")?;
         let is_secret = Path::new(&path)
             .file_name()
             .map(|n| is_secret_filename(&n.to_string_lossy()))

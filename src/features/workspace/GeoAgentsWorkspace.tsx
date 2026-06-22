@@ -8,7 +8,7 @@ import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
-import { AiContainersPage } from "@/features/workspace/AiContainersPage"
+
 
 type GeoAgentsWorkspaceProps = {
   activeRoute: string
@@ -48,8 +48,6 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
         return <ChatPanel />
       case activeRoute.startsWith("#skills"):
         return <SkillsPage />
-      case activeRoute.startsWith("#contenedores-ia"):
-        return <AiContainersPage />
       default:
         return <ChatPanel />
     }

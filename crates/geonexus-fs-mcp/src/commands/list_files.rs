@@ -13,7 +13,7 @@ pub struct ListFiles {
 }
 
 impl ListFiles {
-    pub fn from_args(args: Value) -> Result<Self, FsMcpError> {
+    pub fn from_args(args: serde_json::Value) -> Result<Self, FsMcpError> {
         let path = arg_string(&args, "path")?;
         let file_types = arg_optional_string_array(&args, "fileTypes");
         Ok(Self { path, file_types })

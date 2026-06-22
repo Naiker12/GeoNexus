@@ -91,10 +91,10 @@ def _list_models(args) -> None:
 
 def _search_web(args) -> None:
     if getattr(args, 'search_depth', 'standard') == 'deep':
-        from web_search import search_web_deep
+        from tools.web_search import search_web_deep
         results = search_web_deep(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
     else:
-        from web_search import search_web
+        from tools.web_search import search_web
         results = search_web(args.query, provider=args.search_provider, api_key=args.api_key or None, cse_id=args.cse_id or None, max_results=args.max_results)
     import sys
     print(f"[DEBUG] search_web returned {len(results)} results (depth={getattr(args, 'search_depth', 'standard')})", file=sys.stderr)
@@ -127,7 +127,7 @@ def _index(args) -> None:
 
 
 def _extract_shapefile(args) -> None:
-    from extractors.shapefile_extractor import shapefile_to_text_chunks
+    from tools.gis_tools import shapefile_to_text_chunks
     _print(shapefile_to_text_chunks(args.file))
 
 
@@ -177,97 +177,18 @@ def _update_memory_scores(args) -> None:
 
 
 def _audio_transcribe(args) -> None:
-    """Transcribe audio a texto usando OpenAI Whisper API."""
-    import base64
-    import requests
-    import tempfile
-    import os
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        _err("OPENAI_API_KEY no esta configurado")
-
-    audio_base64 = args.audio_base64
-    mime_type = args.mime_type or "audio/webm"
-
-    # Decodificar base64 a bytes
-    try:
-        audio_bytes = base64.b64decode(audio_base64)
-    except Exception as e:
-        _err(f"Error decodificando audio: {e}")
-
-    # Guardar en archivo temporal
-    suffix = ".webm" if "webm" in mime_type else ".mp4" if "mp4" in mime_type else ".wav"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-        temp_file.write(audio_bytes)
-        temp_file_path = temp_file.name
-
-    try:
-        # Llamar a OpenAI Whisper API
-        with open(temp_file_path, "rb") as f:
-            response = requests.post(
-                "https://api.openai.com/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                files={"file": f},
-                data={"model": "whisper-1"},
-                timeout=60
-            )
-
-        response.raise_for_status()
-        data = response.json()
-        _print({
-            "status": "ok",
-            "text": data.get("text", ""),
-            "language": data.get("language"),
-        })
-    except Exception as e:
-        _err(f"Error en transcripcion: {e}")
-    finally:
-        # Limpiar archivo temporal
-        try:
-            os.unlink(temp_file_path)
-        except:
-            pass
-
+    from tools.audio_tools import transcribe_audio
+    result = transcribe_audio(args.audio_base64, args.mime_type or "audio/webm")
+    if result["status"] == "error":
+        _err(result["message"])
+    _print(result)
 
 def _audio_synthesize(args) -> None:
-    """Sintetiza texto a audio usando OpenAI TTS API."""
-    import base64
-    import requests
-    import os
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        _err("OPENAI_API_KEY no esta configurado")
-
-    text = args.text
-    voice = args.voice or "alloy"
-    speed = float(args.speed) if args.speed else 1.0
-
-    try:
-        response = requests.post(
-            "https://api.openai.com/v1/audio/speech",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={
-                "model": "tts-1",
-                "input": text,
-                "voice": voice,
-                "speed": speed,
-            },
-            timeout=60
-        )
-
-        response.raise_for_status()
-        audio_bytes = response.content
-        audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
-
-        _print({
-            "status": "ok",
-            "audio_base64": audio_base64,
-            "mime_type": "audio/mpeg",
-        })
-    except Exception as e:
-        _err(f"Error en sintesis: {e}")
+    from tools.audio_tools import synthesize_speech
+    result = synthesize_speech(args.text, args.voice or "alloy", float(args.speed) if args.speed else 1.0)
+    if result["status"] == "error":
+        _err(result["message"])
+    _print(result)
 
 
 def main() -> None:

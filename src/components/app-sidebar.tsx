@@ -174,9 +174,5 @@ export function AppSidebar({
 }
 
 function isActiveRoute(activeRoute: string, itemUrl: string) {
-  if (itemUrl === "#contenedores-ia") {
-    return activeRoute.startsWith("#contenedores-ia")
-  }
-
   return activeRoute === itemUrl
 }
