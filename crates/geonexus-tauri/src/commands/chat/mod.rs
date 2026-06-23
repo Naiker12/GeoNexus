@@ -46,6 +46,19 @@ impl SidecarChatResult {
         self.text.as_ref().map(|s| s.trim().to_string())
     }
 
+    fn reasoning_content(&self) -> Option<String> {
+        if let Some(val) = &self.msg {
+            if let Some(obj) = val.as_object() {
+                if let Some(c) = obj.get("reasoning_content").and_then(|c| c.as_str()) {
+                    if !c.is_empty() {
+                        return Some(c.trim().to_string());
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn tool_calls(&self) -> Option<Vec<serde_json::Value>> {
         match &self.msg {
             Some(serde_json::Value::Object(obj)) => match obj.get("tool_calls") {
@@ -227,4 +240,58 @@ pub async fn get_project_context(
     .map_err(|e| format!("Error consultando nodos del grafo: {e}"))?;
 
     Ok(ProjectContext { assets, graph_nodes })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceConfig {
+    pub working_directory: String,
+    pub code_execution_mode: String,
+    pub persistent_shell: bool,
+    pub env_passthrough: Vec<String>,
+    pub file_read_limit: u64,
+}
+
+impl Default for WorkspaceConfig {
+    fn default() -> Self {
+        Self {
+            working_directory: ".".into(),
+            code_execution_mode: "project".into(),
+            persistent_shell: true,
+            env_passthrough: vec![],
+            file_read_limit: 100_000,
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn save_workspace_config(
+    state: State<'_, AppState>,
+    config: WorkspaceConfig,
+) -> Result<(), String> {
+    let json = serde_json::to_string(&config).map_err(|e| e.to_string())?;
+    sqlx::query(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES ('workspace_config', ?)"
+    )
+    .bind(&json)
+    .execute(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_workspace_config(
+    state: State<'_, AppState>,
+) -> Result<WorkspaceConfig, String> {
+    let row: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM settings WHERE key = 'workspace_config'"
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    match row {
+        Some(val) => serde_json::from_str(&val).map_err(|e| e.to_string()),
+        None => Ok(WorkspaceConfig::default()),
+    }
 }

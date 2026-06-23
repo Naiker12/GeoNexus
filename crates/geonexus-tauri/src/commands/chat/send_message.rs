@@ -79,6 +79,9 @@ fn emit_reasoning_step(
     let (duration_ms, completed_at) = if status == "success" || status == "failed" {
         if let Some(start) = step_timers.remove(id) {
             (Some(start.elapsed().as_millis() as u64), Some(now_unix))
+        } else if let Some(started) = step_started_at.get(id) {
+            let elapsed = now_unix.saturating_sub(*started);
+            (Some(elapsed), Some(now_unix))
         } else {
             (None, None)
         }
@@ -115,6 +118,28 @@ fn emit_reasoning_end(handle: Option<&tauri::AppHandle>, session_id: &str, total
         let _ = h.emit("reasoning:end", serde_json::json!({
             "session_id": session_id,
             "total_ms": total_ms,
+        }));
+    }
+}
+
+fn emit_tool_call_start(handle: Option<&tauri::AppHandle>, conversation_id: &str, tool_name: &str, server_id: &str, args: &serde_json::Value) {
+    if let Some(h) = handle {
+        let _ = h.emit("llm:tool_call_start", json!({
+            "conversation_id": conversation_id,
+            "tool_name": tool_name,
+            "server_id": server_id,
+            "args": args,
+        }));
+    }
+}
+
+fn emit_tool_call_done(handle: Option<&tauri::AppHandle>, conversation_id: &str, tool_name: &str, success: bool, duration_ms: u64) {
+    if let Some(h) = handle {
+        let _ = h.emit("llm:tool_call_done", json!({
+            "conversation_id": conversation_id,
+            "tool_name": tool_name,
+            "success": success,
+            "duration_ms": duration_ms,
         }));
     }
 }
@@ -387,6 +412,7 @@ pub async fn send_message(
         stats: None,
         attachments: input.attachments.clone(),
         reasoning_events: None,
+        reasoning_content: None,
     };
 
     chat_repo::insert_message(&state.db, &user_msg).await?;
@@ -917,13 +943,28 @@ pub async fn send_message(
     // === Build messages array ===
     let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
     let asset_count = chunks_used.iter().map(|c| &c.asset_id).collect::<std::collections::HashSet<_>>().len();
+    let workspace_context = {
+        let wc = get_workspace_config_inner(&state.db).await.unwrap_or_else(|_| super::WorkspaceConfig::default());
+        if wc.code_execution_mode != "disabled" {
+            format!(
+                "\n\n## Workspace\n\
+                Working Directory: `{}`\n\
+                Shell: persistente entre comandos\n\
+                Puedes leer archivos, ejecutar comandos, y analizar el proyecto.\n\
+                Code Execution Mode: {}",
+                wc.working_directory, wc.code_execution_mode
+            )
+        } else {
+            String::new()
+        }
+    };
     let mut messages =
-        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &input.content, &input.skill_names, asset_count, &input.attachments);
+        build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &workspace_context, &input.content, &input.skill_names, asset_count, &input.attachments);
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
     let mut iteration: usize = 0;
-    let (final_content, last_sidecar) = loop {
+    let (final_content, last_sidecar, final_reasoning_content) = loop {
         if iteration >= MAX_ITER {
             return Err(
                 "El modelo excedio el maximo de llamadas a herramientas (10)".into(),
@@ -969,8 +1010,13 @@ pub async fn send_message(
         sidecar_args.push(tools_file.to_string_lossy().to_string());
 
         if let Some(ref key) = input.api_key {
-            sidecar_args.push("--api_key".into());
-            sidecar_args.push(key.clone());
+        sidecar_args.push("--api_key".into());
+        sidecar_args.push(key.clone());
+        }
+
+        if !input.reasoning_effort.is_empty() {
+            sidecar_args.push("--reasoning_effort".into());
+            sidecar_args.push(input.reasoning_effort.clone());
         }
 
         let output = run_sidecar_streaming(
@@ -1044,6 +1090,8 @@ pub async fn send_message(
 
                 emit_tool_call(state.app_handle.as_ref(), tool_name, &tool_call_id, &tool_args);
 
+                emit_tool_call_start(state.app_handle.as_ref(), &conversation_id, tool_name, "", &tool_args);
+
                 let t_start = Instant::now();
                 let (result, tool_success) = execute_tool_call(
                     &state.db,
@@ -1071,6 +1119,7 @@ pub async fn send_message(
                 }));
 
                 emit_tool_result(state.app_handle.as_ref(), tool_name, tool_success, t_dur);
+                emit_tool_call_done(state.app_handle.as_ref(), &conversation_id, tool_name, tool_success, t_dur);
 
                 emit_reasoning_sub_item(
                     state.app_handle.as_ref(),
@@ -1096,6 +1145,8 @@ pub async fn send_message(
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
 
+        let reasoning_content = sidecar.reasoning_content();
+
         let response_token_count = (content.len() as f64 / 4.0).ceil() as u32;
         emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("{} tokens generados", response_token_count));
         emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", "Respuesta completa");
@@ -1107,7 +1158,7 @@ pub async fn send_message(
             "status": "complete",
         }));
         emit_llm_done(state.app_handle.as_ref(), content.len(), &input.model);
-        break (content, Some(sidecar));
+        break (content, Some(sidecar), reasoning_content);
     };
 
     let response_model = last_sidecar
@@ -1198,6 +1249,7 @@ pub async fn send_message(
         } else {
             Some(reasoning_events_value)
         },
+        reasoning_content: final_reasoning_content,
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
@@ -1385,4 +1437,20 @@ async fn ensure_conversation(
     .await?;
 
     Ok(conversation.id)
+}
+
+async fn get_workspace_config_inner(
+    db: &sqlx::SqlitePool,
+) -> Result<super::WorkspaceConfig, String> {
+    let row: Option<String> = sqlx::query_scalar(
+        "SELECT value FROM settings WHERE key = 'workspace_config'"
+    )
+    .fetch_optional(db)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    match row {
+        Some(val) => serde_json::from_str(&val).map_err(|e| e.to_string()),
+        None => Ok(super::WorkspaceConfig::default()),
+    }
 }

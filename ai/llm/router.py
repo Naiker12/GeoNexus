@@ -312,6 +312,14 @@ def _normalize_usage(provider: str, data: dict) -> dict | None:
     return data.get("usage")
 
 
+REASONING_BUDGET_MAP = {
+    "none": 0,
+    "minimal": 1000,
+    "medium": 5000,
+    "high": 10000,
+    "max": 20000,
+}
+
 def chat_llm_provider_stream(
     provider_type: str,
     base_url: str,
@@ -319,6 +327,7 @@ def chat_llm_provider_stream(
     messages: List[Dict[str, Any]],
     tools: Optional[List[Dict[str, Any]]] = None,
     api_key: Optional[str] = None,
+    reasoning_effort: Optional[str] = None,
 ):
     """Envia mensajes a un proveedor LLM con streaming.
 
@@ -326,6 +335,7 @@ def chat_llm_provider_stream(
       {"type": "delta", "content": "..."} — token de texto
       {"type": "done", "message": {...}, "usage": {...}} — respuesta completa
       {"type": "error", "message": "..."} — error
+      {"type": "thinking", "content": "..."} — razonamiento (Anthropic/OpenAI)
     """
     import requests
 
@@ -353,6 +363,7 @@ def chat_llm_provider_stream(
             response = requests.post(f"{url}/api/chat", json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
+            full_reasoning = ""
             for line in response.iter_lines(decode_unicode=False):
                 if not line:
                     continue
@@ -364,6 +375,10 @@ def chat_llm_provider_stream(
                     if content:
                         full_content += content
                         yield {"type": "delta", "content": content}
+                    reasoning = chunk.get("message", {}).get("reasoning_content", "")
+                    if reasoning:
+                        full_reasoning += reasoning
+                        yield {"type": "thinking", "content": reasoning}
                     if chunk.get("done", False):
                         usage = {
                             "prompt_tokens": chunk.get("prompt_eval_count", 0),
@@ -374,6 +389,8 @@ def chat_llm_provider_stream(
                         msg = {"role": "assistant", "content": full_content}
                         if tool_calls:
                             msg["tool_calls"] = tool_calls
+                        if full_reasoning:
+                            msg["reasoning_content"] = full_reasoning
                         yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
                         return
                 except json.JSONDecodeError:
@@ -393,6 +410,7 @@ def chat_llm_provider_stream(
             response = requests.post(f"{url}/chat/completions", headers=headers, json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
+            full_reasoning = ""
             tool_calls_map: dict = {}
             for line in response.iter_lines(decode_unicode=False):
                 if not line:
@@ -416,6 +434,7 @@ def chat_llm_provider_stream(
                         yield {"type": "delta", "content": content}
                     reasoning = delta.get("reasoning_content", "")
                     if reasoning:
+                        full_reasoning += reasoning
                         yield {"type": "thinking", "content": reasoning}
                     tc_deltas = delta.get("tool_calls")
                     if tc_deltas:
@@ -435,6 +454,8 @@ def chat_llm_provider_stream(
                         msg = {"role": "assistant", "content": full_content}
                         if tool_calls_map:
                             msg["tool_calls"] = [tool_calls_map[k] for k in sorted(tool_calls_map)]
+                        if full_reasoning:
+                            msg["reasoning_content"] = full_reasoning
                         usage = chunk.get("usage")
                         yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
                         return
@@ -454,6 +475,7 @@ def chat_llm_provider_stream(
             response = requests.post(f"{url}/chat/completions", headers=headers, json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
+            full_reasoning = ""
             tool_calls_map: dict = {}
             for line in response.iter_lines(decode_unicode=False):
                 if not line:
@@ -477,6 +499,7 @@ def chat_llm_provider_stream(
                         yield {"type": "delta", "content": content}
                     reasoning = delta.get("reasoning_content", "")
                     if reasoning:
+                        full_reasoning += reasoning
                         yield {"type": "thinking", "content": reasoning}
                     tc_deltas = delta.get("tool_calls")
                     if tc_deltas:
@@ -496,6 +519,8 @@ def chat_llm_provider_stream(
                         msg = {"role": "assistant", "content": full_content}
                         if tool_calls_map:
                             msg["tool_calls"] = [tool_calls_map[k] for k in sorted(tool_calls_map)]
+                        if full_reasoning:
+                            msg["reasoning_content"] = full_reasoning
                         usage = chunk.get("usage")
                         yield {"type": "done", "status": "ok", "provider_type": provider, "model": model, "message": msg, "usage": usage}
                         return
@@ -513,9 +538,14 @@ def chat_llm_provider_stream(
                 "content-type": "application/json",
             }
             body.pop("stream", None)
+            if reasoning_effort:
+                budget = REASONING_BUDGET_MAP.get(reasoning_effort, 0)
+                if budget > 0:
+                    body["thinking"] = {"type": "enabled", "budget_tokens": budget}
             response = requests.post(f"{url}/v1/messages", headers=headers, json=body, stream=True, timeout=120)
             response.raise_for_status()
             full_content = ""
+            full_reasoning = ""
             for line in response.iter_lines(decode_unicode=False):
                 if not line:
                     continue
@@ -535,6 +565,7 @@ def chat_llm_provider_stream(
                             full_content += text
                             yield {"type": "delta", "content": text}
                         if thinking:
+                            full_reasoning += thinking
                             yield {"type": "thinking", "content": thinking}
                     elif ctype == "content_block_start":
                         block = chunk.get("content_block", {})
@@ -542,12 +573,15 @@ def chat_llm_provider_stream(
                         if btype == "thinking":
                             thinking_text = block.get("thinking", "")
                             if thinking_text:
+                                full_reasoning += thinking_text
                                 yield {"type": "thinking", "content": thinking_text}
                         elif btype == "redacted_thinking":
                             yield {"type": "thinking", "content": "[thinking redacted by Anthropic]"}
                     elif ctype == "message_delta":
                         usage = chunk.get("usage")
                         msg = {"role": "assistant", "content": full_content}
+                        if full_reasoning:
+                            msg["reasoning_content"] = full_reasoning
                         stop_reason = chunk.get("delta", {}).get("stop_reason")
                         if stop_reason == "tool_use":
                             pass
