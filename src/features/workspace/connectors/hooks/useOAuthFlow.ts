@@ -48,6 +48,9 @@ export function useOAuthFlow(provider: OAuthProvider) {
 
     try {
       const config = PROVIDER_CONFIGS[provider]
+      if (config.clientId.startsWith("REPLACE_WITH_")) {
+        throw new Error(`OAuth no configurado: falta ${provider} client ID. Define VITE_${provider.toUpperCase()}_CLIENT_ID en .env`)
+      }
       if (!config) throw new Error(`Configuración no encontrada para ${provider}`)
 
       // Generar PKCE desde Rust

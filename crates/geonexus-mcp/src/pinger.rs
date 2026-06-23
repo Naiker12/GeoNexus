@@ -39,7 +39,7 @@ pub async fn ping_server_with_auth(url: &str, auth_token: Option<&str>) -> PingR
     };
     let start = Instant::now();
 
-    let init_payload = handshake::build_initialize_payload();
+    let init_payload = handshake::build_initialize_payload(None);
     let init_resp = match handshake::add_auth_header(client.post(&endpoint), auth_token)
         .json(&init_payload)
         .send()

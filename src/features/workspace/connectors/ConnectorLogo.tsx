@@ -1,10 +1,10 @@
 import { CloudIcon } from "lucide-react"
 
-import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
+import type { ConnectorProviderInfo } from "@/features/workspace/connectors/connector-types"
 import { cn } from "@/lib/utils"
 
 type ConnectorLogoProps = {
-  provider: ConnectorProvider
+  provider: ConnectorProviderInfo
   className?: string
 }
 

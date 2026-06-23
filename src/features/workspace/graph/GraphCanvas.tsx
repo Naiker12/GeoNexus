@@ -55,7 +55,6 @@ export function GraphCanvas({
 
   // Initialize simulation
   React.useEffect(() => {
-    console.log("🎨 [GraphCanvas] Initializing simulation, nodes count:", nodes.length)
     
     // Always initialize positionsRef with initial node positions
     const initialPositions = new Map<string, { x: number; y: number }>()
@@ -63,8 +62,6 @@ export function GraphCanvas({
       initialPositions.set(n.id, { x: n.x ?? 50, y: n.y ?? 50 })
     })
     positionsRef.current = initialPositions
-    console.log("📍 [GraphCanvas] Initial positions set:", initialPositions.size)
-
     if (nodes.length === 0) {
       // Even if there are no nodes, set ready so canvas setup runs
       setReady(true)
@@ -108,8 +105,6 @@ export function GraphCanvas({
 
     simRef.current = simulation
     setReady(true)
-    console.log("✅ [GraphCanvas] Simulation initialized, ready = true")
-
     return () => {
       simulation.stop()
       simRef.current = null

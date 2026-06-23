@@ -1,7 +1,10 @@
 import * as React from "react"
-import { FolderOpen, Shield, CheckCircle, ArrowRight, Loader2Icon, AlertTriangleIcon } from "lucide-react"
+import { FolderOpen, Shield, CheckCircle, ArrowRight, Loader2Icon, AlertTriangleIcon, BotIcon, TerminalIcon, CloudIcon, BrainCircuitIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { runHealthCheck, type HealthCheckResult } from "@/api/health"
+import { providerOptions } from "@/features/workspace/ai-containers/provider-options"
+import { useConnectors } from "@/contexts/ConnectorsContext"
+import { cn } from "@/lib/utils"
 
 interface OnboardingWizardProps {
   open: boolean
@@ -9,7 +12,21 @@ interface OnboardingWizardProps {
   onDismiss: () => void
 }
 
-type Step = "welcome" | "choose-path" | "health-check" | "done"
+type Step = "welcome" | "provider" | "choose-path" | "health-check" | "done"
+
+const ONBOARDING_PROVIDERS = providerOptions.filter(p =>
+  ["ollama", "lmstudio", "openai", "anthropic", "openrouter"].includes(p.id)
+)
+
+function providerIcon(id: string) {
+  switch (id) {
+    case "ollama": return TerminalIcon
+    case "lmstudio": return TerminalIcon
+    case "openai": return BotIcon
+    case "anthropic": return BrainCircuitIcon
+    default: return CloudIcon
+  }
+}
 
 export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWizardProps) {
   const [step, setStep] = React.useState<Step>("welcome")
@@ -17,6 +34,7 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
   const [saving, setSaving] = React.useState(false)
   const [health, setHealth] = React.useState<HealthCheckResult | null>(null)
   const [healthLoading, setHealthLoading] = React.useState(false)
+  const { setConnectors, connectors } = useConnectors()
 
   if (!open) return null
 
@@ -40,6 +58,27 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
     } finally {
       setHealthLoading(false)
     }
+  }
+
+  const handleSelectProvider = (providerId: string) => {
+    const opt = providerOptions.find(p => p.id === providerId)
+    if (!opt) return
+    const exists = connectors.some(c => c.id === providerId)
+    if (!exists) {
+      const newConnector = {
+        id: providerId,
+        name: opt.name,
+        provider: providerId as any,
+        status: "disconnected" as const,
+        model: opt.defaultModel || undefined,
+        models: opt.models.length > 0 ? opt.models : undefined,
+        endpoint: opt.defaultEndpoint || undefined,
+        apiKey: undefined,
+        icon: providerIcon(providerId),
+      }
+      setConnectors(prev => [...prev, newConnector as any])
+    }
+    setStep("choose-path")
   }
 
   const handleFinish = async () => {
@@ -80,11 +119,43 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
             </div>
             <h2 className="text-xl font-semibold mb-2">Welcome to GeoNexus</h2>
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
-              This wizard will help you set up a secure workspace folder and verify your system is ready.
+              Elige tu proveedor de IA para empezar. Puedes cambiarlo después en Configuración.
             </p>
-            <Button onClick={() => setStep("choose-path")} className="gap-2">
+            <Button onClick={() => setStep("provider")} className="gap-2">
               Get Started <ArrowRight className="size-4" />
             </Button>
+          </div>
+        )
+
+      case "provider":
+        return (
+          <div className="flex flex-col px-6 py-8">
+            <h2 className="text-xl font-semibold mb-1 text-center">Elige tu proveedor de IA</h2>
+            <p className="text-sm text-muted-foreground max-w-sm mb-5 text-center mx-auto">
+              Selecciona un proveedor para empezar a chatear. Puedes agregar más después.
+            </p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              {ONBOARDING_PROVIDERS.map((p) => {
+                const Icon = providerIcon(p.id)
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectProvider(p.id)}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border bg-muted/30 p-4 hover:bg-accent hover:text-accent-foreground transition-colors text-center"
+                  >
+                    <Icon className="size-6 text-muted-foreground" />
+                    <span className="text-sm font-medium">{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">{p.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={() => setStep("choose-path")}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mx-auto"
+            >
+              Elegir proveedor después
+            </button>
           </div>
         )
 
@@ -111,11 +182,17 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("welcome")}>Back</Button>
+              <Button variant="outline" onClick={() => setStep("provider")}>Back</Button>
               <Button onClick={() => setStep("health-check")} disabled={!selectedPath} className="gap-2">
                 Continue <ArrowRight className="size-4" />
               </Button>
             </div>
+            <button
+              onClick={() => setStep("health-check")}
+              className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Saltar este paso
+            </button>
           </div>
         )
 
@@ -161,6 +238,12 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
                 Continue <ArrowRight className="size-4" />
               </Button>
             </div>
+            <button
+              onClick={() => setStep("done")}
+              className="mt-3 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Saltar verificación
+            </button>
           </div>
         )
 
@@ -187,7 +270,7 @@ export function OnboardingWizard({ open, onComplete, onDismiss }: OnboardingWiza
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-[min(94vw,420px)] rounded-xl border border-border bg-card shadow-2xl">
+      <div className="w-[min(94vw,480px)] rounded-xl border border-border bg-card shadow-2xl">
         {renderStep()}
       </div>
     </div>

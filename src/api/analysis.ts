@@ -41,29 +41,34 @@ const DEFAULT_COST_SUMMARY: CostSummary = {
   avg_per_query: 0,
 }
 
+async function safeInvoke<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
+  try {
+    const invoke = await getInvoke()
+    if (!invoke) return fallback
+    return await invoke<T>(command, args)
+  } catch (e) {
+    console.warn(`${command} no disponible:`, e)
+    return fallback
+  }
+}
+
 export async function getAnalysisMetrics(
   projectId: string = DEFAULT_PROJECT_ID
 ): Promise<AnalysisMetrics> {
-  const invoke = await getInvoke()
-  if (!invoke) return DEFAULT_ANALYSIS_METRICS
-  return invoke<AnalysisMetrics>("get_analysis_metrics", { projectId })
+  return safeInvoke("get_analysis_metrics", { projectId }, DEFAULT_ANALYSIS_METRICS)
 }
 
 export async function getTokenTimeline(
   projectId: string = DEFAULT_PROJECT_ID,
   timeframe: Timeframe = "hoy"
 ): Promise<TokenBucket[]> {
-  const invoke = await getInvoke()
-  if (!invoke) return []
-  return invoke<TokenBucket[]>("get_token_timeline", { projectId, timeframe })
+  return safeInvoke("get_token_timeline", { projectId, timeframe }, [])
 }
 
 export async function getModelUsage(
   projectId: string = DEFAULT_PROJECT_ID
 ): Promise<ModelUsage[]> {
-  const invoke = await getInvoke()
-  if (!invoke) return []
-  return invoke<ModelUsage[]>("get_model_usage", { projectId })
+  return safeInvoke("get_model_usage", { projectId }, [])
 }
 
 export async function listAnalysisRuns(
@@ -71,41 +76,31 @@ export async function listAnalysisRuns(
   limit: number = 50,
   offset: number = 0
 ): Promise<AnalysisRun[]> {
-  const invoke = await getInvoke()
-  if (!invoke) return []
-  return invoke<AnalysisRun[]>("list_analysis_runs", { projectId, limit, offset })
+  return safeInvoke("list_analysis_runs", { projectId, limit, offset }, [])
 }
 
 export async function getSkillUsage(
   projectId: string = DEFAULT_PROJECT_ID
 ): Promise<SkillUsage[]> {
-  const invoke = await getInvoke()
-  if (!invoke) return []
-  return invoke<SkillUsage[]>("get_skill_usage", { projectId })
+  return safeInvoke("get_skill_usage", { projectId }, [])
 }
 
 export async function getCostByTimeframe(
   projectId: string = DEFAULT_PROJECT_ID
 ): Promise<CostSummary> {
-  const invoke = await getInvoke()
-  if (!invoke) return DEFAULT_COST_SUMMARY
-  return invoke<CostSummary>("get_cost_by_timeframe", { projectId })
+  return safeInvoke("get_cost_by_timeframe", { projectId }, DEFAULT_COST_SUMMARY)
 }
 
 export async function getTopQueries(
   projectId: string = DEFAULT_PROJECT_ID,
   limit: number = 5
 ): Promise<TopQuery[]> {
-  const invoke = await getInvoke()
-  if (!invoke) return []
-  return invoke<TopQuery[]>("get_top_queries", { projectId, limit })
+  return safeInvoke("get_top_queries", { projectId, limit }, [])
 }
 
 export async function exportAnalysisTraces(
   projectId: string = DEFAULT_PROJECT_ID,
   format: "csv" | "json" = "csv"
 ): Promise<string> {
-  const invoke = await getInvoke()
-  if (!invoke) return ""
-  return invoke<string>("export_analysis_traces", { projectId, format })
+  return safeInvoke("export_analysis_traces", { projectId, format }, "")
 }

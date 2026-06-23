@@ -5,6 +5,7 @@ export interface HealthCheckResult {
   llm_configured: boolean
   has_allowed_paths: boolean
   bot_configured: boolean
+  gateway_connected: boolean
 }
 
 export async function runHealthCheck(): Promise<HealthCheckResult> {

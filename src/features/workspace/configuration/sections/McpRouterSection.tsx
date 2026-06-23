@@ -32,7 +32,7 @@ export function McpRouterSection() {
             isActive={server.id === selectedServerId}
             onSelect={() => setSelectedServerId(prev => prev === server.id ? null : server.id)}
             onPing={async () => { await ping(server.id) }}
-            onEdit={() => console.log("Edit", server.id)}
+            onEdit={() => setSelectedServerId(prev => prev === server.id ? null : server.id)}
             onDelete={async () => { await handleDelete(server.id) }}
             onDiscoverTools={async () => { await discoverMcpTools(server.id); await refresh() }}
           />

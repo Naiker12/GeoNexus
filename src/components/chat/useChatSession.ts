@@ -60,9 +60,9 @@ export function useChatSession(
   }, [pending])
 
   const wrappedSubmit = React.useCallback(
-    (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: Message["attachments"]) => {
+    (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: Message["attachments"], reasoning_effort?: string) => {
       setSubmitTime(Date.now())
-      return submit(content, mentions, skillNames, attachments)
+      return submit(content, mentions, skillNames, attachments, reasoning_effort)
     },
     [submit],
   )

@@ -2,9 +2,101 @@ use std::path::PathBuf;
 use std::io::BufRead;
 use tauri::Emitter;
 use serde_json::json;
+use super::gateway::get_global_gateway;
 
 pub fn run_sidecar(args: &[&str]) -> Result<String, String> {
+    // Try gateway first
+    match try_run_via_gateway_nonstreaming(args) {
+        Ok(result) => return Ok(result),
+        Err(e) => tracing::debug!("Gateway no disponible (non-streaming) ({}), usando subprocess", e),
+    }
     run_sidecar_with_env(args, None)
+}
+
+/// Build params map from sidecar CLI args, resolving --messages_file / --tools_file to inline values.
+fn build_params_from_args(args: &[&str]) -> serde_json::Map<String, serde_json::Value> {
+    let mut params = serde_json::Map::new();
+    let mut i = 0;
+    while i < args.len() {
+        match args[i] {
+            "--action" | "--provider" | "--model" | "--endpoint" | "--api_key"
+            | "--reasoning_effort" | "--system_prompt" => {
+                let key = args[i].trim_start_matches("--");
+                if i + 1 < args.len() {
+                    params.insert(key.to_string(), serde_json::Value::String(args[i + 1].to_string()));
+                    i += 2;
+                    continue;
+                }
+            }
+            "--messages_file" => {
+                if i + 1 < args.len() {
+                    let path = args[i + 1];
+                    if let Ok(content) = std::fs::read_to_string(path) {
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                            params.insert("messages".to_string(), val);
+                        }
+                    }
+                    i += 2;
+                    continue;
+                }
+            }
+            "--tools_file" => {
+                if i + 1 < args.len() {
+                    let path = args[i + 1];
+                    if let Ok(content) = std::fs::read_to_string(path) {
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                            params.insert("tools".to_string(), val);
+                        }
+                    }
+                    i += 2;
+                    continue;
+                }
+            }
+            "--base_url" => {
+                if i + 1 < args.len() {
+                    params.insert("base_url".to_string(), serde_json::Value::String(args[i + 1].to_string()));
+                    i += 2;
+                    continue;
+                }
+            }
+            _ => {
+                params.insert(format!("arg_{}", i), serde_json::Value::String(args[i].to_string()));
+            }
+        }
+        i += 1;
+    }
+    params
+}
+
+/// Non-streaming gateway call for JSON actions (list models, ping, etc.)
+fn try_run_via_gateway_nonstreaming(args: &[&str]) -> Result<String, String> {
+    let gateway = match get_global_gateway() {
+        Some(gw) => gw,
+        None => return Err("gateway not available".into()),
+    };
+
+    if !tokio::runtime::Handle::current().block_on(gateway.is_connected()) {
+        return Err("gateway not connected".into());
+    }
+
+    let params = build_params_from_args(args);
+
+    let action = params.get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("chat")
+        .to_string();
+
+    let result = tokio::runtime::Handle::current().block_on(
+        gateway.send_json(&action, serde_json::Value::Object(params))
+    ).map_err(|e| format!("Gateway error: {e}"))?;
+
+    // If gateway returned an error-type response, treat it as a failure (triggers fallback)
+    if result.get("type").and_then(|v| v.as_str()) == Some("error") {
+        let msg = result.get("message").and_then(|v| v.as_str()).unwrap_or("Error desconocido del gateway");
+        return Err(format!("Gateway error: {msg}"));
+    }
+
+    Ok(result.to_string())
 }
 
 fn run_sidecar_with_env(args: &[&str], env_var: Option<(&str, &str)>) -> Result<String, String> {
@@ -55,6 +147,15 @@ pub fn run_sidecar_streaming(
     gen_event_id: Option<&str>,
     step_id: Option<&str>,
 ) -> Result<String, String> {
+    // Try gateway first
+    match try_run_via_gateway(args, app_handle, gen_event_id, step_id) {
+        Ok(result) => return Ok(result),
+        Err(e) => {
+            tracing::debug!("Gateway no disponible ({}), usando subprocess", e);
+        }
+    }
+
+    // Fallback to subprocess
     let root_path = project_root();
     let python_exe = python_executable(&root_path);
     let sidecar_script = root_path.join("ai").join("sidecar.py");
@@ -100,7 +201,7 @@ pub fn run_sidecar_streaming(
 
         if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line) {
             match val["type"].as_str() {
-                Some("delta") => {
+                Some("delta") | Some("text_delta") => {
                     if let Some(content) = val["content"].as_str() {
                         if let Some(handle) = app_handle {
                             let _ = handle.emit("llm:token", content);
@@ -124,10 +225,13 @@ pub fn run_sidecar_streaming(
                         }
                     }
                 }
-                Some("thinking") => {
+                Some("thinking") | Some("reasoning_delta") => {
                     if let Some(content) = val["content"].as_str() {
                         if let Some(handle) = app_handle {
                             let _ = handle.emit("reasoning:thinking", json!({
+                                "content": content,
+                            }));
+                            let _ = handle.emit("llm:reasoning_delta", json!({
                                 "content": content,
                             }));
                         }
@@ -154,6 +258,105 @@ pub fn run_sidecar_streaming(
     }
 
     Ok(done_line)
+}
+
+/// Try to run via gateway, return Ok(()) if it handled the request.
+fn try_run_via_gateway(
+    args: &[&str],
+    app_handle: Option<&tauri::AppHandle>,
+    gen_event_id: Option<&str>,
+    step_id: Option<&str>,
+) -> Result<String, String> {
+    let gateway = match get_global_gateway() {
+        Some(gw) => gw,
+        None => return Err("gateway not available".into()),
+    };
+
+    // Check connectivity before proceeding
+    if !tokio::runtime::Handle::current().block_on(gateway.is_connected()) {
+        return Err("gateway not connected".into());
+    }
+
+    // Build the request params from the sidecar args (resolves --messages_file / --tools_file to inline values)
+    let params = build_params_from_args(args);
+
+    let action = params.get("action")
+        .and_then(|v| v.as_str())
+        .unwrap_or("chat_stream")
+        .to_string();
+
+    let stream = tokio::runtime::Handle::current().block_on(
+        gateway.send_stream(&action, serde_json::Value::Object(params))
+    ).map_err(|e| format!("Gateway error: {e}"))?;
+
+    use futures_util::StreamExt;
+    let rt_handle = tokio::runtime::Handle::current();
+    let mut done_line = String::new();
+    let mut token_count: u32 = 0;
+    let mut last_subitem_emit = std::time::Instant::now();
+
+    rt_handle.block_on(async {
+        let mut stream = stream;
+        while let Some(item) = stream.next().await {
+            let val = match item {
+                Ok(v) => v,
+                Err(e) => return Err::<(), String>(e),
+            };
+            match val["type"].as_str() {
+                Some("delta") | Some("text_delta") => {
+                    if let Some(content) = val["content"].as_str() {
+                        if let Some(handle) = app_handle {
+                            let _ = handle.emit("llm:token", content);
+                            if let Some(eid) = gen_event_id {
+                                let _ = handle.emit("chat:preview_chunk", serde_json::json!({
+                                    "event_id": eid,
+                                    "chunk_type": "text",
+                                    "content": content,
+                                }));
+                            }
+                        }
+                        token_count += if content.len() < 4 { 1 } else { (content.len() as f64 / 4.0).ceil() as u32 };
+                        if let Some(sid) = step_id {
+                            if last_subitem_emit.elapsed().as_millis() > 500 {
+                                let _ = app_handle.map(|h| h.emit("reasoning:sub_item", serde_json::json!({
+                                    "step_id": sid,
+                                    "text": format!("{} tokens generados...", token_count),
+                                })));
+                                last_subitem_emit = std::time::Instant::now();
+                            }
+                        }
+                    }
+                }
+                Some("thinking") | Some("reasoning_delta") => {
+                    if let Some(content) = val["content"].as_str() {
+                        if let Some(handle) = app_handle {
+                            let _ = handle.emit("reasoning:thinking", serde_json::json!({
+                                "content": content,
+                            }));
+                            let _ = handle.emit("llm:reasoning_delta", serde_json::json!({
+                                "content": content,
+                            }));
+                        }
+                    }
+                }
+                Some("done") => {
+                    done_line = val.to_string();
+                }
+                Some("error") => {
+                    let msg = val["message"].as_str().unwrap_or("Error desconocido del LLM");
+                    return Err(msg.to_string());
+                }
+                _ => {}
+            }
+        }
+        Ok::<(), String>(())
+    })?;
+
+    if done_line.is_empty() {
+        Err("El gateway no emitió una respuesta final (done)".to_string())
+    } else {
+        Ok(done_line)
+    }
 }
 
 pub fn project_root() -> PathBuf {
@@ -184,7 +387,7 @@ pub fn project_root() -> PathBuf {
     std::env::current_dir().unwrap_or_default()
 }
 
-fn python_executable(root_path: &PathBuf) -> String {
+pub fn python_executable(root_path: &PathBuf) -> String {
     let candidates = [
         root_path.join("ai").join(".venv").join("Scripts").join("python.exe"),
         root_path.join(".venv").join("Scripts").join("python.exe"),

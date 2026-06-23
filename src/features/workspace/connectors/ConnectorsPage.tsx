@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button"
 import { AddConnectorDialog } from "@/features/workspace/connectors/AddConnectorDialog"
 import { ConnectorCard } from "@/features/workspace/connectors/ConnectorCard"
 import { ConnectorSetupDialog } from "@/features/workspace/connectors/ConnectorSetupDialog"
-import type { ConnectorProvider, ConnectorProviderId } from "@/features/workspace/connectors/connector-types"
+import type { ConnectorProviderInfo, ConnectorProviderId } from "@/features/workspace/connectors/connector-types"
 import { listConnectorConfigs } from "@/api/connector"
 import type { ConnectorConfig } from "@/types/connector"
 
@@ -30,7 +30,7 @@ const providerName: Record<ConnectorProviderId, string> = {
   s3: "S3 / MinIO",
 }
 
-function configToProvider(config: ConnectorConfig): ConnectorProvider {
+function configToProvider(config: ConnectorConfig): ConnectorProviderInfo {
   const id = backendProviderToId[config.provider] ?? (config.provider as ConnectorProviderId)
   return {
     id,
@@ -54,7 +54,7 @@ function configToProvider(config: ConnectorConfig): ConnectorProvider {
 export function ConnectorsPage() {
   const [catalogOpen, setCatalogOpen] = React.useState(false)
   const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [selectedProvider, setSelectedProvider] = React.useState<ConnectorProvider | null>(null)
+  const [selectedProvider, setSelectedProvider] = React.useState<ConnectorProviderInfo | null>(null)
   const [configs, setConfigs] = React.useState<ConnectorConfig[]>([])
 
   React.useEffect(() => {
@@ -63,7 +63,7 @@ export function ConnectorsPage() {
 
   const providers = configs.map(configToProvider)
 
-  const openProvider = (provider: ConnectorProvider) => {
+  const openProvider = (provider: ConnectorProviderInfo) => {
     setSelectedProvider(provider)
     setDialogOpen(true)
   }

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 pub struct PathGuard {
     allowed: Vec<PathBuf>,
+    #[allow(dead_code)]
     excluded: Vec<PathBuf>,
 }
 

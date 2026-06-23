@@ -44,6 +44,7 @@ import { parseMentions } from "@/features/workspace/chat/MentionPicker"
 import { ToolMenu } from "@/components/chat/ToolMenu"
 import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
 import { AttachmentChips, type Chip } from "@/components/chat/AttachmentChips"
+import { ReasoningToggle, type ReasoningEffort } from "@/features/chat/ReasoningToggle"
 
 export type ChatComposerProps = {
   value: string
@@ -65,6 +66,8 @@ export type ChatComposerProps = {
   activeSkills?: SkillInfo[]
   onRemoveSkill?: (id: string) => void
   sessionSummary?: SessionSummary | null
+  reasoningEffort?: ReasoningEffort
+  onReasoningEffortChange?: (v: ReasoningEffort) => void
 }
 
 function readFileAsBase64(file: File): Promise<string> {
@@ -96,6 +99,8 @@ export function ChatComposer({
   activeSkills,
   onRemoveSkill,
   sessionSummary,
+  reasoningEffort,
+  onReasoningEffortChange,
 }: ChatComposerProps) {
   // Picker state (unified @ and /)
   const createTask = useAgentTaskStore((s) => s.createTask)
@@ -585,6 +590,13 @@ export function ChatComposer({
             <SparklesIcon className="size-4" />
             {contextActive ? "Contexto activo" : "Usar contexto GIS"}
           </Button>
+
+          {reasoningEffort != null && onReasoningEffortChange && (
+            <ReasoningToggle
+              value={reasoningEffort}
+              onChange={onReasoningEffortChange}
+            />
+          )}
         </div>
 
         {webSearchEnabled && (

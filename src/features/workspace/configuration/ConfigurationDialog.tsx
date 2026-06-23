@@ -15,9 +15,10 @@ import { MapEnginesSection } from "@/features/workspace/configuration/sections/M
 import { McpRouterSection } from "@/features/workspace/configuration/sections/McpRouterSection"
 import { MemorySection } from "@/features/workspace/configuration/sections/MemorySection"
 import { TelegramIntegrationPanel } from "@/features/workspace/configuration/sections/TelegramIntegrationPanel"
-import { CommandsSection } from "@/features/workspace/configuration/sections/CommandsSection"
+
 import { AgentsSection } from "@/features/workspace/configuration/sections/AgentsSection"
 import { NotificationsPanel } from "@/features/workspace/configuration/sections/NotificationsPanel"
+import { WorkspaceSection } from "@/features/workspace/configuration/sections/WorkspaceSection"
 
 type ConfigurationDialogProps = {
   open: boolean
@@ -35,9 +36,9 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   maintenance: MaintenanceSection,
   telegram: TelegramIntegrationPanel,
   "gis-tools": GisToolsPanel,
-  commands: CommandsSection,
   agents: AgentsSection,
   notifications: NotificationsPanel,
+  workspace: WorkspaceSection,
 }
 
 export function ConfigurationDialog({

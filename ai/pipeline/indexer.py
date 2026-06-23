@@ -1,3 +1,4 @@
+import time
 from typing import Dict
 
 from docs.chunker import chunk_text
@@ -5,6 +6,14 @@ from docs.reader import extract_text
 from graph.extractor import extract_graph_entities
 from memory.chroma import upsert_chunks_to_vector_store
 from memory.embeddings import generate_embeddings
+
+
+def run_with_timing(fn, *args, **kwargs):
+    """Executes fn and returns (result, duration_ms)."""
+    start = time.perf_counter()
+    result = fn(*args, **kwargs)
+    duration_ms = int((time.perf_counter() - start) * 1000)
+    return result, duration_ms
 
 
 def index_document_file(

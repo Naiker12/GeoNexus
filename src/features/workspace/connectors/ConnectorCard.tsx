@@ -2,12 +2,12 @@ import { ExternalLinkIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 import { ConnectorLogo } from "@/features/workspace/connectors/ConnectorLogo"
-import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
+import type { ConnectorProviderInfo } from "@/features/workspace/connectors/connector-types"
 import { cn } from "@/lib/utils"
 
 type ConnectorCardProps = {
-  provider: ConnectorProvider
-  onSelect: (provider: ConnectorProvider) => void
+  provider: ConnectorProviderInfo
+  onSelect: (provider: ConnectorProviderInfo) => void
 }
 
 export function ConnectorCard({ provider, onSelect }: ConnectorCardProps) {
@@ -59,7 +59,7 @@ export function ConnectorCard({ provider, onSelect }: ConnectorCardProps) {
   )
 }
 
-function StatusBadge({ status }: { status: ConnectorProvider["status"] }) {
+function StatusBadge({ status }: { status: ConnectorProviderInfo["status"] }) {
   if (status === "connected") {
     return (
       <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.68rem] font-medium text-emerald-600 dark:text-emerald-400">

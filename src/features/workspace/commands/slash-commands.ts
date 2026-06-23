@@ -2,7 +2,7 @@ import { listDataAssets, getDataAsset, indexDocument, listDocumentChunks, listGr
 import type { DataAsset, DocumentChunk } from "@/types/data"
 import type { GraphNode } from "@/types/graph"
 
-export type SlashCommand = {
+export type SlashCommandEntry = {
   command: string
   description: string
   params: string
@@ -10,7 +10,7 @@ export type SlashCommand = {
   category: string
 }
 
-export const SLASH_COMMANDS: SlashCommand[] = [
+export const SLASH_COMMANDS: SlashCommandEntry[] = [
   { command: "/ayuda", description: "Muestra todos los comandos disponibles", params: "", example: "/ayuda", category: "General" },
   { command: "/limpiar", description: "Limpia el historial de la conversación actual", params: "", example: "/limpiar", category: "General" },
   { command: "/grafica", description: "Genera una gráfica con los datos proporcionados", params: "[tipo] [datos]", example: "/grafica barras JS 65 Python 58", category: "Gráficas" },

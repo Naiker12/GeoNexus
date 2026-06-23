@@ -9,16 +9,27 @@ import type {
 } from "@/types/reasoning-timeline"
 import type { AgentTraceEvent } from "@/types/chat"
 
+export interface ReasoningStepItem {
+  id: string
+  type: "thinking_start" | "reasoning_delta" | "tool_call" | "text_start" | "tool_call_start" | "tool_call_done"
+  content?: string
+  tool_name?: string
+  tool_args?: Record<string, unknown>
+  timestamp: number
+}
+
 export function useReasoningTimeline(sessionId: string | null) {
-  // All state hooks are at the top, no conditionals!
   const [timeline, setTimeline] = React.useState<ReasoningTimeline | null>(null)
   const [traceEvents, setTraceEvents] = React.useState<AgentTraceEvent[]>([])
   const [isStreaming, setIsStreaming] = React.useState(false)
   const [thinkingText, setThinkingText] = React.useState<string>("")
   const [isCollapsing, setIsCollapsing] = React.useState(false)
+  const [steps, setSteps] = React.useState<ReasoningStepItem[]>([])
   const collapseTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamingTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeSessionRef = React.useRef<string | null>(null)
   const prevSessionIdRef = React.useRef<string | null>(null)
+  const stepCounterRef = React.useRef(0)
 
   React.useEffect(() => {
     // Reset everything whenever sessionId changes
@@ -28,10 +39,16 @@ export function useReasoningTimeline(sessionId: string | null) {
       setIsStreaming(false)
       setIsCollapsing(false)
       setThinkingText("")
+      setSteps([])
+      stepCounterRef.current = 0
       activeSessionRef.current = null
       if (collapseTimerRef.current) {
         clearTimeout(collapseTimerRef.current)
         collapseTimerRef.current = null
+      }
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current)
+        streamingTimeoutRef.current = null
       }
       prevSessionIdRef.current = sessionId
     }
@@ -51,17 +68,34 @@ export function useReasoningTimeline(sessionId: string | null) {
           setTraceEvents([])
           setIsCollapsing(false)
           setThinkingText("")
+          setSteps([])
+          stepCounterRef.current = 0
           if (collapseTimerRef.current) {
             clearTimeout(collapseTimerRef.current)
             collapseTimerRef.current = null
           }
-        })
+          if (streamingTimeoutRef.current) {
+            clearTimeout(streamingTimeoutRef.current)
+            streamingTimeoutRef.current = null
+          }
+          streamingTimeoutRef.current = setTimeout(() => {
+            if (cancelled) return
+            if (activeSessionRef.current !== sid) return
+            activeSessionRef.current = null
+            setIsStreaming(false)
+            setThinkingText("")
+            setTimeline((prev) => {
+              if (!prev) return null
+              return { ...prev, totalDurationMs: Date.now() - (prev.steps[0]?.startedAt ?? Date.now()), isCollapsed: false }
+            })
+          }, 180_000)
+        }, { target: { kind: "Any" } })
         unlisteners.push(uStart)
 
         const uAgentEvent = await listen<AgentTraceEvent>("agent:event", (e) => {
           if (cancelled) return
           setTraceEvents((prev) => [...prev, e.payload])
-        })
+        }, { target: { kind: "Any" } })
         unlisteners.push(uAgentEvent)
 
         const uStep = await listen<ReasoningStepPayload>("reasoning:step", (e) => {
@@ -105,7 +139,7 @@ export function useReasoningTimeline(sessionId: string | null) {
             }
             return { ...base, steps: [...base.steps, newStep], totalSteps: base.steps.length + 1 }
           })
-        })
+        }, { target: { kind: "Any" } })
         unlisteners.push(uStep)
 
         const uSubItem = await listen<ReasoningSubItemPayload>("reasoning:sub_item", (e) => {
@@ -121,7 +155,7 @@ export function useReasoningTimeline(sessionId: string | null) {
             )
             return { ...prev, steps }
           })
-        })
+        }, { target: { kind: "Any" } })
         unlisteners.push(uSubItem)
 
         const uEnd = await listen<ReasoningEndPayload>("reasoning:end", (e) => {
@@ -130,6 +164,10 @@ export function useReasoningTimeline(sessionId: string | null) {
           activeSessionRef.current = null
           setIsStreaming(false)
           setThinkingText("")
+          if (streamingTimeoutRef.current) {
+            clearTimeout(streamingTimeoutRef.current)
+            streamingTimeoutRef.current = null
+          }
           setTimeline((prev) => {
             if (!prev) return null
             const duration = e.payload.total_ms > 0
@@ -146,15 +184,76 @@ export function useReasoningTimeline(sessionId: string | null) {
               setIsCollapsing(false)
             }, 500)
           }, 3000)
-        })
+        }, { target: { kind: "Any" } })
         unlisteners.push(uEnd)
 
         const uThinking = await listen<{ content: string }>("reasoning:thinking", (e) => {
           if (cancelled) return
           if (!activeSessionRef.current) return
           setThinkingText((prev) => prev + e.payload.content)
-        })
+        }, { target: { kind: "Any" } })
         unlisteners.push(uThinking)
+
+        const uToolCallStart = await listen<{ conversation_id?: string; tool_name: string; server_id?: string; args?: Record<string, unknown> }>(
+          "llm:tool_call_start",
+          (e) => {
+            if (cancelled) return
+            if (e.payload.conversation_id && e.payload.conversation_id !== sessionId) return
+            setSteps((prev) => [...prev, {
+              id: `step-${++stepCounterRef.current}`,
+              type: "tool_call_start",
+              tool_name: e.payload.tool_name,
+              tool_args: e.payload.args,
+              timestamp: Date.now(),
+            }])
+          },
+          { target: { kind: "Any" } }
+        )
+        unlisteners.push(uToolCallStart)
+
+        const uToolCallDone = await listen<{ conversation_id?: string; tool_name: string; success: boolean; duration_ms?: number }>(
+          "llm:tool_call_done",
+          (e) => {
+            if (cancelled) return
+            if (e.payload.conversation_id && e.payload.conversation_id !== sessionId) return
+            setSteps((prev) => [...prev, {
+              id: `step-${++stepCounterRef.current}`,
+              type: "tool_call_done",
+              tool_name: e.payload.tool_name,
+              content: e.payload.success ? `OK (${e.payload.duration_ms ?? 0}ms)` : "Error",
+              timestamp: Date.now(),
+            }])
+          },
+          { target: { kind: "Any" } }
+        )
+        unlisteners.push(uToolCallDone)
+
+        const uThinkingStart = await listen<{ conversation_id?: string }>(
+          "llm:thinking_start",
+          (e) => {
+            if (cancelled) return
+            if (e.payload.conversation_id && e.payload.conversation_id !== sessionId) return
+            setIsStreaming(true)
+            setSteps((prev) => [...prev, {
+              id: `step-${++stepCounterRef.current}`,
+              type: "thinking_start",
+              timestamp: Date.now(),
+            }])
+          },
+          { target: { kind: "Any" } }
+        )
+        unlisteners.push(uThinkingStart)
+
+        const uReasoningDelta = await listen<{ conversation_id?: string; content: string }>(
+          "llm:reasoning_delta",
+          (e) => {
+            if (cancelled) return
+            if (e.payload.conversation_id && e.payload.conversation_id !== sessionId) return
+            setThinkingText((prev) => prev + (e.payload.content ?? ""))
+          },
+          { target: { kind: "Any" } }
+        )
+        unlisteners.push(uReasoningDelta)
       }
       setup()
     }
@@ -166,6 +265,10 @@ export function useReasoningTimeline(sessionId: string | null) {
       if (collapseTimerRef.current) {
         clearTimeout(collapseTimerRef.current)
         collapseTimerRef.current = null
+      }
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current)
+        streamingTimeoutRef.current = null
       }
       unlisteners.forEach((fn) => fn())
     }
@@ -184,5 +287,31 @@ export function useReasoningTimeline(sessionId: string | null) {
     }, 500)
   }, [])
 
-  return { timeline, traceEvents, isStreaming, thinkingText, isCollapsing, toggleCollapse, collapseTimeline }
+  const reset = React.useCallback(() => {
+    setSteps([])
+    setIsStreaming(false)
+    setThinkingText("")
+    setTimeline(null)
+    setTraceEvents([])
+    setIsCollapsing(false)
+    stepCounterRef.current = 0
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current)
+      streamingTimeoutRef.current = null
+    }
+  }, [])
+
+  return {
+    timeline,
+    traceEvents,
+    isStreaming,
+    thinkingText,
+    isCollapsing,
+    toggleCollapse,
+    collapseTimeline,
+    steps,
+    isThinking: isStreaming,
+    reasoningText: thinkingText,
+    reset,
+  }
 }

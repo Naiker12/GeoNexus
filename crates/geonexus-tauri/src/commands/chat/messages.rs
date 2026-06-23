@@ -9,6 +9,7 @@ pub fn build_messages(
     rag_context: &str,
     skills_context: &str,
     identity_context: &str,
+    workspace_context: &str,
     user_content: &str,
     skill_names: &[String],
     asset_count: usize,
@@ -110,6 +111,13 @@ pub fn build_messages(
         messages.push(json!({
             "role": "system",
             "content": identity_context,
+        }));
+    }
+
+    if !workspace_context.is_empty() {
+        messages.push(json!({
+            "role": "system",
+            "content": workspace_context,
         }));
     }
 

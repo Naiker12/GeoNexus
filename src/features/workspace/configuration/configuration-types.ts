@@ -10,10 +10,10 @@ export type ConfigSectionId =
   | "local-paths"
   | "allowed-paths"
   | "gis-tools"
-  | "commands"
   | "maintenance"
   | "agents"
   | "notifications"
+  | "workspace"
 
 export type ConfigSection = {
   id: ConfigSectionId

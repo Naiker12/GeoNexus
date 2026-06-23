@@ -1,13 +1,8 @@
 import * as React from 'react';
 import { FileIcon } from './FileIcon';
 import { type FileNode } from './ide-types';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 import { ChevronRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface ExplorerProps {
   fileTree: FileNode[];

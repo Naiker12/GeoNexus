@@ -1,12 +1,7 @@
 import * as React from 'react';
 import { TimelineStep, TimelineItem, GenerationStats } from './timeline-types';
 import { CheckCircle2, XCircle, Circle, Loader2, Brain, Folder, Package, Bot, Database, Plug, Eye } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 interface AgentIconConfig {
   Icon: React.ComponentType<{ className?: string }>;

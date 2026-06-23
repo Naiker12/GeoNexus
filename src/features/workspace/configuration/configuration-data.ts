@@ -95,17 +95,18 @@ export const configGroups: ConfigGroup[] = [
     label: "SISTEMA",
     sections: [
       {
+        id: "workspace",
+        label: "Workspace",
+        icon: FolderCogIcon,
+        indicator: null,
+      },
+      {
         id: "agents",
         label: "Agentes",
         icon: SparklesIcon,
         indicator: null,
       },
-      {
-        id: "commands",
-        label: "Comandos",
-        icon: TerminalIcon,
-        indicator: null,
-      },
+
       {
         id: "notifications",
         label: "Notificaciones",

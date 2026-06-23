@@ -109,11 +109,18 @@ fn row_to_task(r: &sqlx::sqlite::SqliteRow) -> PopResult {
     }
 }
 
-#[allow(dead_code)]
 struct PopResult {
-    id: String, agent_type: String, payload: String, status: String,
-    created_at: String, started_at: Option<String>, completed_at: Option<String>,
-    error: Option<String>, retry_count: i64, max_retries: i64, project_id: String,
+    id: String, agent_type: String, payload: String,
+    #[allow(dead_code)]
+    status: String,
+    created_at: String,
+    #[allow(dead_code)]
+    started_at: Option<String>,
+    #[allow(dead_code)]
+    completed_at: Option<String>,
+    #[allow(dead_code)]
+    error: Option<String>,
+    retry_count: i64, max_retries: i64, project_id: String,
 }
 
 async fn pop_and_execute(

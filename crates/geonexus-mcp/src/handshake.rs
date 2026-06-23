@@ -2,13 +2,14 @@ use crate::constants::{MCP_CLIENT_NAME, MCP_CLIENT_VERSION, MCP_PROTOCOL_VERSION
 use serde_json::{json, Value};
 use std::time::Duration;
 
-pub fn build_initialize_payload() -> Value {
+pub fn build_initialize_payload(preferred_version: Option<&str>) -> Value {
+    let version = preferred_version.unwrap_or(MCP_PROTOCOL_VERSION);
     json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "initialize",
         "params": {
-            "protocolVersion": MCP_PROTOCOL_VERSION,
+            "protocolVersion": version,
             "capabilities": { "tools": {} },
             "clientInfo": {
                 "name": MCP_CLIENT_NAME,
@@ -16,6 +17,10 @@ pub fn build_initialize_payload() -> Value {
             }
         }
     })
+}
+
+pub fn build_initialize_payload_with_fallback() -> Value {
+    build_initialize_payload(Some(MCP_PROTOCOL_VERSION))
 }
 
 pub fn build_initialized_notification() -> Value {
@@ -75,7 +80,7 @@ pub async fn do_handshake(
     endpoint: &str,
     auth_token: Option<&str>,
 ) -> Result<String, String> {
-    let init_payload = build_initialize_payload();
+    let init_payload = build_initialize_payload(None);
     let init_resp = add_auth_header(client.post(endpoint), auth_token)
         .json(&init_payload)
         .send()

@@ -3,17 +3,17 @@ import {
   MessageSquarePlusIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
-  TerminalIcon,
 } from "lucide-react"
 
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import { Button } from "@/components/ui/Button"
 import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
+import { GatewayStatusBadge } from "@/components/chat/GatewayStatusBadge"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
-import { EventLogPanel } from "@/components/chat/EventLogPanel"
+
 import { useChatSession } from "@/components/chat/useChatSession"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
@@ -70,7 +70,8 @@ export function ChatPanel(_props: ChatPanelProps) {
   const [newChatCounter, setNewChatCounter] = React.useState(0)
   const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
   const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
-  const [eventLogOpen, setEventLogOpen] = React.useState(false)
+
+  const [reasoningEffort, setReasoningEffort] = React.useState<"none" | "minimal" | "medium" | "high" | "max">("none")
 
   React.useEffect(() => {
     localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
@@ -192,14 +193,7 @@ export function ChatPanel(_props: ChatPanelProps) {
               : "idle"}
             conversationCount={messages.filter(m => m.role === "user").length}
           />
-          <div className="ml-auto" />
-          <button
-            onClick={() => setEventLogOpen(!eventLogOpen)}
-            className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-0.5 rounded hover:bg-zinc-800/50 transition-all"
-          >
-            <TerminalIcon className="size-3.5" />
-            Log
-          </button>
+          <GatewayStatusBadge />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -280,7 +274,7 @@ export function ChatPanel(_props: ChatPanelProps) {
             const fromActive = activeSkills.map(s => s.name)
             const fromMention = mentions?.skillNames ?? []
             const allSkillNames = [...new Set([...fromActive, ...fromMention])]
-            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined, attachments)
+            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined, attachments, reasoningEffort)
           }}
           onStop={stop}
           onToggleContext={() => setContextPanelOpen((v) => !v)}
@@ -317,6 +311,8 @@ export function ChatPanel(_props: ChatPanelProps) {
             a.click()
             URL.revokeObjectURL(url)
           }}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
           onReindex={() => {
             toast({ title: "Reindexando...", description: "Reindexación del catálogo de assets iniciada", variant: "info" })
           }}
@@ -337,10 +333,7 @@ export function ChatPanel(_props: ChatPanelProps) {
         onToggleChange={setContextToggles}
       />
       
-      <EventLogPanel
-        isOpen={eventLogOpen}
-        onClose={() => setEventLogOpen(false)}
-      />
+
     </section>
   )
 }

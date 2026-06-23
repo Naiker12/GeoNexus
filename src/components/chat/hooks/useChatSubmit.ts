@@ -34,6 +34,7 @@ export function useChatSubmit(
   const [error, setError] = React.useState<string | null>(null)
   const submitTimeRef = React.useRef<number>(0)
   const generationRef = React.useRef(0)
+  const pendingConversationRef = React.useRef<string | null>(null)
 
   const activeProvider = React.useMemo(() => {
     if (!activeConnectorId) return null
@@ -52,7 +53,7 @@ export function useChatSubmit(
   }, [activeConnectorId, allConnectors])
 
   const submit = React.useCallback(
-    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[]) => {
+    async (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: FileAttachment[], reasoning_effort?: string) => {
       const clean = content.trim()
       if (!clean || pending) return
       if (!activeProvider) {
@@ -136,6 +137,7 @@ export function useChatSubmit(
         mentioned_agent_sources: mentions?.agentSources?.length ? mentions.agentSources : undefined,
         skill_names: skillNames && skillNames.length > 0 ? skillNames : undefined,
         attachments,
+        reasoning_effort: reasoning_effort || undefined,
       }
 
       if (webSearchEnabled) {

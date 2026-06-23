@@ -131,6 +131,8 @@ pub struct Message {
     pub attachments: Vec<FileAttachment>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_events: Option<Vec<serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,6 +163,8 @@ pub struct SendMessageInput {
     pub skill_names: Vec<String>,
     #[serde(default)]
     pub attachments: Vec<FileAttachment>,
+    #[serde(default)]
+    pub reasoning_effort: String,
 }
 
 impl SendMessageInput {

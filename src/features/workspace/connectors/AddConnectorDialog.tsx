@@ -11,14 +11,14 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/Input"
 import { ConnectorLogo } from "@/features/workspace/connectors/ConnectorLogo"
-import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
+import type { ConnectorProviderInfo } from "@/features/workspace/connectors/connector-types"
 import { cn } from "@/lib/utils"
 
 type AddConnectorDialogProps = {
   open: boolean
-  providers: ConnectorProvider[]
+  providers: ConnectorProviderInfo[]
   onOpenChange: (open: boolean) => void
-  onSelectProvider: (provider: ConnectorProvider) => void
+  onSelectProvider: (provider: ConnectorProviderInfo) => void
 }
 
 export function AddConnectorDialog({
@@ -48,7 +48,7 @@ export function AddConnectorDialog({
       )
     : providers
 
-  const selectProvider = (provider: ConnectorProvider) => {
+  const selectProvider = (provider: ConnectorProviderInfo) => {
     onSelectProvider(provider)
     onOpenChange(false)
   }
@@ -121,7 +121,7 @@ function ConnectorChoiceCard({
   provider,
   onSelect,
 }: {
-  provider: ConnectorProvider
+  provider: ConnectorProviderInfo
   onSelect: () => void
 }) {
   return (

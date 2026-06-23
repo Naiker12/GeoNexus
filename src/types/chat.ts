@@ -85,6 +85,7 @@ export type Message = {
   stats?: MessageStats
   attachments?: FileAttachment[]
   reasoning_events?: AgentTraceEvent[]
+  reasoning_content?: string
 }
 
 export type RecallChunk = {
@@ -129,6 +130,7 @@ export type SendMessageInput = {
   mentioned_agent_sources?: string[]
   skill_names?: string[]
   attachments?: FileAttachment[]
+  reasoning_effort?: string
 }
 
 // ── Mentionable Sources (from Rust get_mentionable_sources) ──

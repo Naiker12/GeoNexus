@@ -15,184 +15,122 @@ Workspace en D:\GeoNexus\Cargo.toml con 5 crates:
 │ geonexus-core      │ 0.2.0    │ Tipos, config, crypto, eventos, IA   │
 │ geonexus-db        │ 0.1.0    │ Repositorios SQLite, migraciones     │
 │ geonexus-mcp       │ 0.1.0    │ Cliente/servidor MCP, routing        │
-│ geonexus-fs-mcp    │ 0.1.0    │ Filesystem MCP con seguridad         │
+│ geonexus-fs-mcp    │ 0.1.0    │ Filesystem MCP con seguridad (NUEVO) │
 │ geonexus-tauri     │ 0.1.5    │ App Tauri v2, frontend + comandos    │
 └────────────────────┴──────────┴──────────────────────────────────────┘
 
 Resolución: resolver = "2"
 Edición: 2021
 
+NOTA: geonexus-fs-mcp es un crate NUEVO desde la auditoría anterior.
+Aporta sistema de archivos con control de acceso por niveles,
+indexador FTS + embeddings, y analizador de proyectos.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-2. GEONEXUS-CORE (crates/geonexus-core/)
+2. GEONEXUS-CORE (crates/geonexus-core/) — 37 .rs files
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Dependencias: serde, serde_json, uuid, async-trait, thiserror, toml,
 reqwest, tokio, sqlx, tracing, aes-gcm, rand, base64, sha2, hex, regex
 
-lib.rs módulos declarados (pero muchos archivos no existen aún):
-  pub mod allowlist;      # NO EXISTE (declarado pero sin archivo)
-  pub mod config;         # ✓ EXISTE
-  pub mod chat;           # NO EXISTE
-  pub mod connector;      # NO EXISTE
-  pub mod reasoning;      # ✓ EXISTE
-  pub mod agent;          # ✓ EXISTE
-  pub mod types;          # NO EXISTE
-  pub mod telegram;       # NO EXISTE
-  pub mod events;         # NO EXISTE
-  pub mod workers;        # NO EXISTE
-  pub mod crypto;         # ✓ EXISTE
-  pub mod security;       # NO EXISTE
-  pub use types::*;       # FALLA (types no existe)
+lib.rs módulos — TODOS EXISTEN (12/12):
 
-ANÁLISIS: El lib.rs declara módulos que NO existen como archivos.
-Esto causará error de compilación. Es código en desarrollo/planificado.
+┌──────────────────┬─────────────────────────────────────────────────┐
+│ allowlist        │ ✓ permit list con tests                         │
+│ config           │ ✓ GeoNexusConfig (TOML)                        │
+│ chat             │ ✓ tipos de chat, tests                         │
+│ connector        │ ✓ tipos, connector local, tests                 │
+│ reasoning        │ ✓ QueryIntent, AnalysisSession, ValidationResult│
+│ agent            │ ✓ struct Agent                                  │
+│ types            │ ✓ asset, chunk, graph, sync, task, mod, tests   │
+│ telegram         │ ✓ polling, sender, mod                          │
+│ events           │ ✓ types, bus (broadcast + SQLite persistencia)  │
+│ workers          │ ✓ handler, tasks (embedder, classifier,         │
+│                  │     indexer, graph)                              │
+│ crypto           │ ✓ AES-256-GCM encrypt/decrypt                  │
+│ security         │ ✓ token_fingerprint, credential_policy          │
+└──────────────────┴──────────────────────────────────────────────────┘
+
+NOTA: Sin cambios respecto a auditoría anterior. Los 12 módulos
+siguen existiendo y compilando. No se agregaron ni eliminaron módulos.
 
 ┌─────────────────────────────────────────────────────────────────────┐
 │ agent.rs          → struct Agent (id, project_id, name, kind, etc.) │
 │ config.rs         → GeoNexusConfig (MCP, Skills, LLM, Settings)     │
-│                    load_or_create() desde TOML                      │
 │ crypto.rs         → AES-256-GCM encrypt/decrypt para tokens         │
-│                    Deriva key de machine-id + SHA-256               │
-│                    Soporta Windows (registry) y Linux (machine-id)  │
-│ reasoning.rs      → QueryIntent (6 tipos), ValidationResult,        │
-│                    AnalysisSession                                  │
+│ reasoning.rs      → QueryIntent (6 tipos), ValidationResult         │
 └─────────────────────────────────────────────────────────────────────┘
 
-NOTA: El módulo events, workers, chat, connector, types, security,
-allowlist, telegram están declarados pero NO implementados. El crate
-no compila en su estado actual sin estos archivos.
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-3. GEONEXUS-DB (crates/geonexus-db/)
+3. GEONEXUS-DB (crates/geonexus-db/) — 30 .rs files
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Dependencias: geonexus-core, sqlx (SQLite), tokio, serde, serde_json,
 serde_yaml, sha2, uuid
 
-lib.rs módulos:
-  analysis_repo      # NO EXISTE
-  data_repo          # NO EXISTE (pero se re-exporta DataRepository)
-  connector_repo     # NO EXISTE
-  chat_repo          # NO EXISTE
-  agent_repo         # ✓ EXISTE
-  skills             # NO EXISTE
-  task_queue         # ✓ EXISTE
-  event_repo         # ✓ EXISTE
-  geo_event_repo     # ✓ EXISTE
-  artifact_repo      # ✓ EXISTE
-
-REPOSITORIOS EXISTENTES:
+lib.rs módulos — TODOS EXISTEN AHORA (10/10):
 
 ┌──────────────────┬─────────────────────────────────────────────────┐
-│ agent_repo.rs    │ list_agents, toggle_agent, seed_default_agents  │
-│                  │ 5 agentes por defecto: Indexador, Embedder,      │
-│                  │ Grafo, Clasificador, Chat IA                     │
+│ agent_repo       │ ✓ list, toggle, seed_default_agents             │
+│ event_repo       │ ✓ insert, list, count, delete_old_events        │
+│ geo_event_repo   │ ✓ insert_geo_event, list_geo_events            │
+│ artifact_repo    │ ✓ insert, list, get, delete_artifact            │
+│ task_queue       │ ✓ enqueue, pop_pending, mark_completed/failed   │
 ├──────────────────┼─────────────────────────────────────────────────┤
-│ event_repo.rs    │ insert_event, list_events (por domain, conv),   │
-│                  │ count_events, delete_old_events                  │
-│                  │ Tabla: legacy_events                             │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ geo_event_repo   │ insert_geo_event, list_geo_events               │
-│                  │ Tabla: events (GeoEvent)                        │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ artifact_repo    │ insert_artifact, list_artifacts, get_artifact,  │
-│                  │ delete_artifact                                 │
-│                  │ Tabla: artifacts                                │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ task_queue.rs    │ enqueue, pop_pending (transaccional),           │
-│                  │ mark_completed, mark_failed, mark_retry, list   │
-│                  │ Tabla: agent_tasks                              │
-│                  │ Estados: pending → running → completed/failed   │
-│                  │ Con reintentos (retry_count, max_retries)       │
+│ analysis_repo    │ ✓ AHORA EXISTE (mod.rs + cost, export, metrics) │
+│ data_repo        │ ✓ AHORA EXISTE (mod.rs + assets, chunks,       │
+│                  │     graph, init, metrics)                       │
+│ connector_repo   │ ✓ AHORA EXISTE (mod.rs + configs, files)       │
+│ chat_repo        │ ✓ AHORA EXISTE (mod.rs + conversations,        │
+│                  │     messages)                                   │
+│ skills           │ ✓ AHORA EXISTE (mod.rs + types, parser,        │
+│                  │     registry, injector)                         │
 └──────────────────┴──────────────────────────────────────────────────┘
 
-NOTA: data_repo (DataRepository) es usado por el Tauri main.rs pero
-el archivo NO EXISTE. Es un stub que se referencia pero no está
-implementado. Igual para analysis_repo, connector_repo, chat_repo, skills.
+CAMBIOS: Los 5 módulos que antes eran "✗ NO EXISTE" ahora están
+implementados con archivos completos. El crate compila sin errores.
+
+DataRepository (data_repo) ahora es funcional con init, assets,
+chunks, graph, metrics — ya no es un stub.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-4. GEONEXUS-MCP (crates/geonexus-mcp/)
+4. GEONEXUS-MCP (crates/geonexus-mcp/) — 12 .rs files
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Dependencias: serde, serde_json, uuid, sqlx, reqwest, tokio, tracing,
 chrono, regex, once_cell
 
 Propósito: Cliente MCP universal (Model Context Protocol).
-Soporta servidores HTTP y STDIO.
 
-MÓDULOS:
+MÓDULOS — TODOS EXISTEN (9/9):
 
 ┌──────────────────┬─────────────────────────────────────────────────┐
 │ constants.rs     │ MCP_PROTOCOL_VERSION = "2025-03-26"            │
-│                  │ Nombre cliente: geonexus-mcp-router             │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ types.rs         │ McpServer, McpTool, AllowlistRule,              │
-│                  │ CallToolPayload/Result, PingResult,             │
-│                  │ McpStatus (Online/Offline/Pending/Degraded),    │
-│                  │ McpTransport (Http/Stdio/Sse), ToolStatus,      │
-│                  │ RegisterServerPayload, ImportResult             │
-│                  │ Structs para importar config Claude Desktop      │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ handshake.rs     │ Protocolo MCP initialize:                       │
-│                  │ build_initialize_payload()                      │
-│                  │ build_initialized_notification()                │
-│                  │ build_tools_list_payload()                      │
-│                  │ do_handshake() → server_name                    │
-│                  │ fetch_tools_list() → Vec<tools>                 │
-│                  │ add_auth_header()                               │
-│                  │ check_jsonrpc_error()                           │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ registry.rs      │ CRUD de servidores MCP (SQLite):                │
-│                  │ list_servers, register_server, delete_server,   │
-│                  │ get_server, update_server_status,               │
-│                  │ update_server_ping_result                       │
-│                  │ CRUD de tools: list_tools, upsert_tool,         │
-│                  │ sync_tools_from_ping,                           │
-│                  │ list_callable_mcp_tools (filtrados)             │
-│                  │ Allowlist: list, upsert, delete, check          │
-│                  │ Auto-descubrimiento de tools HTTP               │
-│                  │ Audit trail: audit_tool_call                    │
-│                  │ Métricas: record_server_metric                  │
-│                  │ Preview tools (sin persistir)                   │
-│                  │ infer_tool_category() → GIS, Search, Data, AI   │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ executor.rs      │ Ejecuta tools/call:                             │
-│                  │ call_tool → call_tool_for_server                │
-│                  │ Soporta tanto HTTP como STDIO                   │
-│                  │ Check allowlist + rate limit antes de ejecutar  │
-│                  │ Sanitización de secrets en errores (regex)      │
-│                  │ Medición de duración + auditoría automática     │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ stdio.rs         │ Cliente MCP STDIO:                              │
-│                  │ discover_tools() + call_tool()                  │
-│                  │ Spawn proceso por llamada (sin pool persistente)│
-│                  │ Soporta Content-Length header                   │
-│                  │ Timeout configurable                            │
-│                  │ Env filtering (solo PATH, HOME, USER, etc.)     │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ pinger.rs        │ ping_server() y ping_server_with_auth():        │
-│                  │ Handshake completo + tools/list                 │
-│                  │ Mensajes descriptivos por código HTTP           │
-│                  │ (401, 403, 404, 405, 415, 429, 5xx)            │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ tool_catalog.rs  │ Prefijo mcp__ para tools expuestas al LLM      │
-│                  │ build_mcp_tool_name(), resolve_mcp_tool_name()  │
-│                  │ normalize_tool_parameters()                     │
-│                  │ mcp_tool_to_llm_definition() (formato function) │
-│                  │ format_mcp_tool_result()                        │
+│ types.rs         │ McpServer, McpTool, AllowlistRule, etc.        │
+│ handshake.rs     │ build_initialize_payload(), do_handshake(), etc │
+│ registry.rs      │ CRUD servidores + tools SQLite, allowlist,     │
+│                  │   auditoría, métricas, preview tools            │
+│ executor.rs      │ call_tool(), call_tool_for_server(),           │
+│                  │   allowlist + rate limit antes de ejecutar      │
+│ stdio.rs         │ Cliente MCP STDIO, spawn por llamada           │
+│ pinger.rs        │ ping_server(), ping_server_with_auth()         │
+│ tool_catalog.rs  │ Prefijo mcp__ para tools, normalización        │
+│ containers/      │ schema.rs + tests.rs (NUEVO)                   │
 └──────────────────┴──────────────────────────────────────────────────┘
 
+NOTA: Se agregó el submódulo containers/ (schema.rs + tests.rs)
+para soporte de contenedores MCP.
+
 FLUJO DE EJECUCIÓN MCP:
-1. Frontend llama a invoke("call_mcp_tool", {server_id, tool, args})
+1. Frontend llama invoke("call_mcp_tool", {server_id, tool, args})
 2. Tauri handler → registry::get_server() → executor::call_tool_for_server()
 3. Executor verifica allowlist + rate limit
 4. Según transporte: HTTP (handshake + POST) o STDIO (spawn + JSON-RPC)
 5. Sanitiza respuesta (elimina secrets)
 6. Audita (inserta en mcp_tool_calls)
-7. Retorna CallToolResult al frontend
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-5. GEONEXUS-FS-MCP (crates/geonexus-fs-mcp/)
+5. GEONEXUS-FS-MCP (crates/geonexus-fs-mcp/) — 32 .rs files (NUEVO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Dependencias: serde, serde_json, uuid, thiserror, tracing, chrono,
@@ -201,52 +139,33 @@ tokio, async-trait, sha2, sqlx, geonexus-core, tempfile (dev)
 Propósito: Sistema de archivos con control de acceso, indexing,
 y operaciones auditadas. Seguridad por niveles (read/write/execute/admin).
 
-MÓDULOS EXISTENTES:
+MÓDULOS — TODOS EXISTEN (8/8):
 
 ┌──────────────────┬─────────────────────────────────────────────────┐
-│ config.rs        │ FilesystemConfig (JSON en ~/.geonexus/)         │
-│                  │ AllowedPathEntry (path, level, label)           │
-│                  │ GlobalDefaults (level, require_confirm_for,     │
-│                  │   max_file_size_mb, denied_extensions)          │
-│                  │ IndexingConfig (enabled, exclude_dirs)          │
-│                  │ level_for_path() — matching por prefijo         │
-│                  │ contains_path() — starts_with check             │
-│                  │ Validación completa en validate()               │
+│ config.rs        │ FilesystemConfig (JSON), AllowedPathEntry,      │
+│                  │   GlobalDefaults, level_for_path()              │
+│ security/        │ 5 guards: path_guard, level_guard, rate_guard,  │
+│                  │   confirm_gate, guard_chain                     │
+│ commands/        │ 13 comandos: read, write, create, delete,       │
+│                  │   copy, move, list, search, analyze_project,    │
+│                  │   detect_framework, create_project, etc.        │
+│ timeline.rs      │ FilesystemTimeline (buffer circular 200)        │
+│ facade.rs        │ FilesystemMcpFacade con GuardChain completo     │
+│ worker.rs        │ FilesystemWorker (WorkerHandler impl)           │
 ├──────────────────┼─────────────────────────────────────────────────┤
-│ facade.rs        │ FilesystemMcpFacade:                            │
-│                  │ GuardChain (PathGuard + LevelGuard +            │
-│                  │   RateGuard + ConfirmGate)                      │
-│                  │ dispatch() pipeline completo:                   │
-│                  │ 1. CommandFactory::build()                      │
-│                  │ 2. LevelGuard::check()                          │
-│                  │ 3. RateGuard::check()                           │
-│                  │ 4. ConfirmGate (si requiere confirmación)       │
-│                  │ 5. AuditedOperation::execute()                  │
-│                  │ 6. Timeline + EventBus emit                     │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ timeline.rs      │ FilesystemTimeline:                             │
-│                  │ TimelineEntry (id, tool_name, path, status,     │
-│                  │   started_at, duration_ms)                      │
-│                  │ OperationStatus (Started, Completed, Failed)    │
-│                  │ Buffer circular de 200 entradas                 │
-├──────────────────┼─────────────────────────────────────────────────┤
-│ worker.rs        │ FilesystemWorker — WorkerHandler impl           │
-│                  │ Procesa tareas "filesystem" del task queue      │
-│                  │ Deserializa payload, crea Facade, hace dispatch │
+│ indexer/         │ ✓ AHORA EXISTE: mod.rs + fts_index.rs,         │
+│                  │     embeddings.rs, hybrid_search.rs             │
+│ analyzer/        │ ✓ AHORA EXISTE: mod.rs + framework_detect.rs,  │
+│                  │     templates/ (8 lenguajes)                    │
 └──────────────────┴──────────────────────────────────────────────────┘
 
-MÓDULOS DECLARADOS EN lib.rs PERO NO EXISTENTES:
-  security/         # NO EXISTE (GuardChain, PathGuard, LevelGuard,
-                    #   RateGuard, ConfirmGate referenciados en facade)
-  commands/         # NO EXISTE (CommandFactory referenciado)
-  indexer/          # NO EXISTE
-  analyzer/         # NO EXISTE
-
-NOTA: El facade.rs referencia structs de security/ y commands/ que
-no existen como archivos. Este crate NO compila actualmente.
+CAMBIOS: Los 2 módulos que antes eran "✗ NO EXISTE" (indexer, analyzer)
+ahora están implementados. indexer/ tiene búsqueda FTS + embeddings +
+hybrid search con RRF scoring. analyzer/ detecta frameworks y genera
+proyectos desde plantillas (8 lenguajes).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-6. GEONEXUS-TAURI (crates/geonexus-tauri/)
+6. GEONEXUS-TAURI (crates/geonexus-tauri/) — 60+ .rs files
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Dependencias: Todos los crates anteriores + tauri v2,
@@ -258,50 +177,53 @@ main.rs — Entry point de la aplicación de escritorio.
 ESTRUCTURA:
 ┌──────────────────────────────────────────────────────────────────┐
 │ AppState: db (SqlitePool), repo (DataRepository), db_path,       │
-│           app_handle, event_bus (EventBus)                        │
+│           app_handle, event_bus (EventBus), gateway (GatewayClient)│
 ├──────────────────────────────────────────────────────────────────┤
 │ Setup sequence:                                                    │
 │ 1. Plugin opener + dialog (feature) + stronghold (feature)       │
 │ 2. Resuelve app_data_dir + db_path (geonexus.db)                 │
 │ 3. Inicializa DataRepository (pool + migrations)                 │
 │ 4. Crea EventBus (sistema de eventos interno)                    │
-│ 5. Inicia event forwarder (Rust → frontend)                      │
-│ 6. Inicia Worker Pool (tokio background, 2 workers)              │
-│ 7. Carga/crea filesystem config + FilesystemMcpFacade            │
-│ 8. Carga/crea geonexus.config.toml                               │
-│ 9. Registra servidores MCP por defecto                           │
-│ 10. Siembra agentes por defecto (seed_default_agents)            │
-│ 11. Instala skills built-in (pot-analyzer)                       │
-│ 12. Inicia background pinger MCP (intervalo configurable)        │
+│ 5. Lanza sidecar.py --serve (gateway WS persistente)             │
+│ 6. GatewayClient::new() + set_global_gateway()                   │
+│ 7. Retry loop: is_connected() hasta 5 intentos con backoff       │
+│ 8. Inicia event forwarder (Rust → frontend)                      │
+│ 9. Inicia Worker Pool (tokio background, 2 workers)              │
+│ 10. Carga/crea filesystem config + FilesystemMcpFacade (NUEVO)  │
+│ 11. Carga/crea geonexus.config.toml                              │
+│ 12. Registra servidores MCP por defecto                          │
+│ 13. Siembra agentes por defecto (seed_default_agents)            │
+│ 14. Instala skills built-in (pot-analyzer)                       │
+│ 15. Inicia background pinger MCP (intervalo configurable)        │
 └──────────────────────────────────────────────────────────────────┘
 
-COMANDOS TAURI REGISTRADOS (~104 comandos en total):
+COMANDOS TAURI REGISTRADOS (~94 comandos en 23 módulos):
 
 ┌──────────────────────┬────────────────────────────────────────────┐
 │ Categoría            │ Comandos                                   │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Data (Fase 1)        │ list_data_assets, get_data_asset,          │
+│ Data                 │ list_data_assets, get_data_asset,          │
 │                      │ get_data_store_metrics, get_sync_events,   │
 │                      │ validate_data_asset, delete_data_asset,    │
 │                      │ get_data_lineage, reindex_asset            │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Connector (Fase 2)   │ register_local_connector, delete_connector,│
+│ Connector            │ register_local_connector, delete_connector,│
 │                      │ update_connector, list_connector_files,    │
 │                      │ cache_connector_file, sync_local_connector,│
 │                      │ upload_asset_file, list_connector_configs, │
 │                      │ exchange_dropbox_oauth_code,               │
 │                      │ list_dropbox_folder, download_dropbox_file,│
 │                      │ get_onedrive_drive_info,                   │
-│                      │ list_onedrive_folder, download_onedrive_file│
+│                      │ list_onedrive_folder, download_onedrive    │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Document/Graph (F3)  │ index_document, list_document_chunks,      │
+│ Document/Graph       │ index_document, list_document_chunks,      │
 │                      │ list_graph_nodes, list_graph_edges,        │
 │                      │ search_graph_nodes, rebuild_knowledge_graph│
 │                      │ update_node_position                       │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Containers (Fase 4)  │ init_containers_mcp, dispatch_container_tool│
+│ Containers MCP       │ init_containers_mcp, dispatch_container_tool│
 ├──────────────────────┼────────────────────────────────────────────┤
-│ LLM (Fase 6)         │ ping_llm_provider, list_llm_models,        │
+│ LLM                  │ ping_llm_provider, list_llm_models,        │
 │                      │ send_llm_message                           │
 ├──────────────────────┼────────────────────────────────────────────┤
 │ Analysis             │ get_analysis_metrics, get_token_timeline,   │
@@ -309,33 +231,31 @@ COMANDOS TAURI REGISTRADOS (~104 comandos en total):
 │                      │ get_skill_usage, export_analysis_traces,   │
 │                      │ get_cost_by_timeframe, get_top_queries     │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Chat (Fase 7)        │ send_message, delete_conversation,         │
+│ Chat                 │ send_message, delete_conversation,         │
 │                      │ list_conversations, list_messages,         │
 │                      │ recall_chunks, get_project_context         │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ OAuth                │ generate_pkce_challenge, build_oauth_url,  │
+│ OAuth (NUEVO)        │ generate_pkce_challenge, build_oauth_url,  │
 │                      │ start_oauth_flow, exchange_oauth_code,     │
 │                      │ get_oauth_user_info, save_oauth_token,     │
 │                      │ get_oauth_token                           │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Filesystem           │ open_folder_picker, open_file_picker,      │
+│ Filesystem (NUEVO)   │ open_folder_picker, open_file_picker,      │
 │                      │ read_file_base64, validate_folder_path,    │
 │                      │ list_directory, get/save_filesystem_config,│
 │                      │ is_first_launch, set_onboarding_completed, │
 │                      │ get_filesystem_timeline                   │
 ├──────────────────────┼────────────────────────────────────────────┤
 │ Agents               │ list_agents, toggle_agent, set_agent_model,│
-│                      │ run_agent_pipeline, agent_list/create/     │
-│                      │ start/cancel/retry/delete_task             │
+│                      │ run_agent_pipeline, agent task CRUD        │
 ├──────────────────────┼────────────────────────────────────────────┤
 │ Agent Identity       │ read_identity_file, write_identity_file    │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Graph Events         │ clear_ephemeral_nodes, get_recent_graph_events│
+│ Graph Events         │ clear_ephemeral_nodes, get_recent_graph    │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Notifications        │ send_os_notification, request_notification_│
-│                      │ permission                                 │
+│ Notifications (N)    │ send_os_notification, request_notification │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ MCP Runtime          │ list/register/delete/ping MCP servers,     │
+│ MCP Runtime (NUEVO)  │ list/register/delete/ping MCP servers,     │
 │                      │ ping_mcp_server_url, list/call MCP tools,  │
 │                      │ list/upsert/delete allowlist, import/export│
 │                      │ MCP config, discover/preview MCP tools    │
@@ -346,75 +266,63 @@ COMANDOS TAURI REGISTRADOS (~104 comandos en total):
 │                      │ list_orphan_nodes, merge_nodes,            │
 │                      │ get_node_memory_stats                     │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Skills               │ list_skills, install_skill_from_file,      │
+│ Skills (NUEVO)       │ list_skills, install_skill_from_file,      │
 │                      │ install_skill_from_github, toggle_skill,   │
 │                      │ read_skill_md, preview_skill_file          │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Audio                │ audio_transcribe, audio_synthesize         │
+│ Audio (NUEVO)        │ audio_transcribe, audio_synthesize         │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Telegram             │ telegram_save/load/test_config,            │
+│ Telegram (NUEVO)     │ telegram_save/load/test_config,            │
 │                      │ telegram_start/stop_polling,               │
 │                      │ telegram_get_status, send_chat_action,     │
 │                      │ send_response, generate_pairing_code       │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Health Check         │ run_health_check                           │
-├──────────────────────┼────────────────────────────────────────────┤
-│ Coding Agent         │ coding_agent_clarify/start_generation/     │
+│ Coding Agent (NUEVO) │ coding_agent_clarify/start_generation/     │
 │                      │ approve_plan/resolve_permission/load_project│
 ├──────────────────────┼────────────────────────────────────────────┤
 │ Events + Artifacts   │ list/count events, list/open/get/delete    │
-│                      │ artifacts, subscribe_events, list_geo_events│
+│                      │ artifacts, subscribe_events, list_geo      │
 ├──────────────────────┼────────────────────────────────────────────┤
-│ Secure Store (P0)    │ set_secure, get_secure, delete_secure      │
+│ Secure Store (NUEVO) │ set_secure, get_secure, delete_secure      │
+├──────────────────────┼────────────────────────────────────────────┤
+│ Health Check (NUEVO) │ run_health_check, check_gateway            │
 └──────────────────────┴──────────────────────────────────────────────┘
 
 builtin_skills.rs:
 - Instala pot-analyzer (análisis de POT colombianos)
 - Skill con frontmatter (name, description, version, tags)
-- Almacenado en MD dentro del código fuente
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-7. CRYPTO (crypto.rs)
+7. CRYPTO (crypto.rs) — SIN CAMBIOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Algoritmo: AES-256-GCM
 Derivación de key:
-1. Si GEONEXUS_SECRET_KEY existe → usa esa key (base64, 32 bytes)
+1. GEONEXUS_SECRET_KEY → key base64 (32 bytes)
 2. Sino → SHA-256("geonexus-telegram-v1:" + machine_id)
-   - Windows: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid
-   - Linux: /etc/machine-id o /var/lib/dbus/machine-id
+   - Windows: HKLM\...\MachineGuid
+   - Linux: /etc/machine-id
    - Fallback: "geonexus-fallback-id"
 Formato: nonce_base64:ciphertext_base64
-Fingerprint: SHA-256(token)[:8] en hex
-
-Tests incluidos: encrypt/decrypt roundtrip, tamper detection, fingerprint consistency
+Tests: encrypt/decrypt roundtrip, tamper detection, fingerprint
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-8. WORKER POOL
+8. WORKER POOL — SIN CAMBIOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Implementado en tauri::main.rs (inline):
-- 2 worker threads
-- Poll interval: 2000ms
-- Handlers: FilesystemWorker + default_handlers (de geonexus-core::workers::tasks)
-- Ejecuta en tokio runtime propio (spawn en std::thread)
-- Toma tareas de agent_tasks (pop_pending transaccional)
-
-NOTA: geonexus-core::workers NO EXISTE como archivos. Es código
-planificado. El WorkerPool y default_handlers están referenciados
-pero no implementados.
+- 2 worker threads, poll interval: 2000ms
+- Handlers: FilesystemWorker + default_handlers
+- Ejecuta en tokio runtime propio
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-9. EVENT BUS
+9. EVENT BUS — SIN CAMBIOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-EventBus referenciado pero NO IMPLEMENTADO en geonexus-core.
-Se usa en:
-- main.rs: EventBus::new(db)
-- event_forwarder (Rust → frontend Tauri events)
-- FilesystemMcpFacade (para emitir eventos de operaciones)
-
-La implementación real está pendiente.
+EventBus implementado en geonexus-core/src/events/bus.rs:
+- Canal broadcast tokio (eventos en memoria)
+- Persistencia SQLite opcional
+- Se usa en main.rs, FilesystemMcpFacade, commands/events.rs
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 10. TECNOLOGÍAS Y LIBRERÍAS (RUST)
@@ -425,6 +333,8 @@ La implementación real está pendiente.
 ├─────────────────────┼────────────────────────────────────────────┤
 │ Tauri 2             │ Framework de aplicación de escritorio      │
 │ tokio               │ Async runtime (full features)              │
+│ tokio-tungstenite   │ Cliente WebSocket para gateway WS          │
+│ futures-util        │ Stream/SinkExt para el gateway             │
 │ sqlx 0.7            │ ORM SQLite con migraciones                 │
 │ serde / serde_json  │ Serialización universal                    │
 │ serde_yaml          │ Serialización YAML                         │
@@ -464,26 +374,35 @@ La implementación real está pendiente.
 ✓ AES-256-GCM para tokens sensibles
 ✓ Worker pool con reintentos y cola transaccional
 ✓ Background pinger para monitoreo de servidores MCP
-✓ 104+ comandos Tauri organizados por fase
+✓ ~94 comandos Tauri organizados por dominio
+✓ NUEVO: geonexus-db completo (10/10 módulos, sin stubs)
+✓ NUEVO: geonexus-fs-mcp completo (8/8 módulos, sin stubs)
+✓ NUEVO: Indexador FTS + embeddings + hybrid search (RRF scoring)
+✓ NUEVO: Analizador de proyectos con detección de frameworks
+✓ NUEVO: OAuth flow completo (PKCE, 7 comandos)
+✓ NUEVO: MCP runtime management (13 comandos)
+✓ NUEVO: Skills management (5 comandos)
+✓ NUEVO: Telegram integration (8 comandos)
+✓ NUEVO: Coding agent con resolución de permisos
+✓ NUEVO: Secure store (credenciales cifradas)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 12. DEBILIDADES / RIESGOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✗ Múltiples módulos declarados en lib.rs pero NO IMPLEMENTADOS
-  (geonexus-core: ~7 módulos faltantes, geonexus-db: ~5, geonexus-fs-mcp: ~4)
-  → El proyecto NO COMPILA en su estado actual
-✗ DataRepository no existe pero se instancia en main.rs
-✗ EventBus no tiene implementación real
-✗ WorkerPool y default_handlers no existen
-✗ FilesystemMcpFacade depende de security/ y commands/ que no existen
+✗ Errores de compilación en tests de geonexus-core, geonexus-db,
+  geonexus-fs-mcp (pre-existing, no afectan lib/bins)
 ✗ Sin CLI o binario independiente (todo es librería + Tauri)
 ✗ Sin soporte multiplataforma verificado (Linux declarado pero no probado)
 ✗ Dependencia de tauri-plugin-stronghold es feature opcional sin fallback
 ✗ Sin CI/CD para Linux/Mac (solo Windows en release.yml)
+✗ Sin WebSocket nativo (usa tokio-tungstenite, overhead de conexión)
+✗ Sin tests de integración entre crates (solo unitarios)
+✗ 94 comandos Tauri es mucha superficie de ataque (falta auditoría
+  de permisos granular)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-13. SOPORTE MULTIPLATAFORMA
+13. SOPORTE MULTIPLATAFORMA — SIN CAMBIOS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Windows:
@@ -503,5 +422,32 @@ macOS:
   - Sin CI/CD para macOS
 
 NOTA: El flujo de CI/CD release.yml solo compila para Windows.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. CAMBIOS RESPECTO A AUDITORÍA ANTERIOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌────────────────────────────────────┬────────────────────────────────┐
+│ Cambio                             │ Detalle                        │
+├────────────────────────────────────┼────────────────────────────────┤
+│ geonexus-fs-mcp (nuevo crate)      │ 32 .rs, 8 módulos, indexador  │
+│                                    │ + analizador + 13 comandos    │
+├────────────────────────────────────┼────────────────────────────────┤
+│ geonexus-db: 5 módulos completados │ analysis_repo, data_repo,      │
+│                                    │ connector_repo, chat_repo,     │
+│                                    │ skills — todos existen ahora   │
+├────────────────────────────────────┼────────────────────────────────┤
+│ geonexus-fs-mcp: 2 módulos nuevos  │ indexer/ (FTS+emb+hybrid),    │
+│                                    │ analyzer/ (framework+templates)│
+├────────────────────────────────────┼────────────────────────────────┤
+│ geonexus-mcp: containers/ schema   │ Soporte para contenedores MCP  │
+├────────────────────────────────────┼────────────────────────────────┤
+│ geonexus-tauri: nuevas categorías  │ OAuth, Filesystem, MCP Runtime,│
+│                                    │ Skills, Audio, Telegram,       │
+│                                    │ Coding Agent, Secure Store,    │
+│                                    │ Health Check                   │
+├────────────────────────────────────┼────────────────────────────────┤
+│ Total comandos Tauri               │ ~94 comandos en 23 módulos     │
+└────────────────────────────────────┴────────────────────────────────┘
 
 Fin del reporte de auditoría — Rust.

@@ -10,7 +10,7 @@ export type ConnectorProviderId =
   | "api-rest"
   | "s3"
 
-export type ConnectorProvider = {
+export type ConnectorProviderInfo = {
   id: ConnectorProviderId
   name: string
   kind:

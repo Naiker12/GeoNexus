@@ -122,6 +122,7 @@ pub fn is_secret_filename(name: &str) -> bool {
 
 pub struct AuditedOperation {
     command: Box<dyn Command>,
+    #[allow(dead_code)]
     event_bus: Option<geonexus_core::events::EventBus>,
 }
 

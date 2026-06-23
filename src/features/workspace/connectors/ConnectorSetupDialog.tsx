@@ -30,18 +30,18 @@ import {
   buildAuthUrl,
   ONEDRIVE_CONFIG,
 } from "@/config/oauth"
-import type { ConnectorProvider } from "@/features/workspace/connectors/connector-types"
+import type { ConnectorProviderInfo } from "@/features/workspace/connectors/connector-types"
 import { cn } from "@/lib/utils"
 import { invoke } from "@tauri-apps/api/core"
 
 type ConnectorSetupDialogProps = {
   open: boolean
-  provider: ConnectorProvider
+  provider: ConnectorProviderInfo
   onOpenChange: (open: boolean) => void
   onConfigSaved?: () => void
 }
 
-function isCloudProvider(provider: ConnectorProvider): boolean {
+function isCloudProvider(provider: ConnectorProviderInfo): boolean {
   return ["onedrive", "google-drive", "sharepoint", "dropbox"].includes(provider.id)
 }
 
@@ -216,7 +216,7 @@ export function ConnectorSetupDialog({
   )
 }
 
-function ConnectorSummary({ provider }: { provider: ConnectorProvider }) {
+function ConnectorSummary({ provider }: { provider: ConnectorProviderInfo }) {
   return (
     <div className="rounded-lg border border-border bg-background/70 p-3">
       <div className={cn("flex size-12 items-center justify-center rounded-lg border", provider.accent)}>
@@ -233,7 +233,7 @@ function ConnectorSummary({ provider }: { provider: ConnectorProvider }) {
   )
 }
 
-function ConnectorCapabilityPanels({ provider }: { provider: ConnectorProvider }) {
+function ConnectorCapabilityPanels({ provider }: { provider: ConnectorProviderInfo }) {
   return (
     <div className="grid gap-3">
       <ConnectorInfoPanel icon={ShieldCheckIcon} title="Permisos solicitados" items={provider.permissions} />

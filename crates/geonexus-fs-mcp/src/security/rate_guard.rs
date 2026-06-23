@@ -1,6 +1,7 @@
 use crate::config::FilesystemConfig;
 
 pub struct RateGuard {
+    #[allow(dead_code)]
     config: FilesystemConfig,
 }
 

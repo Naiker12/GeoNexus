@@ -16,6 +16,7 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     let reasoning_events_ser = msg.reasoning_events
         .as_ref()
         .and_then(|e| serde_json::to_string(e).ok());
+    let reasoning_content_val = msg.reasoning_content.clone();
 
     let (it, ot, tt, dur, tps, cost, cw, cup) = if let Some(ref s) = msg.stats {
         (Some(s.input_tokens as i64), Some(s.output_tokens as i64), Some(s.total_tokens as i64),
@@ -25,41 +26,89 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
         (None, None, None, None, None, None, None, None)
     };
 
-    sqlx::query(
-        "INSERT INTO messages
-            (id, conversation_id, role, content, provider, model,
-             trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, attachments_json, reasoning_events, created_at,
-             input_tokens, output_tokens, total_tokens, duration_ms,
-             tokens_per_second, cost_usd, context_window, context_used_pct)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                 ?, ?, ?, ?, ?, ?, ?, ?)",
+    // Check if reasoning_content column exists
+    let has_reasoning_content: bool = sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT 1 FROM pragma_table_info('messages') WHERE name = 'reasoning_content'"
     )
-    .bind(&msg.id)
-    .bind(&msg.conversation_id)
-    .bind(&role)
-    .bind(&msg.content)
-    .bind(&msg.provider)
-    .bind(&msg.model)
-    .bind(&msg.trace_id)
-    .bind(&chunks)
-    .bind(&nodes)
-    .bind(&tools)
-    .bind(&sources)
-    .bind(&research_sources_ser)
-    .bind(&attachments_ser)
-    .bind(&reasoning_events_ser)
-    .bind(msg.created_at)
-    .bind(it)
-    .bind(ot)
-    .bind(tt)
-    .bind(dur)
-    .bind(tps)
-    .bind(cost)
-    .bind(cw)
-    .bind(cup)
-    .execute(pool)
+    .fetch_optional(pool)
     .await
-    .map_err(|e| format!("Error insertando mensaje: {e}"))?;
+    .map(|x| x.flatten().is_some())
+    .unwrap_or(false);
+
+    if has_reasoning_content {
+        sqlx::query(
+            "INSERT INTO messages
+                (id, conversation_id, role, content, provider, model,
+                 trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, attachments_json, reasoning_events, reasoning_content, created_at,
+                 input_tokens, output_tokens, total_tokens, duration_ms,
+                 tokens_per_second, cost_usd, context_window, context_used_pct)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                     ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&msg.id)
+        .bind(&msg.conversation_id)
+        .bind(&role)
+        .bind(&msg.content)
+        .bind(&msg.provider)
+        .bind(&msg.model)
+        .bind(&msg.trace_id)
+        .bind(&chunks)
+        .bind(&nodes)
+        .bind(&tools)
+        .bind(&sources)
+        .bind(&research_sources_ser)
+        .bind(&attachments_ser)
+        .bind(&reasoning_events_ser)
+        .bind(&reasoning_content_val)
+        .bind(msg.created_at)
+        .bind(it)
+        .bind(ot)
+        .bind(tt)
+        .bind(dur)
+        .bind(tps)
+        .bind(cost)
+        .bind(cw)
+        .bind(cup)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error insertando mensaje: {e}"))?;
+    } else {
+        sqlx::query(
+            "INSERT INTO messages
+                (id, conversation_id, role, content, provider, model,
+                 trace_id, chunks_used, nodes_used, tool_calls, sources_json, research_sources, attachments_json, reasoning_events, created_at,
+                 input_tokens, output_tokens, total_tokens, duration_ms,
+                 tokens_per_second, cost_usd, context_window, context_used_pct)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                     ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&msg.id)
+        .bind(&msg.conversation_id)
+        .bind(&role)
+        .bind(&msg.content)
+        .bind(&msg.provider)
+        .bind(&msg.model)
+        .bind(&msg.trace_id)
+        .bind(&chunks)
+        .bind(&nodes)
+        .bind(&tools)
+        .bind(&sources)
+        .bind(&research_sources_ser)
+        .bind(&attachments_ser)
+        .bind(&reasoning_events_ser)
+        .bind(msg.created_at)
+        .bind(it)
+        .bind(ot)
+        .bind(tt)
+        .bind(dur)
+        .bind(tps)
+        .bind(cost)
+        .bind(cw)
+        .bind(cup)
+        .execute(pool)
+        .await
+        .map_err(|e| format!("Error insertando mensaje: {e}"))?;
+    }
 
     update_conversation_timestamp(pool, &msg.conversation_id, msg.created_at).await
 }
@@ -68,21 +117,48 @@ pub async fn list_messages(
     pool: &SqlitePool,
     conversation_id: &str,
 ) -> Result<Vec<Message>, String> {
-    let rows = sqlx::query(
-        "SELECT id, conversation_id, role, content, provider, model,
-                trace_id, chunks_used, nodes_used, tool_calls,
-                COALESCE(sources_json, '[]') AS sources_json,
-                research_sources, COALESCE(attachments_json, '[]') AS attachments_json, reasoning_events, created_at,
-                input_tokens, output_tokens, total_tokens, duration_ms,
-                tokens_per_second, cost_usd, context_window, context_used_pct
-         FROM messages
-         WHERE conversation_id = ?
-         ORDER BY created_at ASC",
+    // First check if reasoning_content column exists
+    let has_reasoning_content: bool = sqlx::query_scalar::<_, Option<i64>>(
+        "SELECT 1 FROM pragma_table_info('messages') WHERE name = 'reasoning_content'"
     )
-    .bind(conversation_id)
-    .fetch_all(pool)
+    .fetch_optional(pool)
     .await
-    .map_err(|e| format!("Error listando mensajes: {e}"))?;
+    .map(|x| x.flatten().is_some())
+    .unwrap_or(false);
+
+    let rows = if has_reasoning_content {
+        sqlx::query(
+            "SELECT id, conversation_id, role, content, provider, model,
+                    trace_id, chunks_used, nodes_used, tool_calls,
+                    COALESCE(sources_json, '[]') AS sources_json,
+                    research_sources, COALESCE(attachments_json, '[]') AS attachments_json, reasoning_events, reasoning_content, created_at,
+                    input_tokens, output_tokens, total_tokens, duration_ms,
+                    tokens_per_second, cost_usd, context_window, context_used_pct
+             FROM messages
+             WHERE conversation_id = ?
+             ORDER BY created_at ASC",
+        )
+        .bind(conversation_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| format!("Error listando mensajes: {e}"))?
+    } else {
+        sqlx::query(
+            "SELECT id, conversation_id, role, content, provider, model,
+                    trace_id, chunks_used, nodes_used, tool_calls,
+                    COALESCE(sources_json, '[]') AS sources_json,
+                    research_sources, COALESCE(attachments_json, '[]') AS attachments_json, reasoning_events, created_at,
+                    input_tokens, output_tokens, total_tokens, duration_ms,
+                    tokens_per_second, cost_usd, context_window, context_used_pct
+             FROM messages
+             WHERE conversation_id = ?
+             ORDER BY created_at ASC",
+        )
+        .bind(conversation_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| format!("Error listando mensajes: {e}"))?
+    };
 
     rows.into_iter().map(row_to_message).collect()
 }

@@ -6,7 +6,14 @@ from typing import Dict, List
 
 
 def get_deterministic_embedding(text: str, dimension: int = 1536) -> List[float]:
-    """Genera un vector unitario determinista basado en SHA-256."""
+    """
+    Genera un vector unitario determinista basado en SHA-256.
+
+    IMPORTANTE: Este embedding NO es semántico. No captura significado.
+    Solo garantiza que el mismo texto produzca el mismo vector.
+    Usar SOLO como fallback cuando no hay API key disponible.
+    Para búsqueda semántica real, configurar OPENAI_API_KEY u Ollama.
+    """
     hasher = hashlib.sha256(text.encode("utf-8"))
     seed = int(hasher.hexdigest(), 16) % (2**32)
     rng = random.Random(seed)

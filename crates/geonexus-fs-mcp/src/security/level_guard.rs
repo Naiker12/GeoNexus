@@ -9,6 +9,7 @@ pub enum PermissionLevel {
 }
 
 pub struct LevelGuard {
+    #[allow(dead_code)]
     config: FilesystemConfig,
 }
 

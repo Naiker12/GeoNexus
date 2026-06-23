@@ -49,14 +49,31 @@ export class AgentLoop {
   async send(
     conversationId: string,
     content: string,
-    options?: { signal?: AbortSignal }
+    options?: { signal?: AbortSignal; skillNames?: string[] }
   ): Promise<void> {
     this.abortController = new AbortController()
     const signal = options?.signal ?? this.abortController.signal
 
     try {
-      // TODO: call sidecar or Tauri backend
-      this.emit("delta", { text: content }, conversationId)
+      const { invoke } = await import("@tauri-apps/api/core")
+      this.emit("thinking_start", { phase: "reasoning" }, conversationId)
+
+      const response = await invoke<{ content: string }>("send_message", {
+        input: {
+          project_id: "project-default",
+          conversation_id: conversationId,
+          content,
+          provider: this.config.provider,
+          model: this.config.model,
+          endpoint: this.config.endpoint,
+          api_key: this.config.apiKey ?? null,
+          skill_names: this.config.skillNames ?? options?.skillNames ?? [],
+          use_context: true,
+          max_context_chunks: 4,
+        },
+      })
+
+      this.emit("delta", { text: response.content }, conversationId)
       this.emit("done", { conversationId }, conversationId)
     } catch (err) {
       if ((err as Error).name !== "AbortError") {

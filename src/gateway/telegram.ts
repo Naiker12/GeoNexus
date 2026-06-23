@@ -1,7 +1,7 @@
 /** Telegram gateway adapter (inspired by Hermes gateway/). */
 
 import { invoke } from "@tauri-apps/api/core"
-import type { TelegramConfig } from "@/types/workspace-types"
+import type { TelegramConfig } from "@/api/telegram"
 
 export interface TelegramMessage {
   chat_id: number

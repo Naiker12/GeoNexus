@@ -1,4 +1,5 @@
 import * as React from "react"
+import { cn } from "@/lib/utils"
 import {
   Activity,
   File,
@@ -160,6 +161,4 @@ export function FilesystemTimeline({
   )
 }
 
-function cn(...classes: (string | false | undefined | null)[]): string {
-  return classes.filter(Boolean).join(" ")
-}
+

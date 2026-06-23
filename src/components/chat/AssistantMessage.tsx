@@ -1,3 +1,4 @@
+import { LoaderCircleIcon } from "lucide-react"
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { ActionSuggestions } from "@/components/chat/ActionSuggestions"
 import { ConnectCard } from "@/components/chat/ConnectCard"
@@ -8,11 +9,9 @@ import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
 import { ThinkingCard } from "@/components/chat/ThinkingCard"
-import { TraceTreeView } from "@/components/chat/TraceTreeView"
 
-import { ReasoningTimelineBlock } from "@/components/chat/ReasoningTimelineBlock"
+import { TraceTreeView } from "@/components/chat/TraceTreeView"
 import { useReasoningTimeline } from "@/hooks/useReasoningTimeline"
-import { getStepDisplay } from "@/components/chat/tool-display-config"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
 import type { Message } from "@/types/chat"
@@ -33,8 +32,10 @@ export function AssistantMessage({
   onSendMessage,
   cumulativeContext,
 }: AssistantMessageProps) {
-  const { timeline, traceEvents, isStreaming: timelineStreaming, thinkingText, isCollapsing, toggleCollapse } =
+  const { traceEvents, isStreaming: timelineStreaming, thinkingText } =
     useReasoningTimeline(isStreaming ? message.conversation_id ?? null : null)
+
+  const reasoningToDisplay = isStreaming ? thinkingText : (message.reasoning_content ?? thinkingText)
 
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
@@ -45,12 +46,6 @@ export function AssistantMessage({
   const showResearch = message.isSearching === true || (message.research_sources?.length ?? 0) > 0
 
   const hasContent = (message.content?.length ?? 0) > 0
-
-  const lastRunningStep = [...(timeline?.steps ?? [])].reverse().find(s => s.status === "running")
-  const lastRunningLabel = lastRunningStep
-    ? `${getStepDisplay(lastRunningStep.id, lastRunningStep.label).title}: ${lastRunningStep.label}`
-    : undefined
-  const showThinkingCard = (timelineStreaming || isStreaming) && !hasContent && !isPending
 
   return (
     <div className="group flex items-start gap-2 py-0.5">
@@ -64,31 +59,30 @@ export function AssistantMessage({
           </span>
         </div>
 
-        {/* Reasoning Trace Tree */}
-        {((traceEvents?.length ?? 0) > 0 || (message.reasoning_events?.length ?? 0) > 0) ? (
-          <TraceTreeView 
-            events={timelineStreaming ? traceEvents : message.reasoning_events}
+        {/* Reasoning steps — using real events from backend */}
+        {(traceEvents.length > 0 || (message.reasoning_events?.length ?? 0) > 0 || timelineStreaming) ? (
+          <TraceTreeView
+            events={timelineStreaming ? traceEvents : (message.reasoning_events ?? [])}
             isStreaming={timelineStreaming}
           />
-        ) : (timeline || timelineStreaming) ? (
-          <ReasoningTimelineBlock
-            timeline={timeline}
-            isStreaming={timelineStreaming}
-            isCollapsing={isCollapsing}
-            onToggle={toggleCollapse}
-          />
+        ) : (isPending || isStreaming) ? (
+          <div className="flex items-center gap-2 px-1 py-2 text-sm text-muted-foreground">
+            <LoaderCircleIcon className="size-3.5 animate-spin" />
+            <span>Pensando...</span>
+          </div>
         ) : null}
 
-        {/* ─── THINKING CARD ─── */}
+        {/* ─── RAZONAMIENTO EN VIVO ─── */}
+      {reasoningToDisplay && (
         <ThinkingCard
-          isVisible={!!showThinkingCard}
-          currentStepLabel={lastRunningLabel}
-          thinkingText={thinkingText}
+          content={reasoningToDisplay}
+          isStreaming={timelineStreaming || !!isStreaming}
         />
+      )}
 
         {/* ─── RESPUESTA PRINCIPAL con crossfade ─── */}
         <AnimatePresence mode="wait">
-          {showThinkingCard ? null : (
+          {!hasContent && (timelineStreaming || isStreaming) ? null : (
             <motion.div
               key="response"
               initial={{ opacity: 0, y: 6 }}

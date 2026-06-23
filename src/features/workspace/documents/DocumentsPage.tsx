@@ -249,7 +249,6 @@ function SourceStrip({
         fileInputRef.current?.click()
         break
       case "URL / SharePoint":
-        alert("Funcionalidad proximamente")
         break
     }
   }
@@ -280,7 +279,7 @@ function SourceStrip({
               ? "Elegir"
               : source.name === "Subir archivos"
                 ? uploading ? "Subiendo..." : "Subir"
-                : "Agregar URL"
+                : "Proximamente"
 
           return (
             <div
@@ -310,7 +309,7 @@ function SourceStrip({
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={() => handleAction(source.name)}
-                    disabled={uploading && source.name === "Subir archivos"}
+                    disabled={(uploading && source.name === "Subir archivos") || source.name === "URL / SharePoint"}
                   >
                     {actionLabel}
                   </Button>

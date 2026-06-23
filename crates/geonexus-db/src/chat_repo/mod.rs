@@ -31,6 +31,7 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
             .unwrap_or_default();
     let reasoning_events: Option<Vec<serde_json::Value>> =
         reasoning_events_raw.and_then(|s| serde_json::from_str(&s).ok());
+    let reasoning_content: Option<String> = row.try_get("reasoning_content").unwrap_or_default();
 
     let it: Option<i64> = row.get("input_tokens");
     let stats = it.map(|_| geonexus_core::chat::MessageStats {
@@ -65,6 +66,7 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
         stats,
         attachments,
         reasoning_events,
+        reasoning_content,
     })
 }
 

@@ -1,6 +1,7 @@
 use crate::config::FilesystemConfig;
 
 pub struct ConfirmGate {
+    #[allow(dead_code)]
     config: FilesystemConfig,
 }
 

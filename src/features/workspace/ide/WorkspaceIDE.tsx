@@ -11,14 +11,7 @@ import { useConversation } from '@/components/chat/hooks/useConversation';
 import { type FileNode, type Artifact, type WorkspaceState } from './ide-types';
 import { Layout, Code, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
+import { cn } from '@/lib/utils';
 
 
 export function WorkspaceIDE() {

@@ -57,7 +57,7 @@ pub async fn discover_tools(
     let mut reader = BufReader::new(stdout);
 
     // Step 1: initialize (usando handshake compartido)
-    let init_req = handshake::build_initialize_payload();
+    let init_req = handshake::build_initialize_payload(None);
     write_json_line(&mut stdin, &init_req).await?;
     let init_resp = read_json_line(&mut reader, timeout).await?;
     check_error(&init_resp)?;
@@ -119,7 +119,7 @@ pub async fn call_tool(
     let stdout = child.stdout.take().ok_or("No se pudo abrir stdout del proceso")?;
     let mut reader = BufReader::new(stdout);
 
-    let init_req = handshake::build_initialize_payload();
+    let init_req = handshake::build_initialize_payload(None);
     write_json_line(&mut stdin, &init_req).await?;
     let init_resp = read_json_line(&mut reader, timeout).await?;
     check_error(&init_resp)?;
