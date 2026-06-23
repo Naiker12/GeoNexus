@@ -60,6 +60,7 @@ export type AgentTraceEvent = {
   user_friendly_summary?: string
   error?: string
   timestamp: string
+  conversation_id?: string
 }
 
 export type Message = {

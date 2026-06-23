@@ -263,6 +263,7 @@ pub async fn send_message(
             user_friendly_summary: None,
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -283,6 +284,7 @@ pub async fn send_message(
             user_friendly_summary: Some("Input validated".into()),
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -300,6 +302,7 @@ pub async fn send_message(
             user_friendly_summary: None,
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -318,6 +321,7 @@ pub async fn send_message(
             user_friendly_summary: Some(format!("Intent: {}", intent_label)),
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -338,6 +342,7 @@ pub async fn send_message(
             user_friendly_summary: None,
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -387,6 +392,7 @@ pub async fn send_message(
                 user_friendly_summary: Some(format!("Found {} relevant graph nodes", graph_node_ids.len())),
                 error: None,
                 timestamp: now_iso(),
+                conversation_id: Some(conversation_id.clone()),
             },
             &mut trace_events,
         );
@@ -437,6 +443,7 @@ pub async fn send_message(
             user_friendly_summary: None,
             error: None,
             timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
         },
         &mut trace_events,
     );
@@ -528,6 +535,7 @@ pub async fn send_message(
                 user_friendly_summary: Some("No vector DB results found".into()),
                 error: None,
                 timestamp: now_iso(),
+                conversation_id: Some(conversation_id.clone()),
             },
             &mut trace_events,
         );
@@ -558,6 +566,7 @@ pub async fn send_message(
                 user_friendly_summary: Some(format!("Found {} relevant chunks", recall_chunks.len())),
                 error: None,
                 timestamp: now_iso(),
+                conversation_id: Some(conversation_id.clone()),
             },
             &mut trace_events,
         );
@@ -732,6 +741,7 @@ pub async fn send_message(
                 user_friendly_summary: None,
                 error: None,
                 timestamp: now_iso(),
+                conversation_id: Some(conversation_id.clone()),
             },
             &mut trace_events,
         );
@@ -770,6 +780,7 @@ pub async fn send_message(
                             user_friendly_summary: Some(src.title.clone()),
                             error: None,
                             timestamp: now_iso(),
+                            conversation_id: Some(conversation_id.clone()),
                         },
                         &mut trace_events,
                     );
@@ -788,6 +799,7 @@ pub async fn send_message(
                         user_friendly_summary: Some(format!("{} fuentes encontradas en la web", srcs.len())),
                         error: None,
                         timestamp: now_iso(),
+                        conversation_id: Some(conversation_id.clone()),
                     },
                     &mut trace_events,
                 );
@@ -834,6 +846,7 @@ pub async fn send_message(
                         user_friendly_summary: None,
                         error: Some(e.to_string()),
                         timestamp: now_iso(),
+                        conversation_id: Some(conversation_id.clone()),
                     },
                     &mut trace_events,
                 );
@@ -960,6 +973,27 @@ pub async fn send_message(
     };
     let mut messages =
         build_messages(&history, &all_project_context, &web_context, &rag_context, &skills_context, &identity_context, &workspace_context, &input.content, &input.skill_names, asset_count, &input.attachments);
+
+    // === Instrument Generating Response step ===
+    let llm_start = Instant::now();
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "started".into(),
+            id: "llm_generation".into(),
+            parent_id: None,
+            category: "llm".into(),
+            title: "Generating Response".into(),
+            log: Some("Calling language model...".into()),
+            payload: None,
+            duration: None,
+            user_friendly_summary: None,
+            error: None,
+            timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
+        },
+        &mut trace_events,
+    );
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
@@ -1160,6 +1194,26 @@ pub async fn send_message(
         emit_llm_done(state.app_handle.as_ref(), content.len(), &input.model);
         break (content, Some(sidecar), reasoning_content);
     };
+
+    // Emit Generating Response complete event
+    emit_trace_event(
+        state.app_handle.as_ref(),
+        AgentTraceEvent {
+            r#type: "completed".into(),
+            id: "llm_generation".into(),
+            parent_id: None,
+            category: "llm".into(),
+            title: "Generating Response".into(),
+            log: None,
+            payload: None,
+            duration: Some(llm_start.elapsed().as_millis() as u64),
+            user_friendly_summary: Some("Response generated".into()),
+            error: None,
+            timestamp: now_iso(),
+            conversation_id: Some(conversation_id.clone()),
+        },
+        &mut trace_events,
+    );
 
     let response_model = last_sidecar
         .as_ref()

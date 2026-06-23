@@ -94,6 +94,7 @@ export function useReasoningTimeline(sessionId: string | null) {
 
         const uAgentEvent = await listen<AgentTraceEvent>("agent:event", (e) => {
           if (cancelled) return
+          if (e.payload.conversation_id && e.payload.conversation_id !== sessionId) return
           setTraceEvents((prev) => [...prev, e.payload])
         }, { target: { kind: "Any" } })
         unlisteners.push(uAgentEvent)

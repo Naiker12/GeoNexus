@@ -153,4 +153,6 @@ pub struct AgentTraceEvent {
     pub user_friendly_summary: Option<String>,
     pub error: Option<String>,
     pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
 }

@@ -14,6 +14,17 @@ type ChatLoadingPhase =
 
 const DEFAULT_PROJECT_ID = "project-default"
 
+function needsLiveData(text: string): boolean {
+  const t = text.toLowerCase()
+  const liveSignals = [
+    /\bhoy\b/, /\bahora\b/, /\ben vivo\b/, /\bactual(mente)?\b/,
+    /\bresultado(s)?\b/, /\bganó\b|\bgano\b|\bganador\b/,
+    /\bnoticias?\b/, /\bprecio\b|\bcotización\b/,
+    /\b20(2[5-9]|[3-9]\d)\b/, // años 2025+ mencionados explícitamente
+  ]
+  return liveSignals.some((re) => re.test(t))
+}
+
 export function useChatSubmit(
   conversationId: string | null,
   setConversationId: (id: string | null) => void,
@@ -89,6 +100,12 @@ export function useChatSubmit(
       const assistantMsgId = `assistant-${Date.now()}`
       const startTime = Date.now()
 
+      const useContext = contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes
+
+      const active = allConnectors.find((c) => c.id === activeConnectorId)
+
+      const autoWebSearch = webSearchEnabled || needsLiveData(clean)
+
       const placeholderAssistant: Message = {
         id: assistantMsgId,
         conversation_id: conversationId ?? "pending",
@@ -102,7 +119,7 @@ export function useChatSubmit(
         tool_calls: [],
         sources: [],
         created_at: Math.floor(Date.now() / 1000),
-        ...(webSearchEnabled
+        ...(autoWebSearch
           ? {
               isSearching: true,
               currentSearchQuery: "Buscando fuentes...",
@@ -115,10 +132,6 @@ export function useChatSubmit(
 
       const searchingTimer = setTimeout(() => setLoadingPhase("searching"), 300)
 
-      const useContext = contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes
-
-      const active = allConnectors.find((c) => c.id === activeConnectorId)
-
       const input: SendMessageInput = {
         project_id: DEFAULT_PROJECT_ID,
         conversation_id: conversationId,
@@ -129,7 +142,7 @@ export function useChatSubmit(
         api_key: active?.apiKey ?? null,
         use_context: useContext,
         max_context_chunks: useContext ? 4 : 0,
-        web_search: webSearchEnabled || undefined,
+        web_search: autoWebSearch || undefined,
         mentioned_asset_ids: mentions?.assetIds.length ? mentions.assetIds : undefined,
         mentioned_connector_ids: mentions?.connectorIds.length ? mentions.connectorIds : undefined,
         mentioned_mcp_server_ids: mentions?.mcpServerIds?.length ? mentions.mcpServerIds : undefined,
@@ -140,7 +153,7 @@ export function useChatSubmit(
         reasoning_effort: reasoning_effort || undefined,
       }
 
-      if (webSearchEnabled) {
+      if (autoWebSearch) {
         startResearchTimer(startTime, assistantMsgId, (elapsed: number) => {
           updateAssistantMessage(assistantMsgId, {
             searchElapsedSeconds: elapsed,
@@ -223,7 +236,7 @@ export function useChatSubmit(
           knowledgeSteps: finalKnowledgeSteps,
           chunk_references: response.chunks_used,
         }
-        if (webSearchEnabled) {
+        if (autoWebSearch) {
           updateAssistantMessage(assistantMsgId, {
             ...baseUpdate,
             content: response.message.content,
