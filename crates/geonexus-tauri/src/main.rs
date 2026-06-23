@@ -26,7 +26,8 @@ pub struct AppState {
 
 fn main() {
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::init());
 
     #[cfg(feature = "dialog")]
     {
