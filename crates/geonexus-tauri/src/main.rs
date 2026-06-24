@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 pub mod commands;
 mod builtin_skills;
 
-use commands::coding_agent::PermissionState;
+use commands::coding_agent::permissions::PermissionState;
 use commands::telegram::pairing::PairingState;
 use commands::telegram::TelegramState;
 
@@ -221,6 +221,11 @@ fn main() {
                 }
             });
 
+            // Register scheduler state
+            app.manage(commands::scheduler::SchedulerState {
+                worker: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -286,6 +291,8 @@ fn main() {
             commands::chat::get_project_context,
             commands::chat::save_workspace_config,
             commands::chat::get_workspace_config,
+            commands::chat::export_conversation_trajectory,
+            commands::chat::export_conversations_sharegpt,
             // OAuth
             commands::oauth::generate_pkce_challenge,
             commands::oauth::build_oauth_url,
@@ -307,16 +314,16 @@ fn main() {
             commands::filesystem::timeline::get_filesystem_timeline,
 
             // Agents
-            commands::agent::list_agents,
-            commands::agent::toggle_agent,
-            commands::agent::set_agent_model,
-            commands::agent::run_agent_pipeline,
-            commands::agent::agent_list_tasks,
-            commands::agent::agent_create_task,
-            commands::agent::agent_start_task,
-            commands::agent::agent_cancel_task,
-            commands::agent::agent_retry_task,
-            commands::agent::agent_delete_task,
+            commands::agent::crud::list_agents,
+            commands::agent::crud::toggle_agent,
+            commands::agent::crud::set_agent_model,
+            commands::agent::pipeline::run_agent_pipeline,
+            commands::agent::tasks::agent_list_tasks,
+            commands::agent::tasks::agent_create_task,
+            commands::agent::tasks::agent_start_task,
+            commands::agent::tasks::agent_cancel_task,
+            commands::agent::tasks::agent_retry_task,
+            commands::agent::tasks::agent_delete_task,
             // Agent Identity
             commands::agent_identity::read_identity_file,
             commands::agent_identity::write_identity_file,
@@ -343,6 +350,27 @@ fn main() {
             commands::mcp::export_mcp_config,
             commands::mcp::discover_mcp_tools,
             commands::mcp::preview_mcp_tools,
+            commands::mcp::list_curated_mcp_servers,
+            commands::mcp::install_curated_mcp_server,
+
+            // Subagents
+            commands::subagent::execute_subagent_tasks,
+            commands::subagent::get_subagent_results,
+
+            // Automations
+            commands::chat::create_automation,
+            commands::chat::list_automations,
+            commands::chat::toggle_automation,
+            commands::chat::update_automation,
+            commands::chat::delete_automation,
+            // Patch Proposals
+            commands::chat::list_patches,
+            commands::chat::update_patch_status,
+            commands::chat::delete_patch,
+            // Scheduler
+            commands::scheduler::translate_nl_to_cron,
+            commands::scheduler::start_scheduler_worker,
+            commands::scheduler::stop_scheduler_worker,
 
             // Settings
             commands::settings::get_setting,
@@ -384,7 +412,7 @@ fn main() {
             commands::coding_agent::coding_agent_clarify,
             commands::coding_agent::coding_agent_start_generation,
             commands::coding_agent::coding_agent_approve_plan,
-            commands::coding_agent::coding_agent_resolve_permission,
+            commands::coding_agent::permissions::coding_agent_resolve_permission,
             commands::coding_agent::coding_agent_load_project,
 
             // Event Bus + Artifact System (F3)
