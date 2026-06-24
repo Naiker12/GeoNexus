@@ -10,7 +10,7 @@ pub use conversations::{
     archive_conversation, unarchive_conversation,
     search_conversations, reindex_conversation_fts,
 };
-pub use messages::{insert_message, list_messages};
+pub use messages::{insert_message, list_messages, search_messages_fts};
 
 #[cfg(test)]
 mod tests;

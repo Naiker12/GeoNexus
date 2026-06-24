@@ -158,7 +158,88 @@ pub async fn insert_message(pool: &SqlitePool, msg: &Message) -> Result<(), Stri
     }
 
     update_conversation_timestamp(pool, &msg.conversation_id, msg.created_at).await?;
-    reindex_conversation_fts(pool, &msg.conversation_id).await
+    reindex_conversation_fts(pool, &msg.conversation_id).await?;
+    let role_str = serde_json::to_string(&msg.role)
+        .unwrap_or_default()
+        .trim_matches('"')
+        .to_string();
+    reindex_message_fts(pool, &msg.id, &msg.conversation_id, &role_str, &msg.content).await
+}
+
+pub async fn reindex_message_fts(
+    pool: &SqlitePool,
+    message_id: &str,
+    conversation_id: &str,
+    role: &str,
+    content: &str,
+) -> Result<(), String> {
+    let role_str = serde_json::to_string(role)
+        .map_err(|e| format!("Error serializando role: {e}"))?
+        .trim_matches('"')
+        .to_string();
+
+    sqlx::query(
+        "INSERT OR REPLACE INTO messages_fts(message_id, conversation_id, role, content)
+         VALUES (?, ?, ?, ?)"
+    )
+    .bind(message_id)
+    .bind(conversation_id)
+    .bind(&role_str)
+    .bind(content)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Error reindexando mensaje FTS: {e}"))?;
+
+    Ok(())
+}
+
+pub async fn search_messages_fts(
+    pool: &SqlitePool,
+    query: &str,
+    project_id: &str,
+    limit: i64,
+) -> Result<Vec<geonexus_core::chat::MessageSearchResult>, String> {
+    if query.trim().is_empty() {
+        return Ok(vec![]);
+    }
+
+    let sanitized = query.trim().replace(|c: char| c.is_ascii_punctuation() && c != '\'', " ");
+    let fts_query = format!("\"{}\"", sanitized.replace('"', ""));
+
+    let rows = sqlx::query(
+        "SELECT fts.message_id, fts.conversation_id, fts.role,
+                snippet(messages_fts, 0, '<mark>', '</mark>', '...', 32) AS snippet,
+                rank, m.created_at
+         FROM messages_fts fts
+         JOIN messages m ON m.id = fts.message_id
+         JOIN conversations c ON c.id = fts.conversation_id
+         WHERE messages_fts MATCH ?1 AND c.project_id = ?2
+         ORDER BY rank
+         LIMIT ?3",
+    )
+    .bind(&fts_query)
+    .bind(project_id)
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| format!("Error buscando mensajes FTS: {e}"))?;
+
+    let results: Vec<geonexus_core::chat::MessageSearchResult> = rows
+        .into_iter()
+        .map(|row| {
+            use sqlx::Row;
+            geonexus_core::chat::MessageSearchResult {
+                message_id: row.get("message_id"),
+                conversation_id: row.get("conversation_id"),
+                role: row.get("role"),
+                snippet: row.get("snippet"),
+                rank: row.get("rank"),
+                created_at: row.get("created_at"),
+            }
+        })
+        .collect();
+
+    Ok(results)
 }
 
 pub async fn list_messages(
