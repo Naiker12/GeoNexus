@@ -1,0 +1,96 @@
+# GeoNexus - Auditoría de Problemas y Archivos Grandes
+# Fecha: 2026-06-23
+
+---
+
+## 1. Archivos Grandes (>= 500 Líneas)
+
+Los siguientes archivos exceden las 500 líneas y deben ser refactorizados para mejor mantenimiento:
+
+### Rust (crates/)
+| Archivo | Líneas | Ubicación | Tipo | Notas |
+|---------|--------|-----------|------|-------|
+| `send_message.rs` | ~1000+ | `crates/geonexus-tauri/src/commands/chat/` | Comando Tauri | Comando principal de chat, demasiado código en un solo archivo. Debería dividirse en módulos (gestión de tools, preparación de contexto, ejecución del sidecar, etc.) |
+| `coding_agent.rs` | ? | `crates/geonexus-tauri/src/commands/` | Comando Tauri | Refactorizar |
+| `agent.rs` | ? | `crates/geonexus-tauri/src/commands/` | Comando Tauri | Refactorizar |
+
+### TypeScript/React (src/)
+| Archivo | Líneas | Ubicación | Tipo | Notas |
+|---------|--------|-----------|------|-------|
+| `sidebar.tsx` | 647 | `src/components/ui/` | UI Component | Barra lateral, separar en componentes más pequeños si es necesario |
+| `DocumentsPage.tsx` | 614 | `src/features/workspace/documents/` | Página | Página de documentos, refactorizar si es posible |
+| `ChatComposer.tsx` | 585 | `src/components/chat/` | UI Component | Componente de entrada de chat, puede dividirse en lógica y UI |
+
+---
+
+## 2. Problemas Recientemente Resueltos
+- ✅ Migración del sistema de razonamiento de árbol a streaming de texto plano
+- ✅ Eliminación de código antiguo de reasoning steps/events
+- ✅ Fix de scroll en ThinkingCard con sticky scroll (solo baja si el usuario ya está en el final)
+- ✅ Added animated border to ThinkingCard when LLM is thinking
+- ✅ Added "Geo Agents" badge in AssistantMessage footer
+- ✅ Removed unused functions/variables (step_timers, step_started_at, emit_reasoning_*, etc.)
+- ✅ Fixed tokio::join! with load_identity_context and get_workspace_config
+- ✅ Removed emit_* functions from send_message.rs
+- ✅ TypeScript checks passing
+- ✅ geonexus-core and geonexus-db compiling
+
+---
+
+## 3. Problemas Pendientes / Áreas de Mejora
+
+### 3.1. Refactorización de send_message.rs
+**Archivo**: `crates/geonexus-tauri/src/commands/chat/send_message.rs`
+**Problema**: Demasiado código en un solo archivo (~1000 líneas)
+**Sugerencia**: Dividir en submódulos:
+1. `crates/geonexus-tauri/src/commands/chat/send_message/context.rs`: Preparación de contexto (rag, project, web, etc.)
+2. `crates/geonexus-tauri/src/commands/chat/send_message/tool_loop.rs`: Bucle de tool-calling
+3. `crates/geonexus-tauri/src/commands/chat/send_message/streaming.rs`: Gestión del streaming del sidecar
+4. `crates/geonexus-tauri/src/commands/chat/send_message/mod.rs`: Comando principal unificado
+
+### 3.2. Tauri Build Script Panic
+**Problema**: El build script de geonexus-tauri a veces panica en Windows
+**Ubicación**: `crates/geonexus-tauri/build.rs`
+**Nota**: Este problema no es causado por nuestros cambios, pero es un problema existente.
+
+### 3.3. Frontend: Testing Coverage
+**Observación**: Existen tests básicos (`src/__tests__/`), pero la cobertura puede ampliarse.
+
+### 3.4. Análisis de Código Duplicado
+**Sugerencia**: Utilizar herramientas como `cargo clippy` para Rust y `eslint` para TypeScript para encontrar duplicaciones y smells.
+
+### 3.5. Archivos Temporales
+**Observación**: send_message.rs crea archivos temporales para mensajes y tools JSON. Asegurarse de que siempre se borren (aunque hay código para borrar, puede haber edge cases).
+
+---
+
+## 4. Estado de las Migraciones de Base de Datos
+- Última migración: `20260629000000_add_reasoning_content.sql` (añade reasoning_content y reasoning_duration_ms a messages)
+- Migraciones de retrocompatibilidad: reasoning_events sigue existiendo para mensajes antiguos
+- Estado: ✅ Todas las migraciones están presentes
+
+---
+
+## 5. Archivos Eliminados Recientemente
+- `src/components/chat/TraceTreeView.tsx`: Componente de árbol de razonamiento viejo
+- `src/components/chat/ReasoningStepRow.tsx`: Fila de paso de razonamiento
+- `src/hooks/useReasoningTimeline.ts`: Hook de timeline viejo
+- `src/types/reasoning-timeline.ts`: Tipos de timeline viejo
+- Y otros archivos relacionados...
+
+---
+
+## 6. Estado del Sidecar Python
+- Archivo principal: `ai/sidecar.py`
+- Funcionalidad: RAG, web search, tool execution, LLM streaming
+- Estado: ✅ Integrado correctamente con el comando `send_message.rs` via `run_sidecar_streaming`
+- Novedades: Emite `reasoning:delta` y `reasoning:end` events en lugar de eventos de árbol
+
+---
+
+## 7. Estado del Frontend
+- ✅ ThinkingCard con border animado
+- ✅ useReasoningStream listening for `reasoning:delta` and `reasoning:end`
+- ✅ AssistantMessage con badge de Geo Agents
+- ✅ Sticky scroll en ThinkingCard
+- ✅ TypeScript compilando sin errores
