@@ -119,6 +119,30 @@ export interface PreviewTool {
   description: string
 }
 
+export interface CuratedMcpEntry {
+  id: string
+  name: string
+  description: string
+  category: string
+  transport: string
+  url: string | null
+  command: string | null
+  args: string[] | null
+  env: Record<string, string> | null
+  auto_approve: string[] | null
+  source_url: string | null
+  tags: string[]
+}
+
+export function listCuratedMcpServers(): Promise<CuratedMcpEntry[]> {
+  return invokeOrFallback("list_curated_mcp_servers", {}, [])
+}
+
+export function installCuratedMcpServer(curatedId: string): Promise<McpServer> {
+  if (!curatedId.trim()) throw new Error("curated_id requerido")
+  return invokeRequired("install_curated_mcp_server", { curatedId })
+}
+
 export function previewMcpTools(params: {
   url?: string
   command?: string

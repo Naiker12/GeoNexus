@@ -307,6 +307,23 @@ pub struct ImportResult {
     pub errors: Vec<String>,
 }
 
+/// A curated MCP server entry from the built-in catalog.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CuratedMcpEntry {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    pub transport: String,
+    pub url: Option<String>,
+    pub command: Option<String>,
+    pub args: Option<Vec<String>>,
+    pub env: Option<serde_json::Value>,
+    pub auto_approve: Option<Vec<String>>,
+    pub source_url: Option<String>,
+    pub tags: Vec<String>,
+}
+
 // Claude Desktop config JSON structures
 
 #[derive(Debug, Deserialize)]

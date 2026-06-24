@@ -21,3 +21,5 @@ pub mod coding_agent;
 pub mod events;
 pub mod secure;
 pub mod health_check;
+pub mod subagent;
+pub mod scheduler;

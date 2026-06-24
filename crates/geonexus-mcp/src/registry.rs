@@ -463,6 +463,205 @@ pub async fn audit_tool_call(
     Ok(())
 }
 
+// ── Curated MCP Catalog ─────────────────────────────────────────
+
+/// Returns the built-in catalog of curated/approved MCP servers.
+/// Users can browse and install these with a single click.
+pub fn list_curated_servers() -> Vec<CuratedMcpEntry> {
+    vec![
+        CuratedMcpEntry {
+            id: "curated-filesystem".into(),
+            name: "Filesystem".into(),
+            description: "Safe file operations with path sandboxing — read, write, search, analyze project files.".into(),
+            category: "data".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-filesystem".into(),
+            ]),
+            env: None,
+            auto_approve: Some(vec!["read_file".into(), "list_files".into(), "search_files".into()]),
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem".into()),
+            tags: vec!["file".into(), "fs".into(), "read".into(), "write".into(), "search".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-github".into(),
+            name: "GitHub".into(),
+            description: "GitHub API integration — manage repos, issues, PRs, reviews, and search code.".into(),
+            category: "tool".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-github".into(),
+            ]),
+            env: None,
+            auto_approve: None,
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/github".into()),
+            tags: vec!["github".into(), "git".into(), "pr".into(), "issues".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-postgres".into(),
+            name: "PostgreSQL".into(),
+            description: "Read-only PostgreSQL database access — schema introspection, query execution, and analysis.".into(),
+            category: "data".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-postgres".into(),
+            ]),
+            env: None,
+            auto_approve: None,
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/postgres".into()),
+            tags: vec!["database".into(), "sql".into(), "postgres".into(), "query".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-web-search".into(),
+            name: "Web Search".into(),
+            description: "Web search and content extraction — search the web and fetch page content.".into(),
+            category: "search".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@anthropic-ai/mcp-server-web-search".into(),
+            ]),
+            env: None,
+            auto_approve: Some(vec!["web_search".into(), "fetch_page".into()]),
+            source_url: Some("https://github.com/anthropics/anthropic-quickstarts/tree/main/mcp-server-web-search".into()),
+            tags: vec!["web".into(), "search".into(), "fetch".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-memory".into(),
+            name: "Memory (knowledge graph)".into(),
+            description: "Persistent memory using a local knowledge graph — store and recall facts across sessions.".into(),
+            category: "ai".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-memory".into(),
+            ]),
+            env: None,
+            auto_approve: Some(vec![
+                "add_fact".into(), "search_facts".into(), "list_facts".into(),
+                "add_relation".into(), "search_relations".into(),
+            ]),
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/memory".into()),
+            tags: vec!["memory".into(), "knowledge".into(), "graph".into(), "facts".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-puppeteer".into(),
+            name: "Puppeteer (browser automation)".into(),
+            description: "Headless browser automation — navigate, screenshot, extract data from web pages.".into(),
+            category: "tool".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-puppeteer".into(),
+            ]),
+            env: None,
+            auto_approve: None,
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/puppeteer".into()),
+            tags: vec!["browser".into(), "web".into(), "screenshot".into(), "automation".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-slack".into(),
+            name: "Slack".into(),
+            description: "Slack workspace integration — read messages, search channels, post to channels.".into(),
+            category: "connector".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-slack".into(),
+            ]),
+            env: None,
+            auto_approve: None,
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/slack".into()),
+            tags: vec!["slack".into(), "chat".into(), "messaging".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-sqlite".into(),
+            name: "SQLite".into(),
+            description: "SQLite database exploration — inspect schema, run queries, analyze data.".into(),
+            category: "data".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-sqlite".into(),
+            ]),
+            env: None,
+            auto_approve: Some(vec!["list_tables".into(), "read_query".into(), "describe_table".into()]),
+            source_url: Some("https://github.com/modelcontextprotocol/servers/tree/main/src/sqlite".into()),
+            tags: vec!["sqlite".into(), "database".into(), "sql".into(), "query".into()],
+        },
+        CuratedMcpEntry {
+            id: "curated-seq".into(),
+            name: "Sequential Thinking".into(),
+            description: "Structured multi-step reasoning — break down complex problems into sequential thought steps.".into(),
+            category: "ai".into(),
+            transport: "stdio".into(),
+            url: None,
+            command: Some("npx".into()),
+            args: Some(vec![
+                "-y".into(),
+                "@anthropic-ai/mcp-server-seq-thinking".into(),
+            ]),
+            env: None,
+            auto_approve: Some(vec![
+                "sequential_thinking".into(), "update_step".into(), "list_steps".into(),
+            ]),
+            source_url: Some("https://github.com/anthropics/anthropic-quickstarts/tree/main/mcp-server-seq-thinking".into()),
+            tags: vec!["reasoning".into(), "thinking".into(), "planning".into()],
+        },
+    ]
+}
+
+/// Installs a curated MCP server into the local registry.
+pub async fn install_curated_server(
+    pool: &SqlitePool,
+    curated_id: &str,
+) -> Result<McpServer, String> {
+    let catalog = list_curated_servers();
+    let entry = catalog
+        .into_iter()
+        .find(|e| e.id == curated_id)
+        .ok_or_else(|| format!("Servidor curado '{}' no encontrado en el catalogo", curated_id))?;
+
+    let payload = RegisterServerPayload {
+        id: entry.id.clone(),
+        name: entry.name.clone(),
+        url: entry.url.clone().unwrap_or_default(),
+        transport: Some(entry.transport.clone()),
+        auth_type: None,
+        auth_ref: None,
+        auth_token: None,
+        command: entry.command.clone(),
+        args: entry.args.clone(),
+        env: entry.env.clone(),
+        headers: None,
+        disabled: Some(false),
+        auto_approve: entry.auto_approve.clone(),
+        timeout_ms: Some(30000),
+        tools: None,
+    };
+
+    register_server(pool, payload).await.map_err(|e| e.to_string())
+}
+
 /// Descubre tools desde una URL HTTP sin persistir en DB (preview).
 pub async fn preview_http_tools(
     server_url: &str,

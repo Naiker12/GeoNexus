@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import {
-  AlertCircleIcon, CheckCircle2Icon, Loader2Icon, PlugZapIcon, RefreshCwIcon, XIcon,
+  AlertCircleIcon, CheckCircle2Icon, Loader2Icon, PlugZapIcon, RefreshCwIcon, XIcon, BookOpenIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
@@ -13,6 +13,7 @@ import type { McpServer, RegisterServerPayload } from "@/types/mcp"
 import { McpManualForm } from "./McpManualForm"
 import { McpJsonImport } from "./McpJsonImport"
 import { McpToolDiscovery } from "./McpToolDiscovery"
+import { McpCatalogPicker } from "./McpCatalogPicker"
 
 interface McpRegisterDialogProps {
   open: boolean
@@ -29,6 +30,7 @@ const INITIAL: RegisterServerPayload = {
 }
 
 export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, prefill }: McpRegisterDialogProps) {
+  const [tab, setTab] = useState<"manual" | "json" | "catalog">("manual")
   const [form, setForm] = useState<RegisterServerPayload>(INITIAL)
   const [toolsRaw, setToolsRaw] = useState("")
   const [configJson, setConfigJson] = useState("")
@@ -241,7 +243,40 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
             </div>
           )}
 
-          <div className="grid gap-3 lg:grid-cols-2">
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-border pb-2">
+            <button
+              type="button"
+              onClick={() => setTab("manual")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === "manual" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              Manual
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("json")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === "json" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              Importar JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("catalog")}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                tab === "catalog" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <BookOpenIcon className="mr-1 inline size-3" />
+              Catálogo
+            </button>
+          </div>
+
+          {/* Tab content */}
+          {tab === "manual" && (
             <div className="grid gap-3">
               <McpManualForm form={form} updateForm={updateForm} />
               <McpToolDiscovery
@@ -254,6 +289,8 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
                 onToggleTool={toggleTool}
               />
             </div>
+          )}
+          {tab === "json" && (
             <McpJsonImport
               configJson={configJson}
               fileName={fileName}
@@ -261,7 +298,8 @@ export function McpRegisterDialog({ open, onOpenChange, onRegistered, editing, p
               onFileSelect={handleFileChange}
               onApplyJson={handleJsonLoad}
             />
-          </div>
+          )}
+          {tab === "catalog" && <McpCatalogPicker />}
 
           <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-between">
             <Button variant="outline" size="sm" type="button" className="h-8 text-xs"

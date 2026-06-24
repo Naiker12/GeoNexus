@@ -459,6 +459,41 @@ pub struct PreviewTool {
     pub description: String,
 }
 
+// ── Curated MCP Server Catalog ─────────────────────────────────
+
+#[tauri::command]
+pub async fn list_curated_mcp_servers() -> Vec<CuratedMcpEntry> {
+    geonexus_mcp::registry::list_curated_servers()
+}
+
+#[tauri::command]
+pub async fn install_curated_mcp_server(
+    state: State<'_, AppState>,
+    curated_id: String,
+) -> Result<McpServer, String> {
+    if curated_id.trim().is_empty() {
+        return Err("curated_id requerido".into());
+    }
+
+    let server = geonexus_mcp::registry::install_curated_server(&state.db, &curated_id)
+        .await
+        .map_err(|e| format!("Error instalando servidor curado: {e}"))?;
+
+    // Auto-discover tools for stdio servers
+    if server.transport == McpTransport::Stdio {
+        if let Err(e) = discover_stdio_tools_for_server(&state, &server).await {
+            eprintln!("[mcp] Auto-discover de tools falló para {}: {}", server.id, e);
+            let _ = registry::update_server_ping_result(
+                &state.db, &server.id, false, None, Some(0), None, Some(&e),
+            ).await;
+        }
+    }
+
+    registry::get_server(&state.db, &server.id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 /// Descubre tools desde una URL HTTP o comando STDIO sin persistir (preview).
 #[tauri::command]
 pub async fn preview_mcp_tools(
