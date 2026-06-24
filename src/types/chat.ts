@@ -17,6 +17,16 @@ export type Conversation = {
   created_at: number
   updated_at: number
   message_count: number | null
+  archived_at: number | null
+}
+
+export type ConversationSearchResult = {
+  conversation_id: string
+  title: string | null
+  snippet: string
+  rank: number
+  updated_at: number
+  archived_at: number | null
 }
 
 export type MessageStats = {
@@ -87,6 +97,7 @@ export type Message = {
   attachments?: FileAttachment[]
   reasoning_events?: AgentTraceEvent[]
   reasoning_content?: string
+  reasoning_duration_ms?: number
 }
 
 export type RecallChunk = {

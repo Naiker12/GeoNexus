@@ -74,6 +74,18 @@ pub struct Conversation {
     pub created_at: i64,
     pub updated_at: i64,
     pub message_count: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationSearchResult {
+    pub conversation_id: String,
+    pub title: Option<String>,
+    pub snippet: String,
+    pub rank: f64,
+    pub updated_at: i64,
+    pub archived_at: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -133,6 +145,8 @@ pub struct Message {
     pub reasoning_events: Option<Vec<serde_json::Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reasoning_content: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_duration_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -12,7 +12,6 @@ mod builtin_skills;
 use commands::coding_agent::PermissionState;
 use commands::telegram::pairing::PairingState;
 use commands::telegram::TelegramState;
-use commands::llm::gateway::GatewayClient;
 
 pub struct AppState {
     pub db: sqlx::SqlitePool,
@@ -20,7 +19,6 @@ pub struct AppState {
     pub db_path: String,
     pub app_handle: Option<AppHandle>,
     pub event_bus: EventBus,
-    pub gateway: GatewayClient,
     pub active_tasks: RwLock<HashMap<String, ()>>, // key is conversation_id
 }
 
@@ -68,62 +66,6 @@ fn main() {
             // Crear el Event Bus del sistema
             let event_bus = EventBus::new(db.clone());
 
-            // Iniciar gateway Python persistente (sidecar.py --serve)
-            let gateway_port: u16 = 9876;
-            // Antes de spawnear, verificar si ya hay un gateway corriendo
-            let gateway = if tauri::async_runtime::block_on(GatewayClient::probe(gateway_port)) {
-                tracing::info!("Gateway ya activo en puerto {gateway_port}, reutilizando");
-                GatewayClient::new(Some(format!("ws://127.0.0.1:{gateway_port}/ws")))
-            } else {
-                let gw = GatewayClient::new(None);
-                let root_path = commands::llm::project_root();
-                let python_exe = commands::llm::sidecar::python_executable(&root_path);
-                let sidecar_script = root_path.join("ai").join("sidecar.py");
-                if sidecar_script.exists() {
-                    let mut cmd = std::process::Command::new(&python_exe);
-                    cmd.arg(&sidecar_script)
-                        .arg("--serve")
-                        .arg("--port")
-                        .arg(gateway_port.to_string())
-                        .current_dir(&root_path)
-                        .env("PYTHONIOENCODING", "utf-8")
-                        .env("PYTHONUTF8", "1");
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::os::windows::process::CommandExt;
-                        cmd.creation_flags(0x08000000);
-                    }
-                    let gateway_child = cmd.spawn();
-                    match gateway_child {
-                        Ok(child) => {
-                            tracing::info!("Gateway Python iniciado (PID {})", child.id());
-                            // Esperar a que el gateway esté listo
-                            let gw2 = gw.clone();
-                            tauri::async_runtime::spawn(async move {
-                                for attempt in 1..=5 {
-                                    tokio::time::sleep(std::time::Duration::from_millis(500 * attempt)).await;
-                                    if gw2.is_connected().await {
-                                        tracing::info!("Gateway listo (intento {})", attempt);
-                                        return;
-                                    }
-                                    tracing::warn!("Gateway no disponible (intento {}/5)", attempt);
-                                }
-                                tracing::warn!("Gateway no disponible tras 5 intentos — usando subprocess");
-                            });
-                            // Store child in app data to keep it alive (drop when app exits)
-                            app.manage(std::sync::Mutex::new(Some(child)));
-                        }
-                        Err(e) => {
-                            tracing::warn!("No se pudo iniciar gateway Python: {e} — usando subprocess");
-                        }
-                    }
-                } else {
-                    tracing::warn!("sidecar.py no encontrado — gateway deshabilitado");
-                }
-                gw
-            };
-            commands::llm::gateway::set_global_gateway(gateway.clone());
-
             // Gestionar el estado global unificado de la aplicación
             let app_handle = app.handle().clone();
             app.manage(AppState {
@@ -132,7 +74,6 @@ fn main() {
                 db_path: db_path_str,
                 app_handle: Some(app_handle.clone()),
                 event_bus: event_bus.clone(),
-                gateway,
                 active_tasks: RwLock::new(HashMap::new()),
             });
 
@@ -330,7 +271,11 @@ fn main() {
             commands::chat::send_message::send_message,
             commands::chat::delete_conversation,
             commands::chat::list_conversations,
+            commands::chat::list_archived_conversations,
             commands::chat::list_messages,
+            commands::chat::archive_conversation,
+            commands::chat::unarchive_conversation,
+            commands::chat::search_conversations,
             commands::chat::recall_chunks,
             commands::chat::get_project_context,
             commands::chat::save_workspace_config,
@@ -435,10 +380,6 @@ fn main() {
             commands::coding_agent::coding_agent_approve_plan,
             commands::coding_agent::coding_agent_resolve_permission,
             commands::coding_agent::coding_agent_load_project,
-
-            // Gateway
-            commands::health_check::check_gateway,
-            commands::llm::commands::call_gateway_action,
 
             // Event Bus + Artifact System (F3)
             commands::events::list_events,

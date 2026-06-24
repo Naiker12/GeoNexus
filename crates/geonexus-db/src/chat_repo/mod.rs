@@ -4,7 +4,12 @@ use sqlx::Row;
 pub mod conversations;
 pub mod messages;
 
-pub use conversations::{create_conversation, list_conversations, delete_conversation, update_conversation_title};
+pub use conversations::{
+    create_conversation, list_conversations, list_archived_conversations,
+    delete_conversation, update_conversation_title,
+    archive_conversation, unarchive_conversation,
+    search_conversations, reindex_conversation_fts,
+};
 pub use messages::{insert_message, list_messages};
 
 #[cfg(test)]
@@ -23,6 +28,8 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
     let research_raw: Option<String> = row.get("research_sources");
     let attachments_raw: Option<String> = row.get("attachments_json");
     let reasoning_events_raw: Option<String> = row.get("reasoning_events");
+    let reasoning_content: Option<String> = row.try_get("reasoning_content").unwrap_or_default();
+    let reasoning_duration_ms: Option<i64> = row.try_get("reasoning_duration_ms").unwrap_or_default();
     let research: Vec<geonexus_core::chat::ResearchSource> =
         serde_json::from_str(research_raw.as_deref().unwrap_or("[]"))
             .unwrap_or_default();
@@ -31,7 +38,6 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
             .unwrap_or_default();
     let reasoning_events: Option<Vec<serde_json::Value>> =
         reasoning_events_raw.and_then(|s| serde_json::from_str(&s).ok());
-    let reasoning_content: Option<String> = row.try_get("reasoning_content").unwrap_or_default();
 
     let it: Option<i64> = row.get("input_tokens");
     let stats = it.map(|_| geonexus_core::chat::MessageStats {
@@ -67,6 +73,7 @@ pub(crate) fn row_to_message(row: sqlx::sqlite::SqliteRow) -> Result<Message, St
         attachments,
         reasoning_events,
         reasoning_content,
+        reasoning_duration_ms,
     })
 }
 

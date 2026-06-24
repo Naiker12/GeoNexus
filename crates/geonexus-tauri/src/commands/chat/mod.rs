@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use geonexus_core::chat::{Conversation, Message};
+use geonexus_core::chat::{Conversation, ConversationSearchResult, Message};
 use geonexus_db::chat_repo;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -166,6 +166,55 @@ pub async fn list_conversations(
         return Err("project_id requerido".into());
     }
     chat_repo::list_conversations(&state.db, &project_id).await
+}
+
+#[tauri::command]
+pub async fn archive_conversation(
+    conversation_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if conversation_id.trim().is_empty() {
+        return Err("conversation_id requerido".into());
+    }
+    chat_repo::archive_conversation(&state.db, &conversation_id).await
+}
+
+#[tauri::command]
+pub async fn unarchive_conversation(
+    conversation_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if conversation_id.trim().is_empty() {
+        return Err("conversation_id requerido".into());
+    }
+    chat_repo::unarchive_conversation(&state.db, &conversation_id).await
+}
+
+#[tauri::command]
+pub async fn list_archived_conversations(
+    project_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<Conversation>, String> {
+    if project_id.trim().is_empty() {
+        return Err("project_id requerido".into());
+    }
+    chat_repo::list_archived_conversations(&state.db, &project_id).await
+}
+
+#[tauri::command]
+pub async fn search_conversations(
+    project_id: String,
+    query: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<ConversationSearchResult>, String> {
+    if project_id.trim().is_empty() {
+        return Err("project_id requerido".into());
+    }
+    if query.trim().is_empty() {
+        return Ok(vec![]);
+    }
+    let sanitized = query.trim().replace(|c: char| c.is_ascii_punctuation() && c != '\'', " ");
+    chat_repo::search_conversations(&state.db, &project_id, &sanitized, 20).await
 }
 
 #[tauri::command]

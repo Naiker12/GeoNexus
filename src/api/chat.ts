@@ -1,5 +1,6 @@
 import type {
   Conversation,
+  ConversationSearchResult,
   MentionableSourcesResponse,
   Message,
   ProjectContext,
@@ -75,6 +76,26 @@ export async function sendMessage(
 export function deleteConversation(conversationId: string): Promise<void> {
   if (!conversationId.trim()) throw new Error("conversation_id requerido")
   return invokeOrFallback("delete_conversation", { conversationId }, undefined)
+}
+
+export function archiveConversation(conversationId: string): Promise<void> {
+  if (!conversationId.trim()) throw new Error("conversation_id requerido")
+  return invokeOrFallback("archive_conversation", { conversationId }, undefined)
+}
+
+export function unarchiveConversation(conversationId: string): Promise<void> {
+  if (!conversationId.trim()) throw new Error("conversation_id requerido")
+  return invokeOrFallback("unarchive_conversation", { conversationId }, undefined)
+}
+
+export function listArchivedConversations(projectId: string): Promise<Conversation[]> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback("list_archived_conversations", { projectId }, [])
+}
+
+export function searchConversations(projectId: string, query: string): Promise<ConversationSearchResult[]> {
+  if (!projectId.trim()) throw new Error("project_id requerido")
+  return invokeOrFallback("search_conversations", { projectId, query }, [])
 }
 
 export function listConversations(projectId: string): Promise<Conversation[]> {
