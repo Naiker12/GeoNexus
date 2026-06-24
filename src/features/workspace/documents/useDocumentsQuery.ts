@@ -7,20 +7,23 @@ import type { DataAsset } from "@/types/data"
 const DEFAULT_PROJECT_ID = "project-default"
 const WORKSPACE_ID = "workspace-main"
 
-export function useDocuments() {
+export function useDocumentsQuery() {
   const [assets, setAssets] = React.useState<DataAsset[]>([])
   const [loading, setLoading] = React.useState(true)
   const [indexingAssetId, setIndexingAssetId] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
 
   const fetchAssets = React.useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const data = await listDataAssets(DEFAULT_PROJECT_ID)
       const docTypes = ["document", "word", "excel", "other", "layer", "csv", "raster"]
       const filtered = data.filter((a) => docTypes.includes(a.kind))
       setAssets(filtered)
     } catch (err) {
-      console.error("[useDocuments] fetchAssets:", err)
+      console.error("[useDocumentsQuery] fetchAssets:", err)
+      setError(String(err))
     } finally {
       setLoading(false)
     }
@@ -46,10 +49,9 @@ export function useDocuments() {
         bytes: Array.from(new Uint8Array(bytes)),
       })
       await fetchAssets()
-      // No auto-index: el usuario hace clic en "Indexar" manualmente
       return { success: true, name: file.name }
     } catch (err) {
-      console.error("[useDocuments] uploadDocument:", err)
+      console.error("[useDocumentsQuery] uploadDocument:", err)
       await fetchAssets()
       return { success: false, name: file.name, error: String(err) }
     }
@@ -70,7 +72,7 @@ export function useDocuments() {
       await fetchAssets()
       return { success: true, name: displayName, connectorId: connector.id }
     } catch (err) {
-      console.error("[useDocuments] handleChooseFolder:", err)
+      console.error("[useDocumentsQuery] handleChooseFolder:", err)
       return { success: false, error: String(err) }
     }
   }
@@ -81,7 +83,7 @@ export function useDocuments() {
       await indexDocument(assetId)
       await fetchAssets()
     } catch (err) {
-      console.error("[useDocuments] handleIndex:", err)
+      console.error("[useDocumentsQuery] handleIndex:", err)
       throw err
     } finally {
       setIndexingAssetId(null)
@@ -91,6 +93,7 @@ export function useDocuments() {
   return {
     assets,
     loading,
+    error,
     indexingAssetId,
     totalChunks,
     fetchAssets,
