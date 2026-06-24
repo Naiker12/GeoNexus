@@ -1,0 +1,375 @@
+================================================================================
+  GEONEXUS — AUDITORIA COMPLETA DEL SIDECAR PYTHON (AI)
+  Fecha: 2026-06-24
+  Archivos: 37 | Lineas: ~2,642 | Entry points: server.py + sidecar.py
+================================================================================
+
+INDICE
+  1. ESTRUCTURA DEL DIRECTORIO ai/
+  2. ENTRY POINTS: server.py y sidecar.py
+  3. PROTOCOLO WEBSOCKET (17 acciones)
+  4. MODULO llm/ — ROUTER DE PROVIDERS (575 lines)
+  5. MODULO memory/ — CHROMADB + MEMORIA CURADA
+  6. MODULO graph/ — GRAFO DE CONOCIMIENTO
+  7. MODULO tools/ — HERRAMIENTAS
+  8. MODULO agent/ — LOOP DE AGENTE
+  9. MODULO docs/ — EXTRACCION DE DOCUMENTOS
+  10. MODULO pipeline/ — INDEXACION
+  11. MODULO context/ — CONTEXTO DE PROYECTO
+  12. MODULO recall/ — KEYWORD EXTRACTION
+  13. ISSUES CRITICOS
+  14. DEPENDENCIAS Y requirements.txt
+  15. PRIORIDADES DE ACCION
+
+================================================================================
+1. ESTRUCTURA DEL DIRECTORIO ai/
+================================================================================
+
+Lines  Archivo               Proposito
+─────  ────────────────────  ─────────────────────────────────────────
+ 357   server.py             Gateway WebSocket FastAPI (puerto 9876)
+ 250   sidecar.py            CLI entry point (subprocess, args)
+ 158   terminal_client.py    Cliente terminal interactivo para debug
+  94   fs_embed.py           Script standalone de embeddings deterministicos
+  27   config.py             Config singleton desde env vars
+  22   logger.py             Logger unificado a stderr
+  15   requirements.txt      15 dependencias
+  20   README.md             Instrucciones de setup
+   0   agent/__init__.py     [FALTANTE] — directorio NO es package
+  18   agent/prompt_builder.py  Construye system prompt
+  32   agent/callbacks.py    Protocolo de callbacks del agente
+  32   agent/loop.py         Loop agente: think→tool→respond
+  35   agent/reasoning.py    Tracking de pasos de razonamiento
+  76   agent/workspace.py    WorkspaceConfig + PersistentShell
+   0   context/__init__.py   Package marker
+  45   context/builder.py    Construye contexto desde SQLite
+   0   docs/__init__.py      Package marker
+  39   docs/chunker.py       Chunking de texto (word-based)
+  89   docs/reader.py        Lector multi-formato (.txt, .pdf, .docx)
+   1   graph/__init__.py     Package marker
+  65   graph/graph.py        KnowledgeGraph (subgraph, merge)
+  69   graph/memory.py       Algoritmo de memoria (curva Ebbinghaus)
+  92   graph/layout.py       Posicionamiento radial de nodos
+ 139   graph/extractor.py    Extrae entidades de documentos (regex)
+ 157   graph/chat_extractor.py  Extrae entidades de chat
+   1   llm/__init__.py       Package marker
+ 575   llm/router.py         [MAS GRANDE] Router a 4 providers LLM
+   1   memory/__init__.py    Package marker
+ 131   memory/chroma.py      ChromaDB + mock JSON fallback
+ 210   memory/curated_memory.py  SQLite fact store (memoria curada)
+  69   memory/embeddings.py  Generacion de embeddings con fallback
+   1   pipeline/__init__.py  Package marker
+  52   pipeline/indexer.py   Pipeline de indexacion E2E
+   0   recall/__init__.py    Package marker
+  58   recall/keyword_extractor.py  Extraccion keywords GIS para RAG
+   4   tools/__init__.py     Exports ToolRegistry
+  32   tools/registry.py     [NO USADO] ToolRegistry nunca poblado
+  97   tools/web_search.py   Busqueda web (DuckDuckGo + Google CSE)
+  32   tools/gis_tools.py    Shapefile → texto
+  54   tools/audio_tools.py  Transcripcion y sintesis OpenAI
+   0   tests/test_sidecar.py [VACIO] Sin tests
+
+================================================================================
+2. ENTRY POINTS
+================================================================================
+
+2.1 server.py (357 lines) — Gateway WebSocket
+──────────────────────────────────────────────────────────────────────
+  Puerto: 9876
+  Endpoint: ws://127.0.0.1:9876/ws
+  Framework: FastAPI + uvicorn
+  Sesiones: Mantiene estado entre llamadas (PersistentShell por sesion)
+
+  Handlers (17 acciones):
+    recall_chunks         — Query ChromaDB
+    build_project_context — Contexto desde SQLite
+    ping_llm              — Ping a provider LLM
+    list_llm_models       — Listar modelos
+    chat_llm_stream       — Chat streaming
+    chat_llm              — Chat no streaming
+    search_web            — Busqueda web (standard/deep)
+    extract               — Extraer texto de archivo
+    extract_chat_entities — Extraer entidades de chat
+    extract_graph_entities— Extraer entidades de chunks
+    index                 — Indexar documento
+    extract_shapefile     — Shapefile a texto
+    extract_keywords      — Extraer keywords
+    audio_transcribe      — Transcripcion OpenAI Whisper
+    audio_synthesize      — Sintesis OpenAI TTS
+    execute_shell_command — Ejecutar comando shell
+
+  Seguridad: command_is_safe() con blocklist de comandos peligrosos
+
+2.2 sidecar.py (250 lines) — CLI subprocess
+──────────────────────────────────────────────────────────────────────
+  Protocolo: --action <name> + args individuales
+  Output: JSON en stdout
+  Soporta --serve para delegar a server.py
+  16 acciones (todas las de server.py excepto execute_shell_command?
+  No, tambien lo tiene — son 16)
+
+================================================================================
+3. PROTOCOLO WEBSOCKET
+================================================================================
+
+  Cliente → Servidor:
+  {
+    "action": "<action_name>",
+    "params": { ... },
+    "session_id": "<opcional>"
+  }
+
+  Servidor → Cliente (no streaming):
+  {"type": "result", "data": <any>}
+  {"type": "error", "message": "<text>"}
+
+  Servidor → Cliente (chat streaming):
+  {"type": "delta", "content": "token"}
+  {"type": "thinking", "content": "reasoning"}
+  {"type": "done", "status": "ok", "message": {...}, "usage": {...}}
+  {"type": "error", "message": "<text>"}
+
+================================================================================
+4. MODULO llm/router.py (575 lines) — ROUTER DE PROVIDERS
+================================================================================
+
+  Proveedores soportados:
+    OpenAI              — chat_llm_provider / chat_llm_provider_stream
+    Anthropic           — con mapeo reasoning_effort
+    Ollama              — endpoint local personalizable
+    OpenRouter          — via API key
+    LM Studio / custom  — via base_url compatible OpenAI
+
+  Funciones:
+    ping_llm_provider()       — test de conectividad
+    list_llm_models()         — lista modelos (Ollama, OpenRouter, OpenAI)
+    chat_llm_provider()       — chat no streaming (100 lines)
+    chat_llm_provider_stream()— chat streaming (275 lines, GENERADOR)
+    _normalize_usage()        — normaliza tokens a formato OpenAI
+    _make_chat_response()     — envoltura estandar de respuesta
+
+  Problemas:
+    [CRITICO] Usa requests (HTTP blocking) en contexto async —
+              bloquea el event loop de FastAPI/uvicorn
+    [DUPLICACION] Los loops de streaming para Ollama, OpenAI,
+                  OpenRouter son ~90% identicos (codigo duplicado)
+    [DUPLICACION] chat_llm_provider igualmente duplicado
+    [HARDCODED] LOCAL_CONTEXT_WINDOW=3072, LOCAL_MAX_TOKENS=1024
+    [INCOMPLETO] Anthropic streaming solo maneja content_block_delta,
+                 content_block_start, message_delta — falta tool_use
+    [INCONSISTENTE] Token usage reportado distinto por provider
+
+================================================================================
+5. MODULO memory/
+================================================================================
+
+5.1 chroma.py (131 lines)
+──────────────────────────────────────────────────────────────────────
+  init_chroma()           — Prueba chromadb real, fallback a mock JSON
+  MockChromaClient        — Cliente mock con almacenamiento JSON
+  upsert_chunks_to_vector_store()  — Inserta vectores
+  query_chunks()          — Busca chunks similares (cosine similarity)
+  [OK] Fallback automatico cuando chromadb no esta instalado
+
+5.2 curated_memory.py (210 lines)
+──────────────────────────────────────────────────────────────────────
+  CuratedFact dataclass   — id, fact, category, source, confidence, tags
+  CuratedMemoryStore      — SQLite store con CRUD completo
+  add_fact()              — Insert o update por match exacto
+  search_facts()          — Busqueda por texto/categoria/confianza
+  update_fact()           — Actualizacion parcial
+  delete_fact()           — Borrado por ID
+  regenerate_summary()    — Resumen LLM de todos los facts
+  [OK] Full CRUD + search + summary generation
+
+5.3 embeddings.py (69 lines)
+──────────────────────────────────────────────────────────────────────
+  generate_embeddings()   — OpenAI → Ollama → deterministic fallback
+  get_deterministic_embedding() — SHA-256 seeded random vector
+  [ISSUE] OpenAI calls one-by-one (sin batching)
+  [ISSUE] Ollama timeout de 1 segundo (muy bajo)
+  [ISSUE] Ignora config.py, usa OPENAI_API_KEY directamente
+
+================================================================================
+6. MODULO graph/ — GRAFO DE CONOCIMIENTO
+================================================================================
+
+  graph.py (65 lines)
+    KnowledgeGraph(db_path) — get_subgraph(), merge_duplicate_nodes()
+    [LIMITADO] Solo 2 operaciones, falta CRUD completo
+
+  memory.py (69 lines)
+    compute_memory_score() — peso + frecuencia + recencia + decaimiento
+    should_show_node()     — visibilidad por threshold
+    decay_weight()         — decaimiento temporal (curva Ebbinghaus)
+    [OK] Algoritmo completo
+
+  layout.py (92 lines)
+    compute_node_positions() — posicionamiento radial por clusters
+    [OK] Completo
+
+  extractor.py (139 lines)
+    extract_graph_entities() — Extrae nodos/edges de documentos con regex
+    [OK] Regex para terminos territoriales espanol
+    [LIMITADO] Solo dominio especifico (normas, zonas, conceptos)
+
+  chat_extractor.py (157 lines)
+    extract_chat_entities() — 5 niveles de extraccion
+    [OK] Multi-dominio, acronimos, stop words
+
+================================================================================
+7. MODULO tools/
+================================================================================
+
+  registry.py (32 lines) — [NO USADO] ToolRegistry instanciado pero
+                            nunca se registran herramientas. Codigo muerto.
+
+  web_search.py (97 lines)
+    search_web()           — DuckDuckGo (ddgs) o Google CSE
+    search_web_deep()      — Fetch de paginas completas
+    [OK] Completo con fallbacks
+
+  gis_tools.py (32 lines)
+    shapefile_to_text_chunks() — Usa pyshp (NO en requirements.txt)
+    [OK] Funcional pero dependencia faltante
+
+  audio_tools.py (54 lines)
+    transcribe_audio()     — OpenAI Whisper via API
+    synthesize_speech()    — OpenAI TTS via API
+    [OK] Completo
+
+================================================================================
+8. MODULO agent/ — LOOP DE AGENTE (NOTA: falta __init__.py)
+================================================================================
+
+  prompt_builder.py (18 lines)
+    build_system_prompt() — arma system prompt desde contexto + skills
+    [BASICO] Muy simple
+
+  callbacks.py (32 lines)
+    AgentCallbacks (Protocol) — 8 metodos de callback
+    CallbackHandler — rutea eventos a callbacks tipados
+    [OK] Completo
+
+  loop.py (32 lines)
+    AgentLoop — orquestador think→tool→respond
+    [SIMPLIFICADO] No ejecuta tools realmente — solo llama LLM y emite eventos
+
+  reasoning.py (35 lines)
+    ReasoningTracker — begin, end_current, get_steps, clear
+    [OK] Completo
+
+  workspace.py (76 lines)
+    PersistentShell — shell persistente con tracking de cd
+    run() — ejecuta comando con timeout de 30s
+    get_project_structure() — arbol ASCII del proyecto
+    [OK] Completo
+
+================================================================================
+9. MODULO docs/ — EXTRACCION DE DOCUMENTOS
+================================================================================
+
+  chunker.py (39 lines)
+    chunk_text() — Word-based, con overlap, preserva [PAGINA N]
+    [OK] Completo (word-based, no token-based)
+
+  reader.py (89 lines)
+    read_text_file() / read_pdf_file() / read_docx_file()
+    extract_text() — dispatcher por extension
+    [OK] Fallbacks para cada formato
+    [FALTA] .csv, .json, .xml, .md — caen a texto raw
+
+================================================================================
+10. MODULO pipeline/indexer.py (52 lines)
+================================================================================
+
+    index_document_file() — extract→chunk→embed→upsert→graph
+    run_with_timing()     — wrapper de timing
+    [OK] Orquestacion completa del pipeline
+
+================================================================================
+11. MODULO context/builder.py (45 lines)
+================================================================================
+
+    build_project_context() — query SQLite → contexto formateado
+    [OK] Limitado a 10 assets y 8 nodos
+
+================================================================================
+12. MODULO recall/keyword_extractor.py (58 lines)
+================================================================================
+
+    extract_keywords()       — keywords GIS + nombres propios
+    score_chunk_by_keywords()— boost de scoring por keywords
+    [OK] Set de keywords GIS en espanol
+
+================================================================================
+13. ISSUES CRITICOS
+================================================================================
+
+  PRIORIDAD 1 — BLOQUEANTES
+  ─────────────────────────────────────────────────────────────
+  [BLOQUEANTE] FALTA agent/__init__.py — el directorio agent/ NO es
+               un package Python importable. Causa error si se intenta
+               from agent.workspace import ...
+  [CRITICO]    llm/router.py usa requests (HTTP sincronico) en handlers
+               async de FastAPI. BLOQUEA EL EVENT LOOP.
+
+  PRIORIDAD 2 — PRODUCCION
+  ─────────────────────────────────────────────────────────────
+  [DUPLICACION] chat_llm_provider_stream (275 lines) tiene ~90% de
+                codigo duplicado entre Ollama, OpenAI y OpenRouter
+  [DEAD CODE]   tools/registry.py: ToolRegistry instanciado, NUNCA poblado
+  [NO TEST]     tests/test_sidecar.py: COMPLETAMENTE VACIO (0 bytes)
+  [DEPS]        gis_tools.py usa pyshp — NO LISTADO en requirements.txt
+  [HARDCODED]   LOCAL_CONTEXT_WINDOW=3072, LOCAL_MAX_TOKENS=1024
+  [INCONSISTENTE] embeddings.py ignora config.py, usa env vars directo
+
+  PRIORIDAD 3 — MEJORAS
+  ─────────────────────────────────────────────────────────────
+  [PERF]  OpenAI embeddings sin batching (1 request por chunk)
+  [PERF]  Ollama timeout 1s — demasiado bajo
+  [FALTA] Soporte .csv, .json, .xml en docs/reader.py
+  [FALTA] Sin endpoint /health o /metrics en server.py
+  [FALTA] Sin autenticacion, rate limiting, esquema de error estructurado
+  [FALTA] Anthropic streaming sin manejo de tool_use
+  [BAJO]  pandas sin version pin, httpx listado pero nunca usado
+
+================================================================================
+14. DEPENDENCIAS (requirements.txt)
+================================================================================
+
+  openai>=1.0.0          ✓ Usado en llm/router.py y tools/audio_tools.py
+  anthropic>=0.25.0      ✓ Usado en llm/router.py
+  requests>=2.31.0       ✓ Usado en llm/router.py, tools/web_search.py,
+                           memory/embeddings.py, tools/audio_tools.py
+  httpx>=0.27.0          ✗ NUNCA importado en ningun archivo
+  chromadb>=0.4.0        ✓ Usado en memory/chroma.py (opcional)
+  pandas                 ?版本 sin pin
+  geopandas>=0.14.0      ? No se usa directamente (tal vez en pipeline)
+  shapely>=2.0.0         ? No se usa directamente
+  fiona>=1.9.0           ? No se usa directamente
+  python-dotenv>=1.0.0   ✓ Usado en config.py
+  pypdf>=4.0.0           ✓ Usado en docs/reader.py (opcional)
+  python-docx>=1.0.0     ✓ Usado en docs/reader.py (opcional)
+  ddgs>=9.0.0            ✓ Usado en tools/web_search.py
+  fastapi>=0.109.0       ✓ Usado en server.py
+  uvicorn>=0.27.0        ✓ Usado en server.py
+
+  FALTAN:
+    pyshp                — tools/gis_tools.py lo requiere
+    websockets           — terminal_client.py lo requiere
+
+================================================================================
+15. PRIORIDADES DE ACCION
+================================================================================
+
+  1. [BLOQUEANTE] Crear agent/__init__.py
+  2. [CRITICO]    Migrar llm/router.py de requests a httpx (async)
+  3. [DEAD CODE]  Eliminar o poblar ToolRegistry en tools/registry.py
+  4. [TEST]       Escribir tests para server.py y sidecar.py
+  5. [DEPS]       Agregar pyshp y websockets a requirements.txt
+  6. [REFACTOR]   Unificar loops de streaming (reducir duplicacion 90%)
+  7. [MEJORA]     Batching de embeddings OpenAI
+  8. [MEJORA]     Soporte .csv/.json/.xml en docs/reader.py
+  9. [MEJORA]     Endpoint /health en server.py
+  10.[CONFIG]     Unificar acceso a config.py (no env vars directas)

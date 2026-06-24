@@ -1,0 +1,412 @@
+================================================================================
+  GEONEXUS — AUDITORIA COMPLETA DEL BACKEND RUST
+  Fecha: 2026-06-24
+  Archivos: 185 .rs | Lineas: ~23,656 | Crate: 6 workspace members
+================================================================================
+
+INDICE
+  1. ESTRUCTURA DEL WORKSPACE
+  2. geonexus-core (3,469 lines, 40 files)
+  3. geonexus-db (3,773 lines, 27 files)
+  4. geonexus-mcp (2,060 lines, 12 files)
+  5. geonexus-fs-mcp (4,120 lines, 27 files)
+  6. geonexus-scheduler (424 lines, 3 files)
+  7. geonexus-tauri (9,810 lines, 76 files)
+  8. COMANDOS TAURI REGISTRADOS (200+)
+  9. IMPLEMENTADO vs STUBBED
+  10. CODIGO MUERTO / NO USADO
+  11. ISSUES CRITICOS
+  12. PRIORIDADES DE ACCION
+
+================================================================================
+1. ESTRUCTURA DEL WORKSPACE
+================================================================================
+
+Cargo.toml raiz:
+  [workspace]
+  members = ["crates/*"]
+  resolver = "2"
+
+Dependencias compartidas: serde, serde_json, uuid, tokio, sqlx, tracing
+
+Crate          Files  Lines  Proposito
+─────────────  ─────  ─────  ─────────────────────────────────────────
+core             40   3,469  Tipos, traits, gateway, seguridad, eventos
+db               27   3,773  Persistencia SQLite, repositorios, migraciones
+mcp              12   2,060  Protocolo MCP, registro servidores, catálogo
+fs-mcp           27   4,120  Filesystem virtual con guard chain, indexer
+scheduler         3     424  Programador cron, worker automations
+tauri            76   9,810  Capa Tauri, comandos, chat, agentes
+──────────────────────────────────────────────────────────────────────
+TOTAL           185  23,656
+
+================================================================================
+2. geonexus-core — TIPOS, EVENTOS, SEGURIDAD, GATEWAY
+================================================================================
+
+2.1 Modulos publicos (lib.rs)
+──────────────────────────────────────────────────────────────────────
+  GeoNexusConfig    config.rs        — Config TOML con MCP, LLM, skills
+  Agent             agent.rs         — Struct agente: id, name, kind, model
+  encrypt/decrypt/  crypto.rs        — AES-256-GCM con derivacion de clave
+    fingerprint
+  QueryIntent       reasoning.rs     — Enum: ConsultaNormativa, AnalisisEspacial,
+                                       DescubrimientoDatos, MemoriaProyecto,
+                                       GeneracionEntregable, ConsultaGeneral
+  ValidationResult  reasoning.rs     — validado, score, warnings
+  AnalysisSession   reasoning.rs     — sesion de analisis completo
+  ReasoningDelta    reasoning.rs     — step de razonamiento
+  ReasoningEnd      reasoning.rs     — fin de razonamiento
+  EventBus          events/bus.rs    — Broadcast dual (GeoEvent + BusEvent)
+  Gateway           gateway.rs       — Multi-canal (Desktop, Telegram, Discord,
+                                       Slack, Webhook) — SOLO Desktop+Telegram OK
+  SubagentManager   subagent.rs      — Pool de subagentes con semaforo
+  ChannelAdapter    gateway.rs       — Trait para canales de mensajeria
+  *                 types/*          — DataAsset, GraphNode, GraphEdge,
+                                       Message, Conversation, ConnectorConfig
+
+2.2 Subagentes (workers/tasks/)
+──────────────────────────────────────────────────────────────────────
+  IndexerWorker     STUB   — solo marca asset como indexado
+  EmbedderWorker    STUB   — crea tabla worker_embeddings, log
+  GraphWorker       STUB   — crea tabla worker_graph, log
+  ClassifierWorker  STUB   — clasifica por extension, log
+
+2.3 Telegram
+──────────────────────────────────────────────────────────────────────
+  polling.rs    — Long-polling con token bucket rate limiting + backoff
+  sender.rs     — Envio mensajes, chat actions, slash commands, sanitize
+  mod.rs        — Tipos: Update, Message, User, Chat, etc.
+
+2.4 Seguridad (security/)
+──────────────────────────────────────────────────────────────────────
+  credential_policy.rs  — SAFE_METADATA_KEYS, SECRET_VALUE_KEYS
+                          assert_no_raw_secrets(), redact_secrets()
+  token_fingerprint.rs  — Re-export de fingerprint_token
+
+2.5 Allowlist
+──────────────────────────────────────────────────────────────────────
+  extension_permitida() — 19 extensiones GIS/documentos
+  verificar_ruta()
+  ruta_segura()
+  MAX_FILE_BYTES_DEFAULT = 500 MB
+
+2.6 Problemas en core
+──────────────────────────────────────────────────────────────────────
+  [CRITICO] gateway.rs: dispatch() tiene error de sintaxis (brackets
+            mal cerrados) — DiscordWebhookAdapter esta embebido dentro
+            del metodo dispatch(), no compila.
+  [STUB]    Todos los workers (Indexer, Embedder, Graph, Classifier)
+            son stubs — no hacen procesamiento real.
+  [STUB]    SubagentManager.execute_all() retorna resultados dummy.
+  [BAJO]    allowlist con lista fija de extensiones, no configurable.
+
+================================================================================
+3. geonexus-db — PERSISTENCIA SQLITE + MIGRACIONES
+================================================================================
+
+3.1 Repositorios y operaciones
+──────────────────────────────────────────────────────────────────────
+
+  DataRepository (data_repo/):
+    list_data_assets / get_data_asset / validate_data_asset
+    delete_data_asset / upsert_data_asset / update_asset_indexing_result
+    insert_document_chunks / list_document_chunks / delete_document_chunks
+    insert_graph_nodes / list_graph_nodes / insert_graph_edges
+    list_graph_edges / cleanup_orphan_edges / clear_graph
+    update_node_position / get_data_store_metrics / get_sync_events
+
+  chat_repo/ (free functions):
+    create_conversation / list_conversations / list_archived_conversations
+    archive_conversation / unarchive_conversation / delete_conversation
+    update_conversation_title / search_conversations (FTS5)
+    reindex_conversation_fts / insert_message / list_messages
+    search_messages_fts (FTS5) / reindex_message_fts
+
+  connector_repo/:
+    insert_connector_config / list_connector_configs / delete_connector_config
+    upsert_connector_file / list_connector_files / update_file_sync_status
+
+  skills/registry.rs:
+    install_from_file (STUB — no hace nada) / list_skills / toggle_skill
+    read_skill_md / record_activation / create_skill_from_trajectory
+    record_skill_feedback / list_skill_failures / propose_skill_patch
+    apply_skill_patch / find_duplicate_skills / generate_curator_report
+    list_enabled_skills_for_injection
+
+  Otros repos:
+    analysis_repo — metricas, timeline, uso modelos, top queries
+    agent_repo — list/toggle agents, seed_default_agents
+    task_queue — enqueue/pop/mark_completed/mark_failed/mark_retry
+    event_repo — insert/list/count/delete_old_events
+    geo_event_repo — insert/list_geo_events
+    artifact_repo — insert/list/get/delete_artifact
+    memory_repo — CRUD completo curated_facts + increment_access
+    automation_repo — CRUD completo + record_run
+    patch_repo — create/get/list/update_status/delete_patch
+    user_profile_repo — upsert/get/list/delete/clear profile entries
+
+3.2 Migraciones
+──────────────────────────────────────────────────────────────────────
+  37 archivos SQL en crates/geonexus-db/migrations/
+  Desde 20260607000000_init.sql hasta 20260706000000_patch_proposals.sql
+  Cubren: assets, graph, mcp, skills, conversations, FTS5, automations,
+  user_profile, patch_proposals, agent_task_board, etc.
+
+3.3 CRUD faltante
+──────────────────────────────────────────────────────────────────────
+  connector_repo: falta get_connector_config, update_connector_config
+  agent_repo:     falta get_agent, create_agent, delete_agent, update_agent
+  artifact_repo:  falta update_artifact
+  data_repo:      falta search_assets / filter_assets
+
+================================================================================
+4. geonexus-mcp — PROTOCOLO MCP + CATALOGO
+================================================================================
+
+4.1 Catalogos curados (9 servidores)
+──────────────────────────────────────────────────────────────────────
+  Filesystem, GitHub, PostgreSQL, Web Search, Memory, Puppeteer,
+  Slack, SQLite, Sequential Thinking
+
+4.2 Operaciones del registry
+──────────────────────────────────────────────────────────────────────
+  CRUD servidores:     list/register/delete/get_server
+  Estado:              update_server_status, update_server_ping_result
+  Tools:               list_tools, list_callable_mcp_tools, upsert_tool,
+                       sync_tools_from_ping, auto_discover_tools
+  Allowlist:           list/upsert/delete/check_allowlist
+  Metricas:            record_server_metric, audit_tool_call
+  Instalacion:         install_curated_server
+  Handshake:           do_handshake, fetch_tools_list (JSON-RPC 2.0)
+  Preview:             preview_http_tools
+
+4.3 Implementado vs STUB
+──────────────────────────────────────────────────────────────────────
+  [OK]  HTTP handshake, tool discovery, tool execution, allowlist
+  [OK]  Curated catalog + interactive install
+  [OK]  STDIO con subprocess spawning (per-call)
+  [STUB] containers/ — esquemas definidos, sin runtime conectado
+  [STUB] stdio spawn por llamada (sin pool persistente — ineficiente)
+
+================================================================================
+5. geonexus-fs-mcp — FILESYSTEM VIRTUAL + SEGURIDAD
+================================================================================
+
+5.1 Cadena de guardianes (GuardChain)
+──────────────────────────────────────────────────────────────────────
+  PathGuard     — [OK]    Valida rutas en directorios permitidos
+  LevelGuard    — [STUB]  check() siempre retorna Ok(())
+  RateGuard     — [STUB]  check() y check_write() siempre Ok(())
+  ConfirmGate   — [STUB]  requires_confirm()=false, require()=true
+  3 de 4 guardianes son NO-OP — sin enforcement real
+
+5.2 Comandos (13 implementados)
+──────────────────────────────────────────────────────────────────────
+  readFile, createFile, listFiles, listDirectories, searchFiles,
+  updateFile, deleteFile, moveFile, copyFile, createFolder,
+  createProject, detectFramework, analyzeProject
+
+5.3 Framework detection
+──────────────────────────────────────────────────────────────────────
+  Soporta: package.json, Cargo.toml, pyproject.toml, requirements.txt,
+  go.mod, CMakeLists.txt, composer.json
+
+5.4 Plantillas (8)
+──────────────────────────────────────────────────────────────────────
+  rust-lib, rust-bin, node-ts, node-js, python-script, python-pkg,
+  go-cli, c-cmake
+
+5.5 Indexer
+──────────────────────────────────────────────────────────────────────
+  Fts5Strategy:         [OK] Busqueda full-text con SQLite
+  EmbeddingStrategy:    [STUB] Depende de ai/fs_embed.py (puede no existir)
+  HybridSearchStrategy: [OK] BM25 + semantico con RRF fusion
+
+================================================================================
+6. geonexus-scheduler — PROGRAMADOR CRON
+================================================================================
+
+6.1 Archivos
+──────────────────────────────────────────────────────────────────────
+  cron.rs     — nl_to_cron(): lenguaje natural → expresion cron
+                (soporta español + ingles, con score de confianza)
+  worker.rs   — SchedulerWorker: pool periodicamente automations vencidas
+                Con crate cron para parseo real
+
+6.2 Implementado vs STUB
+──────────────────────────────────────────────────────────────────────
+  [OK]  Traduccion NL→cron con tests
+  [OK]  Worker tick con consulta SQL y despacho
+  [STUB] Acciones "message", "skill", "export" solo hacen log
+  [STUB] No hay dispatch real via Gateway
+
+================================================================================
+7. geonexus-tauri — CAPA DE COMANDOS (9,810 lines)
+================================================================================
+
+7.1 send_message/ — CORAZON DEL CHAT (6 modulos, ~1,287 lines)
+──────────────────────────────────────────────────────────────────────
+  mod.rs        (563)  — Orquestador: validate → API key → conversation →
+                         intent → graph → context → tool loop → response →
+                         entidades → skill creation → memory → profile → patches
+  context.rs    (470)  — prepare_context(): FTS5 + RAG + proyecto + menciones
+                         + web search + tool catalog + skills + identity +
+                         history + workspace config (tokio::join! paralelo)
+  tool_loop.rs  (198)  — run_tool_loop(): LLM loop (max 10 iter) con
+                         tool-calling, temp files, streaming events
+  streaming.rs  (17)   — emit_stream_event, emit_preview_chunk, stream_event_id
+  temp_files.rs (21)   — TempFileGuard: Drop guard para limpieza automatica
+  errors.rs     (18)   — scan_for_prompt_injection: 10 patrones de injection
+
+7.2 agent/ — SISTEMA DE AGENTES (3 modulos, ~549 lines)
+──────────────────────────────────────────────────────────────────────
+  crud.rs     (51)    — list_agents, toggle_agent, set_agent_model, emit_event
+  pipeline.rs (223)   — run_agent_pipeline: plan→discovery→knowledge→MCP→result
+  tasks.rs    (272)   — AgentTask CRUD + run_agent_task con heartbeat + LLM
+
+7.3 coding_agent/ — AGENTE DE CODIGO (5 modulos, ~565 lines)
+──────────────────────────────────────────────────────────────────────
+  mod.rs        (234) — clarify, start_generation, approve_plan, load_project
+  llm.rs        (167) — call_llm_for_plan, call_llm_for_clarification
+  files.rs      (103) — get_project_context_text, collect_project_files
+  types.rs      (31)  — LLMPlan, LLMPlanFile, ProjectFileEntry, ClarifyingQuestion
+  permissions.rs(30)  — PermissionState, coding_agent_resolve_permission
+
+7.4 LLM sidecar bridge
+──────────────────────────────────────────────────────────────────────
+  run_sidecar()            — subprocess sync de ai/sidecar.py
+  run_sidecar_streaming()  — streaming con emision token-by-token vía Tauri emit
+  project_root()           — busca ai/sidecar.py en arbol de directorios
+  python_executable()      — encuentra Python en .venv
+
+================================================================================
+8. COMANDOS TAURI REGISTRADOS (~200+)
+================================================================================
+
+  Fase 1 - Data:    8 comandos  (list/get/metrics/events/validate/delete/lineage/reindex)
+  Fase 2 - Conn:   14 comandos  (register/delete/update/list/sync/upload/OAuth)
+  Fase 3 - Doc/Graph:  7 cmd   (index/chunks/nodes/edges/search/rebuild/position)
+  Fase 4 - MCP Cont:  2 cmd    (init_containers_mcp, dispatch_container_tool)
+  Fase 6 - LLM:     3 cmd      (ping/list_models/send)
+  Analysis:         8 cmd      (metrics/timeline/usage/runs/skills/cost/queries/export)
+  Fase 7 - Chat:   14 cmd      (send_message/CRUD conversations/messages/search/export)
+  OAuth:            7 cmd      (PKCE/build/start/exchange/info/save/get)
+  Filesystem:       9 cmd      (picker/read/validate/list/config/onboarding)
+  Agents:          10 cmd      (list/toggle/model/pipeline + task CRUD)
+  Identity:         2 cmd      (read/write)
+  Graph Events:     2 cmd      (clear/get)
+  Notifications:    2 cmd      (send/request)
+  MCP Runtime:     16 cmd      (CRUD servers/tools/allowlist/import/export/discover/catalog)
+  Subagents:        2 cmd      (execute/get_results)
+  Automations:      5 cmd      (CRUD + update)
+  Patches:          3 cmd      (list/update_status/delete)
+  Scheduler:        3 cmd      (nl_to_cron/start/stop)
+  Settings:         2 cmd      (get/set)
+  Graph CRUD:       6 cmd      (delete/pin/restore/orphans/merge/memory_stats)
+  Skills:           6 cmd      (list/install_file/install_github/toggle/read/preview)
+  Audio:            2 cmd      (transcribe/synthesize)
+  Telegram:         9 cmd      (config/test/polling/status/pairing)
+  Health:           1 cmd      (run_health_check)
+  Coding Agent:     5 cmd      (clarify/generate/approve/resolve/load)
+  Events/Artifacts: 9 cmd      (list/count/CRUD artifacts/subscribe/geo)
+  Secure Store:     3 cmd      (set/get/delete)
+
+================================================================================
+9. IMPLEMENTADO vs STUBBED
+================================================================================
+
+  [FULL] Data asset CRUD
+  [FULL] Graph node/edge CRUD
+  [FULL] Chat conversations + FTS5
+  [FULL] LLM integration via Python sidecar
+  [FULL] MCP server registry + HTTP execution
+  [FULL] Curated MCP catalog (9 servers)
+  [FULL] Filesystem MCP commands (13)
+  [FULL] Filesystem FTS5 index
+  [FULL] Framework detection (7 languages)
+  [FULL] Project templates (8)
+  [FULL] Scheduler + cron NL
+  [FULL] Automations CRUD
+  [FULL] Patch proposals
+  [FULL] Agent task board + background execution
+  [FULL] Coding agent (clarify/plan/generate/approve)
+  [FULL] Telegram integration
+  [FULL] Event bus system
+  [FULL] Secure store
+
+  [STUB] GuardChain (LevelGuard, RateGuard, ConfirmGate) — 3/4 son NO-OP
+  [STUB] Workers (Indexer, Embedder, Graph, Classifier) — solo log
+  [STUB] SubagentManager — retorna resultados dummy
+  [STUB] EmbeddingStrategy — requiere ai/fs_embed.py
+  [STUB] Container MCP — esquema sin runtime
+  [STUB] Skill install_from_file — no hace nada
+  [STUB] Discord/Slack/Webhook adapters — solo Discord implementado
+  [STUB] Gateway broadcast — sin llamantes
+
+================================================================================
+10. CODIGO MUERTO / NO USADO
+================================================================================
+
+  Modulo/Archivo                     Elemento
+  ────────────────────────────────── ─────────────────────────────────
+  core/gateway.rs                    Gateway struct, dispatch(), broadcast()
+  core/gateway.rs                    DiscordWebhookAdapter (nunca instanciado)
+  core/gateway.rs                    ChannelKind::Slack, Webhook (sin impl)
+  core/connector/types.rs            ConnectorProvider::SharePoint, GoogleDrive, S3
+  core/connector/types.rs            SyncReport (nunca construido)
+  fs-mcp/security/level_guard.rs     LevelGuard::check() — siempre Ok
+  fs-mcp/security/rate_guard.rs      RateGuard — siempre Ok
+  fs-mcp/security/confirm_gate.rs    ConfirmGate — siempre false/true
+  fs-mcp/security/path_guard.rs      raw_roots() — solo tests
+  fs-mcp/analyzer/framework_detect   has_any() — nunca llamado
+  fs-mcp/src/indexer/embedding_st    is_available() — false en tests
+  tauri/send_message/temp_files.rs   disarm() — nunca llamado
+  ai/fs_embed.py                     No integrado en el sistema principal
+
+================================================================================
+11. ISSUES CRITICOS
+================================================================================
+
+  PRIORIDAD 1 — BLOQUEANTES
+  ─────────────────────────────────────────────────────────────
+  [BLOQUEANTE] gateway.rs: dispatch() tiene error de brackets —
+               DiscordWebhookAdapter esta embebido dentro del metodo.
+               NO COMPILA como esta.
+  [SEGURIDAD]  GeoNexusConfig almacena auth_token en texto plano en SQLite
+  [SEGURIDAD]  Clave de cifrado deriva de MachineGuid (lectura por cualquier
+               app) o "geonexus-fallback-id" — debil
+
+  PRIORIDAD 2 — PRODUCCION
+  ─────────────────────────────────────────────────────────────
+  [STUB] GuardChain: 3/4 guardianes son NO-OP — sin seguridad real
+  [STUB] Workers: Indexer, Embedder, Graph, Classifier no procesan
+  [STUB] Subagentes: retornan dummy, no ejecutan sidecar real
+  [STUB] STDIO MCP: spawn subprocess por llamada (ineficiente)
+  [STUB] connector_repo funciones retornan sqlx::Error (sin mensajes)
+  [STUB] event_repo/geo_event_repo/artifact_repo: mismo problema
+
+  PRIORIDAD 3 — MEJORAS
+  ─────────────────────────────────────────────────────────────
+  [PERF] STDIO MCP sin pool persistente de procesos
+  [PERF] sync_tools_from_ping() borra y re-inserta sin transaccion
+  [DB]   CRUD faltante en connector_repo, agent_repo, artifact_repo
+  [DB]   chat_repo como free functions vs DataRepository pattern
+  [LOG]  Mezcla de tracing::info! y eprintln! para debug
+  [DEPS] regex-lite (scheduler) y regex (core) — dos crates
+
+================================================================================
+12. PRIORIDADES DE ACCION
+================================================================================
+
+  1. [BLOQUEANTE] Reparar gateway.rs syntax error
+  2. [SEGURIDAD]  Mejorar derivacion de clave de cifrado
+  3. [SEGURIDAD]  Implementar LevelGuard, RateGuard, ConfirmGate reales
+  4. [STUB]       Completar Workers (Indexer, Embedder, Graph)
+  5. [STUB]       Completar SubagentManager con sidecar real
+  6. [DB]         Estandarizar errores: sqlx::Error → String con mensaje
+  7. [MCP]        Pool persistente de procesos STDIO
+  8. [DB]         CRUD faltante en connector_repo, agent_repo
+  9. [PERF]       sync_tools_from_ping con transaccion SQL
+  10.[CLEANUP]    Eliminar codigo muerto: Gateway sin usar, SyncReport,
+                  has_any(), disarm()

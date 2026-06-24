@@ -1,0 +1,501 @@
+================================================================================
+  GEONEXUS — AUDITORIA COMPLETA DEL FRONTEND (TypeScript/React)
+  Fecha: 2026-06-24
+  Archivos: ~340 | Lineas: ~19,000 | Framework: React 18 + Tauri 2
+================================================================================
+
+INDICE
+  1. ESTRUCTURA GENERAL
+  2. ROUTING Y NAVEGACION
+  3. PAGINAS DEL WORKSPACE
+  4. COMPONENTES DE CHAT
+  5. DIALOGO DE CONFIGURACION (14 secciones)
+  6. API LAYER — COMANDOS TAURI
+  7. FEATURES POR DIRECTORIO
+  8. TYPES Y CONSTANTS
+  9. STORES (Zustand)
+  10. HOOKS
+  11. TEST FILES
+  12. IMPLEMENTADO vs STUBBED
+  13. ISSUES CRITICOS
+  14. DIAGRAMA DE NAVEGACION (hash routes)
+  15. PRIORIDADES DE ACCION
+
+================================================================================
+1. ESTRUCTURA GENERAL
+================================================================================
+
+  src/                   Raiz del frontend
+  ├── App.tsx            Componente raiz con routing hash
+  ├── main.tsx           Entry point (StrictMode + TooltipProvider + ConnectorsProvider)
+  ├── index.css          Estilos globales + variables CSS (400 lines)
+  ├── agent/             Logica de agente (callbacks, loop, prompt-builder, reasoning)
+  ├── api/               Capa de comunicacion Tauri (16 archivos)
+  ├── assets/            SVG y recursos estaticos
+  ├── components/        Componentes reutilizables
+  │   ├── brand/         Logo, iconos
+  │   ├── chat/          ChatPanel, ChatComposer, ToolMenu, etc. (~25 archivos)
+  │   │   ├── charts/    Graficos (Area, Bar, Line, Pie, Radar)
+  │   │   ├── composer/  Submodulos del compositor (7 archivos)
+  │   │   ├── hooks/     useChatSubmit, useConversation, useWebSearch
+  │   │   └── reasoning/ ThinkingCard, useReasoningStream
+  │   ├── layout/        AppTopbar
+  │   └── ui/            Shadcn/ui components (~25 archivos)
+  │       └── sidebar/   Sidebar system (7 archivos)
+  ├── config/            OAuth config
+  ├── constants/         Navegacion, temas
+  ├── contexts/          React contexts (Connectors, NotificationSettings)
+  ├── features/          Modulos de funcionalidad
+  │   ├── agent/         Task board system (6 archivos)
+  │   ├── agents/        Agent registry (2 archivos — MINIMAL)
+  │   ├── ai/            AI connector display (2 archivos)
+  │   ├── chat/          ReasoningToggle (1 archivo)
+  │   ├── map/           GeoMapCanvas (STUB — 46 lines decorativas)
+  │   ├── theme/         ThemeSettingsDialog (250 lines)
+  │   ├── tools/         GisToolPanel (61 lines)
+  │   └── workspace/     PAGINAS PRINCIPALES (14 subdirectorios)
+  │       ├── ai-containers/   Gestion providers LLM (7 archivos)
+  │       ├── analysis/        Panel de analitica (8 archivos)
+  │       ├── automation/      Automatizaciones (4 archivos)
+  │       ├── chat/            Mention picker + hooks
+  │       ├── commands/        Slash commands (412 lines)
+  │       ├── configuration/   Dialogo config (20+ archivos, 14 secciones)
+  │       ├── connectors/      Conectores (8 archivos)
+  │       ├── documents/       Gestion documentos (9 archivos)
+  │       ├── graph/           Grafo conocimiento (9 archivos)
+  │       ├── ide/             IDE workspace (11 archivos — SIN RUTA)
+  │       ├── mcp/             Servidores MCP (14 archivos)
+  │       ├── onboarding/      Wizard inicial (1 archivo)
+  │       ├── projects/        Creacion proyectos (1 archivo)
+  │       ├── skills/          Skills (6 archivos)
+  │       └── traces/          Trazas recientes (1 archivo)
+  ├── hooks/              Hooks globales (10 archivos)
+  ├── lib/                Utilidades (commandRegistry, utils)
+  ├── stores/             Zustand stores (3 archivos)
+  ├── tools/              Tool definitions (3 archivos)
+  ├── types/              TypeScript types (14 archivos, ~870 lines)
+  ├── utils/              Parse utilities
+  └── __tests__/          Tests (9 archivos)
+
+================================================================================
+2. ROUTING Y NAVEGACION (hash-based)
+================================================================================
+
+  Implementacion: useHashRoute() en App.tsx
+    - Lee window.location.hash, default "#chat"
+    - Escucha hashchange events
+  
+  Navegacion definida en constants/workspace.ts
+
+2.1 Items del sidebar
+──────────────────────────────────────────────────────────────────────
+  Grupo "Principal":
+    #chat        Chat          → ChatPanel ✓
+    #tasks       Tareas        → ChatPanel (mismo que chat) ⚠
+    #memory      Memoria       → GraphPage ✓
+
+  Grupo "Workspace":
+    #files       Files         → DocumentsPage ✓
+    #mcp         MCP           → McpServersPage ✓
+    #uso         Uso           → AnalysisPage ✓
+    #conectores  Connectors    → ConnectorsPage ✓
+    #projects    Projects      → ChatPanel (placeholder) ⚠
+    #automations Automations   → AutomationPage ✓
+
+  Rutas NO listadas en sidebar pero accesibles:
+    #skills      Skills        → SkillsPage ✓ (via slash commands)
+
+  RUTAS FALTANTES / SIN CONEXION:
+    #ide         IDE           → WorkspaceIDE construido pero SIN RUTA
+                                 (11 archivos, ~1,000 lines — INACCESIBLE)
+
+================================================================================
+3. PAGINAS DEL WORKSPACE
+================================================================================
+
+  Pagina                 Lines  Estado
+  ─────────────────────  ─────  ────────────────────────────────
+  ChatPanel              433    FULL — sidebar, transcript, composer
+  GraphPage              306    FULL — D3-force, nodos, aristas, sheet
+  DocumentsPage          166    FULL — upload, list, sort, filter
+  McpServersPage         171    FULL — grid, ping, register, filter
+  AnalysisPage            27    FULL — metricas, charts, runs, cost
+  ConnectorsPage         184    FULL — CRUD conectores, sync
+  SkillsPage             175    FULL — install, toggle, filter
+  AutomationPage         181    FULL — CRUD automations, scheduler
+  AiContainersPage       249    FULL — providers, catalog, setup
+  OnboardingWizard       255    FULL — multi-step first-run
+  CreateProjectDialog    288    FULL — creacion proyectos
+  WorkspaceIDE           145    ⚠ CONSTRUIDO pero SIN RUTA (#ide)
+
+================================================================================
+4. COMPONENTES DE CHAT
+================================================================================
+
+  Componente             Lines  Proposito
+  ─────────────────────  ─────  ──────────────────────────────────
+  ChatPanel              433    Panel principal con sidebar + transcript
+  ChatComposer           138    Formulario de entrada
+  ChatTranscript         185    Lista de mensajes
+  AssistantMessage       136    Mensaje asistente con markdown
+  MessageBubble          129    Burbuja de mensaje individual
+  MessageActions         238    Acciones por mensaje (copy, edit, etc.)
+  MarkdownContent        228    Renderizador markdown con sintaxis
+  CodeBlock              145    Bloque de codigo con copy
+  CitationsBlock         116    Citas y fuentes
+  DeepResearchPanel      174    Panel de busqueda profunda (NO USADO?)
+  ToolMenu               199    Menu desplegable de herramientas
+  MentionPicker          154    Picker de menciones @
+  CompactPicker          106    Picker compacto @ y /
+  ConversationSidebarList 254   Lista de conversaciones
+  ModelHeaderPopover     174    Selector de modelo
+  ProjectContextPanel    178    Panel de contexto lateral
+  ConnectorConnectionDialog 294 Dialogo conexion conectores
+  ConnectorMiniPanel      79    Panel mini de conector
+  DragDropOverlay         64    Overlay drag & drop
+  DropZone                52    Zona de drop
+  ConnectorStatusBadge    36    Badge de estado
+  ConversationMemoryBadge 30    Badge de memoria de sesion
+  SearchingIndicator      76    Indicador de busqueda
+  SearchSourcesBlock      58    Bloque de fuentes
+  AudioRecorder           53    Grabador de audio
+  AttachmentChips         86    Chips de archivos adjuntos
+  AgentLifeIndicator      54    Indicador de vida del agente
+  ConnectCard            106    Tarjeta de conexion
+  McpConnectCard          45    Tarjeta conexion MCP
+  ActionSuggestions       23    Sugerencias de accion
+
+  Submodulos composer/ (7 archivos):
+    ComposerInput          59    Textarea + chips + picker
+    ComposerToolbar       159    Toolbar con acciones
+    SkillPills             27    Pills de skills activos
+    useComposerState      340    [MAS COMPLEJO] 15+ handlers
+    useDraftSync           30    Sincronizacion borradores
+    useFileDrop            62    Drag & drop archivos
+    usePasteImage          34    Pegar imagen desde portapapeles
+
+  Submodulos hooks/ (3 archivos):
+    useChatSubmit         281    Logica de envio de mensajes
+    useConversation        98    Gestion de conversacion actual
+    useWebSearch           42    Estado de busqueda web
+
+  Submodulos reasoning/ (3 archivos):
+    ThinkingCard           77    Tarjeta de razonamiento
+    useReasoningStream     29    Stream de eventos de razonamiento
+
+  Submodulos charts/ (7 archivos):
+    AreaChartBlock, BarChartBlock, LineChartBlock, PieChartBlock,
+    RadarChartBlock, chart-utils (244 lines), shared
+
+================================================================================
+5. DIALOGO DE CONFIGURACION (14 secciones)
+================================================================================
+
+  El dialogo ConfigurationDialog.tsx tiene 14 secciones en 2 grupos:
+
+  GRUPO "SISTEMA" (6 secciones)
+  ─────────────────────────────────────────────────────────────────
+  ai-embeddings   AiEmbeddingsSection    188 lines  FULL
+                  Catalog providers, model table, embedding model
+  mcp-router      McpRouterSection        49 lines  FULL
+                  MCP server management
+  workspace       WorkspaceSection        127 lines  FULL
+                  Working directory, code execution mode, shell
+  agents          AgentsSection           248 lines  FULL
+                  Agent list, toggle, model assignment
+  keybindings     KeybindingsPanel        109 lines  FULL
+                  8 keybindings customizables con recording
+  notifications   NotificationsPanel      107 lines  FULL
+                  Master toggle, position, duracion, categorias
+  maintenance     MaintenanceSection      136 lines  FULL
+                  8 tareas de mantenimiento con ejecucion Tauri
+
+  GRUPO "INTEGRACIONES" (1 seccion)
+  ─────────────────────────────────────────────────────────────────
+  telegram        TelegramIntegrationPanel 391 lines  FULL
+                  Config, test, start/stop polling, QR pairing
+                  + TelegramQrPairing (98 lines)
+
+  GRUPO "GEOESPACIAL" (3 secciones)
+  ─────────────────────────────────────────────────────────────────
+  map-engines     MapEnginesSection        23 lines  ⚠ STUBBED
+                  Wraps MapSettingsPanel (read-only)
+  connectors      ConnectorsSection       185 lines  FULL
+                  List, edit, delete, duplicate warning
+  gis-tools       GisToolsPanel           163 lines  FULL
+                  MCP tool allowlist management
+
+  GRUPO "DATOS" (4 secciones)
+  ─────────────────────────────────────────────────────────────────
+  memory          MemorySection           241 lines  FULL
+                  Chunk settings, curated facts CRUD, metrics
+  local-paths     LocalPathsSection        53 lines  ⚠ STUBBED
+                  Hardcoded paths, "Cambiar" → dialogo placeholder
+  allowed-paths   AllowedPathsSection      130 lines  FULL
+                  CRUD de rutas permitidas con niveles de permiso
+
+  NO INCLUIDAS EN EL MAPEO (existen pero no renderizadas):
+    SchedulerSection   193 lines  — Programacion de tareas periodicas
+                                    (existe como componente pero no
+                                    esta en sectionComponents)
+
+================================================================================
+6. API LAYER — COMANDOS TAURI
+================================================================================
+
+  Cada archivo api/*.ts sigue el patron:
+    isTauriAvailable() → getInvoke() → invokeOrFallback() / invokeRequired()
+    [DUPLICADO] Este patron de 50 lines se copia en TODOS los 16 archivos
+
+  api/            Comandos Tauri llamados
+  ─────────────── ─────────────────────────────────────────────────────
+  analysis.ts     get_analysis_metrics, get_token_timeline, get_model_usage,
+                  list_analysis_runs, get_skill_usage, get_cost_by_timeframe,
+                  get_top_queries, export_analysis_traces
+  audio.ts        audio_transcribe
+  chat.ts         send_message, delete/archive/unarchive conversation,
+                  list/messages, search, project_context, recall_chunks,
+                  automations CRUD, patches, scheduler, export trajectory,
+                  export sharegpt
+  connector.ts    register_local_connector, list_connector_files,
+                  cache/sync connector files, list_connector_configs
+  data.ts         list/get/delete/validate data assets, store metrics,
+                  sync events, document chunks, graph nodes/edges,
+                  knowledge graph, node position, data lineage, reindex
+  events.ts       list/open/get/delete artifacts, list/count/sub events,
+                  list_geo_events
+  filesystem-*.ts get/save config, first_launch, onboarding, timeline
+  health.ts       run_health_check
+  invoke.ts       Generic invoke wrapper
+  llm.ts          list_llm_models, ping_llm_provider, send_llm_message
+  mcp.ts          CRUD servers, ping, tools, allowlist, import/export,
+                  discover, preview, curated catalog install
+  notifications.ts send_os_notification, request_permission
+  secure.ts       set/get/delete secure values
+  settings.ts     get/set settings
+  skills.ts       list/install/toggle/read/preview skills
+  telegram.ts     save/load config, test, polling, pairing
+
+  TOTAL: ~100+ comandos Tauri distintos invocados
+
+================================================================================
+7. FEATURES POR DIRECTORIO
+================================================================================
+
+  features/       Archivos  Lines  Estado
+  ─────────────── ────────  ─────  ──────────────────────────────
+  agent/              6     502   FULL — Task board system
+  agents/             2      26   MINIMAL — Agent registry
+  ai/                 2     133   FULL — AI connector display
+  chat/               1      37   FULL — ReasoningToggle
+  map/                1      46   ⚠ STUB — Solo decorativo
+  theme/              1     250   FULL — Theme picker + import
+  tools/              1      61   FULL — GIS tool display
+  workspace/ai-cont  7     1,038  FULL — Provider management
+  workspace/analysi  8     1,118  FULL — Analytics dashboard
+  workspace/automat  4     520    FULL — Automations + scheduler
+  workspace/chat     3     120    FULL — Mention picker
+  workspace/command  1     412    FULL — Slash commands
+  workspace/config   20    ~2,500 FULL — 14 secciones config
+  workspace/connect  8     729    FULL — Conectores
+  workspace/documen  9     928    FULL — Documentos
+  workspace/graph    9     1,298  FULL — Grafo conocimiento D3
+  workspace/ide     11     1,021  ⚠ SIN RUTA — Construido no accesible
+  workspace/mcp     14     1,660  FULL — Servidores MCP
+  workspace/onboard  1     255    FULL — Onboarding wizard
+  workspace/project  1     288    FULL — Crear proyecto
+  workspace/skills   6     606    FULL — Skills marketplace
+  workspace/traces   1     100    FULL — Trazas recientes
+
+================================================================================
+8. TYPES Y CONSTANTS
+================================================================================
+
+  types/ (14 archivos, ~870 lines)
+    agents.ts         AgentSourceType (3 lines)
+    analysis.ts       AnalysisMetrics, TokenBucket, ModelUsage, etc.
+    chat.ts           ~30 tipos (MESSAGE, CONVERSATION, STREAM_EVENT, etc.)
+    connector.ts      ConnectorConfig, ConnectorFile
+    data.ts           DataAsset, DataStoreMetrics, etc.
+    files.ts          FileNode
+    graph.ts          GraphNode, GraphEdge, GraphUpdatePayload
+    llm.ts            LlmProvider, LlmModelInfo
+    mcp.ts            McpServer, McpTool, RegisterServerPayload
+    notifications.ts  NotificationSettings, categories
+    reasoning.ts      ReasoningDelta, ReasoningEnd
+    skills.ts         Skill, SkillCategory
+    workspace-types.ts NavItem, AiConnector, GisTool, ThemePreset
+
+  constants/ (1 archivo, 88 lines)
+    navigationItems   6 top-level + 6 children nav items
+    themePresets      8 temas (geo-dark, geo-light, emerald, etc.)
+
+================================================================================
+9. STORES (Zustand, 3 stores)
+================================================================================
+
+  Store               Lines  Persistencia  Proposito
+  ─────────────────── ─────  ────────────  ─────────────────────────
+  uiStore              11   No            commandPaletteOpen toggle
+  draftsStore          42   localStorage  Borradores por conversationId
+  keybindingsStore    108   localStorage  8 keybindings customizables
+
+================================================================================
+10. HOOKS GLOBALES (10 archivos)
+================================================================================
+
+  Hook                         Lines  Proposito
+  ──────────────────────────── ─────  ────────────────────────────────
+  use-mobile                    15    Detecta pantalla movil
+  useAgentTaskEvents            19    Eventos Tauri de tareas agente
+  useAudioRecorder              82    Grabacion de audio
+  useEventBus                   75    Suscripcion a eventos Tauri
+  useFilesystemTimeline         73    Timeline de cambios en filesystem
+  useGlobalShortcuts            48    Atajos globales de teclado
+  useNotifications              58    Notificaciones OS
+  useOnboarding                 20    Estado del onboarding
+  usePickerTrigger              33    Trigger de picker @ y /
+  useTelegramBridge            119    Bridge Telegram desktop
+  useUpdater                    56    Actualizaciones de la app
+
+================================================================================
+11. TESTS (9 archivos)
+================================================================================
+
+  Test                          Lines  Estado
+  ────────────────────────────  ─────  ────────────────────────────────
+  api/chat.test.ts              37    Basico
+  api/events.test.ts           110    OK
+  api/secure.test.ts            44    OK
+  components/chat/ChatComposer  80    OK
+  components/chat/DragDrop      34    OK
+  components/chat/MentionPicker 71    OK
+  components/chat/parseContent  83    OK
+  components/chat/SearchingInd  72    OK
+  lib/utils.test.ts             19    OK
+  stores/draftsStore.test.ts    38    OK
+  stores/keybindingsStore.ts    51    OK
+
+================================================================================
+12. IMPLEMENTADO vs STUBBED
+================================================================================
+
+  [FULL] Chat system (conversaciones, mensajes, streaming, export)
+  [FULL] MCP server management (register, ping, discover, allowlist)
+  [FULL] Document management (upload, index, list, folder permissions)
+  [FULL] Knowledge graph (D3, node CRUD, position persistence)
+  [FULL] Skills (install from file/GitHub, toggle, view)
+  [FULL] Agent task system (create, start, cancel, retry, events)
+  [FULL] Automations (CRUD, NL-to-cron, scheduler control)
+  [FULL] Analysis (metrics, token charts, cost, run history)
+  [FULL] Connectors (local + remote, add/edit/delete/sync)
+  [FULL] AI providers (Ollama, OpenAI, Anthropic, OpenRouter)
+  [FULL] Configuration dialog (12/14 secciones funcionales)
+  [FULL] Theme system (8 presets + custom import)
+  [FULL] Telegram integration (QR pairing, polling, config)
+  [FULL] Onboarding wizard
+  [FULL] Keyboard shortcuts + notification settings
+  [FULL] Slash commands (12+ comandos)
+
+  [STUB] Map/Geo (GeoMapCanvas) — Decorativo, sin mapa real
+  [STUB] Projects page (#projects) — Reusa ChatPanel
+  [STUB] Tasks page (#tasks) — Reusa ChatPanel
+  [STUB] IDE workspace (WorkspaceIDE) — Construido pero SIN RUTA
+  [STUB] Local Paths section — Hardcoded, dialogo placeholder
+  [STUB] Map Engines section — Read-only, sin configuracion real
+  [STUB] SchedulerSection — Existe como componente no renderizado
+
+================================================================================
+13. ISSUES CRITICOS
+================================================================================
+
+  PRIORIDAD 1 — ARQUITECTURA
+  ─────────────────────────────────────────────────────────────
+  [DUPLICACION] Pattern isTauriAvailable/getInvoke/invokeOrFallback/
+                invokeRequired copiado en TODOS los 16 archivos api/
+                (~50 lines × 16 = ~800 lines de boilerplate)
+  [SIN RUTA]    IDE workspace (WorkspaceIDE.tsx, 11 archivos,
+                ~1,000 lines) construido pero INACCESIBLE desde UI
+  [AMBIGUO]     Dos directorios: features/agent/ (task system) y
+                features/agents/ (agent registry) — confuso
+
+  PRIORIDAD 2 — CALIDAD
+  ─────────────────────────────────────────────────────────────
+  [HARDCODED]   project-default como ID de proyecto unico
+  [HASH]        Routing hash-based sin react-router — limita rutas
+                anidadas y navegacion programatica
+  [INLINE]      Varios componentes importan invoke() directo de
+                @tauri-apps/api/core, saltando la capa api/*.ts
+  [MEZCLA]      Comentarios en espanol e ingles mezclados
+  [SIN USAR]    DeepResearchPanel (174 lines) — no renderizado
+  [SIN USAR]    AiConnectorPanel, GisToolPanel — componentes
+                legacy no renderizados en rutas actuales
+
+  PRIORIDAD 3 — MANTENIBILIDAD
+  ─────────────────────────────────────────────────────────────
+  [CLEANUP]     graph-data.ts (2 lines) — archivo vacio
+  [CLEANUP]     features/workspace/chat/ → deberia estar en
+                components/chat/ (responsabilidad dividida)
+  [CLEANUP]     SchedulerSection existe pero no en el mapeo del
+                dialogo de configuracion
+  [FALTA]       Sin ErrorBoundary en pages excepto GraphPage
+  [FALTA]       Sin devtools en stores Zustand
+  [DEPS]        tailwind.config.cjs es v3, pero usa tailwind v4
+
+================================================================================
+14. DIAGRAMA DE NAVEGACION (hash routes)
+================================================================================
+
+  App.tsx
+  └── NotificationSettingsProvider
+      └── SidebarProvider
+          ├── AppSidebar
+          │   ├── Chat         → #chat     (icon: BotIcon)
+          │   ├── Tareas        → #tasks    (icon: ListTodoIcon)
+          │   ├── Memoria       → #memory   (icon: BrainIcon)
+          │   └── Workspace
+          │       ├── Files      → #files     (icon: FileIcon)
+          │       ├── MCP        → #mcp       (icon: ServerIcon)
+          │       ├── Uso        → #uso       (icon: MapIcon)
+          │       ├── Connectors → #conectores(icon: CableIcon)
+          │       ├── Projects   → #projects  (icon: BriefcaseIcon)
+          │       └── Automations→ #automations(icon: Timer)
+          │
+          └── GeoAgentsWorkspace
+              ├── #chat         → ChatPanel
+              ├── #tasks        → ChatPanel (reuso)
+              ├── #memory       → GraphPage
+              ├── #files        → DocumentsPage
+              ├── #mcp          → McpServersPage
+              ├── #uso          → AnalysisPage
+              ├── #conectores   → ConnectorsPage
+              ├── #projects     → ChatPanel (placeholder)
+              ├── #skills       → SkillsPage
+              ├── #automations  → AutomationPage
+              ├── #default      → ChatPanel
+              └── (#ide)        → ✗ NO RUTEADO
+
+  Ademas:
+    CommandPalette — overlay global
+    ConfigurationDialog — 14 secciones
+    SkillOfferingBanner — banner de skills
+    TelegramBridgeMount — bridge Telegram
+    OnboardingWizard — primer inicio
+
+================================================================================
+15. PRIORIDADES DE ACCION
+================================================================================
+
+  1. [ARQUITECTURA] Extraer patron Tauri invoke a api/invoke.ts y
+     eliminar duplicacion en los 16 archivos api/*.ts
+  2. [RUTA] Conectar WorkspaceIDE a una ruta (#ide) en GeoAgentsWorkspace
+  3. [RUTA] Crear pagina dedicada para #tasks (TaskBoardPage)
+  4. [RUTA] Crear pagina dedicada para #projects (ProjectsPage)
+  5. [STUB] Implementar mapa real o eliminar GeoMapCanvas placeholder
+  6. [STUB] Conectar SchedulerSection al dialogo de configuracion
+  7. [REFACTOR] Unificar features/agent/ y features/agents/ o renombrar
+  8. [CONFIG] Implementar LocalPathsSection real
+  9. [CONFIG] Implementar MapEnginesSection real
+  10.[CLEANUP] Eliminar DeepResearchPanel si no se usa, o conectarlo
+  11.[TEST] Aumentar cobertura de tests (solo 9 archivos)
+  12.[DEPS] Migrar de tailwind.config.cjs a CSS nativo Tailwind v4
