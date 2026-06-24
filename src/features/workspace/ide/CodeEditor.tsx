@@ -45,8 +45,8 @@ function getLanguage(filename: string): string {
 export function CodeEditor({ file, theme = 'dark', readOnly = true, onChange }: CodeEditorProps) {
   if (!file) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
+      <div className="h-full flex items-center justify-center bg-muted/30">
+        <p className="text-muted-foreground text-sm">
           Selecciona un archivo para ver su contenido
         </p>
       </div>
@@ -57,12 +57,12 @@ export function CodeEditor({ file, theme = 'dark', readOnly = true, onChange }: 
   const content = file.content || '// No hay contenido disponible';
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-950">
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col bg-muted/30">
+      <div className="px-4 py-2 border-b border-border flex items-center justify-between bg-card">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{file.name}</span>
+          <span className="text-sm font-medium text-foreground">{file.name}</span>
           {file.lineCount && (
-            <span className="text-xs text-gray-500 dark:text-gray-500">{file.lineCount} líneas</span>
+            <span className="text-xs text-muted-foreground">{file.lineCount} líneas</span>
           )}
         </div>
         {file.status === 'generating' && (

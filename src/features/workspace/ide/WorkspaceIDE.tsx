@@ -55,12 +55,12 @@ export function WorkspaceIDE() {
 
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-950">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="h-12 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 bg-white dark:bg-gray-900">
+      <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-card">
         <div className="flex items-center gap-2">
-          <Layout className="size-5 text-gray-600 dark:text-gray-400" />
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Workspace IDE</h2>
+          <Layout className="size-5 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Workspace IDE</h2>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -84,7 +84,7 @@ export function WorkspaceIDE() {
           onClear={clearFsEntries}
         />
         {/* Left: Explorer + Timeline */}
-        <div className="flex flex-col w-80 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col w-80 flex-shrink-0 border-r border-border">
           <ReasoningTimeline steps={steps} />
           {/* Explorer */}
           <div className="flex flex-col flex-1">
@@ -107,15 +107,15 @@ export function WorkspaceIDE() {
         </div>
 
         {/* Right Sidebar - Artifacts/Chat */}
-        <div className="w-80 flex-shrink-0 border-l border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900">
-          <div className="flex border-b border-gray-200 dark:border-gray-800">
+        <div className="w-80 flex-shrink-0 border-l border-border flex flex-col bg-card">
+          <div className="flex border-b border-border">
             <button
               onClick={() => setActiveSidebar('chat')}
               className={cn(
                 'flex-1 py-2 text-sm font-medium transition-colors',
                 activeSidebar === 'chat'
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-b-2 border-blue-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-primary/10 text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               Chat
@@ -125,8 +125,8 @@ export function WorkspaceIDE() {
               className={cn(
                 'flex-1 py-2 text-sm font-medium transition-colors',
                 activeSidebar === 'artifacts'
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-b-2 border-blue-500'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-primary/10 text-primary border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               Artifacts
@@ -140,11 +140,11 @@ export function WorkspaceIDE() {
               />
             ) : (
               <div className="p-4 flex flex-col h-full">
-                <div className="border-t border-gray-200 pt-2 mt-2">
+                <div className="border-t border-border pt-2 mt-2">
                   <input
                     type="text"
                     placeholder="Describe la app que quieres crear..."
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
