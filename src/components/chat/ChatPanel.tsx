@@ -8,10 +8,10 @@ import {
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import { Button } from "@/components/ui/Button"
 import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
-import { GatewayStatusBadge } from "@/components/chat/GatewayStatusBadge"
 import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { ChatTranscript } from "@/components/chat/ChatTranscript"
+import { DragDropOverlay } from "@/components/chat/DragDropOverlay"
 import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
 
 import { useChatSession } from "@/components/chat/useChatSession"
@@ -193,7 +193,6 @@ export function ChatPanel(_props: ChatPanelProps) {
               : "idle"}
             conversationCount={messages.filter(m => m.role === "user").length}
           />
-          <GatewayStatusBadge />
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -231,6 +230,7 @@ export function ChatPanel(_props: ChatPanelProps) {
 
         <ChatComposer
           key={conversationId ?? `new-${newChatCounter}`}
+          conversationId={conversationId ?? undefined}
           value={composerValue}
           onValueChange={setComposerValue}
           activeProvider={activeProvider}
@@ -333,6 +333,7 @@ export function ChatPanel(_props: ChatPanelProps) {
         onToggleChange={setContextToggles}
       />
       
+      <DragDropOverlay />
 
     </section>
   )
