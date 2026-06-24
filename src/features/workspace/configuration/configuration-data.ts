@@ -3,6 +3,7 @@ import {
   BrainCircuitIcon,
   DatabaseIcon,
   FolderCogIcon,
+  KeyboardIcon,
   LayersIcon,
   MapIcon,
   MessageSquareIcon,
@@ -107,6 +108,12 @@ export const configGroups: ConfigGroup[] = [
         indicator: null,
       },
 
+      {
+        id: "keybindings",
+        label: "Atajos",
+        icon: KeyboardIcon,
+        indicator: null,
+      },
       {
         id: "notifications",
         label: "Notificaciones",

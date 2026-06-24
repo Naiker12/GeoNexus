@@ -19,6 +19,7 @@ import { TelegramIntegrationPanel } from "@/features/workspace/configuration/sec
 import { AgentsSection } from "@/features/workspace/configuration/sections/AgentsSection"
 import { NotificationsPanel } from "@/features/workspace/configuration/sections/NotificationsPanel"
 import { WorkspaceSection } from "@/features/workspace/configuration/sections/WorkspaceSection"
+import { KeybindingsPanel } from "@/features/workspace/configuration/sections/KeybindingsPanel"
 
 type ConfigurationDialogProps = {
   open: boolean
@@ -37,6 +38,7 @@ const sectionComponents: Record<ConfigSectionId, React.FC> = {
   telegram: TelegramIntegrationPanel,
   "gis-tools": GisToolsPanel,
   agents: AgentsSection,
+  keybindings: KeybindingsPanel,
   notifications: NotificationsPanel,
   workspace: WorkspaceSection,
 }

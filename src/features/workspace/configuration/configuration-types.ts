@@ -14,6 +14,7 @@ export type ConfigSectionId =
   | "agents"
   | "notifications"
   | "workspace"
+  | "keybindings"
 
 export type ConfigSection = {
   id: ConfigSectionId

@@ -9,7 +9,8 @@ import { OnboardingWizard } from "@/features/workspace/onboarding/OnboardingWiza
 import { useOnboarding } from "@/hooks/useOnboarding"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
-import type { ThemePreset } from "@/types/workspace-types"
+import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
+import type { ThemePresetId } from "@/types/workspace-types"
 import type { ToastPosition } from "@/types/notifications"
 import type { CSSProperties } from "react"
 
@@ -26,7 +27,7 @@ function readToastPosition(): ToastPosition {
   return "bottom-right"
 }
 
-const themeClassNames: ThemePreset["id"][] = [
+const BUILTIN_THEMES: ThemePresetId[] = [
   "geo-dark",
   "geo-light",
   "emerald",
@@ -39,9 +40,9 @@ const themeClassNames: ThemePreset["id"][] = [
 
 export default function App() {
   const [activeTheme, setActiveTheme] =
-    React.useState<ThemePreset["id"]>(() => {
+    React.useState<ThemePresetId>(() => {
       if (typeof window !== "undefined") {
-        return (localStorage.getItem("geonexus.theme") as ThemePreset["id"]) || "geo-light"
+        return (localStorage.getItem("geonexus.theme") as ThemePresetId) || "geo-light"
       }
       return "geo-light"
     })
@@ -54,13 +55,22 @@ export default function App() {
   }, [activeTheme])
 
   React.useEffect(() => {
-    document.documentElement.classList.remove(...themeClassNames)
+    const allThemeClasses = [...BUILTIN_THEMES]
+    document.querySelectorAll<HTMLStyleElement>("[id^='theme-']").forEach(el => {
+      const id = el.id.replace("theme-", "")
+      if (id) allThemeClasses.push(id as ThemePresetId)
+    })
+    document.documentElement.classList.remove(...allThemeClasses)
     document.documentElement.classList.add(activeTheme)
 
     return () => {
-      document.documentElement.classList.remove(...themeClassNames)
+      document.documentElement.classList.remove(activeTheme)
     }
   }, [activeTheme])
+
+  useGlobalShortcuts({
+    onOpenSettings: () => setConfigOpen(true),
+  })
 
   const toastPosition = readToastPosition()
 
