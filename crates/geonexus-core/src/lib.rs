@@ -10,6 +10,8 @@ pub mod chat;
 pub mod telegram;
 pub mod security;
 pub mod allowlist;
+pub mod subagent;
+pub mod gateway;
 
 // Re-exports de tipos comunes
 pub use config::GeoNexusConfig;

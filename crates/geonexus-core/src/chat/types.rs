@@ -89,6 +89,16 @@ pub struct ConversationSearchResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageSearchResult {
+    pub message_id: String,
+    pub conversation_id: String,
+    pub role: String,
+    pub snippet: String,
+    pub rank: f64,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResearchSource {
     pub url: String,
     pub title: String,

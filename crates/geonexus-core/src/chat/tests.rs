@@ -22,6 +22,7 @@ mod tests {
             mentioned_agent_sources: vec![],
             skill_names: vec![],
             attachments: vec![],
+            reasoning_effort: String::new(),
         }
     }
 
