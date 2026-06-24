@@ -1,6 +1,5 @@
 use crate::commands::llm::{LlmProviderConfig, LlmPingResult, LlmChatRequest, LlmChatResult, ListLlmModelsInput, LlmModelInfo};
 use crate::commands::llm::sidecar::run_sidecar;
-use crate::commands::llm::gateway::get_global_gateway;
 use crate::commands::llm::fetchers::{
     fetch_ollama_models, fetch_openai_compat_models, fetch_openrouter_models, fetch_openai_models,
     anthropic_known_models,
@@ -94,26 +93,4 @@ pub async fn list_llm_models(
             fetch_openai_compat_models(&input.endpoint, key).await
         }
     }
-}
-
-#[tauri::command]
-pub async fn call_gateway_action(
-    action: String,
-    params: serde_json::Value,
-) -> Result<serde_json::Value, String> {
-    let gateway = get_global_gateway()
-        .ok_or_else(|| "Gateway no inicializado".to_string())?;
-
-    let response = gateway.send_json(&action, params).await?;
-
-    let response_type = response.get("type").and_then(|v| v.as_str()).unwrap_or("");
-    if response_type == "error" {
-        let msg = response
-            .get("message")
-            .and_then(|v| v.as_str())
-            .unwrap_or("Error del gateway");
-        return Err(msg.to_string());
-    }
-
-    Ok(response.get("data").cloned().unwrap_or(response))
 }

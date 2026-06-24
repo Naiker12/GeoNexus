@@ -139,20 +139,3 @@ pub struct SendMessageResponse {
 pub struct SimpleResponse {
     pub ok: bool,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentTraceEvent {
-    pub r#type: String,
-    pub id: String,
-    pub parent_id: Option<String>,
-    pub category: String,
-    pub title: String,
-    pub log: Option<String>,
-    pub payload: Option<serde_json::Value>,
-    pub duration: Option<u64>,
-    pub user_friendly_summary: Option<String>,
-    pub error: Option<String>,
-    pub timestamp: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub conversation_id: Option<String>,
-}

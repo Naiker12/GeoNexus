@@ -1,8 +1,7 @@
 use serde::Serialize;
-use tauri::{command, State};
+use tauri::State;
 
 use crate::AppState;
-use crate::commands::llm::get_global_gateway;
 
 #[derive(Debug, Serialize)]
 pub struct HealthCheckResult {
@@ -10,15 +9,6 @@ pub struct HealthCheckResult {
     pub llm_configured: bool,
     pub has_allowed_paths: bool,
     pub bot_configured: bool,
-    pub gateway_connected: bool,
-}
-
-#[command]
-pub async fn check_gateway() -> Result<bool, String> {
-    match get_global_gateway() {
-        Some(gw) => Ok(gw.is_connected().await),
-        None => Ok(false),
-    }
 }
 
 #[tauri::command]
@@ -52,16 +42,10 @@ pub async fn run_health_check(state: State<'_, AppState>) -> Result<HealthCheckR
     .map(|(count,)| count > 0)
     .unwrap_or(false);
 
-    let gateway_connected = match get_global_gateway() {
-        Some(gw) => gw.is_connected().await,
-        None => false,
-    };
-
     Ok(HealthCheckResult {
         db_connected,
         llm_configured,
         has_allowed_paths,
         bot_configured,
-        gateway_connected,
     })
 }

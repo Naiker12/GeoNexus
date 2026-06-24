@@ -46,3 +46,36 @@ pub struct AnalysisSession {
     pub conversation_id: String,
     pub created_at: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentTraceEvent {
+    pub r#type: String,
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub category: String,
+    pub title: String,
+    pub log: Option<String>,
+    pub payload: Option<serde_json::Value>,
+    pub duration: Option<u64>,
+    pub user_friendly_summary: Option<String>,
+    pub error: Option<String>,
+    pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReasoningDelta {
+    pub conversation_id: String,
+    pub message_id: String,
+    pub delta: String,
+    pub timestamp: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReasoningEnd {
+    pub conversation_id: String,
+    pub message_id: String,
+    pub full_text: String,
+    pub duration_ms: u64,
+}

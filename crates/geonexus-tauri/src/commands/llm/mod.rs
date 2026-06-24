@@ -1,6 +1,5 @@
 pub mod commands;
 pub mod fetchers;
-pub mod gateway;
 pub mod sidecar;
 
 #[cfg(test)]
@@ -10,7 +9,6 @@ pub use commands::*;
 pub use sidecar::run_sidecar;
 pub use sidecar::run_sidecar_streaming;
 pub use sidecar::project_root;
-pub use gateway::{GatewayClient, get_global_gateway};
 
 #[derive(Debug, serde::Deserialize)]
 pub struct LlmProviderConfig {
