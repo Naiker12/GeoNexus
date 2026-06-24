@@ -111,6 +111,12 @@ fn main() {
             app.manage(TelegramState::default());
             app.manage(PairingState::default());
 
+            // Registrar plugin de actualizaciones
+            #[cfg(desktop)]
+            {
+                app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+            }
+
             // Inicializar FilesystemMcpFacade (Filesystem MCP security pipeline)
             let fs_config = geonexus_fs_mcp::FilesystemConfig::load()
                 .unwrap_or_default();
