@@ -1,5 +1,4 @@
 import * as React from "react"
-import { invoke } from "@tauri-apps/api/core"
 import { GeoAgentsIcon } from "@/components/brand/GeoAgentsIcon"
 import { cn } from "@/lib/utils"
 
@@ -20,33 +19,14 @@ const STATUS_TEXT: Record<AgentStatus, string> = {
 }
 
 export function AgentLifeIndicator({ status, skillName, conversationCount }: AgentLifeIndicatorProps) {
-  const [gatewayOnline, setGatewayOnline] = React.useState(false)
-
-  React.useEffect(() => {
-    let cancelled = false
-    const check = async () => {
-      try {
-        const ok = await invoke<boolean>("check_gateway")
-        if (!cancelled) setGatewayOnline(ok)
-      } catch { /* gateway command not available */ }
-    }
-    check()
-    const interval = setInterval(check, 10000)
-    return () => { cancelled = true; clearInterval(interval) }
-  }, [])
-
   return (
     <div className="flex items-center gap-2 px-1">
       <div className="flex size-5 items-center justify-center">
         <GeoAgentsIcon className="size-4" variant="nexus" />
       </div>
-      <span className="text-[11px] font-medium text-muted-foreground/80">
-        GEO AGENTS
+      <span className="text-[13px] font-semibold text-foreground ml-0.5 truncate">
+        GeoAgents
       </span>
-      <span className={cn(
-        "inline-block size-1.5 rounded-full",
-        gatewayOnline ? "bg-emerald-500" : "bg-muted-foreground/30",
-      )} />
       <span className="text-[11px] text-muted-foreground/40">·</span>
       <span className={cn(
         "text-[11px]",

@@ -8,10 +8,8 @@ import { DeepResearchPanel } from "@/components/chat/DeepResearchPanel"
 import { CitationsBlock } from "@/components/chat/CitationsBlock"
 import { MarkdownContent } from "@/components/chat/MarkdownContent"
 import { SearchSourcesBlock } from "@/components/chat/SearchSourcesBlock"
-import { ThinkingCard } from "@/components/chat/ThinkingCard"
 
-import { TraceTreeView } from "@/components/chat/TraceTreeView"
-import { useReasoningTimeline } from "@/hooks/useReasoningTimeline"
+import { ThinkingCard, useReasoningStream } from "@/components/chat/reasoning"
 import { parseSuggestions } from "@/utils/parseSuggestions"
 import { parseContent, type ConnectCardData, type McpConnectCardData } from "@/utils/parseContent"
 import type { Message } from "@/types/chat"
@@ -32,10 +30,9 @@ export function AssistantMessage({
   onSendMessage,
   cumulativeContext,
 }: AssistantMessageProps) {
-  const { traceEvents, isStreaming: timelineStreaming, thinkingText } =
-    useReasoningTimeline(isStreaming ? message.conversation_id ?? null : null)
+  const { text: reasoningText, isStreaming: reasoningStreaming, durationMs } = useReasoningStream(isStreaming ? message.conversation_id ?? null : null)
 
-  const reasoningToDisplay = isStreaming ? thinkingText : (message.reasoning_content ?? thinkingText)
+  const reasoningToDisplay = isStreaming ? reasoningText : (message.reasoning_content ?? reasoningText)
 
   const { mainContent, suggestions } = isStreaming
     ? { mainContent: message.content, suggestions: [] as string[] }
@@ -59,30 +56,23 @@ export function AssistantMessage({
           </span>
         </div>
 
-        {/* Reasoning steps — using real events from backend */}
-        {(traceEvents.length > 0 || (message.reasoning_events?.length ?? 0) > 0 || timelineStreaming) ? (
-          <TraceTreeView
-            events={timelineStreaming ? traceEvents : (message.reasoning_events ?? [])}
-            isStreaming={timelineStreaming}
-          />
-        ) : (isPending || isStreaming) ? (
-          <div className="flex items-center gap-2 px-1 py-2 text-sm text-muted-foreground">
-            <LoaderCircleIcon className="size-3.5 animate-spin" />
-            <span>Pensando...</span>
-          </div>
-        ) : null}
-
         {/* ─── RAZONAMIENTO EN VIVO ─── */}
-      {reasoningToDisplay && (
+      {reasoningToDisplay || reasoningStreaming ? (
         <ThinkingCard
           content={reasoningToDisplay}
-          isStreaming={timelineStreaming || !!isStreaming}
+          isStreaming={reasoningStreaming}
+          durationMs={isStreaming ? durationMs : message.reasoning_duration_ms}
         />
-      )}
+      ) : (isPending || isStreaming) ? (
+        <div className="flex items-center gap-2 px-1 py-2 text-sm text-muted-foreground">
+          <LoaderCircleIcon className="size-3.5 animate-spin" />
+          <span>Pensando...</span>
+        </div>
+      ) : null}
 
         {/* ─── RESPUESTA PRINCIPAL con crossfade ─── */}
         <AnimatePresence mode="wait">
-          {!hasContent && (timelineStreaming || isStreaming) ? null : (
+          {!hasContent && (reasoningStreaming || isStreaming) ? null : (
             <motion.div
               key="response"
               initial={{ opacity: 0, y: 6 }}
@@ -140,6 +130,9 @@ export function AssistantMessage({
         />
 
         <div className="flex items-center gap-1 pt-0.5">
+          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+            Geo Agents
+          </span>
           {message.stats && (
             <TokenStatsBadge
               stats={message.stats}

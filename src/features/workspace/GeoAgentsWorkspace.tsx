@@ -2,7 +2,6 @@ import { useEffect } from "react"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
 import { CommandPalette } from "@/components/CommandPalette"
-import { RightSidebar } from "@/components/terminal/RightSidebar"
 import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
 import { ConfigurationDialog } from "@/features/workspace/configuration/ConfigurationDialog"
 import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
@@ -10,7 +9,6 @@ import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
-import { useUiStore } from "@/stores/uiStore"
 
 
 type GeoAgentsWorkspaceProps = {
@@ -20,8 +18,6 @@ type GeoAgentsWorkspaceProps = {
 }
 
 export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange }: GeoAgentsWorkspaceProps) {
-  const toggleRightSidebar = useUiStore((s) => s.toggleRightSidebar)
-
   useEffect(() => {
     const handleOpenRegister = () => {
       if (!activeRoute.startsWith("#mcp")) {
@@ -47,18 +43,6 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
     window.addEventListener("geonexus:open-map", handleOpenMap)
     return () => window.removeEventListener("geonexus:open-map", handleOpenMap)
   }, [])
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.includes("Mac")
-      if ((isMac ? e.metaKey : e.ctrlKey) && e.key === "`") {
-        e.preventDefault()
-        toggleRightSidebar()
-      }
-    }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [toggleRightSidebar])
 
   const renderPage = () => {
     switch (true) {
@@ -94,7 +78,6 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
           <MapBackdrop />
           {renderPage()}
         </main>
-        <RightSidebar />
       </div>
 
       <CommandPalette />

@@ -65,14 +65,6 @@ export function buildRegistry(navigate: NavigateFn): CommandDef[] {
       keywords: ["graph", "knowledge", "grafo", "conocimiento", "memoria"],
     },
     {
-      id: "workspace.terminal",
-      label: "Abrir terminal",
-      category: "Workspace",
-      shortcut: "Ctrl+`",
-      run: () => useUiStore.getState().setRightSidebarOpen(true),
-      keywords: ["terminal", "shell", "command", "consola"],
-    },
-    {
       id: "workspace.skills",
       label: "Explorar skills",
       category: "Agentes",
@@ -92,19 +84,6 @@ export function buildRegistry(navigate: NavigateFn): CommandDef[] {
       category: "Connections",
       run: () => navigate("#conectores"),
       keywords: ["connectors", "conectores", "llm", "api keys"],
-    },
-    {
-      id: "gateway.status",
-      label: "Ver estado del gateway",
-      category: "Sistema",
-      run: () => {
-        import("@tauri-apps/api/core").then(({ invoke }) =>
-          invoke<boolean>("check_gateway").then((ok) => {
-            alert(ok ? "Gateway conectado" : "Gateway desconectado — modo local")
-          }),
-        )
-      },
-      keywords: ["gateway", "health", "backend", "status", "estado"],
     },
     {
       id: "chat.search",
