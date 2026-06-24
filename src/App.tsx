@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toast"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
 import { UpdateBanner } from "@/components/UpdateBanner"
 import { OnboardingWizard } from "@/features/workspace/onboarding/OnboardingWizard"
+import { SkillOfferingBanner } from "@/features/workspace/skills/SkillOfferingBanner"
 import { useOnboarding } from "@/hooks/useOnboarding"
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
@@ -101,6 +102,7 @@ export default function App() {
     </SidebarProvider>
       <Toaster position={toastPosition} />
       <TelegramBridgeMount />
+      <SkillOfferingBanner />
       {!loading && (
         <OnboardingWizard
           open={showWizard}

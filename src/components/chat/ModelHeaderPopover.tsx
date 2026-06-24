@@ -172,7 +172,7 @@ export function ModelHeaderPopover() {
             className="w-full gap-1 text-[10px] font-medium h-7 justify-center hover:bg-accent/60"
             onClick={() => {
               setOpen(false)
-              window.location.hash = "#mcp"
+              window.location.hash = "#proveedores"
             }}
           >
             <PlusIcon className="size-3" />

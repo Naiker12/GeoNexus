@@ -7,8 +7,10 @@ import { ConfigurationDialog } from "@/features/workspace/configuration/Configur
 import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
 import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
 import { GraphPage } from "@/features/workspace/graph/GraphPage"
+import { AiContainersPage } from "@/features/workspace/AiContainersPage"
 import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
 import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
+import { AutomationPage } from "@/features/workspace/automation/AutomationPage"
 
 
 type GeoAgentsWorkspaceProps = {
@@ -56,6 +58,8 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
         return <DocumentsPage />
       case activeRoute.startsWith("#mcp"):
         return <McpServersPage />
+      case activeRoute.startsWith("#proveedores"):
+        return <AiContainersPage />
       case activeRoute.startsWith("#uso"):
         return <AnalysisPage />
       case activeRoute.startsWith("#conectores"):
@@ -64,6 +68,8 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
         return <ChatPanel />
       case activeRoute.startsWith("#skills"):
         return <SkillsPage />
+      case activeRoute.startsWith("#automations"):
+        return <AutomationPage />
       default:
         return <ChatPanel />
     }

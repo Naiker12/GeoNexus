@@ -8,6 +8,8 @@ import {
   MapIcon,
   CableIcon,
   BriefcaseIcon,
+  Timer,
+  CpuIcon,
 } from "lucide-react"
 import type { NavItem, ThemePreset } from "@/types/workspace-types"
 
@@ -20,10 +22,12 @@ export const navigationItems: NavItem[] = [
     icon: FolderKanbanIcon,
     children: [
       { title: "Files", url: "#files", icon: FileIcon },
+      { title: "Proveedores IA", url: "#proveedores", icon: CpuIcon },
       { title: "MCP", url: "#mcp", icon: ServerIcon },
       { title: "Uso", url: "#uso", icon: MapIcon },
       { title: "Connectors", url: "#conectores", icon: CableIcon },
       { title: "Projects", url: "#projects", icon: BriefcaseIcon },
+      { title: "Automations", url: "#automations", icon: Timer },
     ],
   },
 

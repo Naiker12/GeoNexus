@@ -1,20 +1,16 @@
 import * as React from "react"
-
 import { ConversationMemoryBadge } from "@/components/chat/ConversationMemoryBadge"
 import { DropZone } from "@/components/chat/DropZone"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupControl,
-} from "@/components/ui/input-group"
+import { InputGroup, InputGroupAddon, InputGroupControl } from "@/components/ui/input-group"
 import { useComposerState } from "@/components/chat/composer/useComposerState"
+import { useDraftSync } from "@/components/chat/composer/useDraftSync"
+import { SkillPills } from "@/components/chat/composer/SkillPills"
 import { ComposerInput } from "@/components/chat/composer/ComposerInput"
 import { ComposerToolbar, ComposerActions } from "@/components/chat/composer/ComposerToolbar"
 import type { SkillInfo, SessionSummary, FileAttachment } from "@/types/chat"
 import type { MentionSource } from "@/types/chat"
 import type { AgentSourceType } from "@/types/agents"
 import type { ReasoningEffort } from "@/features/chat/ReasoningToggle"
-import { useDraftsStore } from "@/stores/draftsStore"
 
 export type ChatComposerProps = {
   value: string
@@ -50,31 +46,7 @@ export function ChatComposer(props: ChatComposerProps) {
     reasoningEffort, onReasoningEffortChange,
   } = props
 
-  const { conversationId } = props
-  const prevConversationId = React.useRef(conversationId)
-  const draftsStore = useDraftsStore()
-
-  React.useEffect(() => {
-    if (conversationId && conversationId !== prevConversationId.current) {
-      if (prevConversationId.current) {
-        draftsStore.setDraft(prevConversationId.current, value)
-      }
-      const draft = draftsStore.getDraft(conversationId)
-      if (draft && draft !== value) {
-        props.onValueChange(draft)
-      }
-      prevConversationId.current = conversationId
-    }
-  }, [conversationId])
-
-  React.useEffect(() => {
-    if (conversationId) {
-      const timer = setTimeout(() => {
-        draftsStore.setDraft(conversationId, value)
-      }, 500)
-      return () => clearTimeout(timer)
-    }
-  }, [value, conversationId])
+  useDraftSync(props.conversationId, value, onValueChange)
 
   const {
     chips, selectedPickerIndex, anchorPosition,
@@ -95,25 +67,7 @@ export function ChatComposer(props: ChatComposerProps) {
           className="rounded-2xl border border-border/80 bg-card/95 p-2 text-card-foreground shadow-xs"
           onSubmit={handleSubmit}
         >
-          {activeSkills && activeSkills.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5 px-2">
-              {activeSkills.map(skill => (
-                <span
-                  key={skill.id}
-                  className="inline-flex items-center gap-1 rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary"
-                >
-                  {skill.name}
-                  <button
-                    type="button"
-                    onClick={() => onRemoveSkill?.(skill.id)}
-                    className="hover:text-destructive ml-0.5"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+          <SkillPills skills={activeSkills ?? []} onRemove={onRemoveSkill ?? (() => {})} />
 
           <InputGroup className="min-h-12 items-center rounded-xl bg-background/95 py-1">
             <InputGroupAddon className="items-center">
