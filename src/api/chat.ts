@@ -126,6 +126,100 @@ export function recallChunks(
   }, [])
 }
 
+export interface Automation {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  cron_expression: string | null
+  intent: string
+  action_type: string
+  action_config: any
+  channel: string
+  enabled: boolean
+  last_run_at: number | null
+  next_run_at: number | null
+  run_count: number
+  created_at: number
+  updated_at: number
+}
+
+export function createAutomation(payload: {
+  projectId: string
+  name: string
+  description?: string
+  intent: string
+  actionType: string
+  actionConfig?: any
+  channel: string
+  cronExpression?: string
+}): Promise<Automation> {
+  return invokeRequired("create_automation", payload)
+}
+
+export function listAutomations(projectId: string): Promise<Automation[]> {
+  return invokeOrFallback("list_automations", { projectId }, [])
+}
+
+export function toggleAutomation(id: string, enabled: boolean): Promise<Automation> {
+  return invokeRequired("toggle_automation", { id, enabled })
+}
+
+export function updateAutomation(payload: {
+  id: string
+  name: string
+  description?: string
+  intent: string
+  actionType: string
+  actionConfig?: any
+  channel: string
+  cronExpression?: string
+  enabled: boolean
+}): Promise<Automation> {
+  return invokeRequired("update_automation", payload)
+}
+
+export function deleteAutomation(id: string): Promise<void> {
+  return invokeRequired("delete_automation", { id })
+}
+
+export function translateNlToCron(query: string): Promise<{ cron_expression: string; confidence: number }> {
+  return invokeOrFallback("translate_nl_to_cron", { query }, { cron_expression: "0 0 * * *", confidence: 0 })
+}
+
+export interface PatchProposal {
+  id: string
+  project_id: string
+  conversation_id: string
+  file_path: string
+  original_content: string | null
+  proposed_content: string
+  diff: string | null
+  status: "pending" | "approved" | "rejected" | "applied"
+  created_at: number
+  updated_at: number
+}
+
+export function listPatches(projectId: string, status?: string): Promise<PatchProposal[]> {
+  return invokeOrFallback("list_patches", { projectId, status }, [])
+}
+
+export function updatePatchStatus(id: string, status: string): Promise<PatchProposal> {
+  return invokeRequired("update_patch_status", { id, status })
+}
+
+export function deletePatch(id: string): Promise<void> {
+  return invokeRequired("delete_patch", { id })
+}
+
+export function startSchedulerWorker(): Promise<string> {
+  return invokeOrFallback("start_scheduler_worker", {}, "Scheduler not available")
+}
+
+export function stopSchedulerWorker(): Promise<string> {
+  return invokeOrFallback("stop_scheduler_worker", {}, "Scheduler not available")
+}
+
 export function getMentionableSources(
   projectId: string,
   query?: string
@@ -137,4 +231,12 @@ export function getMentionableSources(
     connectors: [],
     mcp_servers: []
   })
+}
+
+export function exportConversationTrajectory(conversationId: string): Promise<any> {
+  return invokeRequired("export_conversation_trajectory", { conversationId })
+}
+
+export function exportConversationsSharegpt(projectId: string): Promise<any[]> {
+  return invokeRequired("export_conversations_sharegpt", { projectId })
 }

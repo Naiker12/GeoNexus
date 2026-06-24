@@ -3,7 +3,13 @@ import {
   MessageSquarePlusIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  FileDownIcon,
+  DownloadIcon,
+  XIcon,
+  Loader2Icon,
+  CheckIcon,
 } from "lucide-react"
+import { exportConversationTrajectory, exportConversationsSharegpt } from "@/api/chat"
 
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
 import { Button } from "@/components/ui/Button"
@@ -72,6 +78,9 @@ export function ChatPanel(_props: ChatPanelProps) {
   const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
 
   const [reasoningEffort, setReasoningEffort] = React.useState<"none" | "minimal" | "medium" | "high" | "max">("none")
+  const [exportOpen, setExportOpen] = React.useState(false)
+  const [exporting, setExporting] = React.useState<string | null>(null)
+  const [exportDone, setExportDone] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
@@ -301,16 +310,7 @@ export function ChatPanel(_props: ChatPanelProps) {
           }}
           onNewChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
           onClearChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
-          onExportChat={() => {
-            const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
-            const blob = new Blob([text], { type: "text/markdown" })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `geoagents-chat-${conversationId ?? "new"}.md`
-            a.click()
-            URL.revokeObjectURL(url)
-          }}
+          onExportChat={() => setExportOpen(true)}
           reasoningEffort={reasoningEffort}
           onReasoningEffortChange={setReasoningEffort}
           onReindex={() => {
@@ -335,7 +335,112 @@ export function ChatPanel(_props: ChatPanelProps) {
       
       <DragDropOverlay />
 
+      {/* Export Dialog */}
+      {exportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-[min(94vw,28rem)] rounded-xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">Exportar conversación</h2>
+              <button onClick={() => { setExportOpen(false); setExportDone(null) }} className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/80">
+                <XIcon className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-2 p-4">
+              <ExportOption
+                label="Markdown"
+                desc="Formato legible para documentos"
+                icon={<FileDownIcon className="size-4" />}
+                exporting={exporting === "md"}
+                done={exportDone === "md"}
+                onClick={async () => {
+                  setExporting("md")
+                  const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
+                  const blob = new Blob([text], { type: "text/markdown" })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `geoagents-chat-${conversationId ?? "new"}.md`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                  setExporting(null)
+                  setExportDone("md")
+                  setTimeout(() => setExportOpen(false), 800)
+                }}
+              />
+              <ExportOption
+                label="Trayectoria JSON"
+                desc="Estructura completa con tools y reasoning"
+                icon={<DownloadIcon className="size-4" />}
+                exporting={exporting === "trajectory"}
+                done={exportDone === "trajectory"}
+                onClick={async () => {
+                  if (!conversationId) return
+                  setExporting("trajectory")
+                  try {
+                    const data = await exportConversationTrajectory(conversationId)
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url; a.download = `trajectory-${conversationId}.json`
+                    a.click(); URL.revokeObjectURL(url)
+                    setExportDone("trajectory")
+                  } catch (e) {
+                    toast({ title: `Error exportando trayectoria: ${e}`, variant: "error" })
+                  } finally {
+                    setExporting(null)
+                  }
+                }}
+              />
+              <ExportOption
+                label="ShareGPT JSON"
+                desc="Formato estándar para fine-tuning/RL"
+                icon={<DownloadIcon className="size-4" />}
+                exporting={exporting === "sharegpt"}
+                done={exportDone === "sharegpt"}
+                onClick={async () => {
+                  setExporting("sharegpt")
+                  try {
+                    const data = await exportConversationsSharegpt("project-default")
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url; a.download = `sharegpt-export.json`
+                    a.click(); URL.revokeObjectURL(url)
+                    setExportDone("sharegpt")
+                  } catch (e) {
+                    toast({ title: `Error exportando ShareGPT: ${e}`, variant: "error" })
+                  } finally {
+                    setExporting(null)
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
+  )
+}
+
+function ExportOption({ label, desc, icon, exporting, done, onClick }: {
+  label: string; desc: string; icon: React.ReactNode
+  exporting: boolean; done: boolean | null; onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={exporting}
+      className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
+    >
+      <span className="shrink-0 rounded-lg bg-muted p-2 text-muted-foreground">
+        {exporting ? <Loader2Icon className="size-4 animate-spin" /> : done ? <CheckIcon className="size-4 text-emerald-500" /> : icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{desc}</div>
+      </div>
+    </button>
   )
 }
 
