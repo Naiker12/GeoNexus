@@ -1,11 +1,10 @@
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 
 use geonexus_core::chat::{
     ChunkReference, Message, MessageRole, ResearchSource,
     SendMessageInput, SendMessageResponse, SessionSummary,
 };
 use geonexus_core::reasoning::QueryIntent;
-use geonexus_core::telegram::AgentTraceEvent;
 use geonexus_core::{GraphUpdatePayload, GraphEdge};
 use geonexus_db::chat_repo;
 use serde_json::json;
@@ -26,152 +25,6 @@ use super::{run_sidecar_json, unix_now, AppState, ContextNode, RecallChunk};
 use crate::commands::graph::crud::bump_use_count;
 use crate::commands::llm::run_sidecar_streaming;
 use crate::commands::graph_events::emit_graph_update;
-
-fn now_iso() -> String {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs()
-        .to_string()
-}
-
-fn emit_trace_event(
-    handle: Option<&tauri::AppHandle>,
-    event: AgentTraceEvent,
-    events: &mut Vec<AgentTraceEvent>,
-) {
-    events.push(event.clone());
-    if let Some(h) = handle {
-        let _ = h.emit("agent:event", event);
-    }
-}
-
-fn emit_reasoning_start(handle: Option<&tauri::AppHandle>, session_id: &str) {
-    if let Some(h) = handle {
-        let _ = h.emit("reasoning:start", serde_json::json!({
-            "session_id": session_id,
-        }));
-    }
-}
-
-fn now_unix_ms() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
-}
-
-fn emit_reasoning_step(
-    handle: Option<&tauri::AppHandle>,
-    id: &str,
-    agent_name: &str,
-    agent_type: &str,
-    status: &str,
-    label: &str,
-    step_timers: &mut std::collections::HashMap<String, std::time::Instant>,
-    step_started_at: &mut std::collections::HashMap<String, u64>,
-) {
-    let now_unix = now_unix_ms();
-    let started_at = *step_started_at
-        .entry(id.to_string())
-        .or_insert(now_unix);
-
-    let (duration_ms, completed_at) = if status == "success" || status == "failed" {
-        if let Some(start) = step_timers.remove(id) {
-            (Some(start.elapsed().as_millis() as u64), Some(now_unix))
-        } else if let Some(started) = step_started_at.get(id) {
-            let elapsed = now_unix.saturating_sub(*started);
-            (Some(elapsed), Some(now_unix))
-        } else {
-            (None, None)
-        }
-    } else {
-        step_timers.entry(id.to_string()).or_insert_with(std::time::Instant::now);
-        (None, None)
-    };
-    if let Some(h) = handle {
-        let _ = h.emit("reasoning:step", serde_json::json!({
-            "id": id,
-            "agent_name": agent_name,
-            "agent_type": agent_type,
-            "status": status,
-            "label": label,
-            "sub_items": [],
-            "duration_ms": duration_ms,
-            "started_at": started_at,
-            "completed_at": completed_at,
-        }));
-    }
-}
-
-fn emit_reasoning_sub_item(handle: Option<&tauri::AppHandle>, step_id: &str, text: &str) {
-    if let Some(h) = handle {
-        let _ = h.emit("reasoning:sub_item", serde_json::json!({
-            "step_id": step_id,
-            "text": text,
-        }));
-    }
-}
-
-fn emit_reasoning_end(handle: Option<&tauri::AppHandle>, session_id: &str, total_ms: u64) {
-    if let Some(h) = handle {
-        let _ = h.emit("reasoning:end", serde_json::json!({
-            "session_id": session_id,
-            "total_ms": total_ms,
-        }));
-    }
-}
-
-fn emit_tool_call_start(handle: Option<&tauri::AppHandle>, conversation_id: &str, tool_name: &str, server_id: &str, args: &serde_json::Value) {
-    if let Some(h) = handle {
-        let _ = h.emit("llm:tool_call_start", json!({
-            "conversation_id": conversation_id,
-            "tool_name": tool_name,
-            "server_id": server_id,
-            "args": args,
-        }));
-    }
-}
-
-fn emit_tool_call_done(handle: Option<&tauri::AppHandle>, conversation_id: &str, tool_name: &str, success: bool, duration_ms: u64) {
-    if let Some(h) = handle {
-        let _ = h.emit("llm:tool_call_done", json!({
-            "conversation_id": conversation_id,
-            "tool_name": tool_name,
-            "success": success,
-            "duration_ms": duration_ms,
-        }));
-    }
-}
-
-fn emit_tool_call(handle: Option<&tauri::AppHandle>, tool_name: &str, tool_call_id: &str, args: &serde_json::Value) {
-    if let Some(h) = handle {
-        let _ = h.emit("llm:tool_call", json!({
-            "tool_name": tool_name,
-            "tool_call_id": tool_call_id,
-            "args": args,
-        }));
-    }
-}
-
-fn emit_tool_result(handle: Option<&tauri::AppHandle>, tool_name: &str, success: bool, duration_ms: u64) {
-    if let Some(h) = handle {
-        let _ = h.emit("llm:tool_result", json!({
-            "tool_name": tool_name,
-            "success": success,
-            "duration_ms": duration_ms,
-        }));
-    }
-}
-
-fn emit_llm_done(handle: Option<&tauri::AppHandle>, content_len: usize, model: &str) {
-    if let Some(h) = handle {
-        let _ = h.emit("llm:done", json!({
-            "content_length": content_len,
-            "model": model,
-        }));
-    }
-}
 
 fn emit_stream_event(handle: Option<&tauri::AppHandle>, event: &serde_json::Value) {
     if let Some(h) = handle {
@@ -240,164 +93,46 @@ pub async fn send_message(
     let chat_start = Instant::now();
     let trace_id = Uuid::new_v4().to_string();
     let conversation_id = ensure_conversation(&state, &input).await?;
-    let mut trace_events: Vec<AgentTraceEvent> = Vec::new();
+    let assistant_msg_id = Uuid::new_v4().to_string();
+    let mut final_reasoning_content: Option<String> = None;
+    let mut final_reasoning_duration_ms: Option<u64> = None;
 
-    emit_reasoning_start(state.app_handle.as_ref(), &conversation_id);
-
-    let mut step_timers: std::collections::HashMap<String, std::time::Instant> = std::collections::HashMap::new();
-    let mut step_started_at: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
-
-    let start_time = now_unix_ms();
     // === Intent Classification ===
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "started".into(),
-            id: "validate".into(),
-            parent_id: None,
-            category: "security".into(),
-            title: "Input Validation".into(),
-            log: None,
-            payload: Some(serde_json::json!({ "startTime": start_time })),
-            duration: None,
-            user_friendly_summary: None,
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
-    emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", "Analizando consulta del usuario...");
     let intent = classify_intent(&input.content);
     let intent_label = intent.label().to_string();
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "completed".into(),
-            id: "validate".into(),
-            parent_id: None,
-            category: "security".into(),
-            title: "Input Validation".into(),
-            log: Some("Input validated successfully".into()),
-            payload: None,
-            duration: Some(chat_start.elapsed().as_millis() as u64),
-            user_friendly_summary: Some("Input validated".into()),
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "started".into(),
-            id: "intent".into(),
-            parent_id: None,
-            category: "agent".into(),
-            title: "Intent Classification".into(),
-            log: Some(format!("Analyzing user query: {}", input.content)),
-            payload: None,
-            duration: None,
-            user_friendly_summary: None,
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
-    emit_reasoning_sub_item(state.app_handle.as_ref(), "intent", &format!("Intención: {}", intent_label));
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "completed".into(),
-            id: "intent".into(),
-            parent_id: None,
-            category: "agent".into(),
-            title: "Intent Classification".into(),
-            log: Some(format!("Intent identified: {}", intent_label)),
-            payload: None,
-            duration: None,
-            user_friendly_summary: Some(format!("Intent: {}", intent_label)),
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
-    emit_reasoning_step(state.app_handle.as_ref(), "intent", "Main Agent", "planner", "success", &format!("Intent: {}", intent_label), &mut step_timers, &mut step_started_at);
 
     // === Graph nodes + edges for enhanced context ===
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "started".into(),
-            id: "graph_context".into(),
-            parent_id: None,
-            category: "database".into(),
-            title: "Graph Context".into(),
-            log: Some("Querying knowledge graph...".into()),
-            payload: None,
-            duration: None,
-            user_friendly_summary: None,
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
+    let (graph_nodes_result, graph_edges_result) = tokio::join!(
+        sqlx::query_as::<_, ContextNode>(
+            "SELECT id, name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
+        )
+        .bind(&input.project_id)
+        .fetch_all(&state.db),
+        sqlx::query_as::<_, EdgeRow>(
+            "SELECT sn.name AS source_label, tn.name AS target_label, e.relation
+             FROM graph_edges e
+             JOIN graph_nodes sn ON e.source = sn.id
+             JOIN graph_nodes tn ON e.target = tn.id
+             WHERE e.project_id = ?
+             LIMIT 20",
+        )
+        .bind(&input.project_id)
+        .fetch_all(&state.db),
     );
-    emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", "Consultando grafo de conocimiento...");
-    let graph_nodes: Vec<ContextNode> = sqlx::query_as::<_, ContextNode>(
-        "SELECT id, name AS label, kind FROM graph_nodes WHERE project_id = ? LIMIT 8",
-    )
-    .bind(&input.project_id)
-    .fetch_all(&state.db)
-    .await
-    .unwrap_or_default();
-
-    let graph_edges: Vec<ContextEdge> = sqlx::query_as::<_, EdgeRow>(
-        "SELECT sn.name AS source_label, tn.name AS target_label, e.relation
-         FROM graph_edges e
-         JOIN graph_nodes sn ON e.source = sn.id
-         JOIN graph_nodes tn ON e.target = tn.id
-         WHERE e.project_id = ?
-         LIMIT 20",
-    )
-    .bind(&input.project_id)
-    .fetch_all(&state.db)
-    .await
-    .unwrap_or_default()
-    .into_iter()
-    .map(|r| ContextEdge {
-        source_label: r.source_label,
-        target_label: r.target_label,
-        relation: r.relation,
-    })
-    .collect();
+    let graph_nodes: Vec<ContextNode> = graph_nodes_result.unwrap_or_default();
+    let graph_edges: Vec<ContextEdge> = graph_edges_result
+        .unwrap_or_default()
+        .into_iter()
+        .map(|r| ContextEdge {
+            source_label: r.source_label,
+            target_label: r.target_label,
+            relation: r.relation,
+        })
+        .collect();
 
     let (graph_context, graph_node_ids) = build_graph_context(&graph_nodes, &graph_edges, &intent);
 
     if !graph_node_ids.is_empty() {
-        emit_trace_event(
-            state.app_handle.as_ref(),
-            AgentTraceEvent {
-                r#type: "completed".into(),
-                id: "graph_context".into(),
-                parent_id: None,
-                category: "database".into(),
-                title: "Graph Context".into(),
-                log: Some(format!("Found {} relevant graph nodes", graph_node_ids.len())),
-                payload: Some(serde_json::json!({"nodes": graph_node_ids.len()})),
-                duration: None,
-                user_friendly_summary: Some(format!("Found {} relevant graph nodes", graph_node_ids.len())),
-                error: None,
-                timestamp: now_iso(),
-                conversation_id: Some(conversation_id.clone()),
-            },
-            &mut trace_events,
-        );
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "graph_context", &format!("{} nodos relevantes encontrados", graph_node_ids.len()));
-        emit_reasoning_step(state.app_handle.as_ref(), "graph_context", "Main Agent", "discovery", "success", &format!("Loaded {} graph nodes", graph_node_ids.len()), &mut step_timers, &mut step_started_at);
         let _ = bump_use_count(&state.db, &graph_node_ids).await;
     }
 
@@ -419,6 +154,7 @@ pub async fn send_message(
         attachments: input.attachments.clone(),
         reasoning_events: None,
         reasoning_content: None,
+        reasoning_duration_ms: None,
     };
 
     chat_repo::insert_message(&state.db, &user_msg).await?;
@@ -428,292 +164,327 @@ pub async fn send_message(
         let _ = chat_repo::update_conversation_title(&state.db, &conversation_id, &title).await;
     }
 
-    // === RAG context ===
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "started".into(),
-            id: "rag_recall".into(),
-            parent_id: None,
-            category: "database".into(),
-            title: "RAG Recall".into(),
-            log: Some("Searching vector database...".into()),
-            payload: None,
-            duration: None,
-            user_friendly_summary: None,
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
+    // === Parallel tasks: RAG, Project Context, Mention Context, Web Search ===
+    let (rag_result, project_context_result, mention_context_result, web_search_result) = tokio::join!(
+        // RAG recall
+        async {
+            let mentioned_asset_ids_str = if input.mentioned_asset_ids.is_empty() && input.mentioned_connector_ids.is_empty() {
+                String::new()
+            } else {
+                let all: Vec<&str> = input.mentioned_asset_ids.iter().map(String::as_str)
+                    .chain(input.mentioned_connector_ids.iter().map(String::as_str))
+                    .collect();
+                all.join(",")
+            };
+            let recall_chunks: Vec<RecallChunk> = {
+                let mut args = vec![
+                    "--action", "recall_chunks",
+                    "--query", &input.content,
+                    "--project_id", &input.project_id,
+                    "--top_k", "4",
+                ];
+                if !mentioned_asset_ids_str.is_empty() {
+                    args.push("--asset_ids");
+                    args.push(&mentioned_asset_ids_str);
+                }
+                run_sidecar_json(&args).unwrap_or_default()
+            };
+
+            // Build chunk references for citations
+            let chunks_used: Vec<ChunkReference> = {
+                if recall_chunks.is_empty() {
+                    Vec::new()
+                } else {
+                    let asset_ids: Vec<&str> = recall_chunks.iter().map(|c| c.asset_id.as_str()).collect();
+                    let mut name_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+                    if !asset_ids.is_empty() {
+                        let placeholders: Vec<String> = asset_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+                        let sql = format!(
+                            "SELECT DISTINCT id, name FROM assets WHERE id IN ({})",
+                            placeholders.join(",")
+                        );
+                        // Build a raw query with positional bindings
+                        let mut q = sqlx::query(&sql);
+                        for aid in &asset_ids {
+                            q = q.bind(aid);
+                        }
+                        if let Ok(rows) = q.fetch_all(&state.db).await {
+                            for row in rows {
+                                use sqlx::Row;
+                                let id: String = row.get("id");
+                                let name: String = row.get("name");
+                                name_map.insert(id, name);
+                            }
+                        }
+                    }
+
+                    recall_chunks
+                        .iter()
+                        .map(|c| {
+                            let asset_name = name_map.get(&c.asset_id).cloned().unwrap_or_else(|| c.source.clone());
+                            let text_preview = if c.text.len() > 200 {
+                                format!("{}...", &c.text[..200])
+                            } else {
+                                c.text.clone()
+                            };
+                            ChunkReference {
+                                chunk_id: c.chunk_id.clone(),
+                                asset_id: c.asset_id.clone(),
+                                asset_name,
+                                chunk_index: c.chunk_index,
+                                relevance_score: c.score,
+                                text_preview,
+                            }
+                        })
+                        .collect()
+                }
+            };
+
+            let rag_context = if recall_chunks.is_empty() {
+                String::new()
+            } else {
+                // Check for prompt injection in RAG chunks
+                let suspicious_chunks: Vec<_> = recall_chunks
+                    .iter()
+                    .filter(|c| scan_for_prompt_injection(&c.text))
+                    .collect();
+                
+                if !suspicious_chunks.is_empty() {
+                    tracing::warn!("[security] Found {} suspicious RAG chunks with potential prompt injection patterns", suspicious_chunks.len());
+                }
+                let rag_event_id = format!("rag-{}", stream_event_id());
+                let context_text = recall_chunks
+                    .iter()
+                    .enumerate()
+                    .map(|(i, c)| format!("[{}] {}", i + 1, c.text))
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+                let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "knowledge_lookup",
+                    "event_id": rag_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "complete",
+                    "docs_count": recall_chunks.len(),
+                }));
+                for chunk in &recall_chunks {
+                    let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
+                        "event_id": rag_event_id,
+                        "chunk_type": "rag_doc",
+                        "content": chunk.text,
+                        "source": chunk.asset_id,
+                        "score": chunk.score,
+                    }));
+                }
+                format!(
+                    "Contexto relevante del proyecto (documentos indexados):\n{}\n\n\
+                     Usa este contexto para responder. Cita el numero de fuente cuando uses informacion de el.",
+                    context_text
+                )
+            };
+
+            (recall_chunks, chunks_used, rag_context)
         },
-        &mut trace_events,
+        // Project context
+        async {
+            run_sidecar_json::<serde_json::Value>(&[
+                "--action",
+                "build_project_context",
+                "--project_id",
+                &input.project_id,
+            ])
+            .ok()
+            .and_then(|v| v["context"].as_str().map(String::from))
+            .unwrap_or_default()
+        },
+        // Mention context
+        async {
+            let mut parts: Vec<String> = Vec::new();
+
+            // Parallelize mention context DB queries
+            let (connector_names, mcp_servers, asset_names, node_names) = tokio::join!(
+                // Connector names
+                async {
+                    let mut names = Vec::new();
+                    for cid in &input.mentioned_connector_ids {
+                        let name: Option<String> = sqlx::query_scalar(
+                            "SELECT display_name FROM connector_configs WHERE id = ? AND project_id = ?"
+                        )
+                        .bind(cid)
+                        .bind(&input.project_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None);
+                        if let Some(n) = name {
+                            names.push(format!(
+                                "[CONTEXTO ADJUNTO: Conector \"{}\" — usar sus documentos como fuente prioritaria]",
+                                n
+                            ));
+                        }
+                    }
+                    names
+                },
+                // MCP servers
+                async {
+                    let mut details = Vec::new();
+                    #[derive(sqlx::FromRow)]
+                    struct MentionedMcpServer {
+                        name: String,
+                        status: String,
+                        tools_count: Option<i32>,
+                        last_error: Option<String>,
+                    }
+                    for sid in &input.mentioned_mcp_server_ids {
+                        let server: Option<MentionedMcpServer> = sqlx::query_as(
+                            "SELECT name, status, tools_count, last_error
+                             FROM mcp_servers
+                             WHERE id = ? AND disabled = 0"
+                        )
+                        .bind(sid)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None);
+
+                        if let Some(s) = server {
+                            let tools = s.tools_count.unwrap_or(0);
+                            let mut detail = format!(
+                                "[CONTEXTO ADJUNTO: Servidor MCP \"{}\" — transporte n/a, estado {}, {} tools disponibles]",
+                                s.name,
+                                s.status,
+                                tools
+                            );
+                            if let Some(err) = s.last_error.filter(|e| !e.trim().is_empty()) {
+                                detail.push_str(&format!(" Último error: {}", err));
+                            }
+                            details.push(detail);
+                        }
+                    }
+                    details
+                },
+                // Asset names
+                async {
+                    let mut names = Vec::new();
+                    for aid in &input.mentioned_asset_ids {
+                        let name: Option<String> = sqlx::query_scalar(
+                            "SELECT name FROM assets WHERE id = ? AND project_id = ?"
+                        )
+                        .bind(aid)
+                        .bind(&input.project_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None);
+                        if let Some(n) = name {
+                            names.push(format!(
+                                "[CONTEXTO ADJUNTO: Documento \"{}\" — buscar información en este documento primero]",
+                                n
+                            ));
+                        }
+                    }
+                    names
+                },
+                // Node names
+                async {
+                    let mut names = Vec::new();
+                    for nid in &input.mentioned_node_ids {
+                        let name: Option<String> = sqlx::query_scalar(
+                            "SELECT name FROM graph_nodes WHERE id = ? AND project_id = ?"
+                        )
+                        .bind(nid)
+                        .bind(&input.project_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None);
+                        if let Some(n) = name {
+                            names.push(format!(
+                                "[CONTEXTO ADJUNTO: Nodo del grafo \"{}\" — incluir su evidencia y conexiones]",
+                                n
+                            ));
+                        }
+                    }
+                    names
+                }
+            );
+
+            parts.extend(connector_names);
+            parts.extend(mcp_servers);
+            parts.extend(asset_names);
+            parts.extend(node_names);
+
+            if parts.is_empty() { String::new() } else { parts.join("\n") }
+        },
+        // Web search
+        async {
+            let search_query = extract_search_query(&input.content);
+            if input.web_search {
+                let web_event_id = format!("deep-{}", stream_event_id());
+                emit_stream_event(state.app_handle.as_ref(), &json!({
+                    "type": "deep_research",
+                    "event_id": web_event_id,
+                    "conversation_id": conversation_id,
+                    "status": "searching",
+                    "display_query": &search_query,
+                }));
+                let result = run_sidecar_json::<Vec<ResearchSource>>(&[
+                    "--action",
+                    "search_web",
+                    "--query",
+                    &search_query,
+                    "--max_results",
+                    "10",
+                    "--search_depth",
+                    "standard",
+                ]);
+                let research_sources = match &result {
+                    Ok(srcs) => {
+                        emit_stream_event(state.app_handle.as_ref(), &json!({
+                            "type": "deep_research",
+                            "event_id": web_event_id,
+                            "conversation_id": conversation_id,
+                            "status": "complete",
+                            "display_query": &search_query,
+                            "sources_count": srcs.len(),
+                            "sources": srcs.iter().map(|s| json!({
+                                "title": s.title,
+                                "url": s.url,
+                                "domain": s.url.replace("https://", "").replace("http://", "").split('/').next().unwrap_or(""),
+                                "snippet": s.snippet,
+                            })).collect::<Vec<_>>(),
+                        }));
+                        for src in srcs {
+                            let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
+                                "event_id": web_event_id,
+                                "chunk_type": "source",
+                                "content": src.title,
+                                "title": src.title,
+                                "url": src.url,
+                                "snippet": src.snippet,
+                            }));
+                        }
+                        eprintln!("[DEBUG] search_web OK: {} sources", srcs.len());
+                        (srcs.clone(), search_query)
+                    },
+                    Err(e) => {
+                        let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
+                            "type": "deep_research",
+                            "event_id": web_event_id,
+                            "conversation_id": conversation_id,
+                            "status": "error",
+                        }));
+                        eprintln!("[DEBUG] search_web error: {e}");
+                        (Vec::new(), search_query)
+                    }
+                };
+                research_sources
+            } else {
+                eprintln!("[DEBUG] web_search not enabled");
+                (Vec::new(), search_query)
+            }
+        }
     );
-    let mentioned_asset_ids_str = if input.mentioned_asset_ids.is_empty() && input.mentioned_connector_ids.is_empty() {
-        String::new()
-    } else {
-        let all: Vec<&str> = input.mentioned_asset_ids.iter().map(String::as_str)
-            .chain(input.mentioned_connector_ids.iter().map(String::as_str))
-            .collect();
-        all.join(",")
-    };
-    emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", "Buscando en base vectorial...");
-    let recall_chunks: Vec<RecallChunk> = {
-        let mut args = vec![
-            "--action", "recall_chunks",
-            "--query", &input.content,
-            "--project_id", &input.project_id,
-            "--top_k", "4",
-        ];
-        if !mentioned_asset_ids_str.is_empty() {
-            args.push("--asset_ids");
-            args.push(&mentioned_asset_ids_str);
-        }
-        run_sidecar_json(&args).unwrap_or_default()
-    };
 
-    // Build chunk references for citations
-    let chunks_used: Vec<ChunkReference> = {
-        if recall_chunks.is_empty() {
-            Vec::new()
-        } else {
-            let asset_ids: Vec<&str> = recall_chunks.iter().map(|c| c.asset_id.as_str()).collect();
-            let mut name_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-            if !asset_ids.is_empty() {
-                let placeholders: Vec<String> = asset_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
-                let sql = format!(
-                    "SELECT DISTINCT id, name FROM assets WHERE id IN ({})",
-                    placeholders.join(",")
-                );
-                // Build a raw query with positional bindings
-                let mut q = sqlx::query(&sql);
-                for aid in &asset_ids {
-                    q = q.bind(aid);
-                }
-                if let Ok(rows) = q.fetch_all(&state.db).await {
-                    for row in rows {
-                        use sqlx::Row;
-                        let id: String = row.get("id");
-                        let name: String = row.get("name");
-                        name_map.insert(id, name);
-                    }
-                }
-            }
-
-            recall_chunks
-                .iter()
-                .map(|c| {
-                    let asset_name = name_map.get(&c.asset_id).cloned().unwrap_or_else(|| c.source.clone());
-                    let text_preview = if c.text.len() > 200 {
-                        format!("{}...", &c.text[..200])
-                    } else {
-                        c.text.clone()
-                    };
-                    ChunkReference {
-                        chunk_id: c.chunk_id.clone(),
-                        asset_id: c.asset_id.clone(),
-                        asset_name,
-                        chunk_index: c.chunk_index,
-                        relevance_score: c.score,
-                        text_preview,
-                    }
-                })
-                .collect()
-        }
-    };
-
-    let rag_context = if recall_chunks.is_empty() {
-        emit_trace_event(
-            state.app_handle.as_ref(),
-            AgentTraceEvent {
-                r#type: "completed".into(),
-                id: "rag_recall".into(),
-                parent_id: None,
-                category: "database".into(),
-                title: "RAG Recall".into(),
-                log: Some("No results in vector database".into()),
-                payload: Some(serde_json::json!({"chunks": 0})),
-                duration: None,
-                user_friendly_summary: Some("No vector DB results found".into()),
-                error: None,
-                timestamp: now_iso(),
-                conversation_id: Some(conversation_id.clone()),
-            },
-            &mut trace_events,
-        );
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", "Sin resultados en base vectorial");
-        String::new()
-    } else {
-        // Check for prompt injection in RAG chunks
-        let suspicious_chunks: Vec<_> = recall_chunks
-            .iter()
-            .filter(|c| scan_for_prompt_injection(&c.text))
-            .collect();
-        
-        if !suspicious_chunks.is_empty() {
-            tracing::warn!("[security] Found {} suspicious RAG chunks with potential prompt injection patterns", suspicious_chunks.len());
-        }
-        
-        emit_trace_event(
-            state.app_handle.as_ref(),
-            AgentTraceEvent {
-                r#type: "completed".into(),
-                id: "rag_recall".into(),
-                parent_id: None,
-                category: "database".into(),
-                title: "RAG Recall".into(),
-                log: Some(format!("Retrieved {} chunks", recall_chunks.len())),
-                payload: Some(serde_json::json!({"chunks": recall_chunks.len()})),
-                duration: None,
-                user_friendly_summary: Some(format!("Found {} relevant chunks", recall_chunks.len())),
-                error: None,
-                timestamp: now_iso(),
-                conversation_id: Some(conversation_id.clone()),
-            },
-            &mut trace_events,
-        );
-        let rag_event_id = format!("rag-{}", stream_event_id());
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "rag", &format!("{} fragmentos recuperados", recall_chunks.len()));
-        let context_text = recall_chunks
-            .iter()
-            .enumerate()
-            .map(|(i, c)| format!("[{}] {}", i + 1, c.text))
-            .collect::<Vec<_>>()
-            .join("\n\n");
-        emit_reasoning_step(state.app_handle.as_ref(), "rag", "Main Agent", "discovery", "success", &format!("Retrieved {} chunks from RAG", recall_chunks.len()), &mut step_timers, &mut step_started_at);
-        let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
-            "type": "knowledge_lookup",
-            "event_id": rag_event_id,
-            "conversation_id": conversation_id,
-            "status": "complete",
-            "docs_count": recall_chunks.len(),
-        }));
-        for chunk in &recall_chunks {
-            let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
-                "event_id": rag_event_id,
-                "chunk_type": "rag_doc",
-                "content": chunk.text,
-                "source": chunk.asset_id,
-                "score": chunk.score,
-            }));
-        }
-        format!(
-            "Contexto relevante del proyecto (documentos indexados):\n{}\n\n\
-             Usa este contexto para responder. Cita el numero de fuente cuando uses informacion de el.",
-            context_text
-        )
-    };
-
-    let project_context = run_sidecar_json::<serde_json::Value>(&[
-        "--action",
-        "build_project_context",
-        "--project_id",
-        &input.project_id,
-    ])
-    .ok()
-    .and_then(|v| v["context"].as_str().map(String::from))
-    .unwrap_or_default();
-
-    // === Mention context (sources the user explicitly attached via @) ===
-    let mention_context = {
-        let mut parts: Vec<String> = Vec::new();
-
-        if !input.mentioned_connector_ids.is_empty() {
-            for cid in &input.mentioned_connector_ids {
-                let name: Option<String> = sqlx::query_scalar(
-                    "SELECT display_name FROM connector_configs WHERE id = ? AND project_id = ?"
-                )
-                .bind(cid)
-                .bind(&input.project_id)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
-                if let Some(n) = name {
-                    parts.push(format!(
-                        "[CONTEXTO ADJUNTO: Conector \"{}\" — usar sus documentos como fuente prioritaria]",
-                        n
-                    ));
-                }
-            }
-        }
-
-        if !input.mentioned_mcp_server_ids.is_empty() {
-            for sid in &input.mentioned_mcp_server_ids {
-                #[derive(sqlx::FromRow)]
-                struct MentionedMcpServer {
-                    name: String,
-                    status: String,
-                    transport: String,
-                    tools_count: Option<i32>,
-                    last_error: Option<String>,
-                }
-
-                let server: Option<MentionedMcpServer> = sqlx::query_as(
-                    "SELECT name, status, transport, tools_count, last_error
-                     FROM mcp_servers
-                     WHERE id = ? AND disabled = 0"
-                )
-                .bind(sid)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
-
-                if let Some(s) = server {
-                    let tools = s.tools_count.unwrap_or(0);
-                    let mut detail = format!(
-                        "[CONTEXTO ADJUNTO: Servidor MCP \"{}\" ({}) — transporte {}, estado {}, {} tools disponibles]",
-                        s.name,
-                        sid,
-                        s.transport,
-                        s.status,
-                        tools
-                    );
-                    if let Some(err) = s.last_error.filter(|e| !e.trim().is_empty()) {
-                        detail.push_str(&format!(" Último error: {}", err));
-                    }
-                    parts.push(detail);
-                }
-            }
-        }
-
-        if !input.mentioned_asset_ids.is_empty() {
-            for aid in &input.mentioned_asset_ids {
-                let name: Option<String> = sqlx::query_scalar(
-                    "SELECT name FROM assets WHERE id = ? AND project_id = ?"
-                )
-                .bind(aid)
-                .bind(&input.project_id)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
-                if let Some(n) = name {
-                    parts.push(format!(
-                        "[CONTEXTO ADJUNTO: Documento \"{}\" — buscar información en este documento primero]",
-                        n
-                    ));
-                }
-            }
-        }
-
-        if !input.mentioned_node_ids.is_empty() {
-            for nid in &input.mentioned_node_ids {
-                let name: Option<String> = sqlx::query_scalar(
-                    "SELECT name FROM graph_nodes WHERE id = ? AND project_id = ?"
-                )
-                .bind(nid)
-                .bind(&input.project_id)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
-                if let Some(n) = name {
-                    parts.push(format!(
-                        "[CONTEXTO ADJUNTO: Nodo del grafo \"{}\" — incluir su evidencia y conexiones]",
-                        n
-                    ));
-                }
-            }
-        }
-
-        if parts.is_empty() { String::new() } else { parts.join("\n") }
-    };
+    let (recall_chunks, chunks_used, rag_context) = rag_result;
+    let project_context = project_context_result;
+    let mention_context = mention_context_result;
+    let (research_sources, search_query) = web_search_result;
 
     let all_project_context = {
         let mut parts: Vec<String> = Vec::new();
@@ -721,148 +492,6 @@ pub async fn send_message(
         if !graph_context.is_empty() { parts.push(graph_context.clone()); }
         if !mention_context.is_empty() { parts.push(mention_context.clone()); }
         parts.join("\n\n")
-    };
-
-    // === Web search ===
-    let search_query = extract_search_query(&input.content);
-    let web_event_id = format!("deep-{}", stream_event_id());
-    let research_sources: Vec<ResearchSource> = if input.web_search {
-        emit_trace_event(
-            state.app_handle.as_ref(),
-            AgentTraceEvent {
-                r#type: "started".into(),
-                id: "web_search".into(),
-                parent_id: None,
-                category: "search".into(),
-                title: "Web Search".into(),
-                log: None,
-                payload: None,
-                duration: None,
-                user_friendly_summary: None,
-                error: None,
-                timestamp: now_iso(),
-                conversation_id: Some(conversation_id.clone()),
-            },
-            &mut trace_events,
-        );
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("Buscando en internet: {}", search_query));
-        emit_stream_event(state.app_handle.as_ref(), &json!({
-            "type": "deep_research",
-            "event_id": web_event_id,
-            "conversation_id": conversation_id,
-            "status": "searching",
-            "display_query": search_query,
-        }));
-        let result = run_sidecar_json::<Vec<ResearchSource>>(&[
-            "--action",
-            "search_web",
-            "--query",
-            &search_query,
-            "--max_results",
-            "20",
-            "--search_depth",
-            "deep",
-        ]);
-        match &result {
-            Ok(srcs) => {
-                for (i, src) in srcs.iter().enumerate() {
-                    emit_trace_event(
-                        state.app_handle.as_ref(),
-                        AgentTraceEvent {
-                            r#type: "completed".into(),
-                            id: format!("web_search_result_{i}"),
-                            parent_id: Some("web_search".into()),
-                            category: "search".into(),
-                            title: src.url.clone().replace("https://", "").replace("http://", "").split('/').next().unwrap_or("unknown").to_string(),
-                            log: None,
-                            payload: None,
-                            duration: None,
-                            user_friendly_summary: Some(src.title.clone()),
-                            error: None,
-                            timestamp: now_iso(),
-                            conversation_id: Some(conversation_id.clone()),
-                        },
-                        &mut trace_events,
-                    );
-                }
-                emit_trace_event(
-                    state.app_handle.as_ref(),
-                    AgentTraceEvent {
-                        r#type: "completed".into(),
-                        id: "web_search".into(),
-                        parent_id: None,
-                        category: "search".into(),
-                        title: "Web Search".into(),
-                        log: None,
-                        payload: Some(serde_json::json!({ "sources_count": srcs.len() })),
-                        duration: None,
-                        user_friendly_summary: Some(format!("{} fuentes encontradas en la web", srcs.len())),
-                        error: None,
-                        timestamp: now_iso(),
-                        conversation_id: Some(conversation_id.clone()),
-                    },
-                    &mut trace_events,
-                );
-                emit_reasoning_sub_item(state.app_handle.as_ref(), "web_search", &format!("{} fuentes encontradas", srcs.len()));
-                emit_reasoning_step(state.app_handle.as_ref(), "web_search", "Main Agent", "discovery", "success", &format!("Web search: {} sources", srcs.len()), &mut step_timers, &mut step_started_at);
-                emit_stream_event(state.app_handle.as_ref(), &json!({
-                    "type": "deep_research",
-                    "event_id": web_event_id,
-                    "conversation_id": conversation_id,
-                    "status": "complete",
-                    "display_query": search_query,
-                    "sources_count": srcs.len(),
-                    "sources": srcs.iter().map(|s| json!({
-                        "title": s.title,
-                        "url": s.url,
-                        "domain": s.url.replace("https://", "").replace("http://", "").split('/').next().unwrap_or(""),
-                        "snippet": s.snippet,
-                    })).collect::<Vec<_>>(),
-                }));
-                for src in srcs {
-                    let _ = emit_preview_chunk(state.app_handle.as_ref(), &json!({
-                        "event_id": web_event_id,
-                        "chunk_type": "source",
-                        "content": src.title,
-                        "title": src.title,
-                        "url": src.url,
-                        "snippet": src.snippet,
-                    }));
-                }
-                eprintln!("[DEBUG] search_web OK: {} sources", srcs.len());
-            },
-            Err(e) => {
-                emit_trace_event(
-                    state.app_handle.as_ref(),
-                    AgentTraceEvent {
-                        r#type: "failed".into(),
-                        id: "web_search".into(),
-                        parent_id: None,
-                        category: "search".into(),
-                        title: "Web Search".into(),
-                        log: None,
-                        payload: None,
-                        duration: None,
-                        user_friendly_summary: None,
-                        error: Some(e.to_string()),
-                        timestamp: now_iso(),
-                        conversation_id: Some(conversation_id.clone()),
-                    },
-                    &mut trace_events,
-                );
-                let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
-                    "type": "deep_research",
-                    "event_id": web_event_id,
-                    "conversation_id": conversation_id,
-                    "status": "error",
-                }));
-                eprintln!("[DEBUG] search_web error: {e}");
-            }
-        }
-        result.unwrap_or_default()
-    } else {
-        eprintln!("[DEBUG] web_search not enabled");
-        vec![]
     };
 
     let web_context = if research_sources.is_empty() {
@@ -894,47 +523,40 @@ pub async fn send_message(
         lines.join("\n")
     };
 
-    // === Tool definitions (locales + MCP en el mismo array para el LLM) ===
-    let tool_catalog = load_tool_catalog(&state.db).await;
-    if !tool_catalog.mcp_tools.is_empty() {
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "mcp", "Cargando herramientas MCP...");
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "mcp", &format!("{} herramientas MCP disponibles", tool_catalog.mcp_tools.len()));
-        emit_reasoning_step(
-            state.app_handle.as_ref(),
-            "mcp",
-            "Main Agent",
-            "terminal",
-            "success",
-            &format!("{} herramientas MCP disponibles", tool_catalog.mcp_tools.len()),
-            &mut step_timers,
-            &mut step_started_at,
-        );
-    }
+    // === Parallel tasks: Tool Catalog, Skills, Identity, History, Workspace ===
+    let (tool_catalog_result, skills_context_result, identity_context, history_result, workspace_config_result) = tokio::join!(
+        // Tool catalog
+        load_tool_catalog(&state.db),
+        // Skills context
+        async {
+            let mut contents: Vec<String> = Vec::new();
+            for skill_name in &input.skill_names {
+                if let Ok(content) = geonexus_db::skills::registry::read_skill_md(&state.db, skill_name).await {
+                    contents.push(content);
+                }
+            }
+            if contents.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "## Skills activos\n\nSigue las instrucciones de estos skills:\n\n{}",
+                    contents.join("\n\n---\n\n")
+                )
+            }
+        },
+        // Identity context (already sync)
+        async { load_identity_context(&state) },
+        // Chat history
+        chat_repo::list_messages(&state.db, &conversation_id),
+        // Workspace config
+        super::get_workspace_config(state.clone())
+    );
+
+    let tool_catalog = tool_catalog_result;
     let tools_json = serde_json::to_string(&tool_catalog.definitions)
         .map_err(|e| format!("Error serializando tools: {e}"))?;
 
-    // === Skills context ===
-    let skills_context = {
-        let mut contents: Vec<String> = Vec::new();
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "skills", "Inyectando skills activos...");
-        for skill_name in &input.skill_names {
-            if let Ok(content) = geonexus_db::skills::registry::read_skill_md(&state.db, skill_name).await {
-                contents.push(content);
-            }
-        }
-        if !contents.is_empty() {
-            emit_reasoning_sub_item(state.app_handle.as_ref(), "skills", &format!("{} skills inyectados", input.skill_names.len()));
-            emit_reasoning_step(state.app_handle.as_ref(), "skills", "Main Agent", "tool", "success", &format!("Injected {} skills", input.skill_names.len()), &mut step_timers, &mut step_started_at);
-        }
-        if contents.is_empty() {
-            String::new()
-        } else {
-            format!(
-                "## Skills activos\n\nSigue las instrucciones de estos skills:\n\n{}",
-                contents.join("\n\n---\n\n")
-            )
-        }
-    };
+    let skills_context = skills_context_result;
 
     // Record activation for each skill used
     if !input.skill_names.is_empty() {
@@ -950,21 +572,17 @@ pub async fn send_message(
         }
     }
 
-    // === Agent Identity ===
-    let identity_context = load_identity_context(&state);
-
-    // === Build messages array ===
-    let history = chat_repo::list_messages(&state.db, &conversation_id).await?;
+    let history = history_result?;
     let asset_count = chunks_used.iter().map(|c| &c.asset_id).collect::<std::collections::HashSet<_>>().len();
     let workspace_context = {
-        let wc = get_workspace_config_inner(&state.db).await.unwrap_or_else(|_| super::WorkspaceConfig::default());
+        let wc = workspace_config_result.unwrap_or_else(|_| super::WorkspaceConfig::default());
         if wc.code_execution_mode != "disabled" {
             format!(
                 "\n\n## Workspace\n\
-                Working Directory: `{}`\n\
-                Shell: persistente entre comandos\n\
-                Puedes leer archivos, ejecutar comandos, y analizar el proyecto.\n\
-                Code Execution Mode: {}",
+                 Working Directory: `{}`\n\
+                 Shell: persistente entre comandos\n\
+                 Puedes leer archivos, ejecutar comandos, y analizar el proyecto.\n\
+                 Code Execution Mode: {}",
                 wc.working_directory, wc.code_execution_mode
             )
         } else {
@@ -976,37 +594,16 @@ pub async fn send_message(
 
     // === Instrument Generating Response step ===
     let llm_start = Instant::now();
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "started".into(),
-            id: "llm_generation".into(),
-            parent_id: None,
-            category: "llm".into(),
-            title: "Generating Response".into(),
-            log: Some("Calling language model...".into()),
-            payload: None,
-            duration: None,
-            user_friendly_summary: None,
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
 
     // === Tool-calling loop ===
     const MAX_ITER: usize = 10;
     let mut iteration: usize = 0;
-    let (final_content, last_sidecar, final_reasoning_content) = loop {
+    let (final_content, last_sidecar) = loop {
         if iteration >= MAX_ITER {
             return Err(
                 "El modelo excedio el maximo de llamadas a herramientas (10)".into(),
             );
         }
-
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", "Preparando generación de respuesta...");
-        emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "coding", "running", &format!("Generating with {}", input.model), &mut step_timers, &mut step_started_at);
 
         let gen_event_id = format!("gen-{}", stream_event_id());
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
@@ -1053,18 +650,18 @@ pub async fn send_message(
             sidecar_args.push(input.reasoning_effort.clone());
         }
 
-        let output = run_sidecar_streaming(
+        let (output, reasoning_buffer, duration_ms) = run_sidecar_streaming(
             &sidecar_args.iter().map(String::as_str).collect::<Vec<_>>(),
             state.app_handle.as_ref(),
             Some(&gen_event_id),
             Some("generating"),
-        );
+            Some(&conversation_id),
+            Some(&assistant_msg_id),
+        )?;
 
         // Limpiar archivos temporales
         let _ = std::fs::remove_file(&msgs_file);
         let _ = std::fs::remove_file(&tools_file);
-
-        let output = output?;
 
         let sidecar: super::SidecarChatResult = serde_json::from_str(&output)
             .map_err(|e| format!("Error deserializando respuesta LLM: {e}. Output: {output}"))?;
@@ -1122,10 +719,6 @@ pub async fn send_message(
                     "subtitle": subtitle,
                 }));
 
-                emit_tool_call(state.app_handle.as_ref(), tool_name, &tool_call_id, &tool_args);
-
-                emit_tool_call_start(state.app_handle.as_ref(), &conversation_id, tool_name, "", &tool_args);
-
                 let t_start = Instant::now();
                 let (result, tool_success) = execute_tool_call(
                     &state.db,
@@ -1152,17 +745,6 @@ pub async fn send_message(
                     "lines_read": lines_read,
                 }));
 
-                emit_tool_result(state.app_handle.as_ref(), tool_name, tool_success, t_dur);
-                emit_tool_call_done(state.app_handle.as_ref(), &conversation_id, tool_name, tool_success, t_dur);
-
-                emit_reasoning_sub_item(
-                    state.app_handle.as_ref(),
-                    step_id,
-                    &format!("{} ({}{})",
-                        display_name,
-                        t_dur,
-                        if tool_success { "ms" } else { "ms — error" }),
-                );
                 messages.push(json!({
                     "role": "tool",
                     "tool_call_id": tool_call_id,
@@ -1179,11 +761,11 @@ pub async fn send_message(
             .filter(|c| !c.is_empty())
             .ok_or_else(|| "El LLM devolvio una respuesta vacia".to_string())?;
 
-        let reasoning_content = sidecar.reasoning_content();
+        let sidecar_reasoning = sidecar.reasoning_content();
+        final_reasoning_content = reasoning_buffer.or(sidecar_reasoning);
+        final_reasoning_duration_ms = Some(duration_ms);
 
         let response_token_count = (content.len() as f64 / 4.0).ceil() as u32;
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", &format!("{} tokens generados", response_token_count));
-        emit_reasoning_sub_item(state.app_handle.as_ref(), "generating", "Respuesta completa");
 
         let _ = emit_stream_event(state.app_handle.as_ref(), &json!({
             "type": "generating",
@@ -1191,29 +773,8 @@ pub async fn send_message(
             "conversation_id": conversation_id,
             "status": "complete",
         }));
-        emit_llm_done(state.app_handle.as_ref(), content.len(), &input.model);
-        break (content, Some(sidecar), reasoning_content);
+        break (content, Some(sidecar));
     };
-
-    // Emit Generating Response complete event
-    emit_trace_event(
-        state.app_handle.as_ref(),
-        AgentTraceEvent {
-            r#type: "completed".into(),
-            id: "llm_generation".into(),
-            parent_id: None,
-            category: "llm".into(),
-            title: "Generating Response".into(),
-            log: None,
-            payload: None,
-            duration: Some(llm_start.elapsed().as_millis() as u64),
-            user_friendly_summary: Some("Response generated".into()),
-            error: None,
-            timestamp: now_iso(),
-            conversation_id: Some(conversation_id.clone()),
-        },
-        &mut trace_events,
-    );
 
     let response_model = last_sidecar
         .as_ref()
@@ -1272,14 +833,8 @@ pub async fn send_message(
     // === Save assistant message ===
     let sources: Vec<String> = recall_chunks.iter().map(|c| c.source.clone()).collect();
 
-    // Convert AgentTraceEvents to serde_json::Value
-    let reasoning_events_value: Vec<serde_json::Value> = trace_events
-        .into_iter()
-        .filter_map(|e| serde_json::to_value(e).ok())
-        .collect();
-
     let assistant_msg = Message {
-        id: Uuid::new_v4().to_string(),
+        id: assistant_msg_id,
         conversation_id: conversation_id.clone(),
         role: MessageRole::Assistant,
         content: final_content.clone(),
@@ -1298,12 +853,9 @@ pub async fn send_message(
         },
         stats: msg_stats.clone(),
         attachments: vec![],
-        reasoning_events: if reasoning_events_value.is_empty() {
-            None
-        } else {
-            Some(reasoning_events_value)
-        },
+        reasoning_events: None,
         reasoning_content: final_reasoning_content,
+        reasoning_duration_ms: final_reasoning_duration_ms.map(|m| m as i64),
     };
 
     chat_repo::insert_message(&state.db, &assistant_msg).await?;
@@ -1451,10 +1003,7 @@ pub async fn send_message(
     };
 
     // Mark generating step as complete
-    emit_reasoning_step(state.app_handle.as_ref(), "generating", "Main Agent", "coding", "success", "Generation complete", &mut step_timers, &mut step_started_at);
-
     let total_duration = chat_start.elapsed().as_millis() as u64;
-    emit_reasoning_end(state.app_handle.as_ref(), &conversation_id, total_duration);
 
     Ok(SendMessageResponse {
         conversation_id,
