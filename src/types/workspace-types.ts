@@ -34,16 +34,19 @@ export type GisTool = {
   status: "ready" | "disabled" | "needs-layer"
 }
 
+export type ThemePresetId =
+  | "geo-dark"
+  | "geo-light"
+  | "emerald"
+  | "cobalt"
+  | "midnight"
+  | "lagoon"
+  | "graphite"
+  | "terra"
+  | (string & {})
+
 export type ThemePreset = {
-  id:
-    | "geo-dark"
-    | "geo-light"
-    | "emerald"
-    | "cobalt"
-    | "midnight"
-    | "lagoon"
-    | "graphite"
-    | "terra"
+  id: ThemePresetId
   name: string
   description: string
   swatch: string

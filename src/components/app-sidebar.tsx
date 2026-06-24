@@ -13,16 +13,14 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
+  SidebarMenuButton,
   SidebarRail,
+  SidebarNavItem,
 } from "@/components/ui/sidebar"
 import { ThemeSettingsDialog } from "@/features/theme/ThemeSettingsDialog"
 import { navigationItems } from "@/constants/workspace"
-import type { NavItem, ThemePreset } from "@/types/workspace-types"
+import type { ThemePresetId } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
 
 const cleanSidebarButton =
@@ -30,62 +28,9 @@ const cleanSidebarButton =
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   activeRoute: string
-  activeTheme: ThemePreset["id"]
-  onThemeChange: (theme: ThemePreset["id"]) => void
+  activeTheme: ThemePresetId
+  onThemeChange: (theme: ThemePresetId) => void
   onOpenConfig: () => void
-}
-
-function NavItemButton({ item, activeRoute, depth = 0 }: { item: NavItem; activeRoute: string; depth?: number }) {
-  const [expanded, setExpanded] = React.useState(true)
-  const hasChildren = item.children && item.children.length > 0
-  const isActive = item.url ? isActiveRoute(activeRoute, item.url) : false
-
-  if (hasChildren) {
-    return (
-      <div>
-        <SidebarMenuButton
-          className={cleanSidebarButton}
-          onClick={() => setExpanded(!expanded)}
-          tooltip={item.title}
-        >
-          <item.icon className="size-4" />
-          <span className="truncate">{item.title}</span>
-        </SidebarMenuButton>
-        {expanded && (
-          <SidebarMenuSub>
-            {item.children!.map((child) => (
-              <SidebarMenuSubItem key={child.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={child.url ? isActiveRoute(activeRoute, child.url) : false}
-                  className="hover:bg-transparent hover:text-sidebar-foreground"
-                >
-                  <a href={child.url}>
-                    <child.icon className="size-3.5" />
-                    <span className="truncate">{child.title}</span>
-                  </a>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
-          </SidebarMenuSub>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <SidebarMenuButton
-      asChild
-      isActive={isActive}
-      className={cleanSidebarButton}
-      tooltip={item.title}
-    >
-      <a href={item.url}>
-        <item.icon className="size-4" />
-        <span className="truncate">{item.title}</span>
-      </a>
-    </SidebarMenuButton>
-  )
 }
 
 export function AppSidebar({
@@ -126,9 +71,7 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter((i) => ["Chat", "Tareas", "Memoria"].includes(i.title)).map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavItemButton item={item} activeRoute={activeRoute} />
-                </SidebarMenuItem>
+                <SidebarNavItem key={item.title} item={item} activeRoute={activeRoute} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -139,9 +82,7 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter((i) => i.title === "Workspace").map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <NavItemButton item={item} activeRoute={activeRoute} />
-                </SidebarMenuItem>
+                <SidebarNavItem key={item.title} item={item} activeRoute={activeRoute} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -171,8 +112,4 @@ export function AppSidebar({
       <SidebarRail />
     </Sidebar>
   )
-}
-
-function isActiveRoute(activeRoute: string, itemUrl: string) {
-  return activeRoute === itemUrl
 }
