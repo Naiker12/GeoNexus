@@ -1,0 +1,18 @@
+[package]
+name = "geonexus-db"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "geonexus_db"
+path = "src/lib.rs"
+
+[dependencies]
+geonexus-core = { path = "../geonexus-core" }
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }

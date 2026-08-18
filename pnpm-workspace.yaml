@@ -1,0 +1,16 @@
+packages:
+  - "."
+
+allowBuilds:
+  '@biomejs/biome': true
+  '@tauri-apps/cli': true
+  core-js: true
+  esbuild: true
+  msw: true
+
+onlyBuiltDependencies:
+  - core-js
+  - esbuild
+  - msw
+  - "@tauri-apps/cli"
+  - "@biomejs/biome"

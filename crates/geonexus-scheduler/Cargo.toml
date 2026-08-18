@@ -1,0 +1,22 @@
+[package]
+name = "geonexus-scheduler"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "geonexus_scheduler"
+path = "src/lib.rs"
+
+[dependencies]
+geonexus-core = { path = "../geonexus-core" }
+geonexus-db = { path = "../geonexus-db" }
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1", features = ["time", "sync", "rt"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+tracing = "0.1"
+chrono = "0.4"
+regex-lite = "0.1"
+cron = "0.17"
+reqwest = { version = "0.12", features = ["json"] }
