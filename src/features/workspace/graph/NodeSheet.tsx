@@ -25,13 +25,9 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react"
+import { isTauriAvailable } from "@/api/invoke"
 import { useState } from "react"
 import { nodeTailwind, nodeTypeLabel } from "./graph-colors"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke() {

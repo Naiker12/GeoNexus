@@ -113,8 +113,10 @@ export function DeepResearchPanel({ sources, isSearching, currentQuery, elapsedS
           {isSearching && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5">
               <Loader2 className="h-3 w-3 text-blue-400 animate-spin shrink-0" />
-              <span className="text-[11px] text-blue-400 font-medium">
-                {loadingSources.length > 0
+              <span className="text-[11px] text-blue-400 font-medium truncate">
+                {currentQuery
+                  ? `Buscando: "${currentQuery}"`
+                  : loadingSources.length > 0
                   ? `Leyendo ${loadingSources.length} fuente${loadingSources.length !== 1 ? "s" : ""}...`
                   : "Iniciando búsqueda web..."}
               </span>

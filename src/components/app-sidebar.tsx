@@ -1,29 +1,24 @@
 "use client"
 
-import * as React from "react"
 import {
-  ActivityIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  FileCodeIcon,
-  FlaskConicalIcon,
-  FolderIcon,
-  GridIcon,
-  ImageIcon,
-  LayoutGridIcon,
-  MessageSquareIcon,
-  MoonIcon,
+  Activity01Icon,
+  Brain02Icon,
+  Clock01Icon,
+  CpuIcon,
+  DashboardCircleIcon,
+  DatabaseIcon,
+  Delete02Icon,
+  Edit03Icon,
+  Folder01Icon,
+  GitBranchIcon,
+  Image03Icon,
   MoreHorizontalIcon,
-  NetworkIcon,
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-  SparklesIcon,
-  SquarePenIcon,
-  SunIcon,
-  Trash2Icon,
+  Search01Icon,
+  Settings02Icon,
   ZapIcon,
-} from "lucide-react"
+} from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
+import * as React from "react"
 
 import { deleteConversation, listConversations } from "@/api/chat"
 import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
@@ -45,7 +40,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
+import { useLanguage } from "@/i18n/useLanguage"
 import { cn } from "@/lib/utils"
 import { useUiStore } from "@/stores/uiStore"
 import type { Conversation } from "@/types/chat"
@@ -67,6 +64,10 @@ export function AppSidebar({
   onOpenConfig,
   ...props
 }: AppSidebarProps) {
+  const { t } = useLanguage()
+  const { state } = useSidebar()
+  const isCollapsed = state === "collapsed"
+
   const setCommandPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen)
   const [conversations, setConversations] = React.useState<Conversation[]>([])
   const [loading, setLoading] = React.useState(false)
@@ -109,184 +110,242 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-border/70 bg-sidebar/95 backdrop-blur-md select-none"
+      className="border-r border-border/70 bg-sidebar/95 backdrop-blur-md select-none transition-all"
       {...props}
     >
-      {/* ─── Encabezado: Logo + Marca + Badge BETA + Buscador ─── */}
-      <SidebarHeader className="px-3.5 py-3.5 border-b border-sidebar-border/60">
-        <div className="flex items-center justify-between gap-2">
+      {/* ─── Encabezado: Logo GeoNexus + App Name + BETA + Búsqueda ─── */}
+      <SidebarHeader
+        className={cn(
+          "border-b border-sidebar-border/60",
+          isCollapsed ? "flex items-center justify-center p-2.5" : "px-4 py-3.5"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2.5 w-full",
+            isCollapsed ? "justify-center" : "justify-between"
+          )}
+        >
           <a
             href="#chat"
             className="flex items-center gap-2.5 min-w-0 group hover:opacity-90 transition-opacity"
+            title="GeoNexus"
           >
-            <div className="relative flex size-8.5 shrink-0 items-center justify-center rounded-2xl bg-muted/70 text-foreground border border-border/70 shadow-2xs transition-transform group-hover:scale-105">
-              <GeoAgentsLogo variant="icon" className="size-5" />
+            <div className="relative flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/70 shadow-2xs transition-transform group-hover:scale-105">
+              <GeoAgentsLogo variant="icon" className="size-4.5" />
             </div>
-            <div className="flex items-center gap-1.5 min-w-0 group-data-[collapsed=true]:hidden">
-              <span className="font-bold text-[15px] tracking-tight text-sidebar-foreground">
-                GeoNexus
-              </span>
-              <span className="rounded-full bg-muted border border-border/70 px-1.5 py-0.2 text-[9px] font-bold tracking-wider uppercase font-mono text-muted-foreground">
-                BETA
-              </span>
-            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-bold text-[15px] tracking-tight text-sidebar-foreground font-sans">
+                  geonexus
+                </span>
+                <span className="rounded-full border border-border/80 bg-muted/60 px-1.5 py-0.2 text-[9px] font-mono font-semibold text-muted-foreground uppercase">
+                  BETA
+                </span>
+              </div>
+            )}
           </a>
 
-          <button
-            type="button"
-            onClick={() => setCommandPaletteOpen(true)}
-            className="flex size-7.5 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors group-data-[collapsed=true]:hidden"
-            title="Buscar comandos o chats (Ctrl+K)"
-          >
-            <SearchIcon className="size-4" />
-          </button>
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+              title="Buscar comandos o chats (Ctrl+K)"
+            >
+              <HugeiconsIcon icon={Search01Icon} strokeWidth={1.75} className="size-4" />
+            </button>
+          )}
         </div>
-
-        {/* Barra de Búsqueda Rápida Estilo Spotlight */}
-        <button
-          type="button"
-          onClick={() => setCommandPaletteOpen(true)}
-          className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-border/60 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground transition-all hover:bg-muted/70 hover:text-foreground hover:border-border group-data-[collapsed=true]:hidden"
-        >
-          <div className="flex items-center gap-2">
-            <SearchIcon className="size-3.5 text-muted-foreground/70" />
-            <span className="text-xs font-medium text-muted-foreground">Buscar...</span>
-          </div>
-          <kbd className="pointer-events-none inline-flex h-4.5 select-none items-center gap-0.5 rounded border border-border/80 bg-background/80 px-1.5 font-mono text-[9px] font-semibold text-muted-foreground">
-            Ctrl K
-          </kbd>
-        </button>
       </SidebarHeader>
 
-      <SidebarContent className="px-2.5 py-2.5 space-y-3">
-        {/* ─── Navegación Principal con Tipografía Gruesa y Nítida ─── */}
-        <SidebarGroup>
+      <SidebarContent className={cn("space-y-3", isCollapsed ? "p-1.5" : "px-3 py-2.5")}>
+        {/* ─── Menú Principal con Hugeicons (Limpio y Minimalista) ─── */}
+        <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {/* 1. Nuevo Chat */}
-              <SidebarMenuItem>
+            <SidebarMenu className={cn("space-y-0.5", isCollapsed && "items-center")}>
+              {/* 1. Nuevo chat */}
+              <SidebarMenuItem className={cn(isCollapsed && "flex justify-center w-full")}>
                 <SidebarMenuButton
                   onClick={handleNewChat}
                   isActive={activeRoute === "#chat" && !loading}
+                  tooltip={t.sidebar.newChat}
                   className={cn(
-                    "group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] transition-all gap-2.5 font-semibold",
+                    "group/btn relative rounded-xl transition-all gap-3 font-medium",
+                    isCollapsed
+                      ? "size-9 p-0 justify-center mx-auto"
+                      : "w-full px-2.5 py-2 text-[13.5px]",
                     activeRoute === "#chat"
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-2xs"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-2xs"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
-                  <SquarePenIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                  <span>Nuevo chat</span>
+                  <HugeiconsIcon
+                    icon={Edit03Icon}
+                    strokeWidth={1.75}
+                    className="size-4 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors"
+                  />
+                  {!isCollapsed && <span>{t.sidebar.newChat}</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* 2. Modelos e IA (Hub) */}
-              <SidebarMenuItem>
+              {/* 2. Hub de Modelos */}
+              <SidebarMenuItem className={cn(isCollapsed && "flex justify-center w-full")}>
                 <SidebarMenuButton
                   asChild
                   isActive={activeRoute.startsWith("#mcp") || activeRoute.startsWith("#hub")}
+                  tooltip={t.sidebar.hub}
                   className={cn(
-                    "group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] transition-all gap-2.5 font-semibold",
+                    "group/btn relative rounded-xl transition-all gap-3 font-medium",
+                    isCollapsed
+                      ? "size-9 p-0 justify-center mx-auto"
+                      : "w-full px-2.5 py-2 text-[13.5px]",
                     activeRoute.startsWith("#mcp") || activeRoute.startsWith("#hub")
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-2xs"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-2xs"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
                   <a href="#mcp">
-                    <GridIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                    <span>Modelos e IA</span>
+                    <HugeiconsIcon
+                      icon={DashboardCircleIcon}
+                      strokeWidth={1.75}
+                      className="size-4 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors"
+                    />
+                    {!isCollapsed && <span>{t.sidebar.hub}</span>}
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* 3. Memoria y Grafo RAG (Reemplaza a Proyectos) */}
-              <SidebarMenuItem>
+              {/* 3. Proyectos */}
+              <SidebarMenuItem className={cn(isCollapsed && "flex justify-center w-full")}>
                 <SidebarMenuButton
                   asChild
-                  isActive={activeRoute.startsWith("#memory")}
+                  isActive={activeRoute.startsWith("#files") || activeRoute.startsWith("#projects")}
+                  tooltip={t.sidebar.projects}
                   className={cn(
-                    "group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] transition-all gap-2.5 font-semibold",
-                    activeRoute.startsWith("#memory")
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-2xs"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                    "group/btn relative rounded-xl transition-all gap-3 font-medium",
+                    isCollapsed
+                      ? "size-9 p-0 justify-center mx-auto"
+                      : "w-full px-2.5 py-2 text-[13.5px]",
+                    activeRoute.startsWith("#files") || activeRoute.startsWith("#projects")
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-2xs"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
-                  <a href="#memory">
-                    <NetworkIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                    <span>Memoria y Grafo</span>
+                  <a href="#files">
+                    <HugeiconsIcon
+                      icon={Folder01Icon}
+                      strokeWidth={1.75}
+                      className="size-4 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors"
+                    />
+                    {!isCollapsed && <span>{t.sidebar.projects}</span>}
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
               {/* 4. Imágenes */}
-              <SidebarMenuItem>
+              <SidebarMenuItem className={cn(isCollapsed && "flex justify-center w-full")}>
                 <SidebarMenuButton
                   asChild
                   isActive={activeRoute.startsWith("#images")}
+                  tooltip={t.sidebar.images}
                   className={cn(
-                    "group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] transition-all gap-2.5 font-semibold",
+                    "group/btn relative rounded-xl transition-all gap-3 font-medium",
+                    isCollapsed
+                      ? "size-9 p-0 justify-center mx-auto"
+                      : "w-full px-2.5 py-2 text-[13.5px]",
                     activeRoute.startsWith("#images")
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-2xs"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-2xs"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
                   <a href="#images">
-                    <ImageIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                    <span>Imágenes</span>
+                    <HugeiconsIcon
+                      icon={Image03Icon}
+                      strokeWidth={1.75}
+                      className="size-4 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors"
+                    />
+                    {!isCollapsed && <span>{t.sidebar.images}</span>}
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* 5. Entrenamiento */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={activeRoute.startsWith("#training")}
-                  className={cn(
-                    "group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] transition-all gap-2.5 font-semibold",
-                    activeRoute.startsWith("#training")
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-2xs"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                  )}
-                >
-                  <a href="#training">
-                    <FlaskConicalIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                    <span>Entrenamiento</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* 6. Más Opciones */}
-              <SidebarMenuItem>
+              {/* 5. ... Más herramientas */}
+              <SidebarMenuItem className={cn(isCollapsed && "flex justify-center w-full")}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton className="group/btn relative rounded-2xl px-3 py-2.5 text-[13.5px] font-semibold transition-all gap-2.5 text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground">
-                      <MoreHorizontalIcon className="size-4.5 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors stroke-[2]" />
-                      <span>Más herramientas</span>
-                      <ChevronRightIcon className="ml-auto size-3.5 text-muted-foreground/60" />
+                    <SidebarMenuButton
+                      tooltip={t.sidebar.moreTools}
+                      className={cn(
+                        "group/btn relative rounded-xl transition-all gap-3 font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                        isCollapsed
+                          ? "size-9 p-0 justify-center mx-auto"
+                          : "w-full px-2.5 py-2 text-[13.5px]"
+                      )}
+                    >
+                      <HugeiconsIcon
+                        icon={MoreHorizontalIcon}
+                        strokeWidth={1.75}
+                        className="size-4 shrink-0 text-muted-foreground group-hover/btn:text-sidebar-foreground transition-colors"
+                      />
+                      {!isCollapsed && <span>{t.sidebar.moreTools}</span>}
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="start"
                     side="right"
-                    className="w-56 rounded-2xl p-1.5 shadow-2xl text-xs backdrop-blur-md bg-card/95 border border-border/70"
+                    className="w-56 rounded-2xl p-1.5 shadow-2xl text-xs backdrop-blur-md bg-card/95 border border-border/70 space-y-0.5"
                   >
-                    <DropdownMenuItem asChild className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted">
-                      <a href="#tasks">
-                        <ZapIcon className="size-4 text-muted-foreground" />
-                        <span>Tareas y Agentes</span>
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted"
+                    >
+                      <a href="#studio">
+                        <HugeiconsIcon
+                          icon={GitBranchIcon}
+                          strokeWidth={1.75}
+                          className="size-4 text-muted-foreground"
+                        />
+                        <span>Studio de Flujos (DAG)</span>
                       </a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted">
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted"
+                    >
+                      <a href="#memory">
+                        <HugeiconsIcon
+                          icon={Brain02Icon}
+                          strokeWidth={1.75}
+                          className="size-4 text-muted-foreground"
+                        />
+                        <span>{t.sidebar.memory}</span>
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted"
+                    >
                       <a href="#automations">
-                        <FileCodeIcon className="size-4 text-muted-foreground" />
-                        <span>Automatizaciones</span>
+                        <HugeiconsIcon
+                          icon={Clock01Icon}
+                          strokeWidth={1.75}
+                          className="size-4 text-muted-foreground"
+                        />
+                        <span>{t.sidebar.automations}</span>
                       </a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted">
-                      <a href="#uso">
-                        <ActivityIcon className="size-4 text-muted-foreground" />
-                        <span>Métricas y Uso</span>
+                    <DropdownMenuItem
+                      asChild
+                      className="rounded-xl gap-2.5 px-3 py-2 cursor-pointer font-medium text-foreground hover:bg-muted"
+                    >
+                      <a href="#monitor">
+                        <HugeiconsIcon
+                          icon={Activity01Icon}
+                          strokeWidth={1.75}
+                          className="size-4 text-muted-foreground"
+                        />
+                        <span>{t.sidebar.monitor}</span>
                       </a>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -297,70 +356,80 @@ export function AppSidebar({
         </SidebarGroup>
 
         {/* ─── Sección de Conversaciones Recientes ─── */}
-        <SidebarGroup className="group-data-[collapsed=true]:hidden pt-2 border-t border-sidebar-border/50">
-          <div className="flex items-center justify-between px-3 mb-1.5">
-            <SidebarGroupLabel className="text-[11px] font-bold text-muted-foreground/80 uppercase tracking-wider p-0 font-mono">
-              Recientes
-            </SidebarGroupLabel>
-            <ClockIcon className="size-3.5 text-muted-foreground/50" />
-          </div>
-
-          <SidebarGroupContent>
-            <div className="space-y-0.5 overflow-y-auto max-h-[38vh] [scrollbar-width:thin]">
-              {conversations.map((conv) => (
-                <div
-                  key={conv.id}
-                  onClick={() => handleSelectConversation(conv.id)}
-                  className="group/item flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-sidebar-foreground/85 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <MessageSquareIcon className="size-3.5 shrink-0 text-muted-foreground/60 group-hover/item:text-foreground transition-colors stroke-[2]" />
-                    <span className="truncate font-medium">
-                      {conv.title || "Nueva conversación"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDeleteConversation(e, conv.id)}
-                    className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all rounded-lg"
-                    title="Eliminar conversación"
-                  >
-                    <Trash2Icon className="size-3" />
-                  </button>
-                </div>
-              ))}
-
-              {conversations.length === 0 && !loading && (
-                <div className="rounded-2xl border border-dashed border-border/60 p-4 text-center">
-                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    Aún no hay chats guardados.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleNewChat}
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-                  >
-                    <PlusIcon className="size-3.5" />
-                    Comenzar un chat
-                  </button>
-                </div>
-              )}
+        {!isCollapsed && (
+          <SidebarGroup className="pt-2">
+            <div className="flex items-center justify-between px-2.5 mb-1">
+              <SidebarGroupLabel className="text-xs font-medium text-muted-foreground/70 p-0 font-sans">
+                {t.sidebar.recents}
+              </SidebarGroupLabel>
             </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+            <SidebarGroupContent>
+              <div className="space-y-0.5 overflow-y-auto max-h-[38vh] fade-scroll-y [scrollbar-width:thin] pr-1">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className="group/item flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all cursor-pointer"
+                  >
+                    <span className="truncate font-medium">{conv.title || t.sidebar.newChat}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteConversation(e, conv.id)}
+                      className="opacity-0 group-hover/item:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all rounded-lg"
+                      title="Eliminar conversación"
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.75} className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {conversations.length === 0 && !loading && (
+                  <div className="px-2.5 py-2 text-left">
+                    <p className="text-xs text-muted-foreground/70">{t.sidebar.noRecentChats}</p>
+                  </div>
+                )}
+              </div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
-      {/* ─── Footer Limpio: Solo Configuración ─── */}
-      <SidebarFooter className="p-2.5 border-t border-sidebar-border/60">
-        <button
-          type="button"
-          onClick={onOpenConfig}
-          className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs font-bold text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all group-data-[collapsed=true]:justify-center"
-          title="Configuración general"
-        >
-          <SettingsIcon className="size-4 shrink-0 text-muted-foreground group-hover:text-sidebar-foreground transition-colors stroke-[2]" />
-          <span className="truncate group-data-[collapsed=true]:hidden">Configuración</span>
-        </button>
+      {/* ─── Footer: Logo Propio de GeoNexus + Nombre + Configuración ─── */}
+      <SidebarFooter
+        className={cn(
+          "border-t border-sidebar-border/60",
+          isCollapsed ? "p-2 flex justify-center" : "px-3 py-2.5"
+        )}
+      >
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/25 text-primary shadow-2xs">
+              <GeoAgentsLogo variant="icon" className="size-4" />
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-sidebar-foreground truncate leading-tight">
+                  GeoNexus AI
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono leading-tight">
+                  Workspace Pro
+                </span>
+              </div>
+            )}
+          </div>
+
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={onOpenConfig}
+              className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors cursor-pointer"
+              title={t.sidebar.settings}
+            >
+              <HugeiconsIcon icon={Settings02Icon} strokeWidth={1.75} className="size-4" />
+            </button>
+          )}
+        </div>
       </SidebarFooter>
 
       <SidebarRail />

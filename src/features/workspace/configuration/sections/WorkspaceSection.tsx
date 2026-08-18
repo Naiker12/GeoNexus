@@ -1,17 +1,13 @@
 import { invoke } from "@tauri-apps/api/core"
 import { open } from "@tauri-apps/plugin-dialog"
-import {
-  CpuIcon,
-  FolderIcon,
-  HardDriveIcon,
-  SlidersHorizontalIcon,
-  TerminalIcon,
-  ZapIcon,
-} from "lucide-react"
+import { FolderIcon, SlidersHorizontalIcon, TerminalIcon, ZapIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/Button"
 import { Field, SettingGroup } from "@/features/workspace/configuration/settings-ui"
+import { useLanguage } from "@/i18n/useLanguage"
+import { cn } from "@/lib/utils"
+import { GlobeIcon } from "lucide-react"
 
 interface WorkspaceConfig {
   working_directory: string
@@ -22,6 +18,7 @@ interface WorkspaceConfig {
 }
 
 export function WorkspaceSection() {
+  const { language, setLanguage, t } = useLanguage()
   const [config, setConfig] = useState<WorkspaceConfig>({
     working_directory: ".",
     code_execution_mode: "project",
@@ -61,12 +58,59 @@ export function WorkspaceSection() {
     <div className="space-y-4">
       <div>
         <h3 className="text-xs font-bold uppercase tracking-widest text-foreground font-mono">
-          GeoNexus — Workspace y Entorno
+          GeoNexus — {t.config.title}
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Configura el entorno de ejecución persistente: carpeta base del proyecto, shell persistente y variables de entorno passthrough.
+          {t.config.subtitle}
         </p>
       </div>
+
+      {/* Selector de Idioma / Language */}
+      <SettingGroup
+        icon={GlobeIcon}
+        title={t.config.languageSectionTitle}
+        description={t.config.languageSectionDesc}
+      >
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setLanguage("es")}
+            className={cn(
+              "flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+              language === "es"
+                ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-2xs"
+                : "border-border/80 bg-card hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className="text-sm">🇪🇸</span>
+            <span>Español</span>
+            {language === "es" && (
+              <span className="ml-1 rounded-full bg-primary/20 px-1.5 py-0.2 text-[9px] font-mono font-bold">
+                Activo
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLanguage("en")}
+            className={cn(
+              "flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer",
+              language === "en"
+                ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20 shadow-2xs"
+                : "border-border/80 bg-card hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span className="text-sm">🇺🇸</span>
+            <span>English</span>
+            {language === "en" && (
+              <span className="ml-1 rounded-full bg-primary/20 px-1.5 py-0.2 text-[9px] font-mono font-bold">
+                Active
+              </span>
+            )}
+          </button>
+        </div>
+      </SettingGroup>
 
       <SettingGroup
         icon={FolderIcon}
@@ -77,7 +121,12 @@ export function WorkspaceSection() {
           <code className="flex-1 truncate rounded-xl border border-border/70 bg-muted/30 px-3 py-2 font-mono text-xs text-foreground">
             {config.working_directory}
           </code>
-          <Button onClick={pickDirectory} variant="outline" size="sm" className="h-9 rounded-xl text-xs">
+          <Button
+            onClick={pickDirectory}
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-xl text-xs"
+          >
             Seleccionar
           </Button>
         </div>

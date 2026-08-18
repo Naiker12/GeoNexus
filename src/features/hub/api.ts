@@ -1,11 +1,4 @@
-import { invokeTauri } from "@/api/tauri"
-import type {
-  HfModelResult,
-  HubInventoryResult,
-  LoadedModelEntry,
-  ModelTask,
-  ModelVariant,
-} from "./types"
+import type { HfModelResult, HubInventoryResult, LoadedModelEntry, ModelTask } from "./types"
 
 const WS_GATEWAY_URL = "ws://127.0.0.1:9876/ws"
 
@@ -16,7 +9,7 @@ function executeWsAction<T>(action: string, params: Record<string, any> = {}): P
 
     try {
       ws = new WebSocket(WS_GATEWAY_URL)
-    } catch (e) {
+    } catch (_e) {
       return reject(new Error("No se pudo conectar al Gateway Python en ws://127.0.0.1:9876"))
     }
 
@@ -276,12 +269,36 @@ const FALLBACK_MODELS: Record<ModelTask, HfModelResult[]> = {
       ],
     },
   ],
+  audio: [
+    {
+      id: "openai/whisper-large-v3-turbo",
+      name: "Whisper Large v3 Turbo",
+      author: "openai",
+      downloads: 1200000,
+      likes: 3800,
+      task: "audio",
+      tags: ["whisper", "speech-to-text", "audio"],
+      has_remote_code: false,
+      gated: false,
+      variants: [
+        {
+          name: "FP16 (1.6 GB)",
+          filename: "whisper-large-v3-turbo.safetensors",
+          size_gb: 1.6,
+          fits_vram: true,
+          fits_ram: true,
+          fit_level: "full_vram",
+          required_vram_gb: 2.2,
+        },
+      ],
+    },
+  ],
 }
 
 export async function searchHfHub(
-  query: string = "",
+  query = "",
   task: ModelTask = "text-generation",
-  sort: string = "downloads"
+  sort = "downloads"
 ): Promise<{ models: HfModelResult[]; total: number }> {
   try {
     return await executeWsAction<{ models: HfModelResult[]; total: number }>("hub_search", {
@@ -322,10 +339,14 @@ export async function getHubInventory(): Promise<HubInventoryResult> {
   }
 }
 
-export async function deleteHubModel(filename: string): Promise<{ status: string; message: string }> {
+export async function deleteHubModel(
+  filename: string
+): Promise<{ status: string; message: string }> {
   try {
-    return await executeWsAction<{ status: string; message: string }>("hub_delete_model", { filename })
-  } catch (e) {
+    return await executeWsAction<{ status: string; message: string }>("hub_delete_model", {
+      filename,
+    })
+  } catch (_e) {
     return { status: "ok", message: "Modelo eliminado localmente" }
   }
 }
@@ -356,7 +377,7 @@ export async function getLoadedModels(): Promise<{
 export async function ejectModel(modelId?: string): Promise<{ status: string }> {
   try {
     return await executeWsAction<{ status: string }>("loaded_models_eject", { model_id: modelId })
-  } catch (e) {
+  } catch (_e) {
     return { status: "ok" }
   }
 }

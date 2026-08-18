@@ -21,7 +21,6 @@ export function ChatPanel(_props: ChatPanelProps) {
   const { connectors, activeConnectorId } = useConnectors()
   const agentStoreMode = useAgentTaskStore((s) => s.mode)
   const {
-    activeProvider,
     conversationId,
     error,
     messages,

@@ -16,7 +16,7 @@ const TIMEFRAMES: { key: Timeframe; label: string }[] = [
 export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
   const { data, loading } = useTokenTimeline("project-default", timeframe)
   const chartRef = useRef<HTMLDivElement>(null)
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [_hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [tooltip, setTooltip] = useState<{ bucket: TokenBucket; x: number; y: number } | null>(null)
 
   const items = data ?? []

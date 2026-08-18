@@ -46,10 +46,22 @@ export function ConfigurationFooter({ onCancel, onSave }: ConfigurationFooterPro
 
   return (
     <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border/70 bg-muted/10 px-6 py-3.5">
-      <Button variant="ghost" size="sm" type="button" onClick={onCancel} className="rounded-xl text-xs">
+      <Button
+        variant="ghost"
+        size="sm"
+        type="button"
+        onClick={onCancel}
+        className="rounded-xl text-xs"
+      >
         Cancelar
       </Button>
-      <Button size="sm" type="button" onClick={handleSave} disabled={saving} className="rounded-xl text-xs gap-1.5 font-medium">
+      <Button
+        size="sm"
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="rounded-xl text-xs gap-1.5 font-medium"
+      >
         {saving ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
         {saving ? "Guardando..." : "Guardar y aplicar"}
       </Button>

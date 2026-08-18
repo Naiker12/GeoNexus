@@ -70,7 +70,6 @@ export function McpConsole() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filtrar..."
                 className="bg-transparent border-none outline-none text-[10px] text-[#cccccc] w-20 p-0 focus:ring-0"
-                autoFocus
               />
               <button
                 onClick={() => {

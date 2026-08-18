@@ -112,3 +112,11 @@ def scan_model_repository(model_id: str, tags: List[str] = None) -> Dict[str, An
         ],
         "message": "Requiere confirmación explícita para ejecutar código remoto.",
     }
+
+
+def scan_remote_code_security(model_id: str, tags: List[str] = None) -> Dict[str, Any]:
+    """Alias for scan_model_repository."""
+    res = scan_model_repository(model_id, tags)
+    res["risk_level"] = res.get("max_severity", "low").lower()
+    return res
+

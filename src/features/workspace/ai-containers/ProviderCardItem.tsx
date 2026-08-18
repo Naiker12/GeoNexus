@@ -48,15 +48,19 @@ export function ProviderCardItem({
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
-        <MetaPill>{option.category === "local" ? "Local" : option.category === "gateway" ? "Gateway" : "Cloud"}</MetaPill>
+        <MetaPill>
+          {option.category === "local"
+            ? "Local"
+            : option.category === "gateway"
+              ? "Gateway"
+              : "Cloud"}
+        </MetaPill>
         <MetaPill>{option.auth === "api-key" ? "API Key" : "Sin key"}</MetaPill>
         <MetaPill className="font-mono">{primaryModel}</MetaPill>
       </div>
 
       <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <span className="truncate font-mono text-[10px] text-muted-foreground/80">
-          {endpoint}
-        </span>
+        <span className="truncate font-mono text-[10px] text-muted-foreground/80">{endpoint}</span>
         <div className="flex shrink-0 gap-1.5 self-end sm:self-auto">
           <Button
             variant="outline"
@@ -113,9 +117,11 @@ function StatusBadge({ status }: { status: AiConnector["status"] | "needs-key" }
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[9px] font-mono font-semibold uppercase tracking-wider",
-        status === "online" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+        status === "online" &&
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
         status === "offline" && "bg-muted text-muted-foreground border border-border/60",
-        status === "needs-key" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+        status === "needs-key" &&
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
       )}
     >
       <span

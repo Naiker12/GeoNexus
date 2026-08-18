@@ -55,7 +55,7 @@ export function useTelegramBridge({ enabled, sendToLlm, onError }: UseTelegramBr
           if (msg.content_type === "sticker") {
             await invoke("telegram_send_response", {
               chatId: msg.chat_id,
-              text: `¡Qué lindo sticker${msg.content_summary.includes("✨") ? "!" : " " + msg.content_summary.slice(7)}!`,
+              text: `¡Qué lindo sticker${msg.content_summary.includes("✨") ? "!" : ` ${msg.content_summary.slice(7)}`}!`,
             })
             return
           }

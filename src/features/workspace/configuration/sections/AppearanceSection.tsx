@@ -1,14 +1,5 @@
+import { CheckIcon, MoonIcon, SunIcon, UploadIcon } from "lucide-react"
 import * as React from "react"
-import {
-  CheckIcon,
-  LaptopIcon,
-  MoonIcon,
-  PaletteIcon,
-  SparklesIcon,
-  SunIcon,
-  UploadIcon,
-  XIcon,
-} from "lucide-react"
 
 import { themePresets as builtInPresets } from "@/constants/workspace"
 import { cn } from "@/lib/utils"

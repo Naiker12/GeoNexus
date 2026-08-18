@@ -1,13 +1,15 @@
 /** Detecta si estamos dentro del runtime Tauri */
-function isTauriAvailable(): boolean {
+export function isTauri(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
 }
+
+export const isTauriAvailable = isTauri
 
 let invokeFn: typeof import("@tauri-apps/api/core").invoke | null = null
 
 async function ensureInvoke() {
   if (invokeFn) return invokeFn
-  if (!isTauriAvailable()) return null
+  if (!isTauri()) return null
   try {
     const { invoke } = await import("@tauri-apps/api/core")
     invokeFn = invoke

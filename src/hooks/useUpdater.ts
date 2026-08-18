@@ -1,9 +1,5 @@
+import { isTauriAvailable } from "@/api/invoke"
 import { useEffect, useState } from "react"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
 
 export interface UpdateInfo {
   available: boolean

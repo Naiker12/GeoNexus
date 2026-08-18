@@ -1,5 +1,3 @@
-import * as React from "react"
-import { AlertTriangleIcon, CheckIcon, HardDriveIcon, Trash2Icon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
   Dialog,
@@ -9,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { CheckIcon, Trash2Icon } from "lucide-react"
+import * as React from "react"
 import type { LocalModelItem } from "../types"
 
 interface FreeUpSpaceDialogProps {
@@ -86,7 +86,9 @@ export function FreeUpSpaceDialog({
 
           <div className="max-h-60 overflow-y-auto space-y-1.5 rounded-2xl border border-border/70 p-2 [scrollbar-width:thin]">
             {models.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">No hay modelos para eliminar.</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                No hay modelos para eliminar.
+              </p>
             ) : (
               models.map((m) => {
                 const isChecked = selected.has(m.filename)
@@ -99,14 +101,18 @@ export function FreeUpSpaceDialog({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className={`flex size-4 items-center justify-center rounded border transition-colors ${
-                          isChecked ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/50"
+                          isChecked
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-muted-foreground/50"
                         }`}
                       >
                         {isChecked && <CheckIcon className="size-3 stroke-[3]" />}
                       </div>
                       <span className="truncate font-medium text-foreground">{m.name}</span>
                     </div>
-                    <span className="shrink-0 text-muted-foreground font-mono text-[11px]">{m.size_gb} GB</span>
+                    <span className="shrink-0 text-muted-foreground font-mono text-[11px]">
+                      {m.size_gb} GB
+                    </span>
                   </div>
                 )
               })
@@ -115,7 +121,12 @@ export function FreeUpSpaceDialog({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="rounded-xl text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl text-xs"
+          >
             Cancelar
           </Button>
           <Button

@@ -84,7 +84,7 @@ export function CreateAutomationDialog({
       if (result.cron_expression && !result.cron_expression.startsWith("now+")) {
         setForm((f) => ({ ...f, cron_expression: result.cron_expression }))
       }
-    } catch (e) {
+    } catch (_e) {
       setError("Error al interpretar la intención")
     } finally {
       setTranslating(false)

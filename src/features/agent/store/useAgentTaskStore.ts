@@ -24,7 +24,7 @@ interface AgentTaskStore {
   applyEvent: (event: AgentTaskEvent) => void
 }
 
-export const useAgentTaskStore = create<AgentTaskStore>((set, get) => ({
+export const useAgentTaskStore = create<AgentTaskStore>((set, _get) => ({
   tasks: [],
   isLoading: false,
   mode: "chat",

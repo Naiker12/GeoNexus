@@ -1,16 +1,5 @@
-import * as React from "react"
-import {
-  ClockIcon,
-  CpuIcon,
-  FileCodeIcon,
-  FolderIcon,
-  HardDriveIcon,
-  PlayIcon,
-  Trash2Icon,
-  ZapIcon,
-} from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { cn } from "@/lib/utils"
+import { FileCodeIcon, FolderIcon, HardDriveIcon, PlayIcon, Trash2Icon } from "lucide-react"
 import type { LocalModelItem } from "../types"
 
 interface ModelInventoryListProps {
@@ -44,13 +33,16 @@ export function ModelInventoryList({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-xs text-foreground">Almacenamiento Local de Modelos</span>
+                <span className="font-semibold text-xs text-foreground">
+                  Almacenamiento Local de Modelos
+                </span>
                 <span className="rounded-full bg-muted/60 px-2 py-0.2 text-[10px] font-mono text-muted-foreground">
                   {models.length} modelos
                 </span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Ocupando <strong className="text-foreground">{totalUsedGb} GB</strong> de {Math.round(diskTotal)} GB totales ({totalFreeGb} GB libres)
+                Ocupando <strong className="text-foreground">{totalUsedGb} GB</strong> de{" "}
+                {Math.round(diskTotal)} GB totales ({totalFreeGb} GB libres)
               </p>
             </div>
           </div>
@@ -97,7 +89,9 @@ export function ModelInventoryList({
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-foreground truncate">{model.name}</span>
+                    <span className="font-semibold text-xs text-foreground truncate">
+                      {model.name}
+                    </span>
                     <span className="rounded-md bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.2 text-[9px] font-mono uppercase font-bold">
                       {model.format}
                     </span>

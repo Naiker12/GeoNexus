@@ -20,7 +20,7 @@ const LEVEL_COLORS: Record<string, string> = {
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",
 }
 
-const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+const _PERMISSION_DESCRIPTIONS: Record<string, string> = {
   read: "El agente puede leer archivos pero no modificarlos",
   write: "El agente puede leer y crear/modificar archivos",
   execute: "Incluye escritura + puede ejecutar scripts en esta ruta",

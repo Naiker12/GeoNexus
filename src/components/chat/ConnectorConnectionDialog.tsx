@@ -70,13 +70,14 @@ export function ConnectorConnectionDialog({ connector, open, onOpenChange, onCon
         variant: "error",
       })
     }
-  }, [oauth.status])
+    // eslint-disable-next-line -- intentionally reacting only to status changes
+  }, [oauth.status, oauth.error, connector.label, onConnected, onOpenChange, toast])
 
   React.useEffect(() => {
     setConnecting(false)
     setFolderPath("")
     oauth.reset()
-  }, [connector.id, open])
+  }, [oauth.reset])
 
   const prov = connector.provider ?? ""
   const isCloud = CLOUD_PROVIDERS.has(prov)

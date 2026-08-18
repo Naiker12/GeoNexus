@@ -1,6 +1,4 @@
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 async function getInvoke() {
   if (!isTauriAvailable()) return null

@@ -1,9 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fira-code";
+@import "@xyflow/react/dist/style.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-heading: "Space Grotesk Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code Variable", monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -424,4 +431,127 @@
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODERN DESIGN SYSTEM: SCROLL MASKS, SHIMMER & HIGH-TECH GLASS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  [data-slot="dialog-title"],
+  [data-slot="card-title"] {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono,
+  [data-telemetry] {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Gemini-style scroll masks for seamless dissolving edges */
+.sidebar-scroll-fade.is-scrolled {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px),
+    linear-gradient(to left, #000 var(--sidebar-rail, 0px), transparent 0);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px),
+    linear-gradient(to left, #000 var(--sidebar-rail, 0px), transparent 0);
+}
+
+.fade-scroll-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+.model-list-scroll.is-scrolled {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+
+.model-list-scroll.is-bottom-faded {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+
+.model-list-scroll.is-scrolled.is-bottom-faded {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 16px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 16px),
+    transparent
+  );
+}
+
+/* Glassmorphism & High-tech Card Utilities */
+.glass-panel {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.glass-pill {
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.hud-badge {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Ultra Smooth Shimmer Skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--muted) 85%, transparent) 0%,
+    color-mix(in srgb, var(--muted) 40%, transparent) 50%,
+    color-mix(in srgb, var(--muted) 85%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s cubic-bezier(0.165, 0.84, 0.44, 1) infinite;
 }

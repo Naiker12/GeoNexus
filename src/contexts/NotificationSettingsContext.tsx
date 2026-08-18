@@ -49,7 +49,7 @@ const NotificationSettingsContext = React.createContext<NotificationSettingsCont
 export function NotificationSettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = React.useState<NotificationSettings>(loadSettings)
 
-  const persist = React.useCallback((next: NotificationSettings) => {
+  const _persist = React.useCallback((next: NotificationSettings) => {
     setSettings(next)
     saveSettings(next)
   }, [])

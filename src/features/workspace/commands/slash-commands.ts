@@ -253,7 +253,7 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         type: "message",
         content: [
           `## ${doc.name}`,
-          ``,
+          "",
           `**ID:** \`${doc.id}\``,
           `**Estado:** ${statusLabel(doc.status)}`,
           `**Tamaño:** ${formatSize(doc.size_bytes)}`,
@@ -261,7 +261,7 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
           `**Embeddings:** ${doc.embeddings}`,
           `**Nodos en grafo:** ${doc.graph_nodes}`,
           doc.status === "ready"
-            ? `**Vista previa:**`
+            ? "**Vista previa:**"
             : `**Nota:** El documento aún no está indexado. Usa \`/analizar ${args}\` para indexarlo.`,
           ...(doc.status === "ready" ? previewLines : []),
         ].join("\n"),
@@ -318,15 +318,15 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
           type: "message",
           content: [
             `## Análisis de: ${doc.name}`,
-            ``,
+            "",
             `**Fragmentos totales:** ${doc.chunks}`,
             `**Embeddings generados:** ${doc.embeddings}`,
             `**Nodos en grafo de conocimiento:** ${doc.graph_nodes}`,
             `**Tamaño:** ${formatSize(doc.size_bytes)}`,
-            ``,
-            `**Contenido:**`,
+            "",
+            "**Contenido:**",
             ...contentPreview,
-            ``,
+            "",
             doc.chunks > 5
               ? `_Mostrando 5 de ${doc.chunks} fragmentos. Usa \`/resumir ${args}\` para un resumen._`
               : "",
@@ -373,17 +373,17 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         }
       }
       const combined = chunks.map((c) => c.content).join("\n\n")
-      const summary = combined.length > 1500 ? combined.slice(0, 1500) + "…" : combined
+      const summary = combined.length > 1500 ? `${combined.slice(0, 1500)}…` : combined
       return {
         handled: true,
         type: "message",
         content: [
           `## Resumen de: ${doc.name}`,
-          ``,
+          "",
           `_${doc.chunks} fragmentos · ${doc.embeddings} embeddings · ${formatSize(doc.size_bytes)}_`,
-          ``,
+          "",
           summary,
-          ``,
+          "",
           `_Usa \`/documento ${args}\` para ver el detalle completo._`,
         ].join("\n"),
       }
@@ -491,17 +491,17 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         handled: true,
         type: "message",
         content: [
-          `## Grafo de conocimiento`,
-          ``,
+          "## Grafo de conocimiento",
+          "",
           `**Total de nodos:** ${nodes.length}`,
-          ``,
-          `**Tipos de nodos:**`,
+          "",
+          "**Tipos de nodos:**",
           summary,
-          ``,
-          `**Nodos más usados:**`,
+          "",
+          "**Nodos más usados:**",
           topRows.join("\n"),
-          ``,
-          `Usa \`/grafo [búsqueda]\` para buscar nodos o \`/nodo [id]\` para ver detalle.`,
+          "",
+          "Usa `/grafo [búsqueda]` para buscar nodos o `/nodo [id]` para ver detalle.",
         ].join("\n"),
       }
     }
@@ -531,7 +531,7 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         type: "message",
         content: [
           `## ${node.label}`,
-          ``,
+          "",
           `**ID:** \`${node.id}\``,
           `**Tipo:** ${node.kind}`,
           `**Uso:** ${node.use_count} veces`,
@@ -557,15 +557,15 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         handled: true,
         type: "message",
         content: [
-          `## Exportar conversación`,
-          ``,
+          "## Exportar conversación",
+          "",
           `Para exportar la conversación actual en formato **${format.toUpperCase()}**:`,
-          `1. Abre el menú de opciones en el panel de chat`,
+          "1. Abre el menú de opciones en el panel de chat",
           `2. Selecciona "Exportar" y elige el formato`,
-          ``,
-          `O usa el botón de exportar en la barra superior del chat.`,
-          ``,
-          `_Los formatos compatibles son: JSON, CSV, PDF y Markdown._`,
+          "",
+          "O usa el botón de exportar en la barra superior del chat.",
+          "",
+          "_Los formatos compatibles son: JSON, CSV, PDF y Markdown._",
         ].join("\n"),
       }
     }
@@ -575,16 +575,16 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         handled: true,
         type: "message",
         content: [
-          `## Herramientas GIS`,
-          ``,
-          `Las herramientas GIS están disponibles en el panel lateral del workspace.`,
-          ``,
-          `**Comandos relacionados:**`,
-          `  • \`/mapa [consulta]\` — Consultar mapa interactivo`,
-          `  • \`/capa [nombre]\` — Info de capa GIS`,
-          `  • \`/zona [nombre]\` — Consultar zona territorial`,
-          ``,
-          `_Nota: Los comandos GIS requieren datos cargados en el proyecto._`,
+          "## Herramientas GIS",
+          "",
+          "Las herramientas GIS están disponibles en el panel lateral del workspace.",
+          "",
+          "**Comandos relacionados:**",
+          "  • `/mapa [consulta]` — Consultar mapa interactivo",
+          "  • `/capa [nombre]` — Info de capa GIS",
+          "  • `/zona [nombre]` — Consultar zona territorial",
+          "",
+          "_Nota: Los comandos GIS requieren datos cargados en el proyecto._",
         ].join("\n"),
       }
     }
@@ -594,14 +594,14 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         handled: true,
         type: "message",
         content: [
-          `## Configuración de IA`,
-          ``,
-          `Puedes configurar los modelos de IA desde la sección **Configuración → IA y Embeddings**.`,
-          ``,
-          `**Comandos relacionados:**`,
-          `  • \`/ia [modelo]\` — Usar un modelo específico (ej: \`/ia gpt-4o\`)`,
-          ``,
-          `Modelos disponibles: los configurados en tus conectores de IA.`,
+          "## Configuración de IA",
+          "",
+          "Puedes configurar los modelos de IA desde la sección **Configuración → IA y Embeddings**.",
+          "",
+          "**Comandos relacionados:**",
+          "  • `/ia [modelo]` — Usar un modelo específico (ej: `/ia gpt-4o`)",
+          "",
+          "Modelos disponibles: los configurados en tus conectores de IA.",
         ].join("\n"),
       }
     }
@@ -630,16 +630,16 @@ export async function handleAsyncSlashCommand(text: string): Promise<SlashResult
         type: "message",
         content: [
           `## Conectar fuente ${typeUpper}`,
-          ``,
+          "",
           url ? `**URL/Ruta:** ${url}` : "_No se proporcionó URL_",
-          ``,
-          `Para conectar esta fuente:`,
-          `1. Ve a **Configuración → Conectores**`,
+          "",
+          "Para conectar esta fuente:",
+          "1. Ve a **Configuración → Conectores**",
           `2. Agrega un nuevo conector de tipo **${typeUpper}**`,
-          `3. Ingresa la ruta o URL`,
-          `4. Activa el conector y sincroniza`,
-          ``,
-          `_Una vez conectado, los datos aparecerán en la sección Documentos._`,
+          "3. Ingresa la ruta o URL",
+          "4. Activa el conector y sincroniza",
+          "",
+          "_Una vez conectado, los datos aparecerán en la sección Documentos._",
         ].join("\n"),
       }
     }

@@ -49,7 +49,7 @@ export function BarChartBlock({
             width={180}
             tick={{ fontSize: 11 }}
             stroke="var(--color-muted-foreground)"
-            tickFormatter={(val) => (val.length > 28 ? val.substring(0, 26) + "..." : val)}
+            tickFormatter={(val) => (val.length > 28 ? `${val.substring(0, 26)}...` : val)}
           />
           <Tooltip content={<ChartTooltip />} />
           <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>

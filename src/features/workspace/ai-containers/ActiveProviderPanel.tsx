@@ -181,7 +181,6 @@ function ModelCard({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filtrar modelos..."
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              autoFocus
             />
           </div>
           <div className="max-h-64 overflow-y-auto p-1">

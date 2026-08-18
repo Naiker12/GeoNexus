@@ -380,7 +380,7 @@ function TokensBarChart() {
           ))
         ) : items.length > 0 ? (
           items.map((item) => {
-            const pct = maxTokens ? (item.total_tokens / maxTokens) * 100 : 0
+            const _pct = maxTokens ? (item.total_tokens / maxTokens) * 100 : 0
             return (
               <TooltipProvider key={item.hora}>
                 <Tooltip>

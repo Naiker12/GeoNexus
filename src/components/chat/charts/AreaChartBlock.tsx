@@ -32,7 +32,7 @@ export function AreaChartBlock({
     return point
   })
 
-  const allValues = series.flatMap((s) => s.values).filter((v) => !isNaN(v))
+  const allValues = series.flatMap((s) => s.values).filter((v) => !Number.isNaN(v))
   const maxVal = Math.max(...allValues, 1)
   const niceMax = Math.ceil(maxVal / 10) * 10 || 100
 

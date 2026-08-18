@@ -1,3 +1,1 @@
-export type SettingsDialog =
-  | { type: "edit-mcp"; name: string; serverId: string }
-  | null
+export type SettingsDialog = { type: "edit-mcp"; name: string; serverId: string } | null

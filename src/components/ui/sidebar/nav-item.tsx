@@ -26,7 +26,7 @@ function isActiveRoute(activeRoute: string, itemUrl: string) {
 const SidebarNavItem = React.memo(function SidebarNavItem({
   item,
   activeRoute,
-  depth = 0,
+  depth: _depth = 0,
   onNavigate,
 }: SidebarNavItemProps) {
   const [expanded, setExpanded] = React.useState(true)

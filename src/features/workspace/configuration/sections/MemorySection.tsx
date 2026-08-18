@@ -191,7 +191,6 @@ export function MemorySection() {
                       onChange={(e) => setEditText(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && saveEdit(fact.id)}
                       className="flex-1 rounded border border-primary/50 bg-background px-1.5 py-0.5 text-xs outline-none"
-                      autoFocus
                     />
                     <NativeSelect
                       value={editCategory}

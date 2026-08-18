@@ -8,11 +8,7 @@ import type {
   SendMessageInput,
   SendMessageResponse,
 } from "@/types/chat"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke(): Promise<typeof import("@tauri-apps/api/core").invoke | null> {

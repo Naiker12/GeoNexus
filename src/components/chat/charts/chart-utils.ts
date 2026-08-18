@@ -25,9 +25,6 @@ const PIE_CHARS = ["●", "○"]
 const ALL_CHART_CHARS = [...BAR_CHARS, ...LINE_CHARS, ...PIE_CHARS]
 const SEP_PATTERN = /^[=\-—─═]{3,}/
 
-function hasBarChar(line: string): boolean {
-  return BAR_CHARS.some((c) => line.includes(c))
-}
 
 function detectChartType(lines: string[]): ChartType {
   const barCount = lines.filter((l) => /[█■▓░]{2,}/.test(l) || /\|[\s]*[█■▓░]/.test(l)).length
@@ -198,7 +195,6 @@ export function parseAsciiChart(code: string): ParsedChart {
       !SEP_PATTERN.test(trimmed)
     ) {
       title = trimmed
-      continue
     }
   }
 
@@ -226,7 +222,7 @@ function parseBarChart(lines: string[], entries: ChartEntry[]) {
     if (barMatch) {
       const label = barMatch[1].trim().replace(/\.$/, "")
       const value = Number.parseInt(barMatch[2], 10)
-      if (label && !isNaN(value)) {
+      if (label && !Number.isNaN(value)) {
         entries.push({ label, value })
         continue
       }
@@ -248,7 +244,7 @@ function parseBarChart(lines: string[], entries: ChartEntry[]) {
   }
 }
 
-function parseLineChart(lines: string[], series: DataSeries[], labels: string[]) {
+function parseLineChart(lines: string[], series: DataSeries[], _labels: string[]) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim()
     const match = trimmed.match(/^(.+?)\s*[|:]\s*([▁▂▃▄▅▆▇█▉▊▋▌▍▎▏\s]+)/)
@@ -291,7 +287,7 @@ function parsePieChart(lines: string[], entries: ChartEntry[]) {
         .trim()
     }
 
-    if (label && value !== undefined && !isNaN(value)) {
+    if (label && value !== undefined && !Number.isNaN(value)) {
       entries.push({ label, value })
     }
   }

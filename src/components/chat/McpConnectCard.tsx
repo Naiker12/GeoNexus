@@ -11,7 +11,7 @@ interface McpConnectCardProps {
 }
 
 export function McpConnectCard({
-  serverId,
+  serverId: _serverId,
   serverName,
   serverUrl,
   reason,

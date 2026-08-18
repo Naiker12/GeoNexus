@@ -31,7 +31,7 @@ export function drawEdges(
   selectedNodeId: string | null,
   filter: Set<string> | null,
   scale: number,
-  animTime = 0
+  _animTime = 0
 ) {
   ctx.save()
 
@@ -165,7 +165,7 @@ export function drawNodes(
 
         const maxChars = Math.max(8, Math.floor(16 / scale))
         const label =
-          node.label.length > maxChars ? node.label.slice(0, maxChars) + "\u2026" : node.label
+          node.label.length > maxChars ? `${node.label.slice(0, maxChars)}\u2026` : node.label
 
         ctx.fillText(label, pos.x, pos.y + radius + 3 / scale)
         ctx.restore()

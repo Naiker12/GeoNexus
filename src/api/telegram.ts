@@ -1,3 +1,4 @@
+import { isTauriAvailable } from "@/api/invoke"
 import { invoke } from "@tauri-apps/api/core"
 
 export interface TelegramConfig {
@@ -26,9 +27,7 @@ export interface TelegramConfigInfo {
   bot_configured?: boolean
 }
 
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+
 
 export async function saveTelegramConfig(config: TelegramConfig): Promise<void> {
   if (!isTauriAvailable()) return

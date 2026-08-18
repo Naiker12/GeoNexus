@@ -1,5 +1,6 @@
-import * as React from "react"
-import { CheckIcon, CpuIcon, DownloadIcon, HardDriveIcon, ZapIcon } from "lucide-react"
+import { CheckIcon, CpuIcon, DownloadIcon, HardDriveIcon, SparklesIcon } from "lucide-react"
+
+import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 import type { ModelVariant } from "../types"
 
@@ -17,20 +18,28 @@ export function ModelVariantPicker({
   onDownload,
 }: ModelVariantPickerProps) {
   return (
-    <div className="space-y-1.5">
-      <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-1">
-        Variantes y Cuantizaciones Disponibles
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-bold text-foreground font-sans uppercase tracking-wider flex items-center gap-1.5">
+          <SparklesIcon className="size-3.5 text-primary" />
+          Cuantizaciones GGUF & Requisitos de VRAM
+        </span>
+        <span className="text-[11px] font-mono text-muted-foreground">
+          {variants.length} variante(s) lista(s)
+        </span>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
+
+      <div className="grid gap-2.5 sm:grid-cols-2">
         {variants.map((v) => {
           const isSelected = selectedVariant?.filename === v.filename
 
           // Badge de ajuste VRAM
-          let fitBadgeClass = "bg-muted text-muted-foreground border-border"
+          let fitBadgeClass = "bg-muted text-muted-foreground border-border/80"
           let fitLabel = "CPU / RAM"
 
           if (v.fit_level === "full_vram") {
-            fitBadgeClass = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+            fitBadgeClass =
+              "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
             fitLabel = "100% GPU VRAM"
           } else if (v.fit_level === "partial_vram") {
             fitBadgeClass = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
@@ -45,22 +54,29 @@ export function ModelVariantPicker({
               key={v.filename}
               onClick={() => onSelectVariant(v)}
               className={cn(
-                "group relative flex flex-col justify-between rounded-2xl border p-3 transition-all cursor-pointer",
+                "group relative flex flex-col justify-between rounded-2xl border p-3.5 transition-all duration-150 cursor-pointer glass-panel shadow-2xs",
                 isSelected
-                  ? "border-primary bg-primary/5 shadow-xs"
-                  : "border-border/70 bg-card hover:border-border hover:bg-muted/30"
+                  ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                  : "border-border/70 bg-card/90 hover:border-primary/40 hover:bg-card"
               )}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-xs text-foreground font-mono">{v.name}</span>
-                    <span className={cn("rounded-full border px-2 py-0.2 text-[9px] font-medium", fitBadgeClass)}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-xs text-foreground font-mono">{v.name}</span>
+                    <span
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[9px] font-bold font-mono",
+                        fitBadgeClass
+                      )}
+                    >
                       {fitLabel}
                     </span>
                   </div>
                   {v.description && (
-                    <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">{v.description}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">
+                      {v.description}
+                    </p>
                   )}
                 </div>
 
@@ -71,28 +87,30 @@ export function ModelVariantPicker({
                 )}
               </div>
 
-              <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <HardDriveIcon className="size-3 text-muted-foreground/70" />
-                  <span>{v.size_gb} GB</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <CpuIcon className="size-3 text-muted-foreground/70" />
-                  <span>~{v.required_vram_gb} GB VRAM</span>
+              <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2.5 text-[11px] text-muted-foreground font-mono">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <HardDriveIcon className="size-3 text-muted-foreground/70" />
+                    <span className="text-foreground font-medium">{v.size_gb} GB</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <CpuIcon className="size-3 text-muted-foreground/70" />
+                    <span>~{v.required_vram_gb} GB VRAM</span>
+                  </div>
                 </div>
 
                 {onDownload && (
-                  <button
-                    type="button"
+                  <Button
+                    size="xs"
                     onClick={(e) => {
                       e.stopPropagation()
                       onDownload(v)
                     }}
-                    className="flex size-6 items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-                    title="Descargar esta variante"
+                    className="gap-1 rounded-xl text-xs h-7 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
                   >
                     <DownloadIcon className="size-3" />
-                  </button>
+                    <span>Descargar</span>
+                  </Button>
                 )}
               </div>
             </div>

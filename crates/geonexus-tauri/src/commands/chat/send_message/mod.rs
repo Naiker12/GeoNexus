@@ -572,6 +572,38 @@ async fn ensure_conversation(
         .as_ref()
         .filter(|id| !id.trim().is_empty())
     {
+        let exists: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT 1 FROM conversations WHERE id = ?",
+        )
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| format!("Error verificando conversación: {e}"))?
+        .is_some();
+
+        if exists {
+            return Ok(id.clone());
+        }
+
+        let now = geonexus_db::chat_repo::unix_now();
+        sqlx::query(
+            "INSERT INTO conversations (id, project_id, workspace_id, title, provider, model, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(id)
+        .bind(&input.project_id)
+        .bind(input.workspace_id.as_deref())
+        .bind(None::<String>)
+        .bind(&input.provider)
+        .bind(&input.model)
+        .bind(now)
+        .bind(now)
+        .execute(&state.db)
+        .await
+        .map_err(|e| format!("Error creando conversación: {e}"))?;
+
+        let _ = geonexus_db::chat_repo::reindex_conversation_fts(&state.db, id).await;
+
         return Ok(id.clone());
     }
 

@@ -1,24 +1,17 @@
+import { Folder01Icon, Globe02Icon, SparklesIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import * as React from "react"
-import {
-  ArrowDownToLineIcon,
-  BotIcon,
-  GlobeIcon,
-  HardDriveIcon,
-  LayersIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  SparklesIcon,
-} from "lucide-react"
 
+import { Button } from "@/components/ui/Button"
+import { useToast } from "@/components/ui/toast"
+import { RemoteCodeConsentDialog } from "@/features/security/RemoteCodeConsentDialog"
+import { cn } from "@/lib/utils"
 import { deleteHubModel, getHubInventory, searchHfHub } from "./api"
+import { ExportStudioModal } from "./components/ExportStudioModal"
 import { FreeUpSpaceDialog } from "./components/FreeUpSpaceDialog"
 import { ModelDiscoverList } from "./components/ModelDiscoverList"
 import { ModelInventoryList } from "./components/ModelInventoryList"
 import type { HfModelResult, HubInventoryResult, ModelTask, ModelVariant } from "./types"
-import { RemoteCodeConsentDialog } from "@/features/security/RemoteCodeConsentDialog"
-import { Button } from "@/components/ui/Button"
-import { useToast } from "@/components/ui/toast"
-import { cn } from "@/lib/utils"
 
 export function HubPage() {
   const { toast } = useToast()
@@ -36,6 +29,10 @@ export function HubPage() {
   })
 
   const [freeSpaceOpen, setFreeSpaceOpen] = React.useState(false)
+  const [exportModalOpen, setExportModalOpen] = React.useState(false)
+  const [selectedExportModel, setSelectedExportModel] = React.useState<string>(
+    "Qwen/Qwen2.5-Coder-7B-Instruct"
+  )
   const [securityDialogOpen, setSecurityDialogOpen] = React.useState(false)
   const [pendingModel, setPendingModel] = React.useState<HfModelResult | null>(null)
 
@@ -57,9 +54,8 @@ export function HubPage() {
         loadDiscover()
       }, 300)
       return () => clearTimeout(timer)
-    } else {
-      loadInventory()
     }
+    loadInventory()
   }, [tab, loadDiscover, loadInventory])
 
   const handleDeleteModel = async (filename: string) => {
@@ -108,57 +104,78 @@ export function HubPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin]">
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         {/* Cabecera Principal */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/60 pb-5">
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl font-sans">
                 Hub de Modelos e IA
               </h1>
-              <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary font-mono">
+              <span className="rounded-full bg-primary/10 border border-primary/25 px-2.5 py-0.5 text-xs font-bold text-primary font-mono">
                 Hugging Face & VRAM
               </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground max-w-xl">
-              Descubre, descarga y administra modelos LLMs y difusión con verificación automática de compatibilidad en VRAM.
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground max-w-xl">
+              Descubre, descarga y administra modelos LLMs y difusión con verificación automática de
+              compatibilidad en VRAM.
             </p>
           </div>
 
-          {/* Selector de Pestañas Principales */}
-          <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card p-1">
-            <button
-              type="button"
-              onClick={() => setTab("discover")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all",
-                tab === "discover"
-                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-              )}
+          {/* Acciones Rápidas y Selector de Pestañas */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedExportModel("Qwen/Qwen2.5-Coder-7B-Instruct")
+                setExportModalOpen(true)
+              }}
+              className="gap-2 text-xs font-mono rounded-2xl border-border/80 hover:border-primary/40 bg-card hover:bg-card/90 shadow-2xs text-foreground cursor-pointer"
             >
-              <GlobeIcon className="size-3.5" />
-              <span>Explorar Hugging Face</span>
-            </button>
+              <HugeiconsIcon
+                icon={SparklesIcon}
+                strokeWidth={1.75}
+                className="size-3.5 text-amber-500"
+              />
+              <span>Export & GGUF</span>
+            </Button>
 
-            <button
-              type="button"
-              onClick={() => setTab("inventory")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-medium transition-all",
-                tab === "inventory"
-                  ? "bg-primary text-primary-foreground shadow-2xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-              )}
-            >
-              <HardDriveIcon className="size-3.5" />
-              <span>Inventario Local</span>
-              {inventory.total_models > 0 && (
-                <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0.2 text-[9px] font-mono">
-                  {inventory.total_models}
-                </span>
-              )}
-            </button>
+            {/* Selector de Pestañas Principales */}
+            <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card p-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setTab("discover")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                  tab === "discover"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <HugeiconsIcon icon={Globe02Icon} strokeWidth={1.75} className="size-3.5" />
+                <span>Explorar Hugging Face</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTab("inventory")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer",
+                  tab === "inventory"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <HugeiconsIcon icon={Folder01Icon} strokeWidth={1.75} className="size-3.5" />
+                <span>Inventario Local</span>
+                {inventory.total_models > 0 && (
+                  <span className="ml-1 rounded-full bg-primary-foreground/20 px-1.5 py-0.2 text-[9px] font-mono">
+                    {inventory.total_models}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -185,6 +202,12 @@ export function HubPage() {
       </div>
 
       {/* Diálogos Modales */}
+      <ExportStudioModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        modelName={selectedExportModel}
+      />
+
       <FreeUpSpaceDialog
         open={freeSpaceOpen}
         onOpenChange={setFreeSpaceOpen}
@@ -195,32 +218,15 @@ export function HubPage() {
       <RemoteCodeConsentDialog
         open={securityDialogOpen}
         onOpenChange={setSecurityDialogOpen}
-        modelId={pendingModel?.id || ""}
-        findings={[
-          {
-            file: "configuration.py",
-            line: 12,
-            call: "custom_code",
-            severity: "MEDIUM",
-            description: "El modelo define tensores y capas personalizadas de inferencia.",
-          },
-        ]}
-        approvable={true}
-        onApprove={() => {
-          if (pendingModel) {
-            toast({
-              title: "Código remoto aprobado",
-              description: `Iniciando descarga de ${pendingModel.id}...`,
-              variant: "success",
-            })
+        modelName={pendingModel?.name || ""}
+        onConfirm={() => {
+          setSecurityDialogOpen(false)
+          if (pendingModel?.variants[0]) {
+            handleDownloadVariant(
+              { ...pendingModel, has_remote_code: false },
+              pendingModel.variants[0]
+            )
           }
-        }}
-        onReject={() => {
-          toast({
-            title: "Descarga cancelada",
-            description: "No se ejecutará código remoto no confiable.",
-            variant: "info",
-          })
         }}
       />
     </div>

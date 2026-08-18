@@ -40,7 +40,7 @@ export function GraphPage() {
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [activityOpen, setActivityOpen] = React.useState(false)
   const [rebuilding, setRebuilding] = React.useState(false)
-  const [layoutKey, setLayoutKey] = React.useState(0)
+  const [_layoutKey, setLayoutKey] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const canvasApiRef = React.useRef<{ fitToScreen: () => void; resetZoom: () => void } | null>(null)
 
@@ -243,7 +243,7 @@ export function GraphPage() {
           onOpenChange={(open) => {
             if (!open) setSelectedNodeId(null)
           }}
-          onNodeDelete={(nodeId) => {
+          onNodeDelete={(_nodeId) => {
             refresh()
             setSelectedNodeId(null)
           }}

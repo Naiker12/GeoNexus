@@ -63,7 +63,7 @@ export function useChatSession(activeConnectorId: string | null, allConnectors: 
   )
 
   const error = convError || submitError
-  const setError = React.useCallback(
+  const _setError = React.useCallback(
     (e: string | null) => {
       setConvError(e)
       setSubmitError(e)
@@ -79,7 +79,9 @@ export function useChatSession(activeConnectorId: string | null, allConnectors: 
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
 
   React.useEffect(() => {
-    setSubmitTime(Date.now())
+    if (pending) {
+      setSubmitTime(Date.now())
+    }
   }, [pending])
 
   const wrappedSubmit = React.useCallback(

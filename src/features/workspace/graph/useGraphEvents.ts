@@ -1,11 +1,7 @@
 import { clearEphemeralNodes, listGraphEdges, listGraphNodes } from "@/api/data"
 import type { GraphEdge, GraphNode, GraphUpdatePayload } from "@/types/data"
 import * as React from "react"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 interface GraphEventsState {
   nodes: GraphNode[]

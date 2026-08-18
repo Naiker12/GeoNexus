@@ -21,10 +21,8 @@ const defaultMetrics: DataStoreMetrics = {
 
 export const DEFAULT_PROJECT_ID = "project-default"
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (v2) */
-export function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
+export { isTauriAvailable }
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke(): Promise<typeof import("@tauri-apps/api/core").invoke | null> {

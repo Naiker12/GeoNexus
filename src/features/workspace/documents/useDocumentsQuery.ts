@@ -38,7 +38,7 @@ export function useDocumentsQuery() {
   async function uploadDocument(file: File) {
     try {
       const bytes = await file.arrayBuffer()
-      const assetId = await invoke<string>("upload_asset_file", {
+      const _assetId = await invoke<string>("upload_asset_file", {
         projectId: DEFAULT_PROJECT_ID,
         workspaceId: WORKSPACE_ID,
         connectorId: "local-upload",

@@ -119,7 +119,7 @@ export function McpServerCard({
   onDelete,
   onDiscoverTools,
 }: McpServerCardProps) {
-  const [pinging, setPinging] = useState(false)
+  const [_pinging, setPinging] = useState(false)
   const [discovering, setDiscovering] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)

@@ -32,7 +32,7 @@ export function useWebSearch() {
   }, [webSearchEnabled])
 
   const startResearchTimer = React.useCallback(
-    (startTime: number, assistantMsgId: string, onTick: (elapsed: number) => void) => {
+    (startTime: number, _assistantMsgId: string, onTick: (elapsed: number) => void) => {
       researchTimerId = setInterval(() => {
         const elapsed = (Date.now() - startTime) / 1000
         onTick(elapsed)

@@ -51,7 +51,7 @@ export function useChatSubmit(
   const [error, setError] = React.useState<string | null>(null)
   const submitTimeRef = React.useRef<number>(0)
   const generationRef = React.useRef(0)
-  const pendingConversationRef = React.useRef<string | null>(null)
+  const _pendingConversationRef = React.useRef<string | null>(null)
 
   const activeProvider = React.useMemo(() => {
     if (!activeConnectorId) return null
@@ -306,14 +306,42 @@ export function useChatSubmit(
         clearTimeout(searchingTimer)
         stopResearchTimer()
 
-        setMessages((current) =>
-          current.filter((m) => m.id !== optimistic.id && m.id !== assistantMsgId)
-        )
+        // Mantener el mensaje del usuario y solo limpiar el mensaje incompleto del asistente
+        setMessages((current) => current.filter((m) => m.id !== assistantMsgId))
 
-        const message =
+        const rawMsg =
           typeof err === "string" ? err : err instanceof Error ? err.message : String(err)
-        setError(message)
-        toast({ title: "Error en el chat", description: message, variant: "error" })
+
+        let friendlyError = rawMsg
+        const lower = rawMsg.toLowerCase()
+        if (
+          lower.includes("failed to fetch") ||
+          lower.includes("econnrefused") ||
+          lower.includes("network error") ||
+          lower.includes("connection refused")
+        ) {
+          friendlyError =
+            "No se pudo conectar con el servidor LLM / Ollama. Asegúrate de que Ollama o tu contenedor local esté en ejecución."
+        } else if (
+          lower.includes("not found") ||
+          lower.includes("model not found") ||
+          lower.includes("404")
+        ) {
+          friendlyError = `El modelo '${activeProvider.model}' no fue encontrado en el proveedor. Verifica que esté descargado en el Hub de Modelos.`
+        } else if (lower.includes("context length") || lower.includes("maximum context")) {
+          friendlyError =
+            "El tamaño de la conversación supera el límite de contexto del modelo. Por favor inicia un nuevo chat."
+        } else if (
+          lower.includes("unauthorized") ||
+          lower.includes("401") ||
+          lower.includes("invalid api key")
+        ) {
+          friendlyError =
+            "Clave de API inválida o expirada. Revisa la configuración en Contenedores IA."
+        }
+
+        setError(friendlyError)
+        toast({ title: "Error en la generación", description: friendlyError, variant: "error" })
       } finally {
         setPending(false)
         setLoadingPhase("idle")
@@ -356,7 +384,7 @@ export function useChatSubmit(
     })
 
     if (contentToSubmit) submit(contentToSubmit)
-  }, [submit, setMessages, setError])
+  }, [submit])
 
   const stop = React.useCallback(() => {
     generationRef.current += 1

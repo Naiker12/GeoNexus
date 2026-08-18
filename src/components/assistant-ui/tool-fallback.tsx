@@ -110,7 +110,7 @@ export function ToolCall({
               </pre>
             </div>
           )}
-          {result && (
+          {result !== undefined && result !== null && (
             <div>
               <p className="font-semibold text-muted-foreground text-[10px] uppercase mb-1">
                 Resultado

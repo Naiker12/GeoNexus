@@ -46,7 +46,6 @@ export function AgentCreateTask({ onClose }: Props) {
           className="w-full text-sm bg-muted/30 border border-border
                      rounded px-3 py-2 text-foreground placeholder:text-muted-foreground
                      focus:outline-none focus:border-amber-500"
-          autoFocus
         />
 
         <textarea

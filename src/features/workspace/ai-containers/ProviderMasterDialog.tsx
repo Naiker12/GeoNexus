@@ -1,41 +1,24 @@
-import * as React from "react"
 import {
-  ArrowUpRightIcon,
   CheckCircle2Icon,
-  CheckIcon,
-  CloudIcon,
-  CpuIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
-  HelpCircleIcon,
   InfoIcon,
-  KeyRoundIcon,
   Loader2Icon,
   RefreshCwIcon,
   SearchIcon,
-  ServerIcon,
-  SparklesIcon,
-  TerminalIcon,
   XCircleIcon,
-  ZapIcon,
 } from "lucide-react"
+import * as React from "react"
 
-import { pingLlmProvider } from "@/api/llm"
+import { listLlmModels, pingLlmProvider } from "@/api/llm"
 import { Button } from "@/components/ui/Button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/toast"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import {
-  providerOptions,
   type ProviderCategory,
-  type ProviderOption,
+  providerOptions,
 } from "@/features/workspace/ai-containers/provider-options"
 import { cn } from "@/lib/utils"
 import type { AiConnector } from "@/types/workspace-types"
@@ -68,6 +51,10 @@ export function ProviderMasterDialog({
   const [model, setModel] = React.useState("")
   const [activateNow, setActivateNow] = React.useState(true)
 
+  // Live Model Discovery State
+  const [availableModels, setAvailableModels] = React.useState<string[]>([])
+  const [fetchingModels, setFetchingModels] = React.useState(false)
+
   // Test & Save State
   const [testing, setTesting] = React.useState(false)
   const [testResult, setTestResult] = React.useState<{
@@ -87,11 +74,17 @@ export function ProviderMasterDialog({
     if (existing) {
       setCustomName(existing.name)
       setEndpoint(existing.endpoint)
-      setModel(existing.model === "Sin modelo" ? selectedProvider.defaultModel : existing.model)
+      setModel(existing.model === "Sin modelo" ? "" : existing.model)
+      if (existing.models && existing.models.length > 0) {
+        setAvailableModels(existing.models)
+      } else {
+        setAvailableModels([])
+      }
     } else {
       setCustomName(selectedProvider.name)
       setEndpoint(selectedProvider.defaultEndpoint)
-      setModel(selectedProvider.defaultModel)
+      setModel("")
+      setAvailableModels([])
     }
     setApiKey("")
     setShowApiKey(false)
@@ -116,6 +109,40 @@ export function ProviderMasterDialog({
     })
   }, [searchQuery, categoryFilter])
 
+  const handleFetchLiveModels = async () => {
+    if (!endpoint) return
+    setFetchingModels(true)
+    try {
+      const models = await listLlmModels({
+        provider: selectedProvider.id,
+        endpoint: endpoint.trim(),
+        apiKey: apiKey.trim() || undefined,
+      })
+      if (models && models.length > 0) {
+        const ids = models.map((m) => m.id).filter(Boolean)
+        setAvailableModels(ids)
+        if (!model || !ids.includes(model)) {
+          setModel(ids[0])
+        }
+        toast({
+          title: "Modelos detectados",
+          description: `Se obtuvieron ${ids.length} modelos en vivo desde la API de ${selectedProvider.name}.`,
+          variant: "success",
+        })
+      } else {
+        toast({
+          title: "Sin modelos retornados",
+          description: "La API no retornó una lista de modelos. Puedes ingresar el modelo manualmente.",
+          variant: "warning",
+        })
+      }
+    } catch (e) {
+      console.warn("Could not fetch models dynamically:", e)
+    } finally {
+      setFetchingModels(false)
+    }
+  }
+
   const handleTestConnection = async () => {
     if (!endpoint) {
       toast({
@@ -133,17 +160,20 @@ export function ProviderMasterDialog({
       const res = await pingLlmProvider({
         provider_type: selectedProvider.id,
         name: customName || selectedProvider.name,
-        endpoint,
-        model: model || undefined,
-        api_key: apiKey || undefined,
+        endpoint: endpoint.trim(),
+        model: model.trim() || undefined,
+        api_key: apiKey.trim() || undefined,
       })
 
       if (res.status === "ok") {
         setTestResult({
           status: "ok",
-          latency: res.latency_ms,
+          latency: res.latency_ms ?? undefined,
           message: `Conexión exitosa (${res.latency_ms || 45}ms).`,
         })
+
+        // Auto-fetch real models from provider API upon successful ping
+        await handleFetchLiveModels()
       } else {
         setTestResult({
           status: "error",
@@ -172,19 +202,35 @@ export function ProviderMasterDialog({
 
     setSaving(true)
     try {
+      const finalModels =
+        availableModels.length > 0
+          ? availableModels
+          : model.trim()
+            ? [model.trim()]
+            : []
+
       const connector: AiConnector = {
         id: selectedProvider.id,
         name: customName.trim() || selectedProvider.name,
-        endpoint: endpoint.trim(),
-        model: model.trim() || "default",
+        provider: selectedProvider.category === "local" ? "local" : "cloud",
+        role: selectedProvider.role === "multimodal" ? "chat" : selectedProvider.role,
         status: testResult.status === "ok" ? "online" : "offline",
+        model: model.trim() || (availableModels[0] ?? ""),
+        models: finalModels,
+        endpoint: endpoint.trim(),
+        apiKey: apiKey.trim() || undefined,
+        supportsTools: true,
+        supportsEmbeddings: finalModels.some((m) => m.includes("embed")),
+        privacy: selectedProvider.category === "local" ? "localhost" : "keychain",
         latency: testResult.latency ? `${testResult.latency}ms` : "-",
+        description: selectedProvider.description,
+        icon: selectedProvider.icon,
       }
 
       await onSaveConnector(connector, activateNow)
       toast({
         title: "Proveedor guardado",
-        description: `${connector.name} se ha configurado y está listo para usar.`,
+        description: `${connector.name} se ha configurado y está listo para usar con ${finalModels.length} modelos.`,
         variant: "success",
       })
       onOpenChange(false)
@@ -211,7 +257,8 @@ export function ProviderMasterDialog({
               Proveedores de Inteligencia Artificial
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Conecta modelos locales (Ollama, LM Studio, vLLM) o APIs comerciales (OpenAI, Anthropic, Gemini, DeepSeek, Groq).
+              Conecta modelos locales (Ollama, LM Studio, vLLM) o APIs comerciales (OpenAI,
+              Anthropic, Gemini, DeepSeek, Groq).
             </p>
           </div>
         </div>
@@ -285,11 +332,18 @@ export function ProviderMasterDialog({
                       <div className="flex items-center justify-between gap-1">
                         <span className="truncate text-xs font-semibold">{p.name}</span>
                         {isConfigured && (
-                          <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" title="Configurado" />
+                          <span
+                            className="size-1.5 rounded-full bg-emerald-500 shrink-0"
+                            title="Configurado"
+                          />
                         )}
                       </div>
                       <span className="truncate text-[10px] text-muted-foreground block">
-                        {p.category === "local" ? "Local Offline" : p.category === "gateway" ? "Multi-Modelo" : "API Cloud"}
+                        {p.category === "local"
+                          ? "Local Offline"
+                          : p.category === "gateway"
+                            ? "Multi-Modelo"
+                            : "API Cloud"}
                       </span>
                     </div>
                   </button>
@@ -407,7 +461,11 @@ export function ProviderMasterDialog({
                       onClick={() => setShowApiKey(!showApiKey)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showApiKey ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
+                      {showApiKey ? (
+                        <EyeOffIcon className="size-3.5" />
+                      ) : (
+                        <EyeIcon className="size-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -415,38 +473,65 @@ export function ProviderMasterDialog({
 
               {/* Modelo Predeterminado */}
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">
-                  Modelo Predeterminado
-                </label>
-                <input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder={selectedProvider.defaultModel || "Nombre del modelo (ej. llama3.3, gpt-4o)"}
-                  className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-xs font-mono text-foreground focus:outline-hidden focus:border-primary/60"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-foreground">
+                    Modelo Predeterminado
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleFetchLiveModels}
+                    disabled={fetchingModels || !endpoint}
+                    className="flex items-center gap-1 text-[10px] font-mono text-primary hover:underline disabled:opacity-50 cursor-pointer"
+                    title="Consultar la API del proveedor para descubrir modelos reales"
+                  >
+                    <RefreshCwIcon className={cn("size-2.5", fetchingModels && "animate-spin")} />
+                    <span>{fetchingModels ? "Consultando API..." : "Detectar Modelos"}</span>
+                  </button>
+                </div>
 
-                {/* Modelos Populares / Accesos Rápidos */}
-                {selectedProvider.popularModels.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground font-medium mr-1">
-                      Sugeridos:
-                    </span>
-                    {selectedProvider.popularModels.map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setModel(m)}
-                        className={cn(
-                          "rounded-lg border px-2 py-0.5 text-[10px] font-mono transition-colors",
-                          model === m
-                            ? "border-primary bg-primary/10 text-primary font-semibold"
-                            : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                        )}
-                      >
-                        {m}
-                      </button>
+                <div className="relative">
+                  <input
+                    list="available-models-list"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="Escribe o detecta un modelo..."
+                    className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-xs font-mono text-foreground focus:outline-hidden focus:border-primary/60"
+                  />
+                  <datalist id="available-models-list">
+                    {availableModels.map((m) => (
+                      <option key={m} value={m} />
                     ))}
+                  </datalist>
+                </div>
+
+                {/* Modelos Disponibles / Detectados */}
+                {availableModels.length > 0 ? (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Modelos detectados en vivo ({availableModels.length}):</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 max-h-28 overflow-y-auto [scrollbar-width:thin] p-1.5 rounded-xl bg-muted/20 border border-border/50">
+                      {availableModels.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setModel(m)}
+                          className={cn(
+                            "rounded-lg border px-2 py-0.5 text-[10px] font-mono transition-colors cursor-pointer",
+                            model === m
+                              ? "border-primary bg-primary/10 text-primary font-semibold shadow-2xs"
+                              : "border-border/60 bg-background/80 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          )}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                ) : (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-relaxed">
+                    💡 Ingresa tu API Key y pulsa <strong className="text-foreground font-semibold">"Detectar Modelos"</strong> para listar los modelos reales disponibles en tu cuenta.
+                  </p>
                 )}
               </div>
 
@@ -494,7 +579,11 @@ export function ProviderMasterDialog({
             disabled={testing}
             className="rounded-xl text-xs gap-1.5"
           >
-            {testing ? <Loader2Icon className="size-3.5 animate-spin" /> : <RefreshCwIcon className="size-3.5" />}
+            {testing ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <RefreshCwIcon className="size-3.5" />
+            )}
             <span>Probar Conexión</span>
           </Button>
 

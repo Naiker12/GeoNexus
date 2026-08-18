@@ -129,8 +129,8 @@ export function GraphCanvas({
       const dpr = window.devicePixelRatio || 1
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
-      canvas.style.width = rect.width + "px"
-      canvas.style.height = rect.height + "px"
+      canvas.style.width = `${rect.width}px`
+      canvas.style.height = `${rect.height}px`
     }
 
     resize()

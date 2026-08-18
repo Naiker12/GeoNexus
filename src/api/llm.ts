@@ -2,10 +2,7 @@ import type { ListLlmModelsInput, LlmModelInfo } from "../types/llm"
 
 export type { LlmModelInfo, ListLlmModelsInput }
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke() {
@@ -25,6 +22,7 @@ export type LlmProviderConfig = {
   name?: string
   model?: string
   endpoint: string
+  api_key?: string
 }
 
 export type LlmPingResult = {
