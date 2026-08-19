@@ -341,7 +341,6 @@ export function useChatSubmit(
         }
 
         setError(friendlyError)
-        toast({ title: "Error en la generación", description: friendlyError, variant: "error" })
       } finally {
         setPending(false)
         setLoadingPhase("idle")

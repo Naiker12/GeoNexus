@@ -71,7 +71,7 @@ export function Thread({
   onRegenerate,
   onAttachFiles,
 }: ThreadProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [input, setInput] = React.useState("")
   const [codeMode, setCodeMode] = React.useState(false)
   const [supervisionMode, setSupervisionMode] = React.useState<"auto" | "approve" | "strict">(
@@ -260,10 +260,13 @@ export function Thread({
                 <button
                   type="button"
                   className="flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  title="Nivel de razonamiento"
+                  title={language === "es" ? "Nivel de razonamiento" : "Reasoning effort"}
                 >
                   <SparklesIcon className="size-3 text-emerald-500" />
-                  <span>Razonamiento: {REASONING_LABELS[reasoningEffort]}</span>
+                  <span>
+                    {language === "es" ? "Razonamiento" : "Reasoning"}:{" "}
+                    {REASONING_LABELS[reasoningEffort] || reasoningEffort}
+                  </span>
                   <ChevronDownIcon className="size-3 opacity-60" />
                 </button>
               </DropdownMenuTrigger>
@@ -363,7 +366,7 @@ export function Thread({
                     className={cn(
                       "flex flex-col max-w-[88%] sm:max-w-[80%] text-[13.5px] transition-all",
                       message.role === "user"
-                        ? "bg-primary text-primary-foreground font-medium rounded-2xl rounded-tr-xs px-4.5 py-3 shadow-xs leading-relaxed break-words"
+                        ? "bg-secondary text-secondary-foreground border border-border/60 font-normal rounded-2xl rounded-tr-xs px-4.5 py-3 shadow-2xs leading-relaxed break-words"
                         : "bg-card border border-border/70 text-card-foreground rounded-2xl rounded-tl-xs p-4.5 shadow-2xs backdrop-blur-xs leading-relaxed"
                     )}
                   >
@@ -426,43 +429,45 @@ export function Thread({
               ))}
 
               {error && (
-                <div className="mx-auto max-w-xl rounded-2xl border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive shadow-2xs backdrop-blur-md animate-in fade-in duration-200">
-                  <div className="flex items-start gap-3">
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-destructive/15 text-destructive mt-0.5">
-                      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4" />
+                <div className="mx-auto max-w-xl rounded-2xl border border-amber-500/30 bg-card/95 p-4.5 text-xs text-card-foreground shadow-xs backdrop-blur-md animate-in fade-in duration-200">
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 mt-0.5">
+                      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="size-4.5" />
                     </div>
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-foreground text-xs font-sans">
-                          No se pudo completar la respuesta
+                        <span className="font-semibold text-foreground text-xs font-sans">
+                          {language === "es" ? "No se pudo completar la respuesta" : "Unable to complete response"}
                         </span>
-                        <span className="text-[10px] font-mono text-destructive/80 uppercase tracking-wider font-semibold">
-                          Error de Inferencia
+                        <span className="text-[10px] font-mono bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 rounded-full px-2 py-0.5 uppercase tracking-wider font-semibold">
+                          {language === "es" ? "Error de Inferencia" : "Inference Error"}
                         </span>
                       </div>
-                      <p className="text-muted-foreground text-[11.5px] leading-relaxed">{error}</p>
-                      <div className="flex items-center gap-2 pt-2">
+                      <p className="text-muted-foreground text-[12px] leading-relaxed">
+                        {error}
+                      </p>
+                      <div className="flex items-center gap-2 pt-1">
                         {onRegenerate && (
                           <button
                             type="button"
                             onClick={onRegenerate}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-2xs hover:bg-primary/90 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-foreground text-background px-3.5 py-1.5 text-xs font-medium shadow-xs hover:bg-foreground/90 transition-all cursor-pointer"
                           >
-                            <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="size-3" />
-                            <span>Reintentar</span>
+                            <HugeiconsIcon icon={RefreshIcon} strokeWidth={2} className="size-3.5" />
+                            <span>{language === "es" ? "Reintentar" : "Retry"}</span>
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => window.dispatchEvent(new CustomEvent("geonexus:open-settings"))}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-background/80 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-muted/40 px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80 transition-all cursor-pointer"
                         >
                           <HugeiconsIcon
                             icon={ZapIcon}
                             strokeWidth={1.75}
-                            className="size-3 text-amber-500"
+                            className="size-3.5 text-amber-500"
                           />
-                          <span>Configurar Proveedores de IA</span>
+                          <span>{language === "es" ? "Configurar Proveedores de IA" : "Configure AI Providers"}</span>
                         </button>
                       </div>
                     </div>
