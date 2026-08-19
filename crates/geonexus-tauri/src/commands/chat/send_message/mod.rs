@@ -585,7 +585,7 @@ async fn ensure_conversation(
             return Ok(id.clone());
         }
 
-        let now = geonexus_db::chat_repo::unix_now();
+        let now = chrono::Utc::now().timestamp_millis();
         sqlx::query(
             "INSERT INTO conversations (id, project_id, workspace_id, title, provider, model, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
