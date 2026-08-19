@@ -1,18 +1,14 @@
 import type {
   AnalysisMetrics,
-  TokenBucket,
-  ModelUsage,
   AnalysisRun,
-  SkillUsage,
   CostSummary,
-  TopQuery,
+  ModelUsage,
+  SkillUsage,
   Timeframe,
+  TokenBucket,
+  TopQuery,
 } from "@/types/analysis"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke() {
@@ -41,7 +37,11 @@ const DEFAULT_COST_SUMMARY: CostSummary = {
   avg_per_query: 0,
 }
 
-async function safeInvoke<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
+async function safeInvoke<T>(
+  command: string,
+  args: Record<string, unknown>,
+  fallback: T
+): Promise<T> {
   try {
     const invoke = await getInvoke()
     if (!invoke) return fallback
@@ -65,23 +65,19 @@ export async function getTokenTimeline(
   return safeInvoke("get_token_timeline", { projectId, timeframe }, [])
 }
 
-export async function getModelUsage(
-  projectId: string = DEFAULT_PROJECT_ID
-): Promise<ModelUsage[]> {
+export async function getModelUsage(projectId: string = DEFAULT_PROJECT_ID): Promise<ModelUsage[]> {
   return safeInvoke("get_model_usage", { projectId }, [])
 }
 
 export async function listAnalysisRuns(
   projectId: string = DEFAULT_PROJECT_ID,
-  limit: number = 50,
-  offset: number = 0
+  limit = 50,
+  offset = 0
 ): Promise<AnalysisRun[]> {
   return safeInvoke("list_analysis_runs", { projectId, limit, offset }, [])
 }
 
-export async function getSkillUsage(
-  projectId: string = DEFAULT_PROJECT_ID
-): Promise<SkillUsage[]> {
+export async function getSkillUsage(projectId: string = DEFAULT_PROJECT_ID): Promise<SkillUsage[]> {
   return safeInvoke("get_skill_usage", { projectId }, [])
 }
 
@@ -93,7 +89,7 @@ export async function getCostByTimeframe(
 
 export async function getTopQueries(
   projectId: string = DEFAULT_PROJECT_ID,
-  limit: number = 5
+  limit = 5
 ): Promise<TopQuery[]> {
   return safeInvoke("get_top_queries", { projectId, limit }, [])
 }

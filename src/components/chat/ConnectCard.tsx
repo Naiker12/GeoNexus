@@ -1,5 +1,5 @@
-import * as React from "react"
 import { CloudIcon, ExternalLinkIcon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
 
@@ -36,14 +36,8 @@ export function ConnectCard({ connectorId, name, reason, onConnect }: ConnectCar
         </div>
 
         <div className="min-w-0 flex-1 text-xs">
-          <p className="font-semibold leading-tight">
-            Conecta {displayName}
-          </p>
-          {reason && (
-            <p className="mt-0.5 leading-tight text-muted-foreground">
-              {reason}
-            </p>
-          )}
+          <p className="font-semibold leading-tight">Conecta {displayName}</p>
+          {reason && <p className="mt-0.5 leading-tight text-muted-foreground">{reason}</p>}
         </div>
 
         <Button
@@ -60,7 +54,10 @@ export function ConnectCard({ connectorId, name, reason, onConnect }: ConnectCar
   )
 }
 
-export function ConnectCardInline({ connectorId, reason }: { connectorId: string; reason?: string }) {
+export function ConnectCardInline({
+  connectorId,
+  reason,
+}: { connectorId: string; reason?: string }) {
   const [connecting, setConnecting] = React.useState(false)
 
   const handleConnect = () => {
@@ -79,9 +76,7 @@ export function ConnectCardInline({ connectorId, reason }: { connectorId: string
       <CloudIcon className="size-4 shrink-0 text-amber-500" />
       <div className="min-w-0 flex-1 text-xs leading-tight">
         <span className="font-medium">{displayName}</span>
-        {reason && (
-          <span className="ml-1 text-muted-foreground">— {reason}</span>
-        )}
+        {reason && <span className="ml-1 text-muted-foreground">— {reason}</span>}
       </div>
       <Button
         variant="outline"

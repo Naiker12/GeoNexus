@@ -1,8 +1,15 @@
-import * as React from "react"
-import { useEffect, useMemo, useCallback } from "react"
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { type CommandDef, buildRegistry } from "@/lib/commandRegistry"
 import { useUiStore } from "@/stores/uiStore"
-import { buildRegistry, type CommandDef } from "@/lib/commandRegistry"
+import * as React from "react"
+import { useCallback, useEffect, useMemo } from "react"
 
 function navigate(hash: string) {
   window.location.hash = hash
@@ -11,7 +18,16 @@ function navigate(hash: string) {
 const REGISTRY = buildRegistry(navigate)
 
 const categoryOrder = [
-  "Chat", "Agentes", "Workspace", "Conocimiento", "Búsqueda", "MCP", "Connections", "GIS", "Sistema", "General",
+  "Chat",
+  "Agentes",
+  "Workspace",
+  "Conocimiento",
+  "Búsqueda",
+  "MCP",
+  "Connections",
+  "GIS",
+  "Sistema",
+  "General",
 ]
 
 function groupByCategory(cmds: CommandDef[]) {
@@ -22,7 +38,7 @@ function groupByCategory(cmds: CommandDef[]) {
     map.set(c.category, list)
   }
   return Array.from(map.entries()).sort(
-    (a, b) => categoryOrder.indexOf(a[0]) - categoryOrder.indexOf(b[0]),
+    (a, b) => categoryOrder.indexOf(a[0]) - categoryOrder.indexOf(b[0])
   )
 }
 
@@ -50,8 +66,7 @@ export function CommandPalette() {
     const q = query.toLowerCase()
     const filtered = REGISTRY.filter(
       (c) =>
-        c.label.toLowerCase().includes(q) ||
-        c.keywords?.some((k) => k.toLowerCase().includes(q)),
+        c.label.toLowerCase().includes(q) || c.keywords?.some((k) => k.toLowerCase().includes(q))
     )
     return groupByCategory(filtered)
   }, [query])
@@ -62,7 +77,7 @@ export function CommandPalette() {
       setQuery("")
       cmd.run()
     },
-    [setOpen, setQuery],
+    [setOpen, setQuery]
   )
 
   if (!open) return null
@@ -70,7 +85,10 @@ export function CommandPalette() {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[12vh]"
-      onClick={() => { setOpen(false); setQuery("") }}
+      onClick={() => {
+        setOpen(false)
+        setQuery("")
+      }}
     >
       <div
         className="w-[min(92vw,600px)] rounded-xl border border-border bg-popover shadow-2xl overflow-hidden"
@@ -85,7 +103,9 @@ export function CommandPalette() {
           />
           <CommandList className="max-h-[400px]">
             <CommandEmpty>
-              {query ? `No se encontraron resultados para "${query}"` : "Escribe para buscar comandos"}
+              {query
+                ? `No se encontraron resultados para "${query}"`
+                : "Escribe para buscar comandos"}
             </CommandEmpty>
             {grouped.map(([cat, cmds]) => (
               <CommandGroup key={cat} heading={cat}>

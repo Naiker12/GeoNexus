@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react"
 import { openUrl } from "@tauri-apps/plugin-opener"
-import { ChevronDown, ChevronUp, ExternalLink, Loader2, Check, CheckCircle2, Globe } from "lucide-react"
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Globe,
+  Loader2,
+} from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { cn } from "@/lib/utils"
 import type { ResearchSource } from "@/types/chat"
@@ -16,7 +24,7 @@ function isTauri(): boolean {
 function safeOpenUrl(e: React.MouseEvent<HTMLAnchorElement>, url: string): void {
   if (isTauri()) {
     e.preventDefault()
-    openUrl(url).catch(e => console.error("[DeepResearchPanel] Error al abrir URL:", e))
+    openUrl(url).catch((e) => console.error("[DeepResearchPanel] Error al abrir URL:", e))
   }
 }
 
@@ -35,12 +43,7 @@ function getDomain(url: string): string {
   }
 }
 
-export function DeepResearchPanel({
-  sources,
-  isSearching,
-  currentQuery,
-  elapsedSeconds,
-}: Props) {
+export function DeepResearchPanel({ sources, isSearching, currentQuery, elapsedSeconds }: Props) {
   const [open, setOpen] = useState(true)
   const [showAllSources, setShowAllSources] = useState(false)
 
@@ -75,17 +78,21 @@ export function DeepResearchPanel({
           <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
         )}
         <span className="flex-1 min-w-0">
-          <span className={cn(
-            "text-sm font-semibold",
-            isSearching ? "text-blue-500" : "text-foreground"
-          )}>
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              isSearching ? "text-blue-500" : "text-foreground"
+            )}
+          >
             Deep Research
           </span>
           <span className="text-xs text-muted-foreground mx-1">·</span>
-          <span className={cn(
-            "text-xs",
-            isSearching ? "text-blue-400" : "text-emerald-600 dark:text-emerald-400 font-medium"
-          )}>
+          <span
+            className={cn(
+              "text-xs",
+              isSearching ? "text-blue-400" : "text-emerald-600 dark:text-emerald-400 font-medium"
+            )}
+          >
             {progressLabel}
           </span>
         </span>
@@ -106,8 +113,10 @@ export function DeepResearchPanel({
           {isSearching && (
             <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/5">
               <Loader2 className="h-3 w-3 text-blue-400 animate-spin shrink-0" />
-              <span className="text-[11px] text-blue-400 font-medium">
-                {loadingSources.length > 0
+              <span className="text-[11px] text-blue-400 font-medium truncate">
+                {currentQuery
+                  ? `Buscando: "${currentQuery}"`
+                  : loadingSources.length > 0
                   ? `Leyendo ${loadingSources.length} fuente${loadingSources.length !== 1 ? "s" : ""}...`
                   : "Iniciando búsqueda web..."}
               </span>
@@ -188,4 +197,3 @@ export function DeepResearchPanel({
     </div>
   )
 }
-

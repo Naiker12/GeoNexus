@@ -1,13 +1,13 @@
-import * as React from "react"
+import type { AllowedPathEntry } from "@/api/filesystem-config"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/Button"
-import { Input } from "@/components/ui/Input"
 import {
   Select,
   SelectContent,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select"
 import { DialogActions } from "@/features/workspace/configuration/DialogActions"
 import { FolderOpen, Shield } from "lucide-react"
-import type { AllowedPathEntry } from "@/api/filesystem-config"
+import * as React from "react"
 
 interface AllowedPathDialogProps {
   open: boolean
@@ -27,10 +27,26 @@ interface AllowedPathDialogProps {
 }
 
 const LEVELS = [
-  { value: "read", label: "Lectura", description: "El agente puede leer archivos pero no modificarlos" },
-  { value: "write", label: "Escritura", description: "El agente puede leer y crear/modificar archivos" },
-  { value: "execute", label: "Ejecución", description: "Incluye escritura + puede ejecutar scripts en esta ruta" },
-  { value: "admin", label: "Admin", description: "Acceso total incluyendo eliminar archivos (requiere confirmación)" },
+  {
+    value: "read",
+    label: "Lectura",
+    description: "El agente puede leer archivos pero no modificarlos",
+  },
+  {
+    value: "write",
+    label: "Escritura",
+    description: "El agente puede leer y crear/modificar archivos",
+  },
+  {
+    value: "execute",
+    label: "Ejecución",
+    description: "Incluye escritura + puede ejecutar scripts en esta ruta",
+  },
+  {
+    value: "admin",
+    label: "Admin",
+    description: "Acceso total incluyendo eliminar archivos (requiere confirmación)",
+  },
 ]
 
 export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: AllowedPathDialogProps) {
@@ -51,7 +67,9 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
       const { invoke } = await import("@tauri-apps/api/core")
       const picked = await invoke<string | null>("open_folder_picker")
       if (picked) setPath(picked)
-    } catch { /* not in tauri */ }
+    } catch {
+      /* not in tauri */
+    }
   }
 
   const handleSave = () => {
@@ -82,7 +100,13 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
             </div>
           </div>
         </DialogHeader>
-        <form className="grid gap-3 p-4" onSubmit={(e) => { e.preventDefault(); handleSave() }}>
+        <form
+          className="grid gap-3 p-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSave()
+          }}
+        >
           <div className="grid gap-1.5">
             <label className="text-xs font-medium text-muted-foreground">Ruta</label>
             <div className="flex items-center gap-2">
@@ -114,7 +138,9 @@ export function AllowedPathDialog({ open, entry, onOpenChange, onSave }: Allowed
               </SelectTrigger>
               <SelectContent>
                 {LEVELS.map((l) => (
-                  <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>
+                  <SelectItem key={l.value} value={l.value}>
+                    {l.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

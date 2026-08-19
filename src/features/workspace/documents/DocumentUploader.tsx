@@ -1,5 +1,5 @@
-import * as React from "react"
 import { RefreshCwIcon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
@@ -11,11 +11,7 @@ type DocumentUploaderProps = {
   uploading: boolean
 }
 
-function DocumentUploader({
-  onChooseFolder,
-  onFileInput,
-  uploading,
-}: DocumentUploaderProps) {
+function DocumentUploader({ onChooseFolder, onFileInput, uploading }: DocumentUploaderProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleAction = (name: string) => {
@@ -54,7 +50,9 @@ function DocumentUploader({
             source.name === "Carpeta Windows"
               ? "Elegir"
               : source.name === "Subir archivos"
-                ? uploading ? "Subiendo..." : "Subir"
+                ? uploading
+                  ? "Subiendo..."
+                  : "Subir"
                 : "Proximamente"
 
           return (
@@ -63,16 +61,10 @@ function DocumentUploader({
               className="flex min-h-24 w-full items-start gap-3 rounded-md border border-border bg-background/75 p-3 text-left"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <DocumentAssetIcon
-                  kind={source.name}
-                  variant="source"
-                  className="size-4"
-                />
+                <DocumentAssetIcon kind={source.name} variant="source" className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
-                  {source.name}
-                </span>
+                <span className="block truncate text-sm font-semibold">{source.name}</span>
                 <span className="mt-1 block line-clamp-2 text-xs leading-4 text-muted-foreground">
                   {source.detail}
                 </span>
@@ -85,7 +77,10 @@ function DocumentUploader({
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={() => handleAction(source.name)}
-                    disabled={(uploading && source.name === "Subir archivos") || source.name === "URL / SharePoint"}
+                    disabled={
+                      (uploading && source.name === "Subir archivos") ||
+                      source.name === "URL / SharePoint"
+                    }
                   >
                     {actionLabel}
                   </Button>

@@ -1,7 +1,6 @@
-import * as React from "react"
 import { PanelLeftIcon } from "lucide-react"
+import type * as React from "react"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
 import {
   Sheet,
@@ -10,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 import { useSidebar } from "./context"
 
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -114,11 +114,7 @@ function Sidebar({
   )
 }
 
-function SidebarTrigger({
-  className,
-  onClick,
-  ...props
-}: React.ComponentProps<typeof Button>) {
+function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar()
 
   return (

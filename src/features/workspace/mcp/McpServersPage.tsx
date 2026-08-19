@@ -1,16 +1,16 @@
-import { useState, useMemo, useEffect } from "react"
 import { McpConfigEditor } from "@/features/workspace/mcp/McpConfigEditor"
 import { McpConsole } from "@/features/workspace/mcp/McpConsole"
 import { McpHeader } from "@/features/workspace/mcp/McpHeader"
 import { McpRegisterDialog } from "@/features/workspace/mcp/McpRegisterDialog"
 import { McpServerGrid } from "@/features/workspace/mcp/McpServerGrid"
+import { useEffect, useMemo, useState } from "react"
 
+import { deleteMcpServer, discoverMcpTools } from "@/api/mcp"
+import { useToast } from "@/components/ui/toast"
 import type { McpViewMode } from "@/features/workspace/mcp/McpServerGrid"
 import { McpToolsViewer } from "@/features/workspace/mcp/McpToolsViewer"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
 import { useMcpTools } from "@/features/workspace/mcp/hooks/useMcpTools"
-import { useToast } from "@/components/ui/toast"
-import { discoverMcpTools, deleteMcpServer } from "@/api/mcp"
 import type { McpServer, RegisterServerPayload } from "@/types/mcp"
 import type { McpConnectCardData } from "@/utils/parseContent"
 
@@ -46,7 +46,7 @@ export function McpServersPage() {
   const filteredServers = useMemo(() => {
     let result = servers
     if (statusFilter !== "all") {
-      result = result.filter(s => {
+      result = result.filter((s) => {
         if (statusFilter === "disabled") return s.disabled
         if (statusFilter === "online") return !s.disabled && s.status === "online"
         if (statusFilter === "offline") return !s.disabled && s.status === "offline"
@@ -54,21 +54,22 @@ export function McpServersPage() {
       })
     }
     if (transportFilter !== "all") {
-      result = result.filter(s => s.transport === transportFilter)
+      result = result.filter((s) => s.transport === transportFilter)
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        (s.url ?? "").toLowerCase().includes(q) ||
-        (s.command ?? "").toLowerCase().includes(q)
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.url ?? "").toLowerCase().includes(q) ||
+          (s.command ?? "").toLowerCase().includes(q)
       )
     }
     return result
   }, [servers, statusFilter, transportFilter, searchQuery])
 
   const handlePingAll = async () => {
-    const active = servers.filter(s => !s.disabled)
+    const active = servers.filter((s) => !s.disabled)
     const total = active.length
     if (total === 0) return
 
@@ -80,7 +81,9 @@ export function McpServersPage() {
       try {
         const result = await ping(active[i].id)
         if (result.online) onlineCount++
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
 
     setPingProgress(null)
@@ -158,7 +161,13 @@ export function McpServersPage() {
             viewMode={viewMode}
             onSelectServer={setSelectedServerId}
             onPingServer={ping}
-            onEditServer={(id: string) => { const s = servers.find(s => s.id === id); if (s) { setEditingServer(s); setRegisterOpen(true) } }}
+            onEditServer={(id: string) => {
+              const s = servers.find((s) => s.id === id)
+              if (s) {
+                setEditingServer(s)
+                setRegisterOpen(true)
+              }
+            }}
             onDeleteServer={handleDelete}
             onDiscoverTools={handleDiscoverTools}
           />
@@ -168,16 +177,22 @@ export function McpServersPage() {
       </div>
       <McpRegisterDialog
         open={registerOpen}
-        onOpenChange={(v) => { if (!v) { setEditingServer(null); setPrefillData(null) } setRegisterOpen(v) }}
-        onRegistered={async (p) => { await register(p); setEditingServer(null); setPrefillData(null) }}
+        onOpenChange={(v) => {
+          if (!v) {
+            setEditingServer(null)
+            setPrefillData(null)
+          }
+          setRegisterOpen(v)
+        }}
+        onRegistered={async (p) => {
+          await register(p)
+          setEditingServer(null)
+          setPrefillData(null)
+        }}
         editing={editingServer}
         prefill={prefillData}
       />
-      <McpConfigEditor
-        open={configOpen}
-        onOpenChange={setConfigOpen}
-        onImported={refresh}
-      />
+      <McpConfigEditor open={configOpen} onOpenChange={setConfigOpen} onImported={refresh} />
     </section>
   )
 }

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { QRCodeSVG } from "qrcode.react"
-import { RefreshCwIcon, SmartphoneIcon } from "lucide-react"
-import { generatePairingCode, type PairingCodeInfo } from "@/api/telegram"
+import { type PairingCodeInfo, generatePairingCode } from "@/api/telegram"
 import { Button } from "@/components/ui/Button"
+import { RefreshCwIcon, SmartphoneIcon } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface Props {
   botUsername: string | null
@@ -93,9 +93,7 @@ export function TelegramQrPairing({ botUsername, enabled }: Props) {
           <p className="font-mono text-lg font-bold tracking-widest text-foreground">
             {pairing.code}
           </p>
-          <p className="text-xs text-muted-foreground">
-            Código expira en {expiresIn}s
-          </p>
+          <p className="text-xs text-muted-foreground">Código expira en {expiresIn}s</p>
           <Button variant="ghost" size="sm" onClick={generateCode}>
             <RefreshCwIcon className="mr-1 size-3" />
             Generar nuevo

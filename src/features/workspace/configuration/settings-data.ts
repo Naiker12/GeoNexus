@@ -1,10 +1,10 @@
 import {
   DatabaseIcon,
+  FileJsonIcon,
+  FileTextIcon,
   FolderCogIcon,
   KeyRoundIcon,
   RefreshCwIcon,
-  FileTextIcon,
-  FileJsonIcon,
   RotateCcwIcon,
   ServerIcon,
 } from "lucide-react"

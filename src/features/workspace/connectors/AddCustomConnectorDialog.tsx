@@ -1,7 +1,9 @@
-import * as React from "react"
 import { FolderOpenIcon, PlusIcon } from "lucide-react"
+import * as React from "react"
 
+import { registerLocalConnector, syncLocalConnector } from "@/api/connector"
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import {
   Dialog,
   DialogContent,
@@ -9,10 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/Input"
 import { NativeSelect } from "@/components/ui/native-select"
-import { Field, CheckRow } from "@/features/workspace/configuration/settings-ui"
-import { registerLocalConnector, syncLocalConnector } from "@/api/connector"
+import { CheckRow, Field } from "@/features/workspace/configuration/settings-ui"
 import { invoke } from "@tauri-apps/api/core"
 
 const FORMAT_OPTIONS = [
@@ -35,10 +35,7 @@ type AddCustomConnectorDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-export function AddCustomConnectorDialog({
-  open,
-  onOpenChange,
-}: AddCustomConnectorDialogProps) {
+export function AddCustomConnectorDialog({ open, onOpenChange }: AddCustomConnectorDialogProps) {
   const [name, setName] = React.useState("")
   const [type, setType] = React.useState<ConnectorType>("local_folder")
   const [path, setPath] = React.useState("")
@@ -57,9 +54,7 @@ export function AddCustomConnectorDialog({
   }, [open])
 
   const toggleFormat = (fmt: string) => {
-    setFormats((prev) =>
-      prev.includes(fmt) ? prev.filter((f) => f !== fmt) : [...prev, fmt]
-    )
+    setFormats((prev) => (prev.includes(fmt) ? prev.filter((f) => f !== fmt) : [...prev, fmt]))
   }
 
   const handleBrowse = async () => {
@@ -111,9 +106,7 @@ export function AddCustomConnectorDialog({
               <PlusIcon className="size-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-base">
-                Agregar conector personalizado
-              </DialogTitle>
+              <DialogTitle className="text-base">Agregar conector personalizado</DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
                 Registra una fuente de datos local, API REST externa o URL.
               </DialogDescription>
@@ -132,10 +125,7 @@ export function AddCustomConnectorDialog({
               />
             </Field>
             <Field label="Tipo de fuente">
-              <NativeSelect
-                value={type}
-                onChange={(e) => setType(e.target.value as ConnectorType)}
-              >
+              <NativeSelect value={type} onChange={(e) => setType(e.target.value as ConnectorType)}>
                 <option value="local_folder">Carpeta local / red</option>
                 <option value="api_rest">API REST externa</option>
                 <option value="url">URL / SharePoint</option>
@@ -149,9 +139,7 @@ export function AddCustomConnectorDialog({
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
                 placeholder={
-                  type === "local_folder"
-                    ? "C:\\Users\\...\\GIS"
-                    : "https://ejemplo.com/api"
+                  type === "local_folder" ? "C:\\Users\\...\\GIS" : "https://ejemplo.com/api"
                 }
                 required
                 className="flex-1"
@@ -171,10 +159,7 @@ export function AddCustomConnectorDialog({
           </Field>
 
           <Field label="Autenticacion">
-            <NativeSelect
-              value={auth}
-              onChange={(e) => setAuth(e.target.value)}
-            >
+            <NativeSelect value={auth} onChange={(e) => setAuth(e.target.value)}>
               <option value="none">Ninguna</option>
               <option value="api-key">API Key</option>
               <option value="oauth">OAuth 2.0</option>
@@ -199,12 +184,7 @@ export function AddCustomConnectorDialog({
           </div>
 
           <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" size="sm" type="button" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button size="sm" type="submit" disabled={saving || !name.trim() || !path.trim()}>

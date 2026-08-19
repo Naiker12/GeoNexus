@@ -1,4 +1,4 @@
-import * as React from "react"
+import { listMcpAllowlist, upsertMcpAllowlist } from "@/api/mcp"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select"
 import { DialogActions } from "@/features/workspace/configuration/DialogActions"
 import { CheckRow, Field } from "@/features/workspace/configuration/settings-ui"
-import { upsertMcpAllowlist, listMcpAllowlist } from "@/api/mcp"
+import * as React from "react"
 
 export function McpSettingsDialog({
   open,
@@ -36,15 +36,17 @@ export function McpSettingsDialog({
 
   React.useEffect(() => {
     if (!open || !serverId) return
-    listMcpAllowlist(serverId).then((rules) => {
-      const global = rules.find((r) => r.tool_name === "*")
-      if (global) {
-        setAllowed(global.allowed)
-        if (global.rate_limit) {
-          setRateLimit(`${global.rate_limit}/min`)
+    listMcpAllowlist(serverId)
+      .then((rules) => {
+        const global = rules.find((r) => r.tool_name === "*")
+        if (global) {
+          setAllowed(global.allowed)
+          if (global.rate_limit) {
+            setRateLimit(`${global.rate_limit}/min`)
+          }
         }
-      }
-    }).catch(() => {})
+      })
+      .catch(() => {})
   }, [open, serverId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,12 +72,9 @@ export function McpSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(94vw,38rem)] rounded-lg p-0">
         <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
-          <DialogTitle className="text-base">
-            Editar regla MCP: {name}
-          </DialogTitle>
+          <DialogTitle className="text-base">Editar regla MCP: {name}</DialogTitle>
           <DialogDescription className="mt-1 text-sm leading-5">
-            Ajusta allowlist, rate limit y validacion de schema para el router
-            Rust.
+            Ajusta allowlist, rate limit y validacion de schema para el router Rust.
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-3 p-4" onSubmit={handleSubmit}>

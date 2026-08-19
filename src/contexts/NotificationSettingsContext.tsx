@@ -1,10 +1,10 @@
-import * as React from "react"
 import type {
   NotificationCategory,
   NotificationPreference,
   NotificationSettings,
 } from "@/types/notifications"
 import { DEFAULT_NOTIFICATION_SETTINGS } from "@/types/notifications"
+import * as React from "react"
 
 const STORAGE_KEY = "geonexus:notification-settings"
 
@@ -13,30 +13,43 @@ function loadSettings(): NotificationSettings {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      return { ...DEFAULT_NOTIFICATION_SETTINGS, ...parsed, preferences: parsed.preferences ?? DEFAULT_NOTIFICATION_SETTINGS.preferences }
+      return {
+        ...DEFAULT_NOTIFICATION_SETTINGS,
+        ...parsed,
+        preferences: parsed.preferences ?? DEFAULT_NOTIFICATION_SETTINGS.preferences,
+      }
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return DEFAULT_NOTIFICATION_SETTINGS
 }
 
 function saveSettings(settings: NotificationSettings) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 interface NotificationSettingsContextValue {
   settings: NotificationSettings
   updateSettings: (updates: Partial<NotificationSettings>) => void
-  updatePreference: (category: NotificationCategory, updates: Partial<NotificationPreference>) => void
+  updatePreference: (
+    category: NotificationCategory,
+    updates: Partial<NotificationPreference>
+  ) => void
 }
 
-const NotificationSettingsContext = React.createContext<NotificationSettingsContextValue | null>(null)
+const NotificationSettingsContext = React.createContext<NotificationSettingsContextValue | null>(
+  null
+)
 
 export function NotificationSettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = React.useState<NotificationSettings>(loadSettings)
 
-  const persist = React.useCallback((next: NotificationSettings) => {
+  const _persist = React.useCallback((next: NotificationSettings) => {
     setSettings(next)
     saveSettings(next)
   }, [])
@@ -74,6 +87,7 @@ export function NotificationSettingsProvider({ children }: { children: React.Rea
 
 export function useNotificationSettings() {
   const ctx = React.useContext(NotificationSettingsContext)
-  if (!ctx) throw new Error("useNotificationSettings debe usarse dentro de <NotificationSettingsProvider>")
+  if (!ctx)
+    throw new Error("useNotificationSettings debe usarse dentro de <NotificationSettingsProvider>")
   return ctx
 }

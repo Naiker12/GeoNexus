@@ -1,38 +1,47 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle,
-         Loader2, Clock, Paperclip } from "lucide-react";
-import { useAgentTaskStore } from "../store/useAgentTaskStore";
-import type { AgentTask } from "../types";
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Loader2,
+  Paperclip,
+} from "lucide-react"
+import { useState } from "react"
+import { useAgentTaskStore } from "../store/useAgentTaskStore"
+import type { AgentTask } from "../types"
 
 const STATUS_CONFIG = {
-  todo:    { label: "Pendiente", color: "text-muted-foreground",    icon: Clock },
-  running: { label: "Ejecutando", color: "text-amber-500",                   icon: Loader2 },
-  review:  { label: "Revisión",  color: "text-blue-400",                     icon: Clock },
-  blocked: { label: "Bloqueado", color: "text-red-400",                      icon: AlertTriangle },
-  done:    { label: "Completado", color: "text-emerald-500",                 icon: CheckCircle },
-} as const;
+  todo: { label: "Pendiente", color: "text-muted-foreground", icon: Clock },
+  running: { label: "Ejecutando", color: "text-amber-500", icon: Loader2 },
+  review: { label: "Revisión", color: "text-blue-400", icon: Clock },
+  blocked: { label: "Bloqueado", color: "text-red-400", icon: AlertTriangle },
+  done: { label: "Completado", color: "text-emerald-500", icon: CheckCircle },
+} as const
 
 const PRIORITY_DOT = {
-  low:    "bg-gray-400",
+  low: "bg-gray-400",
   normal: "bg-blue-400",
-  high:   "bg-amber-400",
+  high: "bg-amber-400",
   urgent: "bg-red-500",
-};
+}
 
-interface Props { task: AgentTask; }
+interface Props {
+  task: AgentTask
+}
 
 export function AgentTaskCard({ task }: Props) {
-  const [expanded, setExpanded] = useState(task.status === "running");
-  const { startTask, cancelTask, retryTask, deleteTask } = useAgentTaskStore();
-  const cfg = STATUS_CONFIG[task.status];
-  const StatusIcon = cfg.icon;
+  const [expanded, setExpanded] = useState(task.status === "running")
+  const { startTask, cancelTask, retryTask, deleteTask } = useAgentTaskStore()
+  const cfg = STATUS_CONFIG[task.status]
+  const StatusIcon = cfg.icon
 
   const timeAgo = (ts: number) => {
-    const diff = Date.now() - ts;
-    if (diff < 60_000) return "ahora";
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
-    return `${Math.floor(diff / 3_600_000)}h`;
-  };
+    const diff = Date.now() - ts
+    if (diff < 60_000) return "ahora"
+    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
+    return `${Math.floor(diff / 3_600_000)}h`
+  }
 
   return (
     <div className="border-b border-[var(--color-border)] last:border-0">
@@ -47,9 +56,7 @@ export function AgentTaskCard({ task }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${PRIORITY_DOT[task.priority]}`} />
-            <span className="text-sm font-medium text-foreground truncate">
-              {task.title}
-            </span>
+            <span className="text-sm font-medium text-foreground truncate">{task.title}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -59,16 +66,12 @@ export function AgentTaskCard({ task }: Props) {
             />
             <span className={`text-xs ${cfg.color}`}>{cfg.label}</span>
             <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs text-muted-foreground">
-              {timeAgo(task.updatedAt)}
-            </span>
+            <span className="text-xs text-muted-foreground">{timeAgo(task.updatedAt)}</span>
             {task.artifacts.length > 0 && (
               <>
                 <span className="text-xs text-muted-foreground">·</span>
                 <Paperclip size={10} className="text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  {task.artifacts.length}
-                </span>
+                <span className="text-xs text-muted-foreground">{task.artifacts.length}</span>
               </>
             )}
           </div>
@@ -77,9 +80,7 @@ export function AgentTaskCard({ task }: Props) {
 
       {expanded && (
         <div className="px-4 pb-3 pl-8 space-y-2">
-          {task.notes && (
-            <p className="text-xs text-muted-foreground">{task.notes}</p>
-          )}
+          {task.notes && <p className="text-xs text-muted-foreground">{task.notes}</p>}
 
           {task.status === "blocked" && task.blockedReason && (
             <div className="text-xs text-red-400 bg-red-400/10 rounded px-2 py-1.5">
@@ -103,9 +104,7 @@ export function AgentTaskCard({ task }: Props) {
                 <div key={a.id} className="flex items-center gap-1.5 text-xs">
                   <Paperclip size={10} className="text-amber-500" />
                   <span className="text-foreground">{a.label}</span>
-                  {a.path && (
-                    <span className="text-muted-foreground truncate">{a.path}</span>
-                  )}
+                  {a.path && <span className="text-muted-foreground truncate">{a.path}</span>}
                 </div>
               ))}
             </div>
@@ -152,5 +151,5 @@ export function AgentTaskCard({ task }: Props) {
         </div>
       )}
     </div>
-  );
+  )
 }

@@ -1,10 +1,10 @@
-import * as React from "react"
-import { Plus, Pencil, Trash2, AlertTriangle, Check, X } from "lucide-react"
+import { listConnectorConfigs } from "@/api/connector"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Input"
-import { listConnectorConfigs } from "@/api/connector"
-import type { ConnectorConfig } from "@/types/connector"
 import { ConfirmSettingsDialog } from "@/features/workspace/configuration/ConfirmSettingsDialog"
+import type { ConnectorConfig } from "@/types/connector"
+import { AlertTriangle, Check, Pencil, Plus, Trash2, X } from "lucide-react"
+import * as React from "react"
 
 export function ConnectorsSection() {
   const [configs, setConfigs] = React.useState<ConnectorConfig[]>([])
@@ -22,16 +22,18 @@ export function ConnectorsSection() {
     })
   }, [])
 
-  React.useEffect(() => { loadConfigs() }, [loadConfigs])
+  React.useEffect(() => {
+    loadConfigs()
+  }, [loadConfigs])
 
-  const paths = configs.map(c => c.root_path).filter(Boolean)
+  const paths = configs.map((c) => c.root_path).filter(Boolean)
   const duplicatePaths = paths.filter((path, i, arr) => arr.indexOf(path) !== i)
 
   const handleDelete = async (id: string) => {
     try {
       const { invoke } = await import("@tauri-apps/api/core")
       await invoke("delete_connector", { connectorId: id })
-      setConfigs(prev => prev.filter(c => c.id !== id))
+      setConfigs((prev) => prev.filter((c) => c.id !== id))
     } catch (err) {
       console.error("Error al eliminar conector:", err)
     }
@@ -52,9 +54,13 @@ export function ConnectorsSection() {
         displayName: editName || null,
         rootPath: editPath || null,
       })
-      setConfigs(prev => prev.map(c =>
-        c.id === id ? { ...c, display_name: editName || c.display_name, root_path: editPath || c.root_path } : c
-      ))
+      setConfigs((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, display_name: editName || c.display_name, root_path: editPath || c.root_path }
+            : c
+        )
+      )
     } catch (err) {
       console.error("Error al actualizar conector:", err)
     }
@@ -103,13 +109,13 @@ export function ConnectorsSection() {
                 <div className="flex flex-col gap-2">
                   <Input
                     value={editName}
-                    onChange={e => setEditName(e.target.value)}
+                    onChange={(e) => setEditName(e.target.value)}
                     placeholder="Nombre del conector"
                     className="text-sm h-8"
                   />
                   <Input
                     value={editPath}
-                    onChange={e => setEditPath(e.target.value)}
+                    onChange={(e) => setEditPath(e.target.value)}
                     placeholder="Ruta del conector"
                     className="text-sm h-8"
                   />
@@ -185,7 +191,7 @@ export function ConnectorsSection() {
       {deleteConfirm && (
         <ConfirmSettingsDialog
           open
-          name={configs.find(c => c.id === deleteConfirm)?.display_name ?? ""}
+          name={configs.find((c) => c.id === deleteConfirm)?.display_name ?? ""}
           isDelete
           description="Esto eliminará el conector de la configuración local. Los archivos en disco no se verán afectados."
           onOpenChange={() => setDeleteConfirm(null)}

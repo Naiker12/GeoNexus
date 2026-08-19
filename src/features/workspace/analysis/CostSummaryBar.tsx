@@ -10,9 +10,7 @@ export function CostSummaryBar() {
   const { data, loading } = useCostByTimeframe()
 
   if (loading) {
-    return (
-      <div className="h-14 animate-pulse rounded-lg bg-background/75" />
-    )
+    return <div className="h-14 animate-pulse rounded-lg bg-background/75" />
   }
 
   if (!data) return null
@@ -30,7 +28,9 @@ export function CostSummaryBar() {
       </div>
       <div className="h-8 w-px bg-border" />
       <div className="flex-1 text-center">
-        <p className="text-[0.68rem] text-muted-foreground uppercase tracking-wide">Promedio/consulta</p>
+        <p className="text-[0.68rem] text-muted-foreground uppercase tracking-wide">
+          Promedio/consulta
+        </p>
         <p className="font-mono font-semibold text-foreground">{formatCost(data.avg_per_query)}</p>
       </div>
     </div>

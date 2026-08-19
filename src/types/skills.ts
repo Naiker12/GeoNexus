@@ -1,4 +1,4 @@
-export type SkillCategory = 'gis' | 'research' | 'data' | 'agent' | 'tool' | 'connector'
+export type SkillCategory = "gis" | "research" | "data" | "agent" | "tool" | "connector"
 
 export interface Skill {
   id: string

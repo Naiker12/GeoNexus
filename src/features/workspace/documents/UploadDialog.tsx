@@ -1,5 +1,3 @@
-import * as React from "react"
-import { Loader2Icon, UploadCloudIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
   Dialog,
@@ -8,7 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { UploadFilePreviewItem, PendingFileWithPreview } from "./UploadFilePreviewItem"
+import { Loader2Icon, UploadCloudIcon } from "lucide-react"
+import * as React from "react"
+import { type PendingFileWithPreview, UploadFilePreviewItem } from "./UploadFilePreviewItem"
 
 interface PendingFile {
   file: File
@@ -28,13 +28,13 @@ function isImage(file: File): boolean {
   return file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(file.name)
 }
 
-function getPreviewType(file: File): 'image' | 'pdf' | 'csv' | 'geojson' | 'document' {
+function getPreviewType(file: File): "image" | "pdf" | "csv" | "geojson" | "document" {
   const name = file.name.toLowerCase()
-  if (isImage(file)) return 'image'
-  if (name.endsWith('.pdf')) return 'pdf'
-  if (name.endsWith('.csv')) return 'csv'
-  if (name.endsWith('.geojson') || name.endsWith('.json')) return 'geojson'
-  return 'document'
+  if (isImage(file)) return "image"
+  if (name.endsWith(".pdf")) return "pdf"
+  if (name.endsWith(".csv")) return "csv"
+  if (name.endsWith(".geojson") || name.endsWith(".json")) return "geojson"
+  return "document"
 }
 
 export function UploadDialog({
@@ -51,20 +51,20 @@ export function UploadDialog({
   React.useEffect(() => {
     if (!open) return
 
-    const enriched: PendingFileWithPreview[] = files.map(f => {
+    const enriched: PendingFileWithPreview[] = files.map((f) => {
       const previewType = getPreviewType(f.file)
       return {
         id: f.id,
         file: f.file,
         previewType,
-        previewUrl: previewType === 'image' ? URL.createObjectURL(f.file) : undefined,
+        previewUrl: previewType === "image" ? URL.createObjectURL(f.file) : undefined,
       }
     })
 
     setFilesWithPreview(enriched)
 
     return () => {
-      enriched.forEach(f => {
+      enriched.forEach((f) => {
         if (f.previewUrl) {
           URL.revokeObjectURL(f.previewUrl)
         }
@@ -115,7 +115,12 @@ export function UploadDialog({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={uploading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            disabled={uploading}
+          >
             Cancelar
           </Button>
           <Button size="sm" onClick={onUpload} disabled={uploading || files.length === 0}>

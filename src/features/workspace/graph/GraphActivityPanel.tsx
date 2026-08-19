@@ -1,4 +1,6 @@
-import * as React from "react"
+import { Button } from "@/components/ui/Button"
+import { cn } from "@/lib/utils"
+import type { GraphNode } from "@/types/data"
 import {
   ActivityIcon,
   BrainCircuitIcon,
@@ -8,20 +10,23 @@ import {
   UploadIcon,
   XIcon,
 } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { cn } from "@/lib/utils"
 import { nodeDotColor } from "./NodeSheet"
 import { nodeTypeLabel } from "./graph-colors"
-import type { GraphNode } from "@/types/data"
 
 function eventIcon(source_event: string) {
   switch (source_event) {
-    case "chat": return MessageSquareTextIcon
-    case "upload": return UploadIcon
-    case "sync": return LinkIcon
-    case "rag": return BrainCircuitIcon
-    case "web_search": return GlobeIcon
-    default: return ActivityIcon
+    case "chat":
+      return MessageSquareTextIcon
+    case "upload":
+      return UploadIcon
+    case "sync":
+      return LinkIcon
+    case "rag":
+      return BrainCircuitIcon
+    case "web_search":
+      return GlobeIcon
+    default:
+      return ActivityIcon
   }
 }
 
@@ -54,7 +59,12 @@ export function GraphActivityPanel({
           Actividad reciente
         </span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[0.65rem]" onClick={onClearEphemeral}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 px-1.5 text-[0.65rem]"
+            onClick={onClearEphemeral}
+          >
             Limpiar efímeros
           </Button>
           <button
@@ -68,9 +78,7 @@ export function GraphActivityPanel({
       </div>
       <div className="max-h-80 overflow-y-auto p-2 [scrollbar-width:thin]">
         {events.length === 0 ? (
-          <p className="py-4 text-center text-xs text-muted-foreground">
-            Sin actividad reciente
-          </p>
+          <p className="py-4 text-center text-xs text-muted-foreground">Sin actividad reciente</p>
         ) : (
           events.map((node) => {
             const Icon = eventIcon(node.source_event)
@@ -79,13 +87,16 @@ export function GraphActivityPanel({
                 key={node.id}
                 className="flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent/50"
               >
-                <div className={cn("mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full", nodeDotColor(node.kind))}>
+                <div
+                  className={cn(
+                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full",
+                    nodeDotColor(node.kind)
+                  )}
+                >
                   <Icon className="size-3 text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-foreground">
-                    {node.label}
-                  </p>
+                  <p className="truncate text-xs font-medium text-foreground">{node.label}</p>
                   <p className="text-[0.65rem] text-muted-foreground">
                     {nodeTypeLabel(node.kind)} · {formatTime(node.created_at)}
                   </p>

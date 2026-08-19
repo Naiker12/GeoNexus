@@ -15,14 +15,14 @@ const MIN_WIDTH = 200
 const MAX_WIDTH = 480
 
 function useSidebarState(): SidebarState {
-  const sidebar = useSidebar()
+  const _sidebar = useSidebar()
 
   const [width, setWidthState] = React.useState<number>(() => {
     try {
       const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
       if (stored) {
-        const parsed = parseInt(stored, 10)
-        if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+        const parsed = Number.parseInt(stored, 10)
+        if (!Number.isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
           return parsed
         }
       }

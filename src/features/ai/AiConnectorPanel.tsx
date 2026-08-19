@@ -1,9 +1,4 @@
-import {
-  CheckCircle2Icon,
-  KeyRoundIcon,
-  PlugZapIcon,
-  WifiOffIcon,
-} from "lucide-react"
+import { CheckCircle2Icon, KeyRoundIcon, PlugZapIcon, WifiOffIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
@@ -55,42 +50,40 @@ export function AiConnectorPanel({ connectors }: AiConnectorPanelProps) {
       <div className="mt-4 space-y-3">
         {connectors.length ? (
           connectors.map((connector) => {
-          const meta = statusMeta[connector.status]
-          const StatusIcon = meta.icon
+            const meta = statusMeta[connector.status]
+            const StatusIcon = meta.icon
 
-          return (
-            <article
-              key={connector.id}
-              className="rounded-lg border border-border bg-background p-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate font-medium">{connector.name}</h3>
-                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {connector.provider}
-                    </span>
+            return (
+              <article
+                key={connector.id}
+                className="rounded-lg border border-border bg-background p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate font-medium">{connector.name}</h3>
+                      <span className="rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                        {connector.provider}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">{connector.model}</p>
                   </div>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {connector.model}
-                  </p>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium",
+                      meta.className
+                    )}
+                  >
+                    <StatusIcon className="size-3" />
+                    {meta.label}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium",
-                    meta.className
-                  )}
-                >
-                  <StatusIcon className="size-3" />
-                  {meta.label}
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                <span className="truncate">{connector.endpoint}</span>
-                <span>{connector.supportsTools ? "tools" : "context"}</span>
-              </div>
-            </article>
-          )
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span className="truncate">{connector.endpoint}</span>
+                  <span>{connector.supportsTools ? "tools" : "context"}</span>
+                </div>
+              </article>
+            )
           })
         ) : (
           <div className="rounded-lg border border-border bg-background px-3 py-8 text-center text-sm text-muted-foreground">

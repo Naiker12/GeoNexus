@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import {
   DatabaseIcon,
   FileTextIcon,
@@ -7,6 +6,7 @@ import {
   Loader2Icon,
   XIcon,
 } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { getProjectContext } from "@/api/chat"
 import { Button } from "@/components/ui/Button"
@@ -70,27 +70,21 @@ export function ProjectContextPanel({
           description="Fragmentos indexados relevantes"
           icon={<DatabaseIcon className="size-4" />}
           checked={toggles.rag_chunks}
-          onCheckedChange={(v) =>
-            onToggleChange({ ...toggles, rag_chunks: v })
-          }
+          onCheckedChange={(v) => onToggleChange({ ...toggles, rag_chunks: v })}
         />
         <ToggleSection
           label="Assets indexados"
           description="Archivos GIS procesados"
           icon={<FileTextIcon className="size-4" />}
           checked={toggles.indexed_assets}
-          onCheckedChange={(v) =>
-            onToggleChange({ ...toggles, indexed_assets: v })
-          }
+          onCheckedChange={(v) => onToggleChange({ ...toggles, indexed_assets: v })}
         />
         <ToggleSection
           label="Conocimiento territorial"
           description="Entidades y relaciones del proyecto"
           icon={<GitBranchIcon className="size-4" />}
           checked={toggles.graph_nodes}
-          onCheckedChange={(v) =>
-            onToggleChange({ ...toggles, graph_nodes: v })
-          }
+          onCheckedChange={(v) => onToggleChange({ ...toggles, graph_nodes: v })}
         />
 
         <hr className="border-border" />
@@ -100,9 +94,7 @@ export function ProjectContextPanel({
             <Loader2Icon className="size-5 animate-spin" />
           </div>
         ) : error ? (
-          <p className="text-xs text-destructive/80">
-            Error al cargar nodos — revisa la conexión
-          </p>
+          <p className="text-xs text-destructive/80">Error al cargar nodos — revisa la conexión</p>
         ) : data ? (
           <div className="space-y-3">
             {toggles.indexed_assets && data.assets.length > 0 && (
@@ -112,7 +104,10 @@ export function ProjectContextPanel({
                 </p>
                 <div className="space-y-1">
                   {data.assets.map((a) => (
-                    <div key={a.name} className="rounded-lg border border-border bg-card px-3 py-2 text-xs">
+                    <div
+                      key={a.name}
+                      className="rounded-lg border border-border bg-card px-3 py-2 text-xs"
+                    >
                       <p className="truncate font-medium">{a.name}</p>
                       <p className="text-muted-foreground">{a.kind}</p>
                     </div>
@@ -134,16 +129,14 @@ export function ProjectContextPanel({
                                  bg-muted/50 px-2.5 py-0.5 text-xs"
                     >
                       {n.label}
-                      <span className="text-[10px] text-muted-foreground">
-                        {n.kind}
-                      </span>
+                      <span className="text-[10px] text-muted-foreground">{n.kind}</span>
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {(!data.assets.length && !data.graph_nodes.length) && (
+            {!data.assets.length && !data.graph_nodes.length && (
               <p className="text-xs text-muted-foreground text-center py-4">
                 No hay datos de contexto indexados para este proyecto.
               </p>
@@ -174,16 +167,10 @@ function ToggleSection({
         <span className="mt-0.5 shrink-0 text-muted-foreground">{icon}</span>
         <div className="min-w-0">
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {description}
-          </p>
+          <p className="text-xs text-muted-foreground truncate">{description}</p>
         </div>
       </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        className="shrink-0"
-      />
+      <Switch checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
     </div>
   )
 }

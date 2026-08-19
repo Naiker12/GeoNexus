@@ -1,20 +1,20 @@
-import * as React from "react"
+import { NativeSelect } from "@/components/ui/native-select"
+import { Switch } from "@/components/ui/switch"
+import { useConnectors } from "@/contexts/ConnectorsContext"
+import { listAgents, setAgentModel, toggleAgent } from "@/features/agent-registry/api"
+import type { Agent } from "@/features/agent-registry/types"
 import {
   BrainCircuitIcon,
+  CheckCircle2Icon,
   FileTextIcon,
+  Loader2Icon,
   MessageSquareIcon,
   NetworkIcon,
-  TagIcon,
   ServerIcon,
-  CheckCircle2Icon,
+  TagIcon,
   XCircleIcon,
-  Loader2Icon,
 } from "lucide-react"
-import { Switch } from "@/components/ui/switch"
-import { NativeSelect } from "@/components/ui/native-select"
-import { listAgents, toggleAgent, setAgentModel } from "@/features/agents/api"
-import type { Agent } from "@/features/agents/types"
-import { useConnectors } from "@/contexts/ConnectorsContext"
+import * as React from "react"
 
 const KIND_ICON: Record<string, React.FC<{ className?: string }>> = {
   document: FileTextIcon,
@@ -88,7 +88,9 @@ function AgentRow({
           <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
         </div>
       )}
-      <span className={`flex size-8 shrink-0 items-center justify-center rounded-md border ${color}`}>
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-md border ${color}`}
+      >
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
@@ -125,7 +127,9 @@ function AgentRow({
               <option value="llama-3.1-8b">llama-3.1-8b</option>
             </NativeSelect>
             {agent.last_run_at ? (
-              <span className="text-[10px] text-muted-foreground/60">Última ejecución: {formatRelativeTime(agent.last_run_at)}</span>
+              <span className="text-[10px] text-muted-foreground/60">
+                Última ejecución: {formatRelativeTime(agent.last_run_at)}
+              </span>
             ) : (
               <span className="text-[10px] text-muted-foreground/40">Nunca ejecutado</span>
             )}
@@ -134,8 +138,14 @@ function AgentRow({
       </div>
       <div className="flex shrink-0 flex-col items-center gap-1">
         <Switch checked={agent.is_active} onCheckedChange={(c) => onToggle(agent.id, c)} />
-        <span className={`flex items-center gap-1 text-[10px] ${agent.is_active ? "text-green-600" : "text-muted-foreground"}`}>
-          {agent.is_active ? <CheckCircle2Icon className="size-3" /> : <XCircleIcon className="size-3" />}
+        <span
+          className={`flex items-center gap-1 text-[10px] ${agent.is_active ? "text-green-600" : "text-muted-foreground"}`}
+        >
+          {agent.is_active ? (
+            <CheckCircle2Icon className="size-3" />
+          ) : (
+            <XCircleIcon className="size-3" />
+          )}
           {agent.is_active ? "Activo" : "Inactivo"}
         </span>
       </div>
@@ -199,9 +209,27 @@ export function AgentsSection() {
         </div>
       ) : (
         <>
-          <SectionGroup label="Procesamiento" agents={processing} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
-          <SectionGroup label="Conocimiento" agents={knowledge} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
-          <SectionGroup label="Interacción" agents={interaction} onToggle={handleToggle} toggling={toggling} onSetModel={handleSetModel} />
+          <SectionGroup
+            label="Procesamiento"
+            agents={processing}
+            onToggle={handleToggle}
+            toggling={toggling}
+            onSetModel={handleSetModel}
+          />
+          <SectionGroup
+            label="Conocimiento"
+            agents={knowledge}
+            onToggle={handleToggle}
+            toggling={toggling}
+            onSetModel={handleSetModel}
+          />
+          <SectionGroup
+            label="Interacción"
+            agents={interaction}
+            onToggle={handleToggle}
+            toggling={toggling}
+            onSetModel={handleSetModel}
+          />
 
           <div>
             <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -210,20 +238,32 @@ export function AgentsSection() {
             <div className="flex flex-col gap-1.5">
               {SYSTEM_AGENTS.map((sa) => {
                 const Icon = sa.icon
-                const statusColor = sa.status === "active" ? "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400" : "border-muted bg-muted/40 text-muted-foreground"
+                const statusColor =
+                  sa.status === "active"
+                    ? "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400"
+                    : "border-muted bg-muted/40 text-muted-foreground"
                 return (
-                  <div key={sa.id} className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 shadow-sm">
-                    <span className={`flex size-8 shrink-0 items-center justify-center rounded-md border ${statusColor}`}>
+                  <div
+                    key={sa.id}
+                    className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 shadow-sm"
+                  >
+                    <span
+                      className={`flex size-8 shrink-0 items-center justify-center rounded-md border ${statusColor}`}
+                    >
                       <Icon className="size-4" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{sa.name}</span>
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${statusColor}`}>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${statusColor}`}
+                        >
                           {sa.status === "active" ? "Activo" : "Standby"}
                         </span>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{sa.description}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {sa.description}
+                      </p>
                     </div>
                   </div>
                 )
@@ -257,7 +297,13 @@ function SectionGroup({
       </h4>
       <div className="flex flex-col gap-1.5">
         {agents.map((a) => (
-          <AgentRow key={a.id} agent={a} onToggle={onToggle} toggling={toggling === a.id} onSetModel={onSetModel} />
+          <AgentRow
+            key={a.id}
+            agent={a}
+            onToggle={onToggle}
+            toggling={toggling === a.id}
+            onSetModel={onSetModel}
+          />
         ))}
       </div>
     </div>

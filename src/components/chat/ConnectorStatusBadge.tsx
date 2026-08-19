@@ -1,5 +1,5 @@
-import { Loader2Icon } from "lucide-react"
 import type { ConnectorStatus } from "@/types/chat"
+import { Loader2Icon } from "lucide-react"
 
 const badgeConfig: Record<ConnectorStatus, { label: string; className: string; icon?: boolean }> = {
   connected: {

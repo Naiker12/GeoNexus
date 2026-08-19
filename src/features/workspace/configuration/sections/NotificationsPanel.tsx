@@ -1,8 +1,7 @@
-import * as React from "react"
-import { Bell, BellOff, Volume2, Monitor } from "lucide-react"
 import { useNotificationSettings } from "@/contexts/NotificationSettingsContext"
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "@/types/notifications"
-import type { NotificationChannel, ToastPosition, ToastDuration } from "@/types/notifications"
+import type { NotificationChannel, ToastDuration, ToastPosition } from "@/types/notifications"
+import { Bell, BellOff, Monitor, Volume2 } from "lucide-react"
 
 const POSITION_OPTIONS: { value: ToastPosition; label: string }[] = [
   { value: "bottom-right", label: "Inferior derecha" },
@@ -55,7 +54,10 @@ export function NotificationsPanel() {
           {settings.masterEnabled ? <Bell className="size-4" /> : <BellOff className="size-4" />}
           <span className="text-sm font-medium">Notificaciones</span>
         </div>
-        <Toggle checked={settings.masterEnabled} onChange={(v) => updateSettings({ masterEnabled: v })} />
+        <Toggle
+          checked={settings.masterEnabled}
+          onChange={(v) => updateSettings({ masterEnabled: v })}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -65,7 +67,9 @@ export function NotificationsPanel() {
           className="rounded-md border border-input bg-background px-2 py-1 text-xs"
         >
           {POSITION_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
         <select
@@ -74,7 +78,9 @@ export function NotificationsPanel() {
           className="rounded-md border border-input bg-background px-2 py-1 text-xs"
         >
           {DURATION_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </div>
@@ -83,12 +89,18 @@ export function NotificationsPanel() {
         <label className="flex items-center gap-1.5 text-xs">
           <Monitor className="size-3.5" />
           Sistema
-          <Toggle checked={settings.osNotificationsEnabled} onChange={(v) => updateSettings({ osNotificationsEnabled: v })} />
+          <Toggle
+            checked={settings.osNotificationsEnabled}
+            onChange={(v) => updateSettings({ osNotificationsEnabled: v })}
+          />
         </label>
         <label className="flex items-center gap-1.5 text-xs">
           <Volume2 className="size-3.5" />
           Sonido
-          <Toggle checked={settings.soundEnabled} onChange={(v) => updateSettings({ soundEnabled: v })} />
+          <Toggle
+            checked={settings.soundEnabled}
+            onChange={(v) => updateSettings({ soundEnabled: v })}
+          />
         </label>
       </div>
 

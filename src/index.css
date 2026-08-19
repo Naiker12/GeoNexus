@@ -1,9 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fira-code";
+@import "@xyflow/react/dist/style.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-sans: "Inter Variable", system-ui, -apple-system, sans-serif;
+  --font-heading: "Space Grotesk Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code Variable", monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -39,16 +46,16 @@
 :root {
   --radius: 0.5rem;
   --background: oklch(0.985 0.003 247.858);
-  --agent-accent: #D97706;
-  --agent-bg: #F5F2EC;
-  --agent-panel-bg: #FEFCF8;
-  --agent-text: #92400E;
-  --agent-border: #FDE68A;
-  --agent-hover: #FEF3C7;
-  --agent-step-done: #D97706;
-  --agent-step-active: #F59E0B;
-  --agent-step-pending: #D1D5DB;
-  --agent-step-error: #EF4444;
+  --agent-accent: #d97706;
+  --agent-bg: #f5f2ec;
+  --agent-panel-bg: #fefcf8;
+  --agent-text: #92400e;
+  --agent-border: #fde68a;
+  --agent-hover: #fef3c7;
+  --agent-step-done: #d97706;
+  --agent-step-active: #f59e0b;
+  --agent-step-pending: #d1d5db;
+  --agent-step-error: #ef4444;
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
@@ -79,16 +86,16 @@
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
-  --agent-accent: #F59E0B;
-  --agent-bg: #1C1917;
+  --agent-accent: #f59e0b;
+  --agent-bg: #1c1917;
   --agent-panel-bg: #292524;
-  --agent-text: #FBBF24;
-  --agent-border: #78350F;
-  --agent-hover: #451A03;
-  --agent-step-done: #F59E0B;
-  --agent-step-active: #FBBF24;
+  --agent-text: #fbbf24;
+  --agent-border: #78350f;
+  --agent-hover: #451a03;
+  --agent-step-done: #f59e0b;
+  --agent-step-active: #fbbf24;
   --agent-step-pending: #525252;
-  --agent-step-error: #EF4444;
+  --agent-step-error: #ef4444;
   --card: oklch(0.208 0.042 265.755);
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
@@ -340,14 +347,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     margin: 0;
-    font-family:
-      "Geist Variable",
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
+    font-family: "Geist Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
   }
 
   button,
@@ -411,11 +412,146 @@
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes pickerFadeIn {
-  from { opacity: 0; transform: scale(0.95) translateY(4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODERN DESIGN SYSTEM: SCROLL MASKS, SHIMMER & HIGH-TECH GLASS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  [data-slot="dialog-title"],
+  [data-slot="card-title"] {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono,
+  [data-telemetry] {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Gemini-style scroll masks for seamless dissolving edges */
+.sidebar-scroll-fade.is-scrolled {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px),
+    linear-gradient(to left, #000 var(--sidebar-rail, 0px), transparent 0);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px),
+    linear-gradient(to left, #000 var(--sidebar-rail, 0px), transparent 0);
+}
+
+.fade-scroll-y {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+
+.model-list-scroll.is-scrolled {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+
+.model-list-scroll.is-bottom-faded {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
+}
+
+.model-list-scroll.is-scrolled.is-bottom-faded {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 16px),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 16px),
+    transparent
+  );
+}
+
+/* Glassmorphism & High-tech Card Utilities */
+.glass-panel {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.glass-pill {
+  background: color-mix(in srgb, var(--card) 60%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.hud-badge {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Ultra Smooth Shimmer Skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--muted) 85%, transparent) 0%,
+    color-mix(in srgb, var(--muted) 40%, transparent) 50%,
+    color-mix(in srgb, var(--muted) 85%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s cubic-bezier(0.165, 0.84, 0.44, 1) infinite;
 }

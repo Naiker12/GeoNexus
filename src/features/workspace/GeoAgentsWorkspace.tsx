@@ -1,17 +1,39 @@
-import { useEffect } from "react"
+import { CommandPalette } from "@/components/CommandPalette"
 import { ChatPanel } from "@/components/chat/ChatPanel"
 import { AppTopbar } from "@/components/layout/AppTopbar"
-import { CommandPalette } from "@/components/CommandPalette"
-import { AnalysisPage } from "@/features/workspace/analysis/AnalysisPage"
-import { ConfigurationDialog } from "@/features/workspace/configuration/ConfigurationDialog"
-import { ConnectorsPage } from "@/features/workspace/connectors/ConnectorsPage"
-import { DocumentsPage } from "@/features/workspace/documents/DocumentsPage"
-import { GraphPage } from "@/features/workspace/graph/GraphPage"
-import { AiContainersPage } from "@/features/workspace/AiContainersPage"
-import { McpServersPage } from "@/features/workspace/mcp/McpServersPage"
-import { SkillsPage } from "@/features/workspace/skills/SkillsPage"
-import { AutomationPage } from "@/features/workspace/automation/AutomationPage"
+import { Suspense, lazy, useEffect } from "react"
 
+// Lazy load secondary routes for instant app startup & minimal memory footprint
+const HubPage = lazy(() => import("@/features/hub/HubPage").then((m) => ({ default: m.HubPage })))
+const ApiVramMonitor = lazy(() =>
+  import("@/features/workspace/monitor/ApiVramMonitor").then((m) => ({ default: m.ApiVramMonitor }))
+)
+const RecipeStudioPage = lazy(() =>
+  import("@/features/workspace/studio/RecipeStudioPage").then((m) => ({
+    default: m.RecipeStudioPage,
+  }))
+)
+const AnalysisPage = lazy(() =>
+  import("@/features/workspace/analysis/AnalysisPage").then((m) => ({ default: m.AnalysisPage }))
+)
+const AutomationPage = lazy(() =>
+  import("@/features/workspace/automation/AutomationPage").then((m) => ({
+    default: m.AutomationPage,
+  }))
+)
+const ConfigurationDialog = lazy(() =>
+  import("@/features/workspace/configuration/ConfigurationDialog").then((m) => ({
+    default: m.ConfigurationDialog,
+  }))
+)
+const DocumentsPage = lazy(() =>
+  import("@/features/workspace/documents/DocumentsPage").then((m) => ({
+    default: m.DocumentsPage,
+  }))
+)
+const GraphPage = lazy(() =>
+  import("@/features/workspace/graph/GraphPage").then((m) => ({ default: m.GraphPage }))
+)
 
 type GeoAgentsWorkspaceProps = {
   activeRoute: string
@@ -19,7 +41,11 @@ type GeoAgentsWorkspaceProps = {
   onConfigOpenChange: (open: boolean) => void
 }
 
-export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange }: GeoAgentsWorkspaceProps) {
+export function GeoAgentsWorkspace({
+  activeRoute,
+  configOpen,
+  onConfigOpenChange,
+}: GeoAgentsWorkspaceProps) {
   useEffect(() => {
     const handleOpenRegister = () => {
       if (!activeRoute.startsWith("#mcp")) {
@@ -53,23 +79,49 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
       case activeRoute.startsWith("#tasks"):
         return <ChatPanel />
       case activeRoute.startsWith("#memory"):
-        return <GraphPage />
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <GraphPage />
+          </Suspense>
+        )
       case activeRoute.startsWith("#files"):
-        return <DocumentsPage />
-      case activeRoute.startsWith("#mcp"):
-        return <McpServersPage />
-      case activeRoute.startsWith("#proveedores"):
-        return <AiContainersPage />
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <DocumentsPage />
+          </Suspense>
+        )
+      case activeRoute.startsWith("#mcp") || activeRoute.startsWith("#hub"):
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <HubPage />
+          </Suspense>
+        )
+      case activeRoute.startsWith("#studio"):
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <RecipeStudioPage />
+          </Suspense>
+        )
+      case activeRoute.startsWith("#monitor"):
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <ApiVramMonitor />
+          </Suspense>
+        )
       case activeRoute.startsWith("#uso"):
-        return <AnalysisPage />
-      case activeRoute.startsWith("#conectores"):
-        return <ConnectorsPage />
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <AnalysisPage />
+          </Suspense>
+        )
       case activeRoute.startsWith("#projects"):
         return <ChatPanel />
-      case activeRoute.startsWith("#skills"):
-        return <SkillsPage />
       case activeRoute.startsWith("#automations"):
-        return <AutomationPage />
+        return (
+          <Suspense fallback={<PageSkeleton />}>
+            <AutomationPage />
+          </Suspense>
+        )
       default:
         return <ChatPanel />
     }
@@ -88,10 +140,19 @@ export function GeoAgentsWorkspace({ activeRoute, configOpen, onConfigOpenChange
 
       <CommandPalette />
 
-      <ConfigurationDialog
-        open={configOpen}
-        onOpenChange={onConfigOpenChange}
-      />
+      {configOpen && (
+        <Suspense fallback={null}>
+          <ConfigurationDialog open={configOpen} onOpenChange={onConfigOpenChange} />
+        </Suspense>
+      )}
+    </div>
+  )
+}
+
+function PageSkeleton() {
+  return (
+    <div className="flex flex-1 items-center justify-center p-8">
+      <span className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
     </div>
   )
 }

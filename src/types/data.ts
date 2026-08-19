@@ -91,7 +91,13 @@ export interface DocumentChunk {
   created_at: number
 }
 
-export type { GraphNodeKind, GraphNode, GraphEdge, GraphUpdatePayload, SearchGraphNodesResult } from "@/types/graph"
+export type {
+  GraphNodeKind,
+  GraphNode,
+  GraphEdge,
+  GraphUpdatePayload,
+  SearchGraphNodesResult,
+} from "@/types/graph"
 
 export interface LineageStep {
   step: string

@@ -30,13 +30,13 @@ describe("ChatComposer mention replacement", () => {
   it("replaces simple mention with connector link syntax", () => {
     const tokens: MentionToken[] = [{ id: "c1", type: "connector", label: "OneDrive" }]
     const result = replaceMentions("analiza @OneDrive", tokens)
-    expect(result).toBe('analiza @[OneDrive](connector:c1)')
+    expect(result).toBe("analiza @[OneDrive](connector:c1)")
   })
 
   it("does not replace if no matching token", () => {
     const tokens: MentionToken[] = [{ id: "c1", type: "connector", label: "OneDrive" }]
     const result = replaceMentions("analiza @QGIS", tokens)
-    expect(result).toBe('analiza @QGIS')
+    expect(result).toBe("analiza @QGIS")
   })
 
   it("replaces multiple different mentions", () => {
@@ -45,14 +45,14 @@ describe("ChatComposer mention replacement", () => {
       { id: "c2", type: "collection", label: "Coleccion documental" },
     ]
     const result = replaceMentions("busca en @OneDrive y @Coleccion documental", tokens)
-    expect(result).toBe('busca en @[OneDrive](connector:c1) y @[Coleccion documental](connector:c2)')
+    expect(result).toBe(
+      "busca en @[OneDrive](connector:c1) y @[Coleccion documental](connector:c2)"
+    )
   })
 
   it("removes duplicate tokens (keeps last)", () => {
     // Simulate what handleMentionSelect does
-    const tokens: MentionToken[] = [
-      { id: "c1", type: "connector", label: "OneDrive" },
-    ]
+    const tokens: MentionToken[] = [{ id: "c1", type: "connector", label: "OneDrive" }]
     // A duplicate would have been filtered out by handleMentionSelect
     const deduped = tokens.filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i)
     expect(deduped).toHaveLength(1)
@@ -61,13 +61,13 @@ describe("ChatComposer mention replacement", () => {
   it("trims whitespace from content before replacement", () => {
     const tokens: MentionToken[] = [{ id: "c1", type: "connector", label: "OneDrive" }]
     const result = replaceMentions("  hola @OneDrive  ", tokens)
-    expect(result).toBe('hola @[OneDrive](connector:c1)')
+    expect(result).toBe("hola @[OneDrive](connector:c1)")
   })
 
   it("replaces mention even when text has special chars", () => {
     const tokens: MentionToken[] = [{ id: "q1", type: "connector", label: "QGIS-Pro" }]
     const result = replaceMentions("usa @QGIS-Pro para el analisis", tokens)
-    expect(result).toBe('usa @[QGIS-Pro](connector:q1) para el analisis')
+    expect(result).toBe("usa @[QGIS-Pro](connector:q1) para el analisis")
   })
 })
 

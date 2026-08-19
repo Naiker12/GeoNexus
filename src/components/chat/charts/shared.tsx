@@ -22,7 +22,8 @@ export function ChartTooltip({ active, payload, label }: any) {
           />
           <span className="text-muted-foreground">{p.name}:</span>
           <span className="font-semibold tabular-nums text-foreground">
-            {p.value}{p.payload.pct != null ? ` (${p.payload.pct}%)` : ""}
+            {p.value}
+            {p.payload.pct != null ? ` (${p.payload.pct}%)` : ""}
           </span>
         </div>
       ))}

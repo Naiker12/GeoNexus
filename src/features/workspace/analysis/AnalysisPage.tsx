@@ -1,11 +1,11 @@
-import { useState } from "react"
 import { AnalysisHeader } from "@/features/workspace/analysis/AnalysisHeader"
 import { AnalysisMetrics } from "@/features/workspace/analysis/AnalysisMetrics"
 import { AnalysisRunsTable } from "@/features/workspace/analysis/AnalysisRunsTable"
 import { AnalysisSidePanels } from "@/features/workspace/analysis/AnalysisSidePanels"
-import { TokenChart } from "@/features/workspace/analysis/TokenChart"
 import { CostSummaryBar } from "@/features/workspace/analysis/CostSummaryBar"
+import { TokenChart } from "@/features/workspace/analysis/TokenChart"
 import type { Timeframe } from "@/types/analysis"
+import { useState } from "react"
 
 export function AnalysisPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("hoy")

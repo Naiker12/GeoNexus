@@ -10,9 +10,7 @@ function Progress({
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
-      className={
-        "relative h-2 overflow-hidden rounded-full bg-muted " + (className ?? "")
-      }
+      className={`relative h-2 overflow-hidden rounded-full bg-muted ${className ?? ""}`}
       {...props}
     >
       <ProgressPrimitive.Indicator

@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from "react"
-import { XIcon, Loader2Icon, CopyIcon, CheckIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { CheckIcon, CopyIcon, Loader2Icon, XIcon } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface SkillDetailDrawerProps {
   skillId: string | null
@@ -9,14 +8,22 @@ interface SkillDetailDrawerProps {
   onUseInChat: (skillId: string) => void
 }
 
-export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat }: SkillDetailDrawerProps) {
+export function SkillDetailDrawer({
+  skillId,
+  onClose,
+  onReadSkillMd,
+  onUseInChat,
+}: SkillDetailDrawerProps) {
   const [content, setContent] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
-    if (!skillId) { setContent(null); return }
+    if (!skillId) {
+      setContent(null)
+      return
+    }
     setLoading(true)
     try {
       const md = await onReadSkillMd(skillId)
@@ -28,7 +35,9 @@ export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat
     }
   }, [skillId, onReadSkillMd])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0
@@ -40,7 +49,9 @@ export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat
       await navigator.clipboard.writeText(content)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   if (!skillId) return null
@@ -65,7 +76,11 @@ export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat
             className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
             title="Copiar contenido"
           >
-            {copied ? <CheckIcon className="size-3.5 text-emerald-500" /> : <CopyIcon className="size-3.5" />}
+            {copied ? (
+              <CheckIcon className="size-3.5 text-emerald-500" />
+            ) : (
+              <CopyIcon className="size-3.5" />
+            )}
           </button>
           <button
             onClick={() => onUseInChat(skillId)}
@@ -73,7 +88,10 @@ export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat
           >
             Usar en chat
           </button>
-          <button onClick={onClose} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/80">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+          >
             <XIcon className="size-4" />
           </button>
         </div>
@@ -97,7 +115,9 @@ export function SkillDetailDrawer({ skillId, onClose, onReadSkillMd, onUseInChat
             <pre className="flex-1 py-4 pr-4 overflow-x-auto text-[13px] leading-[22px] font-mono text-foreground whitespace-pre-wrap break-all [scrollbar-width:thin] m-0 bg-transparent">
               <code>
                 {lines.map((line, i) => (
-                  <div key={i} className="min-h-[22px]">{syntaxSegment(line)}</div>
+                  <div key={i} className="min-h-[22px]">
+                    {syntaxSegment(line)}
+                  </div>
                 ))}
               </code>
             </pre>
@@ -153,7 +173,10 @@ function InlineCodeHighlight({ line }: { line: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith("`") && part.endsWith("`") ? (
-          <code key={i} className="bg-muted/70 text-orange-600 dark:text-orange-400 px-1 rounded text-[12px]">
+          <code
+            key={i}
+            className="bg-muted/70 text-orange-600 dark:text-orange-400 px-1 rounded text-[12px]"
+          >
             {part.slice(1, -1)}
           </code>
         ) : (
@@ -170,7 +193,9 @@ function LinkHighlight({ line }: { line: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith("http") ? (
-          <span key={i} className="text-blue-600 dark:text-blue-400 underline">{part}</span>
+          <span key={i} className="text-blue-600 dark:text-blue-400 underline">
+            {part}
+          </span>
         ) : (
           <span key={i}>{part}</span>
         )

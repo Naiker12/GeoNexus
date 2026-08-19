@@ -1,7 +1,7 @@
-import { CloudIcon, CpuIcon, RefreshCwIcon, XIcon } from "lucide-react"
-import { Button } from "@/components/ui/Button"
 import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
+import { Button } from "@/components/ui/Button"
 import type { MentionableSourceItem } from "@/types/chat"
+import { CloudIcon, CpuIcon, RefreshCwIcon, XIcon } from "lucide-react"
 
 function formatTime(unix: number | null): string {
   if (!unix) return "—"
@@ -35,9 +35,7 @@ export function ConnectorMiniPanel({
               <span className="font-medium truncate">{connector.label}</span>
               <ConnectorStatusBadge status={connector.status} />
             </div>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {connector.sublabel}
-            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{connector.sublabel}</p>
           </div>
         </div>
         <Button
@@ -54,11 +52,7 @@ export function ConnectorMiniPanel({
       <div className="mt-2 flex items-center gap-4 text-muted-foreground">
         <div className="flex items-center gap-1">
           <CloudIcon className="size-3" />
-          <span>
-            {connector.asset_count != null
-              ? `${connector.asset_count} activos`
-              : "—"}
-          </span>
+          <span>{connector.asset_count != null ? `${connector.asset_count} activos` : "—"}</span>
         </div>
         <div className="flex items-center gap-1">
           <RefreshCwIcon className="size-3" />

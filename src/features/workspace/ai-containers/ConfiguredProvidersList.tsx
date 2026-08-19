@@ -27,9 +27,7 @@ export function ConfiguredProvidersList({
       <div className="flex flex-col gap-3">
         {connectors.length ? (
           connectors.map((connector) => {
-            const option =
-              options.find((candidate) => candidate.id === connector.id) ??
-              options[0]
+            const option = options.find((candidate) => candidate.id === connector.id) ?? options[0]
             if (!option) return null
 
             return (

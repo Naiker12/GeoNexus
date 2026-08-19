@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import type { SearchSource, SearchStepStatus } from "@/components/chat/SearchingIndicator"
+import { describe, expect, it } from "vitest"
 
 type SourceConfig = { color: string }
 

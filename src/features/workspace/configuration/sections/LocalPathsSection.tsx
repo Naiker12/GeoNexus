@@ -32,21 +32,12 @@ export function LocalPathsSection() {
             </code>
             <Dialog>
               <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  className="h-7"
-                >
+                <Button variant="outline" size="sm" type="button" className="h-7">
                   <FolderCogIcon className="size-4" />
                   Cambiar
                 </Button>
               </DialogTrigger>
-              <LocalPathDialogContent
-                name={path.label}
-                value={path.value}
-                detail={path.detail}
-              />
+              <LocalPathDialogContent name={path.label} value={path.value} detail={path.detail} />
             </Dialog>
           </article>
         ))}

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
-import { listMcpServers, registerMcpServer, pingMcpServer } from "@/api/mcp"
-import type { McpServer, RegisterServerPayload, PingResult } from "@/types/mcp"
+import { listMcpServers, pingMcpServer, registerMcpServer } from "@/api/mcp"
+import type { McpServer, PingResult, RegisterServerPayload } from "@/types/mcp"
+import { useCallback, useEffect, useState } from "react"
 
 export function useMcpServers() {
   const [servers, setServers] = useState<McpServer[]>([])
@@ -26,8 +26,8 @@ export function useMcpServers() {
 
   const register = useCallback(async (payload: RegisterServerPayload) => {
     const server = await registerMcpServer(payload)
-    setServers(prev => {
-      const idx = prev.findIndex(s => s.id === server.id)
+    setServers((prev) => {
+      const idx = prev.findIndex((s) => s.id === server.id)
       if (idx >= 0) {
         const next = [...prev]
         next[idx] = server
@@ -38,13 +38,16 @@ export function useMcpServers() {
     return server
   }, [])
 
-  const ping = useCallback(async (serverId: string): Promise<PingResult> => {
-    const result = await pingMcpServer(serverId)
-    await fetchServers()
-    return result
-  }, [fetchServers])
+  const ping = useCallback(
+    async (serverId: string): Promise<PingResult> => {
+      const result = await pingMcpServer(serverId)
+      await fetchServers()
+      return result
+    },
+    [fetchServers]
+  )
 
-  const onlineCount = servers.filter(s => s.status === "online").length
+  const onlineCount = servers.filter((s) => s.status === "online").length
 
   return { servers, loading, error, onlineCount, register, ping, refresh: fetchServers }
 }

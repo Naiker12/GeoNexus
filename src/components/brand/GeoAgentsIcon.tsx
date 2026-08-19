@@ -5,17 +5,10 @@ type GeoAgentsIconProps = {
   variant?: "nexus" | "agent" | "terrain"
 }
 
-export function GeoAgentsIcon({
-  className,
-  variant = "nexus",
-}: GeoAgentsIconProps) {
+export function GeoAgentsIcon({ className, variant = "nexus" }: GeoAgentsIconProps) {
   if (variant === "agent") {
     return (
-      <svg
-        viewBox="0 0 32 32"
-        aria-hidden="true"
-        className={cn("size-5", className)}
-      >
+      <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-5", className)}>
         <path
           d="M16 3.5c5.8 0 10.5 4.7 10.5 10.5v4.5c0 5-4 9-9 9h-3c-5 0-9-4-9-9V14C5.5 8.2 10.2 3.5 16 3.5Z"
           fill="currentColor"
@@ -46,11 +39,7 @@ export function GeoAgentsIcon({
 
   if (variant === "terrain") {
     return (
-      <svg
-        viewBox="0 0 32 32"
-        aria-hidden="true"
-        className={cn("size-5", className)}
-      >
+      <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-5", className)}>
         <path
           d="M4 9.5c5-3.5 9-3.5 12 0s7 3.5 12 0M4 16c5-3.5 9-3.5 12 0s7 3.5 12 0M4 22.5c5-3.5 9-3.5 12 0s7 3.5 12 0"
           fill="none"
@@ -71,11 +60,7 @@ export function GeoAgentsIcon({
   }
 
   return (
-    <svg
-      viewBox="0 0 32 32"
-      aria-hidden="true"
-      className={cn("size-5", className)}
-    >
+    <svg viewBox="0 0 32 32" aria-hidden="true" className={cn("size-5", className)}>
       <path
         d="M16 2.8c-5.2 0-9.4 4.2-9.4 9.4 0 7.3 9.4 18 9.4 18s9.4-10.7 9.4-18c0-5.2-4.2-9.4-9.4-9.4Z"
         fill="currentColor"
@@ -98,7 +83,13 @@ export function GeoAgentsIcon({
         opacity=".7"
       />
       <circle cx="16" cy="12.2" r="3.2" fill="currentColor" />
-      <path d="M16 9.4v5.6M13.2 12.2h5.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.4" className="text-primary-foreground" />
+      <path
+        d="M16 9.4v5.6M13.2 12.2h5.6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.4"
+        className="text-primary-foreground"
+      />
     </svg>
   )
 }

@@ -1,15 +1,14 @@
-import * as React from "react"
 import { FileTextIcon } from "lucide-react"
+import * as React from "react"
 
-import { invoke } from "@tauri-apps/api/core"
 import { useToast } from "@/components/ui/toast"
-import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
-import { useDocumentsQuery } from "@/features/workspace/documents/useDocumentsQuery"
-import { DocumentsList, Metric } from "@/features/workspace/documents/DocumentsList"
-import { DocumentUploader } from "@/features/workspace/documents/DocumentUploader"
 import { DocumentFilters, type SortField } from "@/features/workspace/documents/DocumentFilters"
+import { DocumentUploader } from "@/features/workspace/documents/DocumentUploader"
+import { DocumentsList, Metric } from "@/features/workspace/documents/DocumentsList"
 import { FolderPermissionDialog } from "@/features/workspace/documents/FolderPermissionDialog"
 import { UploadDialog } from "@/features/workspace/documents/UploadDialog"
+import { useDocumentsQuery } from "@/features/workspace/documents/useDocumentsQuery"
+import { invoke } from "@tauri-apps/api/core"
 
 export function DocumentsPage() {
   const [permFolder, setPermFolder] = React.useState<{ path: string; name: string } | null>(null)
@@ -17,7 +16,7 @@ export function DocumentsPage() {
   const [uploading, setUploading] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [sortBy, setSortBy] = React.useState<SortField>("updated")
-  let fileIdCounter = React.useRef(0)
+  const fileIdCounter = React.useRef(0)
   const { toast } = useToast()
 
   const {
@@ -48,7 +47,11 @@ export function DocumentsPage() {
     try {
       const result = await handleChooseFolder(permFolder.path, permFolder.name)
       if (result?.success) {
-        toast({ title: `Carpeta "${result.name}" conectada`, description: "Archivos sincronizados correctamente", variant: "success" })
+        toast({
+          title: `Carpeta "${result.name}" conectada`,
+          description: "Archivos sincronizados correctamente",
+          variant: "success",
+        })
       } else if (result && !result.success) {
         toast({ title: "Error al conectar carpeta", description: result.error, variant: "error" })
       }
@@ -95,7 +98,11 @@ export function DocumentsPage() {
       toast({ title: `${uploaded} archivo(s) subido(s)`, variant: "success" })
     }
     if (failed > 0) {
-      toast({ title: `${failed} archivo(s) fallaron`, description: errors.slice(0, 3).join("\n"), variant: "error" })
+      toast({
+        title: `${failed} archivo(s) fallaron`,
+        description: errors.slice(0, 3).join("\n"),
+        variant: "error",
+      })
     }
   }
 
@@ -104,7 +111,11 @@ export function DocumentsPage() {
       await handleIndex(assetId)
       toast({ title: "Documento indexado", variant: "success" })
     } catch (err) {
-      toast({ title: "Error al indexar documento", description: String(err).slice(0, 200), variant: "error" })
+      toast({
+        title: "Error al indexar documento",
+        description: String(err).slice(0, 200),
+        variant: "error",
+      })
     }
   }
 
@@ -118,8 +129,12 @@ export function DocumentsPage() {
                 <FileTextIcon className="size-4" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg font-semibold tracking-tight">Documentos y fuentes de conocimiento</h1>
-                <p className="mt-0.5 max-w-4xl text-sm leading-5 text-muted-foreground">Conecta fuentes desde abajo o usa la barra de busqueda.</p>
+                <h1 className="text-lg font-semibold tracking-tight">
+                  Documentos y fuentes de conocimiento
+                </h1>
+                <p className="mt-0.5 max-w-4xl text-sm leading-5 text-muted-foreground">
+                  Conecta fuentes desde abajo o usa la barra de busqueda.
+                </p>
               </div>
             </div>
           </div>
@@ -140,7 +155,9 @@ export function DocumentsPage() {
           <div className="flex flex-col gap-1.5 border-b border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold">Biblioteca documental</h2>
-              <p className="text-xs leading-4 text-muted-foreground">Archivos listos para extraccion, chunks y consulta semantica.</p>
+              <p className="text-xs leading-4 text-muted-foreground">
+                Archivos listos para extraccion, chunks y consulta semantica.
+              </p>
             </div>
             <DocumentFilters
               searchQuery={searchQuery}
@@ -171,7 +188,9 @@ export function DocumentsPage() {
       <UploadDialog
         open={pendingFiles.length > 0}
         files={pendingFiles}
-        onOpenChange={(open) => { if (!open) setPendingFiles([]) }}
+        onOpenChange={(open) => {
+          if (!open) setPendingFiles([])
+        }}
         onRemoveFile={handleRemovePending}
         onUpload={handleUploadConfirmed}
         uploading={uploading}

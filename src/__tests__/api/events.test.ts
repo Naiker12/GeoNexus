@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 
 // Simula el runtime Tauri para que isTauriAvailable() retorne true
 beforeAll(() => {
@@ -13,18 +13,18 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn(),
 }))
 
+import {
+  countEvents,
+  deleteArtifact,
+  getArtifactContent,
+  listArtifacts,
+  listEvents,
+  openArtifact,
+  subscribeToAllBusEvents,
+  subscribeToBusEvent,
+} from "@/api/events"
 import { invoke } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
-import {
-  listArtifacts,
-  openArtifact,
-  getArtifactContent,
-  deleteArtifact,
-  listEvents,
-  countEvents,
-  subscribeToBusEvent,
-  subscribeToAllBusEvents,
-} from "@/api/events"
 
 describe("events API", () => {
   describe("listArtifacts", () => {
@@ -83,7 +83,10 @@ describe("events API", () => {
       vi.mocked(invoke).mockResolvedValueOnce([{ id: "e1", domain: "chat" }])
       const result = await listEvents("chat", "conv-1", 20, 0)
       expect(invoke).toHaveBeenCalledWith("list_events", {
-        domain: "chat", conversationId: "conv-1", limit: 20, offset: 0,
+        domain: "chat",
+        conversationId: "conv-1",
+        limit: 20,
+        offset: 0,
       })
       expect(result).toHaveLength(1)
     })
@@ -94,7 +97,8 @@ describe("events API", () => {
       vi.mocked(invoke).mockResolvedValueOnce(5)
       const result = await countEvents("agent")
       expect(invoke).toHaveBeenCalledWith("count_events", {
-        domain: "agent", conversationId: undefined,
+        domain: "agent",
+        conversationId: undefined,
       })
       expect(result).toBe(5)
     })

@@ -1,11 +1,7 @@
+import { clearEphemeralNodes, listGraphEdges, listGraphNodes } from "@/api/data"
+import type { GraphEdge, GraphNode, GraphUpdatePayload } from "@/types/data"
 import * as React from "react"
-import { listGraphNodes, listGraphEdges, clearEphemeralNodes } from "@/api/data"
-import type { GraphNode, GraphEdge, GraphUpdatePayload } from "@/types/data"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 interface GraphEventsState {
   nodes: GraphNode[]
@@ -20,9 +16,7 @@ interface GraphEventsState {
   setEdges: React.Dispatch<React.SetStateAction<GraphEdge[]>>
 }
 
-export function useGraphEvents(
-  projectId: string = "project-default",
-): GraphEventsState {
+export function useGraphEvents(projectId = "project-default"): GraphEventsState {
   const [nodes, setNodes] = React.useState<GraphNode[]>([])
   const [edges, setEdges] = React.useState<GraphEdge[]>([])
   const [lastUpdate, setLastUpdate] = React.useState<GraphUpdatePayload | null>(null)
@@ -47,18 +41,19 @@ export function useGraphEvents(
 
   const animateNewNodes = React.useCallback((payload: GraphUpdatePayload) => {
     // Collect IDs of new nodes from the payload
-    const newIds = new Set(payload.nodes.map(n => n.id))
-    const newEdgeKeys = new Set(
-      payload.edges.map(e => `${e.source}-${e.target}`)
-    )
+    const newIds = new Set(payload.nodes.map((n) => n.id))
+    const newEdgeKeys = new Set(payload.edges.map((e) => `${e.source}-${e.target}`))
 
     setAnimatingNodeIds(newIds)
     setPulsingEdgeKeys(newEdgeKeys)
 
     // Clear animation flags after animation completes
-    setTimeout(() => {
-      setAnimatingNodeIds(new Set())
-    }, 150 * Math.min(payload.nodes.length + 1, 10) + 500)
+    setTimeout(
+      () => {
+        setAnimatingNodeIds(new Set())
+      },
+      150 * Math.min(payload.nodes.length + 1, 10) + 500
+    )
 
     setTimeout(() => {
       setPulsingEdgeKeys(new Set())

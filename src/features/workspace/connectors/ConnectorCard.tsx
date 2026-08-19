@@ -47,9 +47,7 @@ export function ConnectorCard({ provider, onSelect }: ConnectorCardProps) {
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="truncate text-xs text-muted-foreground">
-          {provider.auth}
-        </span>
+        <span className="truncate text-xs text-muted-foreground">{provider.auth}</span>
         <Button variant="outline" size="sm" onClick={() => onSelect(provider)}>
           <ExternalLinkIcon className="size-4" />
           Ver flujo

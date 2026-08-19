@@ -1,12 +1,12 @@
 import type {
   AssetValidation,
   DataAsset,
-  DataStoreMetrics,
-  SyncEvent,
-  DocumentChunk,
   DataLineage,
+  DataStoreMetrics,
+  DocumentChunk,
+  SyncEvent,
 } from "@/types/data"
-import type { GraphNode, GraphEdge, GraphNodeKind, SearchGraphNodesResult } from "@/types/graph"
+import type { GraphEdge, GraphNode, GraphNodeKind, SearchGraphNodesResult } from "@/types/graph"
 const defaultMetrics: DataStoreMetrics = {
   project_id: "project-default",
   total_assets: 0,
@@ -21,19 +21,17 @@ const defaultMetrics: DataStoreMetrics = {
 
 export const DEFAULT_PROJECT_ID = "project-default"
 
-/** Detecta si estamos dentro del runtime Tauri o en navegador (v2) */
-export function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
+export { isTauriAvailable }
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
-async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+async function getInvoke(): Promise<typeof import("@tauri-apps/api/core").invoke | null> {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
+    const { invoke: tauriInvoke } = await import("@tauri-apps/api/core")
     return tauriInvoke
   } catch (e) {
-    console.error('[getInvoke] Could not import invoke:', e)
+    console.error("[getInvoke] Could not import invoke:", e)
     return null
   }
 }
@@ -56,10 +54,7 @@ async function invokeOrFallback<T>(
   }
 }
 
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
+async function invokeRequired<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const invoke = await getInvoke()
   if (!invoke) {
     throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
@@ -71,9 +66,7 @@ async function invokeRequired<T>(
   }
 }
 
-export function listDataAssets(
-  projectId = DEFAULT_PROJECT_ID
-): Promise<DataAsset[]> {
+export function listDataAssets(projectId = DEFAULT_PROJECT_ID): Promise<DataAsset[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invokeOrFallback("list_data_assets", { projectId: projectId }, [])
 }
@@ -83,15 +76,9 @@ export function getDataAsset(assetId: string): Promise<DataAsset | null> {
   return invokeOrFallback("get_data_asset", { assetId: assetId }, null)
 }
 
-export function getDataStoreMetrics(
-  projectId = DEFAULT_PROJECT_ID
-): Promise<DataStoreMetrics> {
+export function getDataStoreMetrics(projectId = DEFAULT_PROJECT_ID): Promise<DataStoreMetrics> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback(
-    "get_data_store_metrics",
-    { projectId: projectId },
-    defaultMetrics
-  )
+  return invokeOrFallback("get_data_store_metrics", { projectId: projectId }, defaultMetrics)
 }
 
 export function getSyncEvents(
@@ -137,7 +124,11 @@ export function listDocumentChunks(documentId: string): Promise<DocumentChunk[]>
 }
 
 export async function listGraphNodes(projectId = DEFAULT_PROJECT_ID): Promise<GraphNode[]> {
-  const nodes = await invokeOrFallback<GraphNode[] | null>("list_graph_nodes", { projectId: projectId }, null)
+  const nodes = await invokeOrFallback<GraphNode[] | null>(
+    "list_graph_nodes",
+    { projectId: projectId },
+    null
+  )
   if (nodes) {
     return nodes.map((n, idx) => ({
       id: n.id ?? `fallback-node-${idx}-${Date.now()}`,
@@ -172,25 +163,35 @@ export async function searchGraphNodes(
   query: string,
   kind?: string,
   limit?: number,
-  offset?: number,
+  offset?: number
 ): Promise<SearchGraphNodesResult> {
-  return invokeRequired<SearchGraphNodesResult>("search_graph_nodes", { projectId, query, kind, limit, offset })
+  return invokeRequired<SearchGraphNodesResult>("search_graph_nodes", {
+    projectId,
+    query,
+    kind,
+    limit,
+    offset,
+  })
 }
 
 export async function listGraphEdges(projectId = DEFAULT_PROJECT_ID): Promise<GraphEdge[]> {
-    const edges = await invokeOrFallback<GraphEdge[] | null>("list_graph_edges", { projectId: projectId }, null)
-    if (edges) {
-        return edges.map((e, idx) => ({
-            id: e.id ?? `edge-${idx}-${Date.now()}`,
-            project_id: e.project_id ?? projectId,
-            source: e.source ?? "unknown",
-            target: e.target ?? "unknown",
-            relation: e.relation ?? "related",
-            strength: e.strength ?? 100,
-            created_at: e.created_at ?? Date.now(),
-        }))
-    }
-    return []
+  const edges = await invokeOrFallback<GraphEdge[] | null>(
+    "list_graph_edges",
+    { projectId: projectId },
+    null
+  )
+  if (edges) {
+    return edges.map((e, idx) => ({
+      id: e.id ?? `edge-${idx}-${Date.now()}`,
+      project_id: e.project_id ?? projectId,
+      source: e.source ?? "unknown",
+      target: e.target ?? "unknown",
+      relation: e.relation ?? "related",
+      strength: e.strength ?? 100,
+      created_at: e.created_at ?? Date.now(),
+    }))
+  }
+  return []
 }
 
 export async function rebuildKnowledgeGraph(projectId = DEFAULT_PROJECT_ID): Promise<void> {
@@ -208,9 +209,13 @@ export async function clearEphemeralNodes(projectId = DEFAULT_PROJECT_ID): Promi
 export async function getRecentGraphEvents(
   projectId = DEFAULT_PROJECT_ID,
   sourceEvent?: string,
-  limit?: number,
+  limit?: number
 ): Promise<GraphNode[]> {
-  return await invokeOrFallback("get_recent_graph_events", { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null }, [])
+  return await invokeOrFallback(
+    "get_recent_graph_events",
+    { projectId, sourceEvent: sourceEvent ?? null, limit: limit ?? null },
+    []
+  )
 }
 
 export function getDataLineage(assetId: string): Promise<DataLineage> {
@@ -222,4 +227,3 @@ export function reindexAsset(assetId: string): Promise<number> {
   if (!assetId.trim()) throw new Error("asset_id requerido")
   return invokeRequired<number>("reindex_asset", { assetId })
 }
-

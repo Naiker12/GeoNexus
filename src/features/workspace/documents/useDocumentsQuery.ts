@@ -1,8 +1,8 @@
-import * as React from "react"
-import { listDataAssets, indexDocument } from "@/api/data"
 import { registerLocalConnector, syncLocalConnector } from "@/api/connector"
-import { invoke } from "@tauri-apps/api/core"
+import { indexDocument, listDataAssets } from "@/api/data"
 import type { DataAsset } from "@/types/data"
+import { invoke } from "@tauri-apps/api/core"
+import * as React from "react"
 
 const DEFAULT_PROJECT_ID = "project-default"
 const WORKSPACE_ID = "workspace-main"
@@ -33,15 +33,12 @@ export function useDocumentsQuery() {
     fetchAssets()
   }, [fetchAssets])
 
-  const totalChunks = React.useMemo(
-    () => assets.reduce((sum, a) => sum + a.chunks, 0),
-    [assets]
-  )
+  const totalChunks = React.useMemo(() => assets.reduce((sum, a) => sum + a.chunks, 0), [assets])
 
   async function uploadDocument(file: File) {
     try {
       const bytes = await file.arrayBuffer()
-      const assetId = await invoke<string>("upload_asset_file", {
+      const _assetId = await invoke<string>("upload_asset_file", {
         projectId: DEFAULT_PROJECT_ID,
         workspaceId: WORKSPACE_ID,
         connectorId: "local-upload",

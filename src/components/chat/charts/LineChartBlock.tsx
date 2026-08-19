@@ -1,15 +1,15 @@
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
 } from "recharts"
 import type { DataSeries } from "./chart-utils"
-import { chartColors, ChartTooltip } from "./shared"
+import { ChartTooltip, chartColors } from "./shared"
 
 export function LineChartBlock({
   title,
@@ -21,7 +21,8 @@ export function LineChartBlock({
   labels: string[]
 }) {
   const maxLen = Math.max(...series.map((s) => s.values.length), 0)
-  const xLabels = labels.length > 0 ? labels : Array.from({ length: maxLen }, (_, i) => String(i + 1))
+  const xLabels =
+    labels.length > 0 ? labels : Array.from({ length: maxLen }, (_, i) => String(i + 1))
 
   const data = xLabels.map((label, i) => {
     const point: Record<string, string | number> = { name: label }
@@ -31,7 +32,7 @@ export function LineChartBlock({
     return point
   })
 
-  const allValues = series.flatMap((s) => s.values).filter((v) => !isNaN(v))
+  const allValues = series.flatMap((s) => s.values).filter((v) => !Number.isNaN(v))
   const maxVal = Math.max(...allValues, 1)
   const niceMax = Math.ceil(maxVal / 10) * 10 || 100
 
@@ -46,7 +47,11 @@ export function LineChartBlock({
         <LineChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
-          <YAxis domain={[0, niceMax]} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+          <YAxis
+            domain={[0, niceMax]}
+            tick={{ fontSize: 11 }}
+            stroke="var(--color-muted-foreground)"
+          />
           <Tooltip content={<ChartTooltip />} />
           {series.length > 1 && <Legend wrapperStyle={{ fontSize: "11px" }} />}
           {series.map((s, i) => (

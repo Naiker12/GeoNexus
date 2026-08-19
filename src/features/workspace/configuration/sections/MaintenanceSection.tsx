@@ -1,9 +1,12 @@
-import * as React from "react"
 import { Loader2Icon, Trash2Icon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
-import { maintenanceTasks, type MaintenanceTask } from "@/features/workspace/configuration/settings-data"
 import { ConfirmSettingsDialog } from "@/features/workspace/configuration/ConfirmSettingsDialog"
+import {
+  type MaintenanceTask,
+  maintenanceTasks,
+} from "@/features/workspace/configuration/settings-data"
 import { cn } from "@/lib/utils"
 
 type TaskResult = {
@@ -18,34 +21,38 @@ export function MaintenanceSection() {
 
   const runTask = async (task: MaintenanceTask) => {
     if (!task.tauriCommand) {
-      setTaskResults(prev => ({
+      setTaskResults((prev) => ({
         ...prev,
-        [task.id]: { status: "error", message: "Sin comando Tauri configurado", timestamp: Date.now() },
+        [task.id]: {
+          status: "error",
+          message: "Sin comando Tauri configurado",
+          timestamp: Date.now(),
+        },
       }))
       return
     }
 
-    setTaskResults(prev => ({ ...prev, [task.id]: { status: "running" } }))
+    setTaskResults((prev) => ({ ...prev, [task.id]: { status: "running" } }))
 
     try {
       const { invoke } = await import("@tauri-apps/api/core")
       const result = await invoke<{ message?: string }>(task.tauriCommand)
-      setTaskResults(prev => ({
+      setTaskResults((prev) => ({
         ...prev,
         [task.id]: {
           status: "success",
           message: result.message ?? "Completado correctamente",
           timestamp: Date.now(),
-        }
+        },
       }))
     } catch (err) {
-      setTaskResults(prev => ({
+      setTaskResults((prev) => ({
         ...prev,
         [task.id]: {
           status: "error",
           message: String(err),
           timestamp: Date.now(),
-        }
+        },
       }))
     }
   }
@@ -80,23 +87,33 @@ export function MaintenanceSection() {
           const result = taskResults[task.id]
 
           return (
-            <article
-              key={task.id}
-              className="rounded-lg border border-border bg-card/70 p-3"
-            >
+            <article key={task.id} className="rounded-lg border border-border bg-card/70 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  <task.icon className={cn("size-4 shrink-0", task.destructive ? "text-red-400" : "text-primary")} />
+                  <task.icon
+                    className={cn(
+                      "size-4 shrink-0",
+                      task.destructive ? "text-red-400" : "text-primary"
+                    )}
+                  />
                   <div className="min-w-0">
-                    <span className={cn("text-sm font-medium", task.destructive ? "text-red-300" : "")}>{task.title}</span>
+                    <span
+                      className={cn("text-sm font-medium", task.destructive ? "text-red-300" : "")}
+                    >
+                      {task.title}
+                    </span>
                     <p className="text-xs text-muted-foreground/70 mt-0.5">{task.description}</p>
                     {result && result.status !== "idle" && (
-                      <p className={cn(
-                        "text-xs mt-0.5",
-                        result.status === "success" ? "text-emerald-500" :
-                        result.status === "error" ? "text-red-400" :
-                        "text-muted-foreground"
-                      )}>
+                      <p
+                        className={cn(
+                          "text-xs mt-0.5",
+                          result.status === "success"
+                            ? "text-emerald-500"
+                            : result.status === "error"
+                              ? "text-red-400"
+                              : "text-muted-foreground"
+                        )}
+                      >
                         {result.status === "running" && "Ejecutando..."}
                         {result.status === "success" && `✓ ${result.message}`}
                         {result.status === "error" && `✗ ${result.message}`}
@@ -139,7 +156,10 @@ export function MaintenanceSection() {
           isDelete
           description={`Esta acción no se puede deshacer. ${confirmTask.description}`}
           onOpenChange={() => setConfirmTask(null)}
-          onConfirm={() => { runTask(confirmTask); setConfirmTask(null) }}
+          onConfirm={() => {
+            runTask(confirmTask)
+            setConfirmTask(null)
+          }}
         />
       )}
     </div>

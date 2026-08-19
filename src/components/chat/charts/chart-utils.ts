@@ -25,14 +25,13 @@ const PIE_CHARS = ["●", "○"]
 const ALL_CHART_CHARS = [...BAR_CHARS, ...LINE_CHARS, ...PIE_CHARS]
 const SEP_PATTERN = /^[=\-—─═]{3,}/
 
-function hasBarChar(line: string): boolean {
-  return BAR_CHARS.some((c) => line.includes(c))
-}
 
 function detectChartType(lines: string[]): ChartType {
   const barCount = lines.filter((l) => /[█■▓░]{2,}/.test(l) || /\|[\s]*[█■▓░]/.test(l)).length
   const lineCount = lines.filter((l) => LINE_CHARS.some((c) => l.includes(c))).length
-  const pieCount = lines.filter((l) => PIE_CHARS.some((c) => l.includes(c)) && /\d+%/.test(l)).length
+  const pieCount = lines.filter(
+    (l) => PIE_CHARS.some((c) => l.includes(c)) && /\d+%/.test(l)
+  ).length
   const pctCount = lines.filter((l) => /\d+%/.test(l)).length
 
   if (lineCount > 1) return "line"
@@ -50,7 +49,10 @@ export function looksLikeAsciiChart(code: string): boolean {
 
   for (const line of lines) {
     const trimmed = line.trim()
-    if (SEP_PATTERN.test(trimmed)) { dataLines++; continue }
+    if (SEP_PATTERN.test(trimmed)) {
+      dataLines++
+      continue
+    }
     const hasChart = ALL_CHART_CHARS.some((c) => trimmed.includes(c))
     const hasPercentage = /\d+%/.test(trimmed)
     const hasPipeValue = /\|\s*[█■▓░]/.test(trimmed)
@@ -88,7 +90,7 @@ function extractNumArray(code: string, varName: string): number[] {
   const re = new RegExp(`${varName}\\s*=\\s*\\[([^\\]]+)\\]`)
   const m = code.match(re)
   if (!m) return []
-  return [...m[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => parseFloat(x[1]))
+  return [...m[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => Number.parseFloat(x[1]))
 }
 
 function extractInlineStrings(code: string): string[] {
@@ -100,7 +102,7 @@ function extractInlineStrings(code: string): string[] {
 function extractInlineNums(code: string): number[] {
   const m = code.match(/plt\.\w+\s*\(\s*\[([^\]]+)\]/)
   if (m) {
-    return [...m[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => parseFloat(x[1]))
+    return [...m[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => Number.parseFloat(x[1]))
   }
   return []
 }
@@ -145,7 +147,7 @@ function parseMatplotlibData(code: string): MatplotlibData {
   if (values.length === 0) {
     const arrMatch = code.match(/plt\.(?:pie|bar|barh)\s*\(\s*\[([^\]]+)\]/)
     if (arrMatch) {
-      values = [...arrMatch[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => parseFloat(x[1]))
+      values = [...arrMatch[1].matchAll(/(\d+(?:\.\d+)?)/g)].map((x) => Number.parseFloat(x[1]))
     }
   }
 
@@ -186,9 +188,13 @@ export function parseAsciiChart(code: string): ParsedChart {
   for (const line of lines) {
     const trimmed = line.trim()
     if (SEP_PATTERN.test(trimmed)) continue
-    if (title === "" && !/[█■▓░▁▂▃▄▅▆▇]/.test(trimmed) && !/\|/.test(trimmed) && !SEP_PATTERN.test(trimmed)) {
+    if (
+      title === "" &&
+      !/[█■▓░▁▂▃▄▅▆▇]/.test(trimmed) &&
+      !/\|/.test(trimmed) &&
+      !SEP_PATTERN.test(trimmed)
+    ) {
       title = trimmed
-      continue
     }
   }
 
@@ -214,9 +220,9 @@ function parseBarChart(lines: string[], entries: ChartEntry[]) {
 
     const barMatch = trimmed.match(/^\s*(.+?)\s*[|:│]\s*[█■▓░]+\s*(\d+)/)
     if (barMatch) {
-      let label = barMatch[1].trim().replace(/\.$/, "")
-      const value = parseInt(barMatch[2], 10)
-      if (label && !isNaN(value)) {
+      const label = barMatch[1].trim().replace(/\.$/, "")
+      const value = Number.parseInt(barMatch[2], 10)
+      if (label && !Number.isNaN(value)) {
         entries.push({ label, value })
         continue
       }
@@ -224,7 +230,7 @@ function parseBarChart(lines: string[], entries: ChartEntry[]) {
 
     const percentMatch = trimmed.match(/(\d+)%/)
     if (percentMatch) {
-      const value = parseInt(percentMatch[1], 10)
+      const value = Number.parseInt(percentMatch[1], 10)
       const labelPart = trimmed
         .replace(/[█■▓░]{2,}.*$/, "")
         .replace(/\s*\d+\s*%/, "")
@@ -238,7 +244,7 @@ function parseBarChart(lines: string[], entries: ChartEntry[]) {
   }
 }
 
-function parseLineChart(lines: string[], series: DataSeries[], labels: string[]) {
+function parseLineChart(lines: string[], series: DataSeries[], _labels: string[]) {
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim()
     const match = trimmed.match(/^(.+?)\s*[|:]\s*([▁▂▃▄▅▆▇█▉▊▋▌▍▎▏\s]+)/)
@@ -248,7 +254,7 @@ function parseLineChart(lines: string[], series: DataSeries[], labels: string[])
       const values: number[] = []
       for (const ch of sparkRaw) {
         const idx = "▁▂▃▄▅▆▇█".indexOf(ch)
-        if (idx >= 0) values.push(Math.round((idx + 1) / 8 * 100))
+        if (idx >= 0) values.push(Math.round(((idx + 1) / 8) * 100))
       }
       if (values.length > 0) {
         series.push({ label, values })
@@ -269,11 +275,11 @@ function parsePieChart(lines: string[], entries: ChartEntry[]) {
     const bulletMatch = trimmed.match(/[■●○•◆▶▸]\s*(.+?)\s*[:\-]\s*(\d+)%/)
     if (bulletMatch) {
       label = bulletMatch[1].trim()
-      value = parseInt(bulletMatch[2], 10)
+      value = Number.parseInt(bulletMatch[2], 10)
     } else {
       const pctMatch = trimmed.match(/(\d+)%/)
       if (!pctMatch) continue
-      value = parseInt(pctMatch[1], 10)
+      value = Number.parseInt(pctMatch[1], 10)
       label = trimmed
         .replace(/^[-–—*•\s]+/, "")
         .replace(/\s*\d+\s*%/, "")
@@ -281,7 +287,7 @@ function parsePieChart(lines: string[], entries: ChartEntry[]) {
         .trim()
     }
 
-    if (label && value !== undefined && !isNaN(value)) {
+    if (label && value !== undefined && !Number.isNaN(value)) {
       entries.push({ label, value })
     }
   }

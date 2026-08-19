@@ -1,34 +1,16 @@
-import * as React from "react"
-import {
-  MessageSquarePlusIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  FileDownIcon,
-  DownloadIcon,
-  XIcon,
-  Loader2Icon,
-  CheckIcon,
-} from "lucide-react"
-import { exportConversationTrajectory, exportConversationsSharegpt } from "@/api/chat"
-
-import { GeoAgentsLogo } from "@/components/brand/GeoAgentsLogo"
-import { Button } from "@/components/ui/Button"
-import { AgentLifeIndicator } from "@/components/chat/AgentLifeIndicator"
-import { ConversationSidebarList } from "@/components/chat/ConversationSidebarList"
-import { ChatComposer } from "@/components/chat/ChatComposer"
-import { ChatTranscript } from "@/components/chat/ChatTranscript"
-import { DragDropOverlay } from "@/components/chat/DragDropOverlay"
-import { ProjectContextPanel } from "@/components/chat/ProjectContextPanel"
-
+import { Thread } from "@/components/assistant-ui/thread"
 import { useChatSession } from "@/components/chat/useChatSession"
-import { useConnectors } from "@/contexts/ConnectorsContext"
-import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
-import type { AiConnector } from "@/types/workspace-types"
-import type { SkillInfo } from "@/types/chat"
 import { useToast } from "@/components/ui/toast"
+import { useConnectors } from "@/contexts/ConnectorsContext"
 import { AgentTaskPanel } from "@/features/agent/components/AgentTaskPanel"
-import { handleSlashCommand, handleAsyncSlashCommand } from "@/features/workspace/commands/slash-commands"
-const PROJECT_ID = "project-default"
+import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
+import {
+  handleAsyncSlashCommand,
+  handleSlashCommand,
+} from "@/features/workspace/commands/slash-commands"
+import type { FileAttachment } from "@/types/chat"
+import type { AiConnector } from "@/types/workspace-types"
+import * as React from "react"
 
 type ChatPanelProps = {
   models?: AiConnector[]
@@ -36,23 +18,15 @@ type ChatPanelProps = {
 
 export function ChatPanel(_props: ChatPanelProps) {
   const { toast } = useToast()
-  const { connectors, activeConnectorId, setActiveConnectorId } =
-    useConnectors()
+  const { connectors, activeConnectorId } = useConnectors()
   const agentStoreMode = useAgentTaskStore((s) => s.mode)
   const {
-    activeProvider,
     conversationId,
     error,
     messages,
     pending,
-    loadingPhase,
-    loadingHistory,
-    contextToggles,
-    setContextToggles,
     webSearchEnabled,
     setWebSearchEnabled,
-    submitTime,
-    sessionSummary,
     submit,
     regenerate,
     loadConversation,
@@ -61,195 +35,56 @@ export function ChatPanel(_props: ChatPanelProps) {
     addSystemMessage,
   } = useChatSession(activeConnectorId, connectors)
 
-  const handleNewConversation = React.useCallback(() => {
-    newConversation()
-  }, [newConversation])
+  const [reasoningEffort, setReasoningEffort] = React.useState<
+    "none" | "minimal" | "medium" | "high" | "max"
+  >("none")
 
-  const [agentPanelOpen, setAgentPanelOpen] = React.useState(true)
-  const [sidebarOpen, setSidebarOpen] = React.useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("geonexus.sidebarOpen")
-      return stored !== null ? stored === "true" : true
-    }
-    return true
-  })
-  const [newChatCounter, setNewChatCounter] = React.useState(0)
-  const [contextPanelOpen, setContextPanelOpen] = React.useState(false)
-  const [sidebarRefreshKey, setSidebarRefreshKey] = React.useState(0)
-
-  const [reasoningEffort, setReasoningEffort] = React.useState<"none" | "minimal" | "medium" | "high" | "max">("none")
-  const [exportOpen, setExportOpen] = React.useState(false)
-  const [exporting, setExporting] = React.useState<string | null>(null)
-  const [exportDone, setExportDone] = React.useState<string | null>(null)
-
+  // Listen to external triggers from AppSidebar
   React.useEffect(() => {
-    localStorage.setItem("geonexus.sidebarOpen", String(sidebarOpen))
-  }, [sidebarOpen])
-
-  React.useEffect(() => {
-    setSidebarRefreshKey((k) => k + 1)
-  }, [conversationId])
-
-  const [activeSkills, setActiveSkills] = React.useState<SkillInfo[]>([])
-
-  React.useEffect(() => {
-    const handler = (e: Event) => {
-      const skill = (e as CustomEvent).detail as SkillInfo
-      setActiveSkills(prev => {
-        if (prev.some(s => s.id === skill.id)) return prev
-        return [...prev, skill]
-      })
+    const handleNew = () => newConversation()
+    const handleLoad = (e: Event) => {
+      const convId = (e as CustomEvent).detail?.id
+      if (convId) loadConversation(convId)
     }
-    window.addEventListener("geonexus:use-skill", handler)
-    return () => window.removeEventListener("geonexus:use-skill", handler)
-  }, [])
 
-  const sidebarWidth = sidebarOpen ? 220 : 44
-  const [composerValue, setComposerValue] = React.useState("")
-
-  const lastUserMessage = React.useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return messages[i].content
+    window.addEventListener("geonexus:new-chat", handleNew)
+    window.addEventListener("geonexus:load-chat", handleLoad)
+    return () => {
+      window.removeEventListener("geonexus:new-chat", handleNew)
+      window.removeEventListener("geonexus:load-chat", handleLoad)
     }
-    return ""
-  }, [messages])
+  }, [newConversation, loadConversation])
 
-  const handleEditLastUserMessage = React.useCallback(() => {
-    setComposerValue(lastUserMessage)
-  }, [lastUserMessage])
-
-  const handleRegenerate = React.useCallback(() => {
-    regenerate()
-  }, [regenerate])
+  // Notify AppSidebar when conversation updates
+  React.useEffect(() => {
+    if (conversationId) {
+      window.dispatchEvent(new CustomEvent("geonexus:conversation-updated"))
+    }
+  }, [conversationId, messages.length])
 
   return (
-    <section className={`relative z-10 h-[calc(100svh-3.5rem)] flex overflow-hidden ${agentStoreMode === "agent" ? "border-l-2 border-amber-500" : ""}`}>
-      {/* Sidebar */}
-      <div
-        className="shrink-0 flex flex-col border-r border-border bg-muted/30 transition-all duration-150 ease-in-out overflow-hidden"
-        style={{ width: sidebarWidth }}
-      >
-        {/* Sidebar header */}
-        <div className="flex items-center gap-1 border-b border-border px-2 h-10 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={sidebarOpen ? "Colapsar sidebar" : "Expandir sidebar"}
-            className="shrink-0"
-          >
-            {sidebarOpen ? <PanelLeftCloseIcon className="size-4" /> : <PanelLeftOpenIcon className="size-4" />}
-          </Button>
-          {sidebarOpen && (
-            <>
-              <span className="text-[13px] font-semibold text-foreground ml-0.5 truncate">
-                Conversaciones
-              </span>
-              <div className="ml-auto" />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={handleNewConversation}
-                aria-label="Nueva conversacion"
-              >
-                <MessageSquarePlusIcon className="size-4" />
-              </Button>
-            </>
-          )}
-          {!sidebarOpen && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleNewConversation}
-              aria-label="Nueva conversacion"
-              className="shrink-0 ml-0.5"
-            >
-              <MessageSquarePlusIcon className="size-4" />
-            </Button>
-          )}
-        </div>
-
-        {/* Sidebar list */}
-        <div className="flex-1 overflow-y-auto py-1.5 px-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <ConversationSidebarList
-            key={sidebarRefreshKey}
-            projectId={PROJECT_ID}
-            activeId={conversationId}
-            collapsed={!sidebarOpen}
-            onSelect={(id) => { loadConversation(id) }}
-            onDelete={() => { newConversation() }}
-          />
-        </div>
-      </div>
-
-      {/* Main chat area */}
-      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-
-        {/* Agent life indicator */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-border/30 bg-muted/20 px-3 h-7">
-          {agentStoreMode === "agent" && (
-            <button
-              type="button"
-              onClick={() => setAgentPanelOpen(v => !v)}
-              className="relative inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 hover:bg-amber-200 transition-colors cursor-pointer"
-            >
-              Tareas
-            </button>
-          )}
-          <AgentLifeIndicator
-            status={pending
-              ? (webSearchEnabled ? "searching" : "thinking")
-              : "idle"}
-            conversationCount={messages.filter(m => m.role === "user").length}
-          />
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {loadingHistory ? (
-            <div className="flex min-h-full items-center justify-center pb-16 pt-10">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="inline-block size-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-                Cargando historial...
-              </div>
-            </div>
-          ) : messages.length > 0 || pending ? (
-            <>
-            <ChatTranscript
-              messages={messages}
-              pending={pending}
-              submitTime={submitTime}
-              onSendMessage={submit}
-              webSearchEnabled={webSearchEnabled}
-              onEditLastUserMessage={handleEditLastUserMessage}
-              onRegenerateLastMessage={handleRegenerate}
-            />
-            </>
-          ) : agentStoreMode === "agent" ? (
-            <div className="flex min-h-full items-center justify-center pb-16 pt-10">
-              <div className="w-full max-w-3xl px-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Cambia a modo agente en el menú <strong>+</strong> y escribe una tarea
-                </p>
-              </div>
-            </div>
-          ) : (
-            <EmptyChatState />
-          )}
-        </div>
-
-        <ChatComposer
-          key={conversationId ?? `new-${newChatCounter}`}
-          conversationId={conversationId ?? undefined}
-          value={composerValue}
-          onValueChange={setComposerValue}
-          activeProvider={activeProvider}
-          error={error}
+    <section className="relative flex h-[calc(100svh-3.5rem)] w-full overflow-hidden bg-background">
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+        <Thread
+          messages={messages}
           pending={pending}
-          activeSkills={activeSkills}
-          sessionSummary={sessionSummary}
-          onRemoveSkill={(id) => setActiveSkills(prev => prev.filter(s => s.id !== id))}
-          onSubmit={async (content, mentions, attachments) => {
-            setComposerValue("")
+          isStreaming={pending}
+          error={error}
+          webSearchEnabled={webSearchEnabled}
+          onToggleWebSearch={() => {
+            const next = !webSearchEnabled
+            setWebSearchEnabled(next)
+            toast({
+              title: next ? "Búsqueda web activada" : "Búsqueda web desactivada",
+              description: next
+                ? "El asistente podrá buscar en internet para responder"
+                : "El asistente solo usará información local del proyecto",
+              variant: next ? "success" : "info",
+            })
+          }}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
+          onSubmit={async (content: string, mentions?: any, attachments?: FileAttachment[]) => {
             // Slash command interception
             const syncResult = handleSlashCommand(content)
             if (syncResult.handled) {
@@ -277,189 +112,16 @@ export function ChatPanel(_props: ChatPanelProps) {
                 notes: content.length > 80 ? content : undefined,
                 priority: "normal",
               })
-              setAgentPanelOpen(true)
               return
             }
-            const fromActive = activeSkills.map(s => s.name)
-            const fromMention = mentions?.skillNames ?? []
-            const allSkillNames = [...new Set([...fromActive, ...fromMention])]
-            submit(content, mentions, allSkillNames.length > 0 ? allSkillNames : undefined, attachments, reasoningEffort)
+            submit(content, mentions, undefined, attachments, reasoningEffort)
           }}
           onStop={stop}
-          onToggleContext={() => setContextPanelOpen((v) => !v)}
-          contextActive={contextToggles.rag_chunks || contextToggles.indexed_assets || contextToggles.graph_nodes}
-          webSearchEnabled={webSearchEnabled}
-          onToggleWebSearch={() => {
-            const next = !webSearchEnabled
-            setWebSearchEnabled(next)
-            toast({
-              title: next ? "Búsqueda web activada" : "Búsqueda web desactivada",
-              description: next
-                ? "El asistente podrá buscar en internet para responder"
-                : "El asistente solo usará información local del proyecto",
-              variant: next ? "success" : "info",
-            })
-          }}
-          onMentionSelect={(source) => {
-            if (source.kind === "skill") {
-              setActiveSkills(prev => {
-                if (prev.some(s => s.id === source.id)) return prev
-                return [...prev, { id: source.id, name: source.label, category: "tool", description: source.sublabel }]
-              })
-            }
-          }}
-          onNewChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
-          onClearChat={() => { setComposerValue(""); newConversation(); setNewChatCounter(c => c + 1) }}
-          onExportChat={() => setExportOpen(true)}
-          reasoningEffort={reasoningEffort}
-          onReasoningEffortChange={setReasoningEffort}
-          onReindex={() => {
-            toast({ title: "Reindexando...", description: "Reindexación del catálogo de assets iniciada", variant: "info" })
-          }}
+          onRegenerate={regenerate}
         />
       </div>
 
-      
-
-      {agentStoreMode === "agent" && agentPanelOpen && (
-        <AgentTaskPanel />
-      )}
-
-      <ProjectContextPanel
-        projectId={PROJECT_ID}
-        open={contextPanelOpen}
-        onClose={() => setContextPanelOpen(false)}
-        toggles={contextToggles}
-        onToggleChange={setContextToggles}
-      />
-      
-      <DragDropOverlay />
-
-      {/* Export Dialog */}
-      {exportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-[min(94vw,28rem)] rounded-xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">Exportar conversación</h2>
-              <button onClick={() => { setExportOpen(false); setExportDone(null) }} className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/80">
-                <XIcon className="size-4" />
-              </button>
-            </div>
-            <div className="space-y-2 p-4">
-              <ExportOption
-                label="Markdown"
-                desc="Formato legible para documentos"
-                icon={<FileDownIcon className="size-4" />}
-                exporting={exporting === "md"}
-                done={exportDone === "md"}
-                onClick={async () => {
-                  setExporting("md")
-                  const text = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
-                  const blob = new Blob([text], { type: "text/markdown" })
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement("a")
-                  a.href = url
-                  a.download = `geoagents-chat-${conversationId ?? "new"}.md`
-                  a.click()
-                  URL.revokeObjectURL(url)
-                  setExporting(null)
-                  setExportDone("md")
-                  setTimeout(() => setExportOpen(false), 800)
-                }}
-              />
-              <ExportOption
-                label="Trayectoria JSON"
-                desc="Estructura completa con tools y reasoning"
-                icon={<DownloadIcon className="size-4" />}
-                exporting={exporting === "trajectory"}
-                done={exportDone === "trajectory"}
-                onClick={async () => {
-                  if (!conversationId) return
-                  setExporting("trajectory")
-                  try {
-                    const data = await exportConversationTrajectory(conversationId)
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement("a")
-                    a.href = url; a.download = `trajectory-${conversationId}.json`
-                    a.click(); URL.revokeObjectURL(url)
-                    setExportDone("trajectory")
-                  } catch (e) {
-                    toast({ title: `Error exportando trayectoria: ${e}`, variant: "error" })
-                  } finally {
-                    setExporting(null)
-                  }
-                }}
-              />
-              <ExportOption
-                label="ShareGPT JSON"
-                desc="Formato estándar para fine-tuning/RL"
-                icon={<DownloadIcon className="size-4" />}
-                exporting={exporting === "sharegpt"}
-                done={exportDone === "sharegpt"}
-                onClick={async () => {
-                  setExporting("sharegpt")
-                  try {
-                    const data = await exportConversationsSharegpt("project-default")
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement("a")
-                    a.href = url; a.download = `sharegpt-export.json`
-                    a.click(); URL.revokeObjectURL(url)
-                    setExportDone("sharegpt")
-                  } catch (e) {
-                    toast({ title: `Error exportando ShareGPT: ${e}`, variant: "error" })
-                  } finally {
-                    setExporting(null)
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
+      {agentStoreMode === "agent" && <AgentTaskPanel />}
     </section>
   )
 }
-
-function ExportOption({ label, desc, icon, exporting, done, onClick }: {
-  label: string; desc: string; icon: React.ReactNode
-  exporting: boolean; done: boolean | null; onClick: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={exporting}
-      className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
-    >
-      <span className="shrink-0 rounded-lg bg-muted p-2 text-muted-foreground">
-        {exporting ? <Loader2Icon className="size-4 animate-spin" /> : done ? <CheckIcon className="size-4 text-emerald-500" /> : icon}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{desc}</div>
-      </div>
-    </button>
-  )
-}
-
-function EmptyChatState() {
-  return (
-    <div className="flex min-h-full items-center justify-center pb-16 pt-10">
-      <div className="w-full max-w-3xl text-center">
-        <div className="mx-auto mb-6 flex justify-center">
-          <GeoAgentsLogo variant="full" className="w-auto h-14 sm:h-20 animate-in fade-in zoom-in-95 duration-700" />
-        </div>
-        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Consulta normas POT, analiza capas GIS, sube archivos o graba una
-          nota de campo. El resultado aparece aqui cuando empieces a escribir.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-
-
-

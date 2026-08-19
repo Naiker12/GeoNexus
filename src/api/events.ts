@@ -1,28 +1,37 @@
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 async function getInvoke() {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import("@tauri-apps/api/core")
     return invoke
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 async function getListen() {
   if (!isTauriAvailable()) return null
   try {
-    const { listen } = await import('@tauri-apps/api/event')
+    const { listen } = await import("@tauri-apps/api/event")
     return listen
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-async function invokeOrFallback<T>(command: string, args: Record<string, unknown>, fallback: T): Promise<T> {
+async function invokeOrFallback<T>(
+  command: string,
+  args: Record<string, unknown>,
+  fallback: T
+): Promise<T> {
   const invoke = await getInvoke()
   if (!invoke) return fallback
-  try { return await invoke<T>(command, args) }
-  catch { return fallback }
+  try {
+    return await invoke<T>(command, args)
+  } catch {
+    return fallback
+  }
 }
 
 export interface BusEvent {
@@ -55,7 +64,7 @@ export interface Artifact {
 export function subscribeToBusEvent(
   domain: string,
   action: string,
-  callback: (event: BusEvent) => void,
+  callback: (event: BusEvent) => void
 ): Promise<() => void> {
   return subscribeToTauriEvent(`bus:${domain}:${action}`, callback)
 }
@@ -64,7 +73,10 @@ export function subscribeToAllBusEvents(callback: (event: BusEvent) => void): Pr
   return subscribeToTauriEvent("bus:event", callback)
 }
 
-async function subscribeToTauriEvent(eventName: string, callback: (data: any) => void): Promise<() => void> {
+async function subscribeToTauriEvent(
+  eventName: string,
+  callback: (data: any) => void
+): Promise<() => void> {
   const listen = await getListen()
   if (!listen) {
     console.debug(`[subscribeToTauriEvent] Tauri no disponible para ${eventName}`)
@@ -96,7 +108,12 @@ export function deleteArtifact(id: string): Promise<boolean> {
 
 // --- Event API ---
 
-export function listEvents(domain?: string, conversationId?: string, limit = 50, offset = 0): Promise<BusEvent[]> {
+export function listEvents(
+  domain?: string,
+  conversationId?: string,
+  limit = 50,
+  offset = 0
+): Promise<BusEvent[]> {
   return invokeOrFallback("list_events", { domain, conversationId, limit, offset }, [])
 }
 
@@ -116,17 +133,12 @@ export interface GeoEvent {
 
 export function subscribeEvents(
   sessionId: string,
-  callback: (event: GeoEvent) => void,
+  callback: (event: GeoEvent) => void
 ): Promise<() => void> {
   invokeOrFallback("subscribe_events", { sessionId }, null)
   return subscribeToTauriEvent("geo:event", callback)
 }
 
-export function listGeoEvents(
-  sessionId: string,
-  limit = 100,
-  offset = 0,
-): Promise<GeoEvent[]> {
+export function listGeoEvents(sessionId: string, limit = 100, offset = 0): Promise<GeoEvent[]> {
   return invokeOrFallback("list_geo_events", { sessionId, limit, offset }, [])
 }
-

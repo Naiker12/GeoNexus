@@ -1,17 +1,17 @@
+import type { NavItem, ThemePreset } from "@/types/workspace-types"
 import {
   BotIcon,
-  ListTodoIcon,
   BrainIcon,
-  FolderKanbanIcon,
-  FileIcon,
-  ServerIcon,
-  MapIcon,
-  CableIcon,
   BriefcaseIcon,
-  Timer,
+  CableIcon,
   CpuIcon,
+  FileIcon,
+  FolderKanbanIcon,
+  ListTodoIcon,
+  MapIcon,
+  ServerIcon,
+  Timer,
 } from "lucide-react"
-import type { NavItem, ThemePreset } from "@/types/workspace-types"
 
 export const navigationItems: NavItem[] = [
   { title: "Chat", url: "#chat", icon: BotIcon, isActive: true },
@@ -30,7 +30,6 @@ export const navigationItems: NavItem[] = [
       { title: "Automations", url: "#automations", icon: Timer },
     ],
   },
-
 ]
 
 export const themePresets: ThemePreset[] = [

@@ -1,15 +1,41 @@
-import { describe, expect, it, beforeEach } from "vitest"
 import { useKeybindingsStore } from "@/stores/keybindingsStore"
+import { beforeEach, describe, expect, it } from "vitest"
 
 describe("keybindingsStore", () => {
   beforeEach(() => {
     localStorage.clear()
-    useKeybindingsStore.setState({ bindings: [
-      { action: "command_palette", label: "Paleta de comandos", defaultKeys: "CmdOrCtrl+K", currentKeys: "CmdOrCtrl+K", category: "General" },
-      { action: "new_conversation", label: "Nueva conversación", defaultKeys: "CmdOrCtrl+N", currentKeys: "CmdOrCtrl+N", category: "Chat" },
-      { action: "toggle_sidebar", label: "Alternar barra lateral", defaultKeys: "CmdOrCtrl+B", currentKeys: "CmdOrCtrl+B", category: "General" },
-      { action: "send_message", label: "Enviar mensaje", defaultKeys: "Enter", currentKeys: "Enter", category: "Chat" },
-    ]})
+    useKeybindingsStore.setState({
+      bindings: [
+        {
+          action: "command_palette",
+          label: "Paleta de comandos",
+          defaultKeys: "CmdOrCtrl+K",
+          currentKeys: "CmdOrCtrl+K",
+          category: "General",
+        },
+        {
+          action: "new_conversation",
+          label: "Nueva conversación",
+          defaultKeys: "CmdOrCtrl+N",
+          currentKeys: "CmdOrCtrl+N",
+          category: "Chat",
+        },
+        {
+          action: "toggle_sidebar",
+          label: "Alternar barra lateral",
+          defaultKeys: "CmdOrCtrl+B",
+          currentKeys: "CmdOrCtrl+B",
+          category: "General",
+        },
+        {
+          action: "send_message",
+          label: "Enviar mensaje",
+          defaultKeys: "Enter",
+          currentKeys: "Enter",
+          category: "Chat",
+        },
+      ],
+    })
   })
 
   it("returns default keys for an action", () => {

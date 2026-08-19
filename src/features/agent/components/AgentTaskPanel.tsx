@@ -1,21 +1,21 @@
-import { useState } from "react";
-import { Plus, Zap } from "lucide-react";
-import { useAgentTaskStore } from "../store/useAgentTaskStore";
-import { useAgentTaskEvents } from "../hooks/useAgentTaskEvents";
-import { AgentTaskCard } from "./AgentTaskCard";
-import { AgentCreateTask } from "./AgentCreateTask";
+import { Plus, Zap } from "lucide-react"
+import { useState } from "react"
+import { useAgentTaskEvents } from "../hooks/useAgentTaskEvents"
+import { useAgentTaskStore } from "../store/useAgentTaskStore"
+import { AgentCreateTask } from "./AgentCreateTask"
+import { AgentTaskCard } from "./AgentTaskCard"
 
 export function AgentTaskPanel() {
-  useAgentTaskEvents();
+  useAgentTaskEvents()
 
-  const tasks = useAgentTaskStore((s) => s.tasks);
-  const isLoading = useAgentTaskStore((s) => s.isLoading);
-  const [showCreate, setShowCreate] = useState(false);
+  const tasks = useAgentTaskStore((s) => s.tasks)
+  const isLoading = useAgentTaskStore((s) => s.isLoading)
+  const [showCreate, setShowCreate] = useState(false)
 
   const sorted = [...tasks].sort((a, b) => {
-    const order = { running: 0, todo: 1, blocked: 2, review: 3, done: 4 };
-    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
-  });
+    const order = { running: 0, todo: 1, blocked: 2, review: 3, done: 4 }
+    return (order[a.status] ?? 9) - (order[b.status] ?? 9)
+  })
 
   return (
     <div className="w-full min-w-[380px] max-w-[480px] border-l border-[var(--color-border)] bg-[var(--color-surface)] flex flex-col animate-in slide-in-from-right">
@@ -38,17 +38,13 @@ export function AgentTaskPanel() {
 
       <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading && (
-          <div className="p-4 text-xs text-muted-foreground text-center">
-            Cargando tareas...
-          </div>
+          <div className="p-4 text-xs text-muted-foreground text-center">Cargando tareas...</div>
         )}
 
         {!isLoading && tasks.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
             <Zap size={32} className="text-muted-foreground opacity-30" />
-            <p className="text-sm text-muted-foreground">
-              No hay tareas activas
-            </p>
+            <p className="text-sm text-muted-foreground">No hay tareas activas</p>
             <p className="text-xs text-muted-foreground opacity-60">
               Crea una tarea para que el agente la ejecute de forma autónoma
             </p>
@@ -67,9 +63,7 @@ export function AgentTaskPanel() {
         ))}
       </div>
 
-      {showCreate && (
-        <AgentCreateTask onClose={() => setShowCreate(false)} />
-      )}
+      {showCreate && <AgentCreateTask onClose={() => setShowCreate(false)} />}
     </div>
-  );
+  )
 }

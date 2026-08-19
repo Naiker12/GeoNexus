@@ -1,7 +1,17 @@
 export type GraphNodeKind =
-  | "entity" | "concept" | "file" | "agent"
-  | "norma" | "documento" | "capa" | "zona"
-  | "chat_turn" | "web_search" | "upload" | "connector" | "rag_recall"
+  | "entity"
+  | "concept"
+  | "file"
+  | "agent"
+  | "norma"
+  | "documento"
+  | "capa"
+  | "zona"
+  | "chat_turn"
+  | "web_search"
+  | "upload"
+  | "connector"
+  | "rag_recall"
 
 export interface GraphNode {
   id: string

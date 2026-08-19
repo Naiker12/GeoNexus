@@ -1,10 +1,15 @@
-import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/Button"
 import {
-  createAutomation, listAutomations, toggleAutomation, deleteAutomation,
-  translateNlToCron, startSchedulerWorker, stopSchedulerWorker,
   type Automation,
+  createAutomation,
+  deleteAutomation,
+  listAutomations,
+  startSchedulerWorker,
+  stopSchedulerWorker,
+  toggleAutomation,
+  translateNlToCron,
 } from "@/api/chat"
+import { Button } from "@/components/ui/Button"
+import { useCallback, useEffect, useState } from "react"
 
 export function SchedulerSection({ projectId }: { projectId: string }) {
   const [automations, setAutomations] = useState<Automation[]>([])
@@ -24,7 +29,9 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
     setLoading(false)
   }, [projectId])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   const handleCronTranslate = async () => {
     if (!nlCron.trim()) return
@@ -100,13 +107,13 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
           className="rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
           placeholder="Nombre de la tarea"
           value={name}
-          onChange={e => setName(e.target.value)}
+          onChange={(e) => setName(e.target.value)}
         />
         <input
           className="rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
           placeholder="Intencion (ej: enviar reporte diario)"
           value={intent}
-          onChange={e => setIntent(e.target.value)}
+          onChange={(e) => setIntent(e.target.value)}
         />
 
         {/* NL → Cron */}
@@ -115,8 +122,8 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
             className="flex-1 rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
             placeholder="Lenguaje natural (ej: cada dia a las 9 am)"
             value={nlCron}
-            onChange={e => setNlCron(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleCronTranslate()}
+            onChange={(e) => setNlCron(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleCronTranslate()}
           />
           <Button variant="outline" size="sm" onClick={handleCronTranslate}>
             Traducir
@@ -136,7 +143,7 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
           <select
             className="rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none"
             value={actionType}
-            onChange={e => setActionType(e.target.value)}
+            onChange={(e) => setActionType(e.target.value)}
           >
             <option value="webhook">Webhook</option>
             <option value="message">Mensaje</option>
@@ -145,7 +152,7 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
             className="flex-1 rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
             placeholder="URL del webhook (si aplica)"
             value={actionUrl}
-            onChange={e => setActionUrl(e.target.value)}
+            onChange={(e) => setActionUrl(e.target.value)}
           />
         </div>
 
@@ -163,14 +170,16 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
         <p className="text-xs text-muted-foreground">No hay automatizaciones creadas.</p>
       ) : (
         <div className="grid gap-2">
-          {automations.map(a => (
+          {automations.map((a) => (
             <div
               key={a.id}
               className="flex items-center gap-3 rounded border border-border bg-secondary/30 p-3"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${a.enabled ? "bg-green-500" : "bg-gray-400"}`} />
+                  <span
+                    className={`h-2 w-2 rounded-full ${a.enabled ? "bg-green-500" : "bg-gray-400"}`}
+                  />
                   <span className="text-xs font-medium">{a.name}</span>
                   {a.cron_expression && (
                     <code className="rounded bg-accent/30 px-1.5 py-0.5 text-[10px] font-mono">
@@ -180,7 +189,8 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
                 </div>
                 <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-1">
                   {a.intent} &middot; {a.action_type}
-                  {a.last_run_at && ` · ultima ejec: ${new Date(a.last_run_at * 1000).toLocaleDateString()}`}
+                  {a.last_run_at &&
+                    ` · ultima ejec: ${new Date(a.last_run_at * 1000).toLocaleDateString()}`}
                 </p>
               </div>
               <div className="flex items-center gap-1">
@@ -191,11 +201,7 @@ export function SchedulerSection({ projectId }: { projectId: string }) {
                 >
                   {a.enabled ? "Pausar" : "Activar"}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(a.id)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => handleDelete(a.id)}>
                   Eliminar
                 </Button>
               </div>

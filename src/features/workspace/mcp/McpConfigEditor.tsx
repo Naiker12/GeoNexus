@@ -1,11 +1,24 @@
-import { useEffect, useState } from "react"
-import { BracesIcon, CheckCircle2Icon, CopyIcon, FileUpIcon, Loader2Icon, ServerIcon, XIcon } from "lucide-react"
+import { exportMcpConfig, importMcpConfig } from "@/api/mcp"
 import { Button } from "@/components/ui/Button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
-import { importMcpConfig, exportMcpConfig } from "@/api/mcp"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { GEONEXUS_MCP_TEMPLATE, MCP_SERVER_TEMPLATES } from "@/features/workspace/mcp/mcp-templates"
+import { cn } from "@/lib/utils"
 import type { ImportResult } from "@/types/mcp"
+import {
+  CheckCircle2Icon,
+  CopyIcon,
+  FileUpIcon,
+  Loader2Icon,
+  ServerIcon,
+  XIcon,
+} from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface McpConfigEditorProps {
   open: boolean
@@ -43,7 +56,10 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
   }, [open, mode])
 
   const validateJson = (text: string) => {
-    if (!text.trim()) { setError(null); return }
+    if (!text.trim()) {
+      setError(null)
+      return
+    }
     try {
       const parsed = JSON.parse(text)
       if (!parsed.mcpServers || typeof parsed.mcpServers !== "object") {
@@ -95,7 +111,9 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
       await navigator.clipboard.writeText(jsonText)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   const appendTemplate = (key: string) => {
@@ -108,11 +126,18 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
       const updated = JSON.stringify(current, null, 2)
       setJsonText(updated)
       validateJson(updated)
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onOpenChange(false) }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onOpenChange(false)
+      }}
+    >
       <DialogContent className="w-[min(94vw,52rem)] rounded-lg p-0 bg-background border border-border">
         <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4 bg-muted/20">
           <div className="flex items-start gap-2.5 pr-8">
@@ -126,8 +151,16 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
               </DialogDescription>
               <div className="mt-2 flex gap-1.5">
                 {(["import", "export", "template"] as const).map((t) => (
-                  <button key={t}
-                    onClick={t === "export" ? handleExport : () => { setMode(t); if (t === "template") setJsonText(GEONEXUS_MCP_TEMPLATE) }}
+                  <button
+                    key={t}
+                    onClick={
+                      t === "export"
+                        ? handleExport
+                        : () => {
+                            setMode(t)
+                            if (t === "template") setJsonText(GEONEXUS_MCP_TEMPLATE)
+                          }
+                    }
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] font-medium transition",
                       mode === t
@@ -161,10 +194,14 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
                 {result.imported} servidores importados
               </span>
               {result.skipped > 0 && (
-                <span className="text-muted-foreground">↷ {result.skipped} ya existían (omitidos)</span>
+                <span className="text-muted-foreground">
+                  ↷ {result.skipped} ya existían (omitidos)
+                </span>
               )}
               {result.errors.map((e, i) => (
-                <span key={i} className="text-destructive">✗ {e}</span>
+                <span key={i} className="text-destructive">
+                  ✗ {e}
+                </span>
               ))}
             </div>
           )}
@@ -174,22 +211,27 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
             <div className="relative">
               <textarea
                 value={jsonText}
-                onChange={e => handleJsonChange(e.target.value)}
+                onChange={(e) => handleJsonChange(e.target.value)}
                 placeholder={PLACEHOLDER_JSON}
                 spellCheck={false}
                 rows={22}
                 className={cn(
                   "w-full rounded-lg border bg-card/40 p-3 font-mono text-[11px] leading-relaxed resize-none focus:outline-none focus:ring-1",
-                  error ? "border-destructive/50 focus:ring-destructive/50" : "border-border/60 focus:ring-primary/50"
+                  error
+                    ? "border-destructive/50 focus:ring-destructive/50"
+                    : "border-border/60 focus:ring-primary/50"
                 )}
               />
             </div>
 
             {/* Quick actions sidebar */}
             <div className="flex flex-col gap-2 lg:w-36">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase">Ejemplos rápidos</span>
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                Ejemplos rápidos
+              </span>
               {Object.keys(MCP_SERVER_TEMPLATES).map((key) => (
-                <button key={key}
+                <button
+                  key={key}
                   onClick={() => appendTemplate(key)}
                   className="h-6 rounded-md border border-border/60 bg-muted/30 px-2 text-[10px] text-muted-foreground hover:bg-muted/60 text-left truncate"
                 >
@@ -201,22 +243,41 @@ export function McpConfigEditor({ open, onOpenChange, onImported }: McpConfigEdi
 
           {/* Footer actions */}
           <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-between">
-            <Button variant="outline" size="sm" type="button" className="h-7 text-xs"
-              onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="h-7 text-xs"
+              onClick={() => onOpenChange(false)}
+            >
               Cerrar
             </Button>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               {mode === "export" && (
-                <Button variant="outline" size="sm" type="button" className="h-7 text-xs"
-                  onClick={handleCopy}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  className="h-7 text-xs"
+                  onClick={handleCopy}
+                >
                   <CopyIcon className="mr-1.5 size-3.5" />
                   {copied ? "Copiado" : "Copiar al portapapeles"}
                 </Button>
               )}
               {mode === "import" && (
-                <Button size="sm" type="button" className="h-7 text-xs px-3 bg-primary hover:bg-primary/90"
-                  onClick={handleImport} disabled={!!error || !jsonText.trim() || importing}>
-                  {importing ? <Loader2Icon className="mr-1.5 size-3.5 animate-spin" /> : <FileUpIcon className="mr-1.5 size-3.5" />}
+                <Button
+                  size="sm"
+                  type="button"
+                  className="h-7 text-xs px-3 bg-primary hover:bg-primary/90"
+                  onClick={handleImport}
+                  disabled={!!error || !jsonText.trim() || importing}
+                >
+                  {importing ? (
+                    <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
+                  ) : (
+                    <FileUpIcon className="mr-1.5 size-3.5" />
+                  )}
                   {importing ? "Importando..." : "Importar servidores"}
                 </Button>
               )}

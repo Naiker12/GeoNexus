@@ -1,6 +1,6 @@
-import * as React from "react"
-import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { AlertTriangleIcon, RefreshCwIcon } from "lucide-react"
+import * as React from "react"
 
 interface ErrorBoundaryProps {
   children: React.ReactNode
@@ -24,7 +24,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("[ErrorBoundary] componentDidCatch:", error.message, error.stack, info.componentStack)
+    console.error(
+      "[ErrorBoundary] componentDidCatch:",
+      error.message,
+      error.stack,
+      info.componentStack
+    )
   }
 
   render() {

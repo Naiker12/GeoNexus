@@ -1,6 +1,6 @@
-import { KeyRound, ExternalLink } from "lucide-react"
 import { getSetupGuide } from "@/features/workspace/mcp/mcp-setup-guides"
 import type { McpServer } from "@/types/mcp"
+import { ExternalLink, KeyRound } from "lucide-react"
 
 interface McpOfflineGuideProps {
   server: McpServer

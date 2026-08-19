@@ -1,28 +1,16 @@
+import { BotIcon, CheckIcon, ChevronDownIcon, PlusIcon, SearchIcon } from "lucide-react"
 import * as React from "react"
-import {
-  SearchIcon,
-  CheckIcon,
-  PlusIcon,
-  BotIcon,
-} from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useConnectors } from "@/contexts/ConnectorsContext"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
+import { useLanguage } from "@/i18n/useLanguage"
 import { cn } from "@/lib/utils"
 
 export function ModelHeaderPopover() {
-  const {
-    connectors,
-    activeConnectorId,
-    setActiveConnectorId,
-    setConnectors,
-  } = useConnectors()
+  const { t } = useLanguage()
+  const { connectors, activeConnectorId, setActiveConnectorId, setConnectors } = useConnectors()
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
 
@@ -32,13 +20,17 @@ export function ModelHeaderPopover() {
 
   const hasModel = !!(
     activeConnector &&
+    activeConnector.model &&
     activeConnector.model !== "Sin modelo" &&
     activeConnector.models.length > 0
   )
 
-  const triggerLabel = hasModel
-    ? `${activeConnector.name} - ${activeConnector.model}`
-    : "Sin modelo configurado"
+  const activeModelName = hasModel ? activeConnector.model : t.topbar.selectModel
+  const activeFormat = hasModel
+    ? activeConnector.provider === "local"
+      ? "Local"
+      : "Cloud"
+    : ""
 
   const allEntries = React.useMemo(() => {
     const entries: {
@@ -73,52 +65,63 @@ export function ModelHeaderPopover() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="xs"
-          className="h-[22px] rounded-full border border-border/70 bg-muted/45 hover:bg-muted/65 px-2 py-0 gap-1 text-[10px] font-medium text-foreground/85 shadow-xs transition-all"
-          aria-label="Configurar modelo"
-          title="Configurar modelo"
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-xl px-2.5 py-1 text-xs text-foreground/90 hover:text-foreground hover:bg-muted/50 transition-all font-sans group cursor-pointer"
+          aria-label="Seleccionar modelo activo"
+          title="Seleccionar modelo activo"
         >
-          <span className={cn("size-1.5 rounded-full", hasModel ? "bg-emerald-500 animate-pulse" : "bg-amber-400")} />
-          <BotIcon className="size-2.5 text-muted-foreground" />
-          <span className="max-w-40 truncate">{triggerLabel}</span>
-        </Button>
+          <span
+            className={cn(
+              "size-2 rounded-full shrink-0",
+              hasModel
+                ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                : "bg-amber-500/70"
+            )}
+          />
+          <span className="font-bold text-[13px] tracking-tight text-foreground">
+            {activeModelName}
+          </span>
+          {activeFormat && (
+            <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline-block">
+              · {activeFormat}
+            </span>
+          )}
+          <ChevronDownIcon className="size-3 text-muted-foreground/70 group-hover:text-foreground transition-colors" />
+        </button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        align="start"
         side="bottom"
-        sideOffset={6}
-        className="w-72 overflow-hidden rounded-xl p-0 border border-border bg-background shadow-lg"
+        sideOffset={8}
+        className="w-80 overflow-hidden rounded-2xl p-0 border border-border/80 bg-popover/95 backdrop-blur-md shadow-xl"
       >
         {/* Input de búsqueda */}
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2 bg-muted/20">
+        <div className="flex items-center gap-2 border-b border-border/70 px-3 py-2.5 bg-muted/20">
           <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar modelos..."
-            className="w-full bg-transparent text-[11px] outline-none placeholder:text-muted-foreground text-foreground"
-            autoFocus
+            placeholder={t.topbar.searchPlaceholder}
+            className="w-full bg-transparent text-xs outline-hidden placeholder:text-muted-foreground/70 text-foreground font-medium"
           />
         </div>
 
         {/* Lista de modelos */}
-        <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 [scrollbar-width:thin]">
+        <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5 [scrollbar-width:thin]">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-1 py-6 text-center text-[11px] text-muted-foreground">
-              <SearchIcon className="size-4 opacity-30" />
-              <span>
+            <div className="flex flex-col items-center gap-1 py-8 text-center text-xs text-muted-foreground">
+              <BotIcon className="size-5 opacity-40 mb-1" />
+              <span className="font-medium">
                 {allEntries.length === 0
-                  ? "No hay modelos disponibles"
-                  : "No se encontraron modelos"}
+                  ? t.topbar.noModels
+                  : "No se encontraron resultados"}
               </span>
             </div>
           ) : (
             filtered.map((entry) => {
               const isSelected =
-                activeConnectorId === entry.connectorId &&
-                activeConnector?.model === entry.modelId
+                activeConnectorId === entry.connectorId && activeConnector?.model === entry.modelId
 
               return (
                 <button
@@ -128,16 +131,14 @@ export function ModelHeaderPopover() {
                     setActiveConnectorId(entry.connectorId)
                     setConnectors((prev) =>
                       prev.map((c) =>
-                        c.id === entry.connectorId
-                          ? { ...c, model: entry.modelId }
-                          : c
+                        c.id === entry.connectorId ? { ...c, model: entry.modelId } : c
                       )
                     )
                     setOpen(false)
                   }}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[11px] transition-colors hover:bg-accent hover:text-accent-foreground",
-                    isSelected && "bg-accent/60 font-semibold text-foreground"
+                    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs transition-colors hover:bg-muted/70 cursor-pointer",
+                    isSelected && "bg-muted font-semibold text-foreground"
                   )}
                 >
                   <CheckIcon
@@ -146,16 +147,13 @@ export function ModelHeaderPopover() {
                       isSelected ? "opacity-100 text-primary" : "opacity-0"
                     )}
                   />
-                  <div className="flex size-4.5 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-                    <ProviderBrandIcon
-                      providerId={entry.connectorId}
-                      className="size-3"
-                    />
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-lg bg-muted border border-border/60 text-muted-foreground">
+                    <ProviderBrandIcon providerId={entry.connectorId} className="size-3" />
                   </div>
-                  <span className="min-w-0 flex-1 truncate">
+                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">
                     {entry.modelId}
                   </span>
-                  <span className="shrink-0 rounded bg-muted/60 px-1.5 py-0.5 text-[9px] text-muted-foreground font-medium">
+                  <span className="shrink-0 rounded-md bg-muted/80 border border-border/60 px-1.5 py-0.2 text-[10px] text-muted-foreground font-mono">
                     {entry.connectorName}
                   </span>
                 </button>
@@ -165,18 +163,18 @@ export function ModelHeaderPopover() {
         </div>
 
         {/* Acciones de pie */}
-        <div className="border-t border-border p-1.5 bg-muted/10 flex items-center justify-between">
+        <div className="border-t border-border/60 p-2 bg-muted/10">
           <Button
             variant="ghost"
             size="xs"
-            className="w-full gap-1 text-[10px] font-medium h-7 justify-center hover:bg-accent/60"
+            className="w-full gap-1.5 text-xs font-medium h-7.5 justify-center hover:bg-muted rounded-xl"
             onClick={() => {
               setOpen(false)
-              window.location.hash = "#proveedores"
+              window.dispatchEvent(new CustomEvent("geonexus:open-settings"))
             }}
           >
-            <PlusIcon className="size-3" />
-            Configurar proveedores
+            <PlusIcon className="size-3.5" />
+            <span>{t.topbar.configureAi}</span>
           </Button>
         </div>
       </PopoverContent>

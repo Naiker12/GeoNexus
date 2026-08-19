@@ -1,7 +1,8 @@
-import * as React from "react"
 import { PlusIcon, SearchIcon, WrenchIcon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/Input"
 import { ConnectorLogo } from "@/features/workspace/connectors/ConnectorLogo"
 import type { ConnectorProviderInfo } from "@/features/workspace/connectors/connector-types"
 import { cn } from "@/lib/utils"
@@ -36,12 +36,7 @@ export function AddConnectorDialog({
   const normalizedQuery = query.trim().toLowerCase()
   const filteredProviders = normalizedQuery
     ? providers.filter((provider) =>
-        [
-          provider.name,
-          provider.kind,
-          provider.description,
-          provider.formats.join(" "),
-        ]
+        [provider.name, provider.kind, provider.description, provider.formats.join(" ")]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery)
@@ -64,8 +59,8 @@ export function AddConnectorDialog({
             <div className="min-w-0">
               <DialogTitle className="text-base">Agregar conector</DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
-                Selecciona una fuente disponible o crea una conexion manual para
-                simular el flujo en Geo Agents.
+                Selecciona una fuente disponible o crea una conexion manual para simular el flujo en
+                Geo Agents.
               </DialogDescription>
             </div>
           </div>
@@ -107,8 +102,8 @@ export function AddConnectorDialog({
 
           {filteredProviders.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
-              No hay conectores con ese filtro. Usa Agregar por mi cuenta para
-              preparar una conexion manual.
+              No hay conectores con ese filtro. Usa Agregar por mi cuenta para preparar una conexion
+              manual.
             </div>
           ) : null}
         </div>

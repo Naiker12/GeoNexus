@@ -1,10 +1,18 @@
-import * as React from "react"
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from "d3-force"
-import { zoomIdentity, zoom, type ZoomTransform } from "d3-zoom"
-import { select as d3Select } from "d3-selection"
 import { cn } from "@/lib/utils"
-import type { GraphNode, GraphEdge } from "@/types/data"
-import { drawEdges, drawEdgeFlow, drawNodes, findNodeAtPoint } from "./graph-draw"
+import type { GraphEdge, GraphNode } from "@/types/data"
+import {
+  forceCenter,
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  forceX,
+  forceY,
+} from "d3-force"
+import { select as d3Select } from "d3-selection"
+import { type ZoomTransform, zoom, zoomIdentity } from "d3-zoom"
+import * as React from "react"
+import { drawEdgeFlow, drawEdges, drawNodes, findNodeAtPoint } from "./graph-draw"
 
 const NODE_MIN_RADIUS = 5
 const SCALE_EXTENT: [number, number] = [0.1, 4]
@@ -55,7 +63,6 @@ export function GraphCanvas({
 
   // Initialize simulation
   React.useEffect(() => {
-    
     // Always initialize positionsRef with initial node positions
     const initialPositions = new Map<string, { x: number; y: number }>()
     nodes.forEach((n) => {
@@ -84,7 +91,7 @@ export function GraphCanvas({
         forceLink(simLinks)
           .id((d: any) => d.id)
           .distance((l: any) => 15 + (1 - l.strength) * 40)
-          .strength(0.5),
+          .strength(0.5)
       )
       .force("charge", forceManyBody().strength(-120).distanceMax(300))
       .force("collision", forceCollide(NODE_MIN_RADIUS + 6))
@@ -122,8 +129,8 @@ export function GraphCanvas({
       const dpr = window.devicePixelRatio || 1
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
-      canvas.style.width = rect.width + "px"
-      canvas.style.height = rect.height + "px"
+      canvas.style.width = `${rect.width}px`
+      canvas.style.height = `${rect.height}px`
     }
 
     resize()
@@ -229,7 +236,7 @@ export function GraphCanvas({
         onNodeSelect(null)
       }
     },
-    [nodes, onNodeSelect],
+    [nodes, onNodeSelect]
   )
 
   const handlePointerMove = React.useCallback(
@@ -254,7 +261,7 @@ export function GraphCanvas({
 
       onNodeDragMove(drag.nodeId, newX, newY)
     },
-    [onNodeDragMove],
+    [onNodeDragMove]
   )
 
   const handlePointerUp = React.useCallback(
@@ -273,7 +280,7 @@ export function GraphCanvas({
       canvas?.releasePointerCapture(event.pointerId)
       draggingRef.current = null
     },
-    [onNodeDragEnd],
+    [onNodeDragEnd]
   )
 
   return (

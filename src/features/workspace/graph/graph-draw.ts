@@ -1,5 +1,5 @@
+import type { GraphEdge, GraphNode } from "@/types/data"
 import { nodeColor } from "./graph-colors"
-import type { GraphNode, GraphEdge } from "@/types/data"
 
 const BASE_NODE_RADIUS = 5
 
@@ -31,7 +31,7 @@ export function drawEdges(
   selectedNodeId: string | null,
   filter: Set<string> | null,
   scale: number,
-  animTime: number = 0,
+  _animTime = 0
 ) {
   ctx.save()
 
@@ -43,8 +43,7 @@ export function drawEdges(
     const targetPos = positions.get(edge.target as string)
     if (!sourcePos || !targetPos) continue
 
-    const isActive =
-      selectedNodeId === edge.source || selectedNodeId === edge.target
+    const isActive = selectedNodeId === edge.source || selectedNodeId === edge.target
 
     ctx.beginPath()
     ctx.moveTo(sourcePos.x, sourcePos.y)
@@ -69,7 +68,7 @@ export function drawEdgeFlow(
   positions: Map<string, { x: number; y: number }>,
   filter: Set<string> | null,
   scale: number,
-  animTime: number,
+  animTime: number
 ) {
   ctx.save()
 
@@ -88,7 +87,7 @@ export function drawEdgeFlow(
 
     // 2 dots per edge, offset by half a cycle
     for (let i = 0; i < 2; i++) {
-      const t = ((animTime / 1400 + i * 0.5) % 1)
+      const t = (animTime / 1400 + i * 0.5) % 1
       const px = sourcePos.x + dx * t
       const py = sourcePos.y + dy * t
 
@@ -111,7 +110,7 @@ export function drawNodes(
   positions: Map<string, { x: number; y: number }>,
   selectedNodeId: string | null,
   searchQuery: string,
-  scale: number,
+  scale: number
 ) {
   const q = searchQuery.trim().toLowerCase()
 
@@ -166,9 +165,7 @@ export function drawNodes(
 
         const maxChars = Math.max(8, Math.floor(16 / scale))
         const label =
-          node.label.length > maxChars
-            ? node.label.slice(0, maxChars) + "\u2026"
-            : node.label
+          node.label.length > maxChars ? `${node.label.slice(0, maxChars)}\u2026` : node.label
 
         ctx.fillText(label, pos.x, pos.y + radius + 3 / scale)
         ctx.restore()
@@ -181,7 +178,7 @@ export function findNodeAtPoint(
   x: number,
   y: number,
   nodes: GraphNode[],
-  positions: Map<string, { x: number; y: number }>,
+  positions: Map<string, { x: number; y: number }>
 ): GraphNode | null {
   for (const node of nodes) {
     const pos = positions.get(node.id)

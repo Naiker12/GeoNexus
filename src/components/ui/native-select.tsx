@@ -1,11 +1,8 @@
-import * as React from "react"
+import type * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function NativeSelect({
-  className,
-  ...props
-}: React.ComponentProps<"select">) {
+function NativeSelect({ className, ...props }: React.ComponentProps<"select">) {
   return (
     <select
       data-slot="native-select"

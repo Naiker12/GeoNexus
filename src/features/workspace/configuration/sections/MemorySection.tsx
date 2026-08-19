@@ -1,12 +1,8 @@
-import { useState, useEffect } from "react"
-import { PencilIcon, CheckIcon, XIcon } from "lucide-react"
-import { NativeSelect } from "@/components/ui/native-select"
-import {
-  CompactCheckRow,
-  Field,
-  SideMetric,
-} from "@/features/workspace/configuration/settings-ui"
 import { invoke } from "@/api/invoke"
+import { NativeSelect } from "@/components/ui/native-select"
+import { CompactCheckRow, Field, SideMetric } from "@/features/workspace/configuration/settings-ui"
+import { CheckIcon, PencilIcon, XIcon } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface CuratedFact {
   id: string
@@ -143,8 +139,8 @@ export function MemorySection() {
           Memoria curada
         </h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          Hechos extraidos por el agente durante las conversaciones.
-          Editables y consultables directamente.
+          Hechos extraidos por el agente durante las conversaciones. Editables y consultables
+          directamente.
         </p>
 
         <div className="mt-3 flex gap-2">
@@ -179,9 +175,7 @@ export function MemorySection() {
         {loading ? (
           <p className="mt-2 text-xs text-muted-foreground">Cargando...</p>
         ) : facts.length === 0 ? (
-          <p className="mt-2 text-xs text-muted-foreground">
-            No hay hechos curados aun.
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">No hay hechos curados aun.</p>
         ) : (
           <ul className="mt-2 space-y-1">
             {facts.map((fact) => (
@@ -194,10 +188,9 @@ export function MemorySection() {
                     <input
                       type="text"
                       value={editText}
-                      onChange={e => setEditText(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && saveEdit(fact.id)}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveEdit(fact.id)}
                       className="flex-1 rounded border border-primary/50 bg-background px-1.5 py-0.5 text-xs outline-none"
-                      autoFocus
                     />
                     <NativeSelect
                       value={editCategory}

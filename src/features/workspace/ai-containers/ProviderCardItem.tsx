@@ -1,12 +1,12 @@
 import { Loader2Icon, PlayIcon, Settings2Icon, Trash2Icon } from "lucide-react"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/Button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
+import type { AiConnector } from "@/types/workspace-types"
 
 type ProviderCardItemProps = {
   option: ProviderOption
@@ -31,69 +31,67 @@ export function ProviderCardItem({
   const endpoint = connector?.endpoint || "Sin endpoint"
 
   return (
-    <article className="group flex flex-col rounded-lg border border-border/80 bg-card/95 px-3 py-2.5 shadow-sm backdrop-blur transition hover:border-primary/30 hover:shadow-md">
+    <article className="group flex flex-col rounded-2xl border border-border/70 bg-card/85 p-3.5 shadow-2xs backdrop-blur transition hover:border-primary/40 hover:shadow-xs">
       <div className="flex items-start gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-primary ring-1 ring-border">
-          <ProviderBrandIcon
-            providerId={option.id}
-            fallback={option.icon}
-            className="size-4"
-          />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/60">
+          <ProviderBrandIcon providerId={option.id} fallback={option.icon} className="size-4.5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="truncate text-sm font-semibold">{option.name}</h2>
+            <h2 className="truncate text-xs font-semibold text-foreground">{option.name}</h2>
             <StatusBadge status={status} />
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {primaryModel} - {option.role}
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground font-mono">
+            {primaryModel}
           </p>
         </div>
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
-        <MetaPill>{option.type}</MetaPill>
-        <MetaPill>{option.role}</MetaPill>
-        <MetaPill>{option.auth === "api-key" ? "keychain" : "sin key"}</MetaPill>
+        <MetaPill>
+          {option.category === "local"
+            ? "Local"
+            : option.category === "gateway"
+              ? "Gateway"
+              : "Cloud"}
+        </MetaPill>
+        <MetaPill>{option.auth === "api-key" ? "API Key" : "Sin key"}</MetaPill>
         <MetaPill className="font-mono">{primaryModel}</MetaPill>
       </div>
 
-      <div className="mt-2.5 flex items-end justify-between gap-2">
-        <span className="truncate font-mono text-[0.68rem] text-muted-foreground/80">
-          {endpoint}
-        </span>
-        <div className="flex shrink-0 gap-2">
+      <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <span className="truncate font-mono text-[10px] text-muted-foreground/80">{endpoint}</span>
+        <div className="flex shrink-0 gap-1.5 self-end sm:self-auto">
           <Button
             variant="outline"
-            size="sm"
-            className="h-7 bg-background"
+            size="xs"
+            className="rounded-lg h-6.5 text-[11px] gap-1"
             onClick={() => onConfig(option)}
           >
-            <Settings2Icon className="size-3.5" />
+            <Settings2Icon className="size-3" />
             Config
           </Button>
           <Button
             variant="outline"
-            size="sm"
-            className="h-7 bg-background"
+            size="xs"
+            className="rounded-lg h-6.5 text-[11px] gap-1"
             disabled={isTesting}
             onClick={() => onTest(option)}
           >
             {isTesting ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
+              <Loader2Icon className="size-3 animate-spin" />
             ) : (
-              <PlayIcon className="size-3.5" />
+              <PlayIcon className="size-3" />
             )}
             Test
           </Button>
           <Button
-            variant="outline"
-            size="sm"
-            className="h-7 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive bg-background"
+            variant="ghost"
+            size="xs"
+            className="rounded-lg h-6.5 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={() => setDeleteOpen(true)}
           >
-            <Trash2Icon className="size-3.5" />
-            Eliminar
+            <Trash2Icon className="size-3" />
           </Button>
         </div>
       </div>
@@ -104,8 +102,8 @@ export function ProviderCardItem({
         title="Eliminar proveedor"
         description={
           <>
-            ¿Eliminar <strong>{option.name}</strong>? Se borrarán la API key, el endpoint
-            y todos los modelos asociados. Esta acción no se puede deshacer.
+            ¿Eliminar <strong>{option.name}</strong>? Se borrarán la API key, el endpoint y todos
+            los modelos asociados. Esta acción no se puede deshacer.
           </>
         }
         onConfirm={() => onDelete(option)}
@@ -118,12 +116,12 @@ function StatusBadge({ status }: { status: AiConnector["status"] | "needs-key" }
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-1.5 rounded-md px-1.5 text-[0.65rem] font-medium uppercase tracking-wide",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[9px] font-mono font-semibold uppercase tracking-wider",
         status === "online" &&
-          "bg-emerald-500/15 text-emerald-700 [.geo-dark_&]:text-emerald-400 [.graphite_&]:text-emerald-400 [.midnight_&]:text-emerald-400",
-        status === "offline" && "bg-muted text-muted-foreground",
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+        status === "offline" && "bg-muted text-muted-foreground border border-border/60",
         status === "needs-key" &&
-          "bg-orange-500/15 text-orange-700 [.geo-dark_&]:text-orange-400 [.graphite_&]:text-orange-400 [.midnight_&]:text-orange-400"
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
       )}
     >
       <span
@@ -131,7 +129,7 @@ function StatusBadge({ status }: { status: AiConnector["status"] | "needs-key" }
           "size-1.5 rounded-full",
           status === "online" && "bg-emerald-500",
           status === "offline" && "bg-muted-foreground/50",
-          status === "needs-key" && "bg-orange-500"
+          status === "needs-key" && "bg-amber-500"
         )}
       />
       {status === "needs-key" ? "requiere key" : status}
@@ -149,7 +147,7 @@ function MetaPill({
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center rounded-md bg-muted px-2 text-[0.7rem] text-muted-foreground",
+        "inline-flex items-center rounded-lg bg-muted/50 border border-border/50 px-2 py-0.5 text-[10px] text-muted-foreground",
         className
       )}
     >

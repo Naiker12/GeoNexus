@@ -1,13 +1,9 @@
+import { DatabaseIcon, FileTextIcon, GlobeIcon, PlusIcon, UploadCloudIcon } from "lucide-react"
 import * as React from "react"
-import {
-  DatabaseIcon,
-  FileTextIcon,
-  GlobeIcon,
-  PlusIcon,
-  UploadCloudIcon,
-} from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Textarea } from "@/components/ui/Textarea"
 import {
   Dialog,
   DialogClose,
@@ -17,9 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/Input"
 import { NativeSelect } from "@/components/ui/native-select"
-import { Textarea } from "@/components/ui/Textarea"
 
 const sourceOptions = [
   {
@@ -69,12 +63,10 @@ export function CreateProjectDialog() {
               <PlusIcon className="size-4" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="text-base">
-                Crear proyecto Geo Agents
-              </DialogTitle>
+              <DialogTitle className="text-base">Crear proyecto Geo Agents</DialogTitle>
               <DialogDescription className="mt-1 text-sm leading-5">
-                Define el proyecto y carga la informacion inicial que la IA
-                usara como contexto trazable.
+                Define el proyecto y carga la informacion inicial que la IA usara como contexto
+                trazable.
               </DialogDescription>
             </div>
           </div>
@@ -194,11 +186,7 @@ function SourceModePanel({ mode }: { mode: SourceMode }) {
             Se enviara al pipeline de extraccion, chunks, memoria y grafo.
           </p>
         </div>
-        <Input
-          type="file"
-          accept=".pdf,.doc,.docx,.dxf,.zip,.geojson,.json"
-          className="pt-1.5"
-        />
+        <Input type="file" accept=".pdf,.doc,.docx,.dxf,.zip,.geojson,.json" className="pt-1.5" />
         <CheckRow label="Extraer texto y citas por pagina" checked />
         <CheckRow label="Crear nodos iniciales en el grafo" checked />
       </div>
@@ -235,8 +223,8 @@ function SourceModePanel({ mode }: { mode: SourceMode }) {
         <div>
           <h3 className="text-sm font-semibold">Plantilla del sistema</h3>
           <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-            Geo Agents creara estructura base para documentos, capas, memoria,
-            analisis y trazabilidad.
+            Geo Agents creara estructura base para documentos, capas, memoria, analisis y
+            trazabilidad.
           </p>
         </div>
         <Field label="Plantilla">
@@ -299,11 +287,7 @@ function CheckRow({ label, checked = false }: { label: string; checked?: boolean
   return (
     <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card/70 px-2.5 py-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <input
-        type="checkbox"
-        defaultChecked={checked}
-        className="size-4 accent-[var(--primary)]"
-      />
+      <input type="checkbox" defaultChecked={checked} className="size-4 accent-[var(--primary)]" />
     </label>
   )
 }

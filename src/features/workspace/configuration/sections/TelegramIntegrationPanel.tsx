@@ -1,27 +1,27 @@
-import * as React from "react"
+import { listen } from "@tauri-apps/api/event"
 import {
+  AlertTriangleIcon,
   BotIcon,
   CheckIcon,
   Link2Icon,
-  RefreshCwIcon,
-  XCircleIcon,
   PlayIcon,
+  RefreshCwIcon,
   StopCircleIcon,
-  AlertTriangleIcon,
+  XCircleIcon,
 } from "lucide-react"
+import * as React from "react"
 import { toast } from "sonner"
-import { listen } from "@tauri-apps/api/event"
 
-import { Button } from "@/components/ui/Button"
-import { Field } from "@/features/workspace/configuration/settings-ui"
 import {
-  saveTelegramConfig,
-  testTelegramConnection,
-  startTelegramPolling,
-  stopTelegramPolling,
   getTelegramStatus,
   loadTelegramConfig,
+  saveTelegramConfig,
+  startTelegramPolling,
+  stopTelegramPolling,
+  testTelegramConnection,
 } from "@/api/telegram"
+import { Button } from "@/components/ui/Button"
+import { Field } from "@/features/workspace/configuration/settings-ui"
 import { TelegramQrPairing } from "./TelegramQrPairing"
 
 type TelegramConfig = {
@@ -166,9 +166,7 @@ export function TelegramIntegrationPanel() {
 
     try {
       const result = await testTelegramConnection(config.botToken.trim())
-      const name = result.bot_username
-        ? `@${result.bot_username}`
-        : result.bot_name
+      const name = result.bot_username ? `@${result.bot_username}` : result.bot_name
       updateConfig({ status: "active", botName: name })
       setTestResult({ kind: "success", message: `Conectado como ${name}` })
       toast.success("Conexión exitosa")
@@ -219,9 +217,7 @@ export function TelegramIntegrationPanel() {
           <h3 className="text-xs font-semibold uppercase tracking-widest text-primary">
             Integración de Telegram
           </h3>
-          <p className="mt-1 text-xs leading-4 text-muted-foreground">
-            Cargando...
-          </p>
+          <p className="mt-1 text-xs leading-4 text-muted-foreground">Cargando...</p>
         </div>
       </div>
     )
@@ -258,21 +254,20 @@ export function TelegramIntegrationPanel() {
           Integración de Telegram
         </h3>
         <p className="mt-1 text-xs leading-4 text-muted-foreground">
-          Recibe consultas GIS desde Telegram y responde con el conocimiento del
-          proyecto activo.
+          Recibe consultas GIS desde Telegram y responde con el conocimiento del proyecto activo.
         </p>
       </div>
 
       <div className="rounded-lg border border-border bg-background/75 p-3">
         <div className="mb-3 flex items-center gap-2">
-          <span className={`size-2.5 rounded-full ${statusColor[config.isPolling ? "active" : config.status]}`} />
+          <span
+            className={`size-2.5 rounded-full ${statusColor[config.isPolling ? "active" : config.status]}`}
+          />
           <span className="text-sm font-medium">
             {config.isPolling ? "Ejecutándose" : statusLabel[config.status]}
           </span>
           {config.botName && (
-            <span className="text-xs text-muted-foreground">
-              · {config.botName}
-            </span>
+            <span className="text-xs text-muted-foreground">· {config.botName}</span>
           )}
         </div>
 
@@ -301,7 +296,9 @@ export function TelegramIntegrationPanel() {
           <Field label="Modo de respuesta">
             <select
               value={config.responseMode}
-              onChange={(e) => updateConfig({ responseMode: e.target.value as TelegramConfig["responseMode"] })}
+              onChange={(e) =>
+                updateConfig({ responseMode: e.target.value as TelegramConfig["responseMode"] })
+              }
               className="h-8 w-full rounded-lg border border-border bg-background px-2.5 text-sm outline-none"
             >
               <option value="text">Solo texto</option>

@@ -1,32 +1,36 @@
-import { useState } from "react";
-import { X } from "lucide-react";
-import { useAgentTaskStore } from "../store/useAgentTaskStore";
-import type { AgentTaskPriority } from "../types";
+import { X } from "lucide-react"
+import { useState } from "react"
+import { useAgentTaskStore } from "../store/useAgentTaskStore"
+import type { AgentTaskPriority } from "../types"
 
-interface Props { onClose: () => void; }
+interface Props {
+  onClose: () => void
+}
 
 export function AgentCreateTask({ onClose }: Props) {
-  const createTask = useAgentTaskStore((s) => s.createTask);
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [priority, setPriority] = useState<AgentTaskPriority>("normal");
-  const [isCreating, setIsCreating] = useState(false);
+  const createTask = useAgentTaskStore((s) => s.createTask)
+  const [title, setTitle] = useState("")
+  const [notes, setNotes] = useState("")
+  const [priority, setPriority] = useState<AgentTaskPriority>("normal")
+  const [isCreating, setIsCreating] = useState(false)
 
   const handleCreate = async () => {
-    if (!title.trim()) return;
-    setIsCreating(true);
+    if (!title.trim()) return
+    setIsCreating(true)
     try {
-      await createTask({ title: title.trim(), notes: notes.trim() || undefined, priority });
-      onClose();
+      await createTask({ title: title.trim(), notes: notes.trim() || undefined, priority })
+      onClose()
     } finally {
-      setIsCreating(false);
+      setIsCreating(false)
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border border-border rounded-lg
-                      w-[400px] max-w-[90vw] p-4 space-y-3">
+      <div
+        className="bg-background border border-border rounded-lg
+                      w-[400px] max-w-[90vw] p-4 space-y-3"
+      >
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">Nueva tarea del agente</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -42,7 +46,6 @@ export function AgentCreateTask({ onClose }: Props) {
           className="w-full text-sm bg-muted/30 border border-border
                      rounded px-3 py-2 text-foreground placeholder:text-muted-foreground
                      focus:outline-none focus:border-amber-500"
-          autoFocus
         />
 
         <textarea
@@ -92,5 +95,5 @@ export function AgentCreateTask({ onClose }: Props) {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react"
-import { createPortal } from "react-dom"
-import { BarChart3Icon, DownloadIcon, Loader2Icon } from "lucide-react"
-import { toast } from "sonner"
+import { exportAnalysisTraces } from "@/api/analysis"
+import { Button } from "@/components/ui/Button"
+import type { Timeframe } from "@/types/analysis"
 import { toPng } from "html-to-image"
 import { jsPDF } from "jspdf"
-import { Button } from "@/components/ui/Button"
-import { exportAnalysisTraces } from "@/api/analysis"
-import type { Timeframe } from "@/types/analysis"
+import { BarChart3Icon, DownloadIcon, Loader2Icon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import { toast } from "sonner"
 
 type ExportFormat = "csv" | "json" | "png" | "pdf"
 
@@ -54,7 +54,9 @@ export function AnalysisHeader({ timeframe }: AnalysisHeaderProps) {
       })
       try {
         const content = await exportAnalysisTraces("project-default", format)
-        const blob = new Blob([content], { type: format === "csv" ? "text/csv" : "application/json" })
+        const blob = new Blob([content], {
+          type: format === "csv" ? "text/csv" : "application/json",
+        })
         const url = URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
@@ -136,7 +138,8 @@ export function AnalysisHeader({ timeframe }: AnalysisHeaderProps) {
         <div className="flex flex-wrap gap-2 lg:justify-end">
           <Button
             ref={btnRef}
-            variant="outline" size="sm"
+            variant="outline"
+            size="sm"
             onClick={() => {
               if (!open) {
                 const r = btnRef.current?.getBoundingClientRect()
@@ -146,45 +149,50 @@ export function AnalysisHeader({ timeframe }: AnalysisHeaderProps) {
             }}
             disabled={!!loading}
           >
-            {loading ? <Loader2Icon className="size-4 animate-spin" /> : <DownloadIcon className="size-4" />}
+            {loading ? (
+              <Loader2Icon className="size-4 animate-spin" />
+            ) : (
+              <DownloadIcon className="size-4" />
+            )}
             {loading ? `Exportando .${loading}...` : "Exportar"}
           </Button>
         </div>
       </div>
-      {open && createPortal(
-        <div
-          ref={dropdownRef}
-          className="fixed z-50 w-44 overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
-          style={{ top: menuPos.top, right: menuPos.right }}
-        >
-          <button
-            onClick={() => handleExport("csv")}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+      {open &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-50 w-44 overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
-            Exportar como CSV
-          </button>
-          <button
-            onClick={() => handleExport("json")}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-          >
-            Exportar como JSON
-          </button>
-          <div className="border-t border-border/60" />
-          <button
-            onClick={() => handleExport("png")}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-          >
-            Exportar como PNG
-          </button>
-          <button
-            onClick={() => handleExport("pdf")}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
-          >
-            Exportar como PDF
-          </button>
-        </div>,
-        document.body
-      )}
+            <button
+              onClick={() => handleExport("csv")}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+            >
+              Exportar como CSV
+            </button>
+            <button
+              onClick={() => handleExport("json")}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+            >
+              Exportar como JSON
+            </button>
+            <div className="border-t border-border/60" />
+            <button
+              onClick={() => handleExport("png")}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+            >
+              Exportar como PNG
+            </button>
+            <button
+              onClick={() => handleExport("pdf")}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+            >
+              Exportar como PDF
+            </button>
+          </div>,
+          document.body
+        )}
     </header>
   )
 }

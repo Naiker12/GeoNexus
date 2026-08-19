@@ -1,10 +1,7 @@
-import { useRef, useEffect, useState } from "react"
-import {
-  RefreshCwIcon, TerminalIcon, Trash2Icon, CopyIcon, SearchIcon, XIcon,
-} from "lucide-react"
-import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { useMcpTerminal, type TerminalLine } from "./hooks/useMcpTerminal"
+import { CopyIcon, SearchIcon, TerminalIcon, Trash2Icon, XIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { type TerminalLine, useMcpTerminal } from "./hooks/useMcpTerminal"
 
 export function McpConsole() {
   const { lines, history, historyIdx, setHistoryIdx, execute, clear } = useMcpTerminal()
@@ -24,7 +21,10 @@ export function McpConsole() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { handleSubmit(); return }
+    if (e.key === "Enter") {
+      handleSubmit()
+      return
+    }
     if (e.key === "ArrowUp") {
       e.preventDefault()
       if (history.length > 0 && historyIdx < history.length - 1) {
@@ -47,11 +47,11 @@ export function McpConsole() {
   }
 
   const filteredLines = searchQuery
-    ? lines.filter(l => l.text.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? lines.filter((l) => l.text.toLowerCase().includes(searchQuery.toLowerCase()))
     : lines
 
   const handleCopy = () => {
-    const text = lines.map(l => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.text}`).join("\n")
+    const text = lines.map((l) => `[${l.timestamp}] [${l.type.toUpperCase()}] ${l.text}`).join("\n")
     navigator.clipboard.writeText(text)
   }
 
@@ -67,17 +67,25 @@ export function McpConsole() {
             <div className="flex items-center gap-1 bg-[#1e222b] px-1.5 py-0.5 rounded border border-border/60">
               <input
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filtrar..."
                 className="bg-transparent border-none outline-none text-[10px] text-[#cccccc] w-20 p-0 focus:ring-0"
-                autoFocus
               />
-              <button onClick={() => { setSearchQuery("") }} className="hover:text-white">
+              <button
+                onClick={() => {
+                  setSearchQuery("")
+                }}
+                className="hover:text-white"
+              >
                 <XIcon className="size-3" />
               </button>
             </div>
           ) : (
-            <button onClick={() => setSearchQuery(" ")} title="Buscar" className="p-1 hover:bg-[#282c34] rounded">
+            <button
+              onClick={() => setSearchQuery(" ")}
+              title="Buscar"
+              className="p-1 hover:bg-[#282c34] rounded"
+            >
               <SearchIcon className="size-3.5" />
             </button>
           )}
@@ -91,7 +99,9 @@ export function McpConsole() {
       </div>
 
       <div className="h-64 overflow-y-auto bg-[#090a0c] p-3 font-mono text-[11px] leading-relaxed select-text">
-        {filteredLines.map(line => <TerminalLineRow key={line.id} line={line} />)}
+        {filteredLines.map((line) => (
+          <TerminalLineRow key={line.id} line={line} />
+        ))}
         <div ref={bottomRef} />
       </div>
 
@@ -100,7 +110,7 @@ export function McpConsole() {
         <input
           ref={inputRef}
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent border-none outline-none text-xs text-[#cccccc] placeholder:text-slate-600 focus:ring-0 p-0"
           placeholder='Escribe "help" para los comandos disponibles...'
@@ -114,11 +124,11 @@ export function McpConsole() {
 
 function TerminalLineRow({ line }: { line: TerminalLine }) {
   const colorMap: Record<TerminalLine["type"], string> = {
-    input:   "text-zinc-300",
-    output:  "text-zinc-400",
-    info:    "text-sky-400",
+    input: "text-zinc-300",
+    output: "text-zinc-400",
+    info: "text-sky-400",
     success: "text-emerald-400",
-    error:   "text-red-400",
+    error: "text-red-400",
   }
   return (
     <div className={cn("whitespace-pre-wrap font-mono", colorMap[line.type])}>

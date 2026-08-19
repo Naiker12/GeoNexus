@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 
 beforeAll(() => {
   vi.stubGlobal("window", { __TAURI_INTERNALS__: {} })
@@ -8,8 +8,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }))
 
-import { invoke } from "@tauri-apps/api/core"
 import { getProjectContext, recallChunks } from "@/api/chat"
+import { invoke } from "@tauri-apps/api/core"
 
 describe("chat API", () => {
   describe("getProjectContext", () => {
@@ -33,7 +33,9 @@ describe("chat API", () => {
 
   describe("recallChunks", () => {
     it("calls invoke with correct args", async () => {
-      vi.mocked(invoke).mockResolvedValueOnce([{ text: "chunk", source: "doc", asset_id: "a1", score: 0.9 }])
+      vi.mocked(invoke).mockResolvedValueOnce([
+        { text: "chunk", source: "doc", asset_id: "a1", score: 0.9 },
+      ])
 
       const result = await recallChunks("proj-1", "query test")
       expect(invoke).toHaveBeenCalledWith("recall_chunks", {

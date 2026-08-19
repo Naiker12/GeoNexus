@@ -8,20 +8,16 @@ import type {
   SendMessageInput,
   SendMessageResponse,
 } from "@/types/chat"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
-async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+async function getInvoke(): Promise<typeof import("@tauri-apps/api/core").invoke | null> {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
+    const { invoke: tauriInvoke } = await import("@tauri-apps/api/core")
     return tauriInvoke
   } catch (e) {
-    console.error('[getInvoke] Could not import invoke:', e)
+    console.error("[getInvoke] Could not import invoke:", e)
     return null
   }
 }
@@ -46,10 +42,7 @@ async function invokeOrFallback<T>(
   }
 }
 
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
+async function invokeRequired<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const invoke = await getInvoke()
   if (!invoke) {
     throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
@@ -61,9 +54,7 @@ async function invokeRequired<T>(
   }
 }
 
-export async function sendMessage(
-  input: SendMessageInput
-): Promise<SendMessageResponse> {
+export async function sendMessage(input: SendMessageInput): Promise<SendMessageResponse> {
   if (!input.project_id.trim()) throw new Error("project_id requerido")
   if (!input.content.trim()) throw new Error("content requerido")
   if (!input.provider.trim()) throw new Error("provider requerido")
@@ -93,7 +84,10 @@ export function listArchivedConversations(projectId: string): Promise<Conversati
   return invokeOrFallback("list_archived_conversations", { projectId }, [])
 }
 
-export function searchConversations(projectId: string, query: string): Promise<ConversationSearchResult[]> {
+export function searchConversations(
+  projectId: string,
+  query: string
+): Promise<ConversationSearchResult[]> {
   if (!projectId.trim()) throw new Error("project_id requerido")
   return invokeOrFallback("search_conversations", { projectId, query }, [])
 }
@@ -110,20 +104,24 @@ export function listMessages(conversationId: string): Promise<Message[]> {
 
 export function getProjectContext(projectId: string): Promise<ProjectContext> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_project_context", { projectId }, {
-    assets: [],
-    graph_nodes: []
-  })
+  return invokeOrFallback(
+    "get_project_context",
+    { projectId },
+    {
+      assets: [],
+      graph_nodes: [],
+    }
+  )
 }
 
-export function recallChunks(
-  projectId: string,
-  query: string,
-  topK = 4
-): Promise<RecallChunk[]> {
-  return invokeOrFallback("recall_chunks", {
-    input: { project_id: projectId, query, top_k: topK },
-  }, [])
+export function recallChunks(projectId: string, query: string, topK = 4): Promise<RecallChunk[]> {
+  return invokeOrFallback(
+    "recall_chunks",
+    {
+      input: { project_id: projectId, query, top_k: topK },
+    },
+    []
+  )
 }
 
 export interface Automation {
@@ -183,8 +181,14 @@ export function deleteAutomation(id: string): Promise<void> {
   return invokeRequired("delete_automation", { id })
 }
 
-export function translateNlToCron(query: string): Promise<{ cron_expression: string; confidence: number }> {
-  return invokeOrFallback("translate_nl_to_cron", { query }, { cron_expression: "0 0 * * *", confidence: 0 })
+export function translateNlToCron(
+  query: string
+): Promise<{ cron_expression: string; confidence: number }> {
+  return invokeOrFallback(
+    "translate_nl_to_cron",
+    { query },
+    { cron_expression: "0 0 * * *", confidence: 0 }
+  )
 }
 
 export interface PatchProposal {
@@ -225,12 +229,16 @@ export function getMentionableSources(
   query?: string
 ): Promise<MentionableSourcesResponse> {
   if (!projectId.trim()) throw new Error("project_id requerido")
-  return invokeOrFallback("get_mentionable_sources", { projectId, query }, {
-    assets: [],
-    graph_nodes: [],
-    connectors: [],
-    mcp_servers: []
-  })
+  return invokeOrFallback(
+    "get_mentionable_sources",
+    { projectId, query },
+    {
+      assets: [],
+      graph_nodes: [],
+      connectors: [],
+      mcp_servers: [],
+    }
+  )
 }
 
 export function exportConversationTrajectory(conversationId: string): Promise<any> {

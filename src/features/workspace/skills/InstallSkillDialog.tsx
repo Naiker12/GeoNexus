@@ -1,7 +1,13 @@
-import { useState } from "react"
+import { normalizeGithubUrl, previewSkillFile } from "@/api/skills"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { open as tauriOpen } from "@tauri-apps/plugin-dialog"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { previewSkillFile, normalizeGithubUrl } from "@/api/skills"
+import { useState } from "react"
 
 interface InstallSkillDialogProps {
   open: boolean
@@ -12,7 +18,12 @@ interface InstallSkillDialogProps {
 
 type Step = "source" | "preview" | "installing" | "done" | "error"
 
-export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstallFromGithub }: InstallSkillDialogProps) {
+export function InstallSkillDialog({
+  open,
+  onClose,
+  onInstallFromFile,
+  onInstallFromGithub,
+}: InstallSkillDialogProps) {
   const [step, setStep] = useState<Step>("source")
   const [githubUrl, setGithubUrl] = useState("")
   const [previewContent, setPreviewContent] = useState("")
@@ -103,12 +114,18 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) handleClose()
+      }}
+    >
       <DialogContent className="w-[620px]">
         <DialogHeader>
           <DialogTitle>🧩 Instalar Skill</DialogTitle>
           <DialogDescription>
-            {step === "source" && "Agrega capacidades nuevas al agente desde GitHub o un archivo SKILL.md local."}
+            {step === "source" &&
+              "Agrega capacidades nuevas al agente desde GitHub o un archivo SKILL.md local."}
             {step === "preview" && "Revisa el contenido antes de instalar."}
             {step === "installing" && "Instalando skill..."}
             {step === "done" && msg}
@@ -130,10 +147,10 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
                 <input
                   type="text"
                   value={githubUrl}
-                  onChange={e => setGithubUrl(e.target.value)}
+                  onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/user/repo-skill"
                   className="flex-1 h-9 rounded-lg border border-border bg-background px-2.5 text-sm outline-none focus:border-primary/50"
-                  onKeyDown={e => e.key === "Enter" && handlePreviewGithub()}
+                  onKeyDown={(e) => e.key === "Enter" && handlePreviewGithub()}
                 />
                 <button
                   onClick={handlePreviewGithub}
@@ -170,7 +187,10 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
             </div>
             <div className="flex gap-2 justify-end">
               <button
-                onClick={() => { setStep("source"); setPreviewContent("") }}
+                onClick={() => {
+                  setStep("source")
+                  setPreviewContent("")
+                }}
                 className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
               >
                 Cancelar
@@ -189,7 +209,10 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
           <div className="mt-4">
             <p className="text-sm px-3 py-2 rounded-lg bg-destructive/10 text-destructive">{msg}</p>
             <div className="mt-3 flex justify-end">
-              <button onClick={() => setStep("source")} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50">
+              <button
+                onClick={() => setStep("source")}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+              >
                 Volver
               </button>
             </div>
@@ -198,7 +221,10 @@ export function InstallSkillDialog({ open, onClose, onInstallFromFile, onInstall
 
         {step === "source" && (
           <div className="mt-6 flex justify-end">
-            <button onClick={handleClose} className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50">
+            <button
+              onClick={handleClose}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/50"
+            >
               Cancelar
             </button>
           </div>

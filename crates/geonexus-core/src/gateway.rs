@@ -90,10 +90,12 @@ impl Gateway {
 }
 
 /// Discord webhook adapter — dispatches messages via Discord Incoming Webhooks.
+#[allow(dead_code)]
 pub struct DiscordWebhookAdapter {
     webhook_url: String,
 }
 
+#[allow(dead_code)]
 impl DiscordWebhookAdapter {
     pub fn new(webhook_url: String) -> Self {
         Self { webhook_url }

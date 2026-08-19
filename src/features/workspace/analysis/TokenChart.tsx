@@ -1,6 +1,6 @@
-import { useState, useRef, useMemo, useCallback } from "react"
 import { useTokenTimeline } from "@/features/workspace/analysis/useAnalysis"
 import type { Timeframe, TokenBucket } from "@/types/analysis"
+import { useCallback, useMemo, useRef, useState } from "react"
 
 interface TokenChartProps {
   timeframe: Timeframe
@@ -16,7 +16,7 @@ const TIMEFRAMES: { key: Timeframe; label: string }[] = [
 export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
   const { data, loading } = useTokenTimeline("project-default", timeframe)
   const chartRef = useRef<HTMLDivElement>(null)
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [_hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [tooltip, setTooltip] = useState<{ bucket: TokenBucket; x: number; y: number } | null>(null)
 
   const items = data ?? []
@@ -38,17 +38,20 @@ export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
     [items, maxTokens]
   )
 
-  const showTooltip = useCallback((i: number, e: React.MouseEvent) => {
-    const rect = chartRef.current?.getBoundingClientRect()
-    if (rect && items[i]) {
-      setTooltip({
-        bucket: items[i],
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      })
-    }
-    setHoverIndex(i)
-  }, [items])
+  const showTooltip = useCallback(
+    (i: number, e: React.MouseEvent) => {
+      const rect = chartRef.current?.getBoundingClientRect()
+      if (rect && items[i]) {
+        setTooltip({
+          bucket: items[i],
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        })
+      }
+      setHoverIndex(i)
+    },
+    [items]
+  )
 
   const hideTooltip = useCallback(() => {
     setHoverIndex(null)
@@ -107,15 +110,16 @@ export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
           <div className="relative" ref={chartRef}>
             <div className="flex h-52 rounded-lg border border-border bg-background/75">
               <div className="relative w-9 shrink-0">
-                {hasData && yLabels.map((l) => (
-                  <span
-                    key={l.topPct}
-                    className="absolute right-1.5 text-[0.6rem] leading-none text-muted-foreground -translate-y-full"
-                    style={{ top: `${l.topPct}%` }}
-                  >
-                    {l.value >= 1000 ? `${(l.value / 1000).toFixed(0)}k` : l.value}
-                  </span>
-                ))}
+                {hasData &&
+                  yLabels.map((l) => (
+                    <span
+                      key={l.topPct}
+                      className="absolute right-1.5 text-[0.6rem] leading-none text-muted-foreground -translate-y-full"
+                      style={{ top: `${l.topPct}%` }}
+                    >
+                      {l.value >= 1000 ? `${(l.value / 1000).toFixed(0)}k` : l.value}
+                    </span>
+                  ))}
               </div>
               <div className="relative flex-1">
                 {hasData ? (
@@ -129,8 +133,12 @@ export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
                     {yLabels.map((l) => (
                       <line
                         key={l.topPct}
-                        x1="0" y1={l.topPct} x2="100" y2={l.topPct}
-                        stroke="#f0ece4" strokeWidth="0.3"
+                        x1="0"
+                        y1={l.topPct}
+                        x2="100"
+                        y2={l.topPct}
+                        stroke="#f0ece4"
+                        strokeWidth="0.3"
                       />
                     ))}
                     <defs>
@@ -157,7 +165,10 @@ export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
             </div>
 
             {hasData && (
-              <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}>
+              <div
+                className="mt-2 grid gap-1.5"
+                style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
+              >
                 {items.map((item, i) => {
                   const inputPct = maxTokens ? (item.input_tokens / maxTokens) * 100 : 0
                   const outputPct = maxTokens ? (item.output_tokens / maxTokens) * 100 : 0
@@ -202,9 +213,15 @@ export function TokenChart({ timeframe, onTimeframeChange }: TokenChartProps) {
                 style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -110%)" }}
               >
                 <p className="font-semibold text-foreground">{tooltip.bucket.hora}</p>
-                <p className="text-muted-foreground">Input: {tooltip.bucket.input_tokens.toLocaleString("es-CO")}</p>
-                <p className="text-muted-foreground">Output: {tooltip.bucket.output_tokens.toLocaleString("es-CO")}</p>
-                <p className="font-medium text-foreground">Total: {tooltip.bucket.total_tokens.toLocaleString("es-CO")}</p>
+                <p className="text-muted-foreground">
+                  Input: {tooltip.bucket.input_tokens.toLocaleString("es-CO")}
+                </p>
+                <p className="text-muted-foreground">
+                  Output: {tooltip.bucket.output_tokens.toLocaleString("es-CO")}
+                </p>
+                <p className="font-medium text-foreground">
+                  Total: {tooltip.bucket.total_tokens.toLocaleString("es-CO")}
+                </p>
               </div>
             )}
 

@@ -1,28 +1,26 @@
-import * as React from "react"
 import {
   ActivityIcon,
   BrainCircuitIcon,
   GitBranchIcon,
   Maximize2Icon,
-  MinusIcon,
-  PlusIcon,
   RefreshCwIcon,
   SearchIcon,
   XIcon,
 } from "lucide-react"
+import * as React from "react"
 
-import { Button } from "@/components/ui/Button"
-import { ErrorBoundary } from "@/components/ErrorBoundary"
-import { cn } from "@/lib/utils"
 import { updateNodePosition } from "@/api/data"
-import type { GraphNode, GraphEdge, GraphNodeKind } from "@/types/graph"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { Button } from "@/components/ui/Button"
+import { cn } from "@/lib/utils"
+import type { GraphNodeKind } from "@/types/graph"
 
-import { useGraphEvents } from "./useGraphEvents"
-import { GraphFilters, type KindFilter } from "./GraphFilters"
-import { GraphCanvas } from "./GraphCanvas"
 import { GraphActivityPanel } from "./GraphActivityPanel"
-import { NodeSheet, nodeIcon } from "./NodeSheet"
-import { nodeTypeLabel, NODE_COLORS } from "./graph-colors"
+import { GraphCanvas } from "./GraphCanvas"
+import { GraphFilters, type KindFilter } from "./GraphFilters"
+import { NodeSheet } from "./NodeSheet"
+import { NODE_COLORS } from "./graph-colors"
+import { useGraphEvents } from "./useGraphEvents"
 
 export function GraphPage() {
   const {
@@ -42,7 +40,7 @@ export function GraphPage() {
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [activityOpen, setActivityOpen] = React.useState(false)
   const [rebuilding, setRebuilding] = React.useState(false)
-  const [layoutKey, setLayoutKey] = React.useState(0)
+  const [_layoutKey, setLayoutKey] = React.useState(0)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const canvasApiRef = React.useRef<{ fitToScreen: () => void; resetZoom: () => void } | null>(null)
 
@@ -83,7 +81,7 @@ export function GraphPage() {
     return new Set(
       edges
         .filter((e) => visibleIds.has(e.source as string) && visibleIds.has(e.target as string))
-        .map((e) => `${e.source as string}-${e.target as string}`),
+        .map((e) => `${e.source as string}-${e.target as string}`)
     )
   }, [filteredNodes, edges])
 
@@ -100,12 +98,9 @@ export function GraphPage() {
     })
   }, [selectedNode, edges, nodeById])
 
-  const handleNodeDragEnd = React.useCallback(
-    (nodeId: string, x: number, y: number) => {
-      updateNodePosition(nodeId, x, y).catch(console.error)
-    },
-    [],
-  )
+  const handleNodeDragEnd = React.useCallback((nodeId: string, x: number, y: number) => {
+    updateNodePosition(nodeId, x, y).catch(console.error)
+  }, [])
 
   const hasGraphData = nodes.length > 0
   const recentEvents = React.useMemo(() => {
@@ -117,29 +112,40 @@ export function GraphPage() {
 
   return (
     <ErrorBoundary>
-    <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-hidden px-3 py-3 sm:px-5 sm:py-4">
-      <div className="mx-auto flex size-full max-w-[110rem] flex-col gap-3">
-        <GraphHeader
-          onRebuild={handleRebuild}
-          onActivityToggle={() => setActivityOpen((p) => !p)}
-          activityOpen={activityOpen}
-        />
+      <section className="relative z-10 h-[calc(100svh-3.5rem)] overflow-hidden px-3 py-3 sm:px-5 sm:py-4">
+        <div className="mx-auto flex size-full max-w-[110rem] flex-col gap-3">
+          <GraphHeader
+            onRebuild={handleRebuild}
+            onActivityToggle={() => setActivityOpen((p) => !p)}
+            activityOpen={activityOpen}
+          />
 
-        <section className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
-          {/* Tool bar */}
-          <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
-            {searchOpen ? (
-              <div className="flex h-7 items-center gap-1 rounded-md border border-border bg-card/90 px-1.5 text-xs shadow-sm">
-                <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar nodo..."
-                  className="w-32 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
-                />
-                {searchQuery && (
+          <section className="relative min-h-0 flex-1 overflow-hidden rounded-lg border border-border/80 bg-card/95 shadow-sm backdrop-blur">
+            {/* Tool bar */}
+            <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
+              {searchOpen ? (
+                <div className="flex h-7 items-center gap-1 rounded-md border border-border bg-card/90 px-1.5 text-xs shadow-sm">
+                  <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar nodo..."
+                    className="w-32 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("")
+                        setSearchOpen(false)
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <XIcon className="size-3" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -148,109 +154,101 @@ export function GraphPage() {
                     }}
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    <XIcon className="size-3" />
+                    <XIcon className="size-3.5" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery("")
-                    setSearchOpen(false)
-                  }}
-                  className="text-muted-foreground hover:text-foreground"
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 bg-card/90"
+                  onClick={() => setSearchOpen(true)}
                 >
-                  <XIcon className="size-3.5" />
-                </button>
+                  <SearchIcon className="size-4" />
+                  Buscar nodo
+                </Button>
+              )}
+
+              <GraphFilters kindFilter={kindFilter} onKindFilterChange={setKindFilter} />
+            </div>
+
+            {/* Zoom controls */}
+            <div className="absolute right-3 top-3 z-20 flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 bg-card/90"
+                onClick={() => canvasApiRef.current?.fitToScreen()}
+                title="Ajustar a pantalla"
+              >
+                <Maximize2Icon className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 bg-card/90"
+                onClick={() => canvasApiRef.current?.resetZoom()}
+                title="Zoom 1:1"
+              >
+                <span className="text-xs font-medium">1:1</span>
+              </Button>
+            </div>
+
+            {loading || rebuilding ? (
+              <div className="flex size-full items-center justify-center gap-2 text-sm text-muted-foreground bg-background/75">
+                <RefreshCwIcon className={cn("size-4", rebuilding && "animate-spin")} />
+                {rebuilding ? "Recalculando red..." : "Cargando base de conocimiento..."}
+              </div>
+            ) : !hasGraphData ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                <BrainCircuitIcon className="h-12 w-12 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No hay nodos de conocimiento aún.</p>
+                <p className="text-xs text-muted-foreground/60">
+                  Indexa un documento o envía un mensaje para poblar la red.
+                </p>
+                <Button variant="outline" size="sm" onClick={handleRebuild}>
+                  <RefreshCwIcon className="size-4" />
+                  Recalcular red
+                </Button>
               </div>
             ) : (
-              <Button variant="outline" size="sm" className="h-7 bg-card/90" onClick={() => setSearchOpen(true)}>
-                <SearchIcon className="size-4" />
-                Buscar nodo
-              </Button>
+              <GraphCanvas
+                nodes={filteredNodes}
+                edges={edges}
+                selectedNodeId={selectedNodeId}
+                filteredEdgeIds={filteredEdgeIds}
+                searchQuery={searchQuery}
+                animatingNodeIds={animatingNodeIds}
+                onNodeSelect={setSelectedNodeId}
+                onNodeDragMove={(_nodeId, _x, _y) => {}}
+                onNodeDragEnd={handleNodeDragEnd}
+              />
             )}
 
-            <GraphFilters kindFilter={kindFilter} onKindFilterChange={setKindFilter} />
-          </div>
+            <GraphLegend />
 
-          {/* Zoom controls */}
-          <div className="absolute right-3 top-3 z-20 flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 bg-card/90"
-              onClick={() => canvasApiRef.current?.fitToScreen()}
-              title="Ajustar a pantalla"
-            >
-              <Maximize2Icon className="size-3.5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 bg-card/90"
-              onClick={() => canvasApiRef.current?.resetZoom()}
-              title="Zoom 1:1"
-            >
-              <span className="text-xs font-medium">1:1</span>
-            </Button>
-          </div>
-
-          {loading || rebuilding ? (
-            <div className="flex size-full items-center justify-center gap-2 text-sm text-muted-foreground bg-background/75">
-              <RefreshCwIcon className={cn("size-4", rebuilding && "animate-spin")} />
-              {rebuilding ? "Recalculando red..." : "Cargando base de conocimiento..."}
-            </div>
-          ) : !hasGraphData ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <BrainCircuitIcon className="h-12 w-12 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">
-                No hay nodos de conocimiento aún.
-              </p>
-              <p className="text-xs text-muted-foreground/60">
-                Indexa un documento o envía un mensaje para poblar la red.
-              </p>
-              <Button variant="outline" size="sm" onClick={handleRebuild}>
-                <RefreshCwIcon className="size-4" />
-                Recalcular red
-              </Button>
-            </div>
-          ) : (
-            <GraphCanvas
-              nodes={filteredNodes}
-              edges={edges}
-              selectedNodeId={selectedNodeId}
-              filteredEdgeIds={filteredEdgeIds}
-              searchQuery={searchQuery}
-              animatingNodeIds={animatingNodeIds}
-              onNodeSelect={setSelectedNodeId}
-              onNodeDragMove={(_nodeId, _x, _y) => {}}
-              onNodeDragEnd={handleNodeDragEnd}
+            <GraphActivityPanel
+              events={recentEvents}
+              open={activityOpen}
+              onOpenChange={setActivityOpen}
+              onClearEphemeral={clearEphemeral}
             />
-          )}
+          </section>
+        </div>
 
-          <GraphLegend />
-
-          <GraphActivityPanel
-            events={recentEvents}
-            open={activityOpen}
-            onOpenChange={setActivityOpen}
-            onClearEphemeral={clearEphemeral}
-          />
-        </section>
-      </div>
-
-      <NodeSheet
-        node={selectedNode}
-        relations={selectedRelations}
-        open={Boolean(selectedNode)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedNodeId(null)
-        }}
-        onNodeDelete={(nodeId) => {
-          refresh()
-          setSelectedNodeId(null)
-        }}
-      />
-    </section>
+        <NodeSheet
+          node={selectedNode}
+          relations={selectedRelations}
+          open={Boolean(selectedNode)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedNodeId(null)
+          }}
+          onNodeDelete={(_nodeId) => {
+            refresh()
+            setSelectedNodeId(null)
+          }}
+        />
+      </section>
     </ErrorBoundary>
   )
 }
@@ -272,18 +270,20 @@ function GraphHeader({
             <GitBranchIcon className="size-4" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold tracking-tight">
-              Base de conocimiento
-            </h1>
+            <h1 className="text-lg font-semibold tracking-tight">Base de conocimiento</h1>
             <p className="mt-0.5 max-w-4xl text-sm leading-5 text-muted-foreground">
-              Grafo vivo — los nodos aparecen y se conectan en tiempo real al chatear,
-              indexar o sincronizar.
+              Grafo vivo — los nodos aparecen y se conectan en tiempo real al chatear, indexar o
+              sincronizar.
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Button size="sm" variant={activityOpen ? "default" : "outline"} onClick={onActivityToggle}>
+          <Button
+            size="sm"
+            variant={activityOpen ? "default" : "outline"}
+            onClick={onActivityToggle}
+          >
             <ActivityIcon className={cn("size-4", activityOpen && "animate-pulse")} />
             Actividad
           </Button>

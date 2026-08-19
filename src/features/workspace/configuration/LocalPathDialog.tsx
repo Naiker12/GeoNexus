@@ -1,11 +1,7 @@
-import {
-  CheckCircle2Icon,
-  FolderCogIcon,
-  FolderOpenIcon,
-  TerminalIcon,
-} from "lucide-react"
+import { CheckCircle2Icon, FolderCogIcon, FolderOpenIcon, TerminalIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
 import {
   Dialog,
   DialogContent,
@@ -13,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/Input"
 import { DialogActions } from "@/features/workspace/configuration/DialogActions"
 import { CheckRow, Field } from "@/features/workspace/configuration/settings-ui"
 
@@ -61,12 +56,8 @@ export function LocalPathDialogContent({
             <FolderCogIcon className="size-4" />
           </div>
           <div className="min-w-0">
-            <DialogTitle className="text-base">
-              Cambiar ruta: {name}
-            </DialogTitle>
-            <DialogDescription className="mt-1 text-sm leading-5">
-              {detail}
-            </DialogDescription>
+            <DialogTitle className="text-base">Cambiar ruta: {name}</DialogTitle>
+            <DialogDescription className="mt-1 text-sm leading-5">{detail}</DialogDescription>
           </div>
         </div>
       </DialogHeader>
@@ -85,8 +76,8 @@ export function LocalPathDialogContent({
           <div>
             <p className="text-sm font-medium">Configuracion de ruta local</p>
             <p className="mt-1 text-xs leading-4 text-muted-foreground">
-              Tauri debera verificar permisos, existencia de carpeta y
-              migracion de datos antes de persistir la nueva ruta.
+              Tauri debera verificar permisos, existencia de carpeta y migracion de datos antes de
+              persistir la nueva ruta.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

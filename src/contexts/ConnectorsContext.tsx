@@ -1,9 +1,17 @@
-import { useEffect, useState, useRef, createContext, useContext, type Dispatch, type SetStateAction } from "react"
 import { CloudIcon } from "lucide-react"
+import {
+  type Dispatch,
+  type SetStateAction,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 
+import { deleteSecure, getSecure, setSecure } from "@/api/secure"
 import { providerOptions } from "@/features/workspace/ai-containers/provider-options"
 import type { AiConnector } from "@/types/workspace-types"
-import { setSecure, getSecure, deleteSecure } from "@/api/secure"
 
 const STORAGE_KEY = "geonexus.connectors"
 const ACTIVE_ID_KEY = "geonexus.activeConnectorId"

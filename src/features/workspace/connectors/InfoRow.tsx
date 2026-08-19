@@ -9,9 +9,7 @@ export function InfoRow({ label, value }: InfoRowProps) {
       <span className="block text-[0.68rem] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <span className="mt-0.5 block truncate text-xs text-foreground">
-        {value}
-      </span>
+      <span className="mt-0.5 block truncate text-xs text-foreground">{value}</span>
     </div>
   )
 }

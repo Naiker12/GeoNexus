@@ -1,5 +1,5 @@
-import { History, Puzzle, Database } from "lucide-react"
 import type { SessionSummary } from "@/types/chat"
+import { Database, History, Puzzle } from "lucide-react"
 
 interface ConversationMemoryBadgeProps {
   summary: SessionSummary

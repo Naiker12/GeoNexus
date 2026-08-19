@@ -1,4 +1,4 @@
-import * as React from "react"
+import type * as React from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -25,16 +25,9 @@ function InputGroupAddon({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function InputGroupControl({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function InputGroupControl({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div
-      data-slot="input-group-control"
-      className={cn("min-w-0 flex-1", className)}
-      {...props}
-    />
+    <div data-slot="input-group-control" className={cn("min-w-0 flex-1", className)} {...props} />
   )
 }
 

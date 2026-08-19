@@ -1,5 +1,5 @@
+import { FileIcon, UploadIcon } from "lucide-react"
 import * as React from "react"
-import { UploadIcon, FileIcon } from "lucide-react"
 
 export function DragDropOverlay() {
   const [dragging, setDragging] = React.useState(false)
@@ -38,7 +38,9 @@ export function DragDropOverlay() {
     setDragging(false)
     const files = e.dataTransfer?.files
     if (files && files.length > 0) {
-      window.dispatchEvent(new CustomEvent("geonexus:global-drop-files", { detail: Array.from(files) }))
+      window.dispatchEvent(
+        new CustomEvent("geonexus:global-drop-files", { detail: Array.from(files) })
+      )
     }
   }, [])
 

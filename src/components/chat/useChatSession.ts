@@ -1,27 +1,35 @@
-import * as React from "react"
-import type { AiConnector } from "@/types/workspace-types"
 import type { ContextToggle } from "@/components/chat/ProjectContextPanel"
 import type { Message } from "@/types/chat"
+import type { AiConnector } from "@/types/workspace-types"
+import * as React from "react"
+import { useChatSubmit } from "./hooks/useChatSubmit"
 import { useConversation } from "./hooks/useConversation"
 import { useWebSearch } from "./hooks/useWebSearch"
-import { useChatSubmit } from "./hooks/useChatSubmit"
 
-export function useChatSession(
-  activeConnectorId: string | null,
-  allConnectors: AiConnector[],
-) {
+export function useChatSession(activeConnectorId: string | null, allConnectors: AiConnector[]) {
   const {
-    messages, setMessages, conversationId, setConversationId,
-    loadingHistory, error: convError, setError: setConvError,
-    loadConversation, newConversation: newConv,
-    updateAssistantMessage, addSystemMessage,
+    messages,
+    setMessages,
+    conversationId,
+    setConversationId,
+    loadingHistory,
+    error: convError,
+    setError: setConvError,
+    loadConversation,
+    newConversation: newConv,
+    updateAssistantMessage,
+    addSystemMessage,
   } = useConversation()
 
   const {
-    webSearchEnabled, setWebSearchEnabled,
-    sessionSummary, setSessionSummary,
-    lastIntent, setLastIntent,
-    stopResearchTimer, startResearchTimer,
+    webSearchEnabled,
+    setWebSearchEnabled,
+    sessionSummary,
+    setSessionSummary,
+    lastIntent,
+    setLastIntent,
+    stopResearchTimer,
+    startResearchTimer,
   } = useWebSearch()
 
   const [contextToggles, setContextToggles] = React.useState<ContextToggle>({
@@ -31,22 +39,37 @@ export function useChatSession(
   })
 
   const {
-    activeProvider, pending, loadingPhase, error: submitError, setError: setSubmitError,
-    submit, regenerate, stop,
+    activeProvider,
+    pending,
+    loadingPhase,
+    error: submitError,
+    setError: setSubmitError,
+    submit,
+    regenerate,
+    stop,
   } = useChatSubmit(
-    conversationId, setConversationId,
-    setMessages, updateAssistantMessage,
-    webSearchEnabled, contextToggles,
-    activeConnectorId, allConnectors,
-    stopResearchTimer, startResearchTimer,
-    setSessionSummary, setLastIntent,
+    conversationId,
+    setConversationId,
+    setMessages,
+    updateAssistantMessage,
+    webSearchEnabled,
+    contextToggles,
+    activeConnectorId,
+    allConnectors,
+    stopResearchTimer,
+    startResearchTimer,
+    setSessionSummary,
+    setLastIntent
   )
 
   const error = convError || submitError
-  const setError = React.useCallback((e: string | null) => {
-    setConvError(e)
-    setSubmitError(e)
-  }, [setConvError, setSubmitError])
+  const _setError = React.useCallback(
+    (e: string | null) => {
+      setConvError(e)
+      setSubmitError(e)
+    },
+    [setConvError, setSubmitError]
+  )
 
   const newConversation = React.useCallback(() => {
     stop()
@@ -56,15 +79,29 @@ export function useChatSession(
   const [submitTime, setSubmitTime] = React.useState<number | null>(null)
 
   React.useEffect(() => {
-    setSubmitTime(Date.now())
+    if (pending) {
+      setSubmitTime(Date.now())
+    }
   }, [pending])
 
   const wrappedSubmit = React.useCallback(
-    (content: string, mentions?: { assetIds: string[]; connectorIds: string[]; mcpServerIds?: string[]; nodeIds: string[]; agentSources?: string[] }, skillNames?: string[], attachments?: Message["attachments"], reasoning_effort?: string) => {
+    (
+      content: string,
+      mentions?: {
+        assetIds: string[]
+        connectorIds: string[]
+        mcpServerIds?: string[]
+        nodeIds: string[]
+        agentSources?: string[]
+      },
+      skillNames?: string[],
+      attachments?: Message["attachments"],
+      reasoning_effort?: string
+    ) => {
       setSubmitTime(Date.now())
       return submit(content, mentions, skillNames, attachments, reasoning_effort)
     },
-    [submit],
+    [submit]
   )
 
   return {

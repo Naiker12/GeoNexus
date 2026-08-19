@@ -1,8 +1,8 @@
-import * as React from "react"
-import { useUiStore } from "@/stores/uiStore"
-import { useKeybindingsStore } from "@/stores/keybindingsStore"
-import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
 import { useSidebar } from "@/components/ui/sidebar"
+import { useAgentTaskStore } from "@/features/agent/store/useAgentTaskStore"
+import { useKeybindingsStore } from "@/stores/keybindingsStore"
+import { useUiStore } from "@/stores/uiStore"
+import * as React from "react"
 
 type ShortcutHandlers = {
   onNewConversation?: () => void

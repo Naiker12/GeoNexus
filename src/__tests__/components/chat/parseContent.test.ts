@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
 import { parseContent } from "@/utils/parseContent"
+import { describe, expect, it } from "vitest"
 
 describe("parseContent", () => {
   it("returns a single text segment for plain text", () => {
@@ -9,7 +9,8 @@ describe("parseContent", () => {
   })
 
   it("detects a connect_card JSON block", () => {
-    const content = 'Necesito acceso.\n{"type":"connect_card","connectorId":"onedrive","reason":"Para acceder a archivos"}'
+    const content =
+      'Necesito acceso.\n{"type":"connect_card","connectorId":"onedrive","reason":"Para acceder a archivos"}'
     const result = parseContent(content)
     expect(result).toHaveLength(2)
     expect(result[0]).toEqual({ kind: "text", value: "Necesito acceso.\n" })
@@ -30,7 +31,8 @@ describe("parseContent", () => {
   })
 
   it("extracts multiple connect_card blocks", () => {
-    const content = 'A\n{"type":"connect_card","connectorId":"a"}\nB\n{"type":"connect_card","connectorId":"b"}'
+    const content =
+      'A\n{"type":"connect_card","connectorId":"a"}\nB\n{"type":"connect_card","connectorId":"b"}'
     const result = parseContent(content)
     expect(result).toHaveLength(4)
     expect(result[0].kind).toBe("text")

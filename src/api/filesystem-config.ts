@@ -1,13 +1,13 @@
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
 
 async function getInvoke() {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke } = await import('@tauri-apps/api/core')
+    const { invoke } = await import("@tauri-apps/api/core")
     return invoke
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 interface AllowedPathEntry {
@@ -37,27 +37,40 @@ export type { AllowedPathEntry, FilesystemConfig }
 export async function getFilesystemConfig(): Promise<FilesystemConfig | null> {
   const invoke = await getInvoke()
   if (!invoke) return null
-  try { return await invoke<FilesystemConfig>("get_filesystem_config") }
-  catch { return null }
+  try {
+    return await invoke<FilesystemConfig>("get_filesystem_config")
+  } catch {
+    return null
+  }
 }
 
 export async function saveFilesystemConfig(config: FilesystemConfig): Promise<boolean> {
   const invoke = await getInvoke()
   if (!invoke) return false
-  try { await invoke("save_filesystem_config", { config }); return true }
-  catch { return false }
+  try {
+    await invoke("save_filesystem_config", { config })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function isFirstLaunch(): Promise<boolean> {
   const invoke = await getInvoke()
   if (!invoke) return false
-  try { return await invoke<boolean>("is_first_launch") }
-  catch { return true }
+  try {
+    return await invoke<boolean>("is_first_launch")
+  } catch {
+    return true
+  }
 }
 
 export async function setOnboardingCompleted(): Promise<void> {
   const invoke = await getInvoke()
   if (!invoke) return
-  try { await invoke("set_onboarding_completed") }
-  catch { /* ignore */ }
+  try {
+    await invoke("set_onboarding_completed")
+  } catch {
+    /* ignore */
+  }
 }

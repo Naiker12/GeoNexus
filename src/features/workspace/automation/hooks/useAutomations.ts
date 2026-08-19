@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from "react"
 import {
-  listAutomations,
   createAutomation,
-  updateAutomation,
-  toggleAutomation,
   deleteAutomation,
+  listAutomations,
   startSchedulerWorker,
   stopSchedulerWorker,
+  toggleAutomation,
+  updateAutomation,
 } from "@/api/chat"
+import { useCallback, useEffect, useState } from "react"
 import type { Automation } from "../types"
 
 const PROJECT_ID = "default"
@@ -31,73 +31,92 @@ export function useAutomations() {
     }
   }, [])
 
-  useEffect(() => { fetchAutomations() }, [fetchAutomations])
+  useEffect(() => {
+    fetchAutomations()
+  }, [fetchAutomations])
 
-  const handleCreate = useCallback(async (form: {
-    name: string
-    description: string
-    intent: string
-    action_type: string
-    action_config: string
-    channel: string
-    cron_expression: string
-  }) => {
-    let actionConfig: any = undefined
-    if (form.action_config && form.action_config !== "{}") {
-      try { actionConfig = JSON.parse(form.action_config) } catch { /* ignore */ }
-    }
+  const handleCreate = useCallback(
+    async (form: {
+      name: string
+      description: string
+      intent: string
+      action_type: string
+      action_config: string
+      channel: string
+      cron_expression: string
+    }) => {
+      let actionConfig: any = undefined
+      if (form.action_config && form.action_config !== "{}") {
+        try {
+          actionConfig = JSON.parse(form.action_config)
+        } catch {
+          /* ignore */
+        }
+      }
 
-    const automation = await createAutomation({
-      projectId: PROJECT_ID,
-      name: form.name,
-      description: form.description || undefined,
-      intent: form.intent,
-      actionType: form.action_type,
-      actionConfig,
-      channel: form.channel,
-      cronExpression: form.cron_expression || undefined,
-    })
-    setAutomations(prev => [automation, ...prev])
-    return automation
-  }, [])
+      const automation = await createAutomation({
+        projectId: PROJECT_ID,
+        name: form.name,
+        description: form.description || undefined,
+        intent: form.intent,
+        actionType: form.action_type,
+        actionConfig,
+        channel: form.channel,
+        cronExpression: form.cron_expression || undefined,
+      })
+      setAutomations((prev) => [automation, ...prev])
+      return automation
+    },
+    []
+  )
 
-  const handleUpdate = useCallback(async (form: {
-    name: string
-    description: string
-    intent: string
-    action_type: string
-    action_config: string
-    channel: string
-    cron_expression: string
-  }, id: string) => {
-    let actionConfig: any = undefined
-    if (form.action_config && form.action_config !== "{}") {
-      try { actionConfig = JSON.parse(form.action_config) } catch { /* ignore */ }
-    }
+  const handleUpdate = useCallback(
+    async (
+      form: {
+        name: string
+        description: string
+        intent: string
+        action_type: string
+        action_config: string
+        channel: string
+        cron_expression: string
+      },
+      id: string
+    ) => {
+      let actionConfig: any = undefined
+      if (form.action_config && form.action_config !== "{}") {
+        try {
+          actionConfig = JSON.parse(form.action_config)
+        } catch {
+          /* ignore */
+        }
+      }
 
-    const automation = await updateAutomation({
-      id,
-      name: form.name,
-      description: form.description || undefined,
-      intent: form.intent,
-      actionType: form.action_type,
-      actionConfig,
-      channel: form.channel,
-      cronExpression: form.cron_expression || undefined,
-      enabled: true,
-    })
-    setAutomations(prev => prev.map(a => a.id === id ? automation : a))
-    return automation
-  }, [])
+      const automation = await updateAutomation({
+        id,
+        name: form.name,
+        description: form.description || undefined,
+        intent: form.intent,
+        actionType: form.action_type,
+        actionConfig,
+        channel: form.channel,
+        cronExpression: form.cron_expression || undefined,
+        enabled: true,
+      })
+      setAutomations((prev) => prev.map((a) => (a.id === id ? automation : a)))
+      return automation
+    },
+    []
+  )
 
   const handleToggle = useCallback(async (id: string, enabled: boolean) => {
     await toggleAutomation(id, enabled)
-    setAutomations(prev => prev.map(a => a.id === id ? { ...a, enabled } : a))
+    setAutomations((prev) => prev.map((a) => (a.id === id ? { ...a, enabled } : a)))
   }, [])
 
   const handleDelete = useCallback(async (id: string) => {
     await deleteAutomation(id)
-    setAutomations(prev => prev.filter(a => a.id !== id))
+    setAutomations((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
   const handleRunNow = useCallback(async (_id: string) => {

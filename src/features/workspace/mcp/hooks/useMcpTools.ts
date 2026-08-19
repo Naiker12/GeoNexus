@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
 import { listMcpTools } from "@/api/mcp"
 import type { McpTool } from "@/types/mcp"
+import { useCallback, useEffect, useState } from "react"
 
 export function useMcpTools(serverId: string | null) {
   const [tools, setTools] = useState<McpTool[]>([])
@@ -17,17 +17,22 @@ export function useMcpTools(serverId: string | null) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    listMcpTools(serverId).then(data => {
-      if (!cancelled) setTools(data)
-    }).catch((err) => {
-      if (!cancelled) setError(String(err))
-    }).finally(() => {
-      if (!cancelled) setLoading(false)
-    })
-    return () => { cancelled = true }
+    listMcpTools(serverId)
+      .then((data) => {
+        if (!cancelled) setTools(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [serverId, refreshKey])
 
-  const refresh = useCallback(() => setRefreshKey(k => k + 1), [])
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   return { tools, loading, error, refresh }
 }

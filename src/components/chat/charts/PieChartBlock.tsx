@@ -1,13 +1,6 @@
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts"
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import type { ChartEntry } from "./chart-utils"
-import { chartColors, ChartTooltip } from "./shared"
+import { ChartTooltip, chartColors } from "./shared"
 
 export function PieChartBlock({
   title,

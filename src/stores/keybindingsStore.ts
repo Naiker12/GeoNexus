@@ -30,14 +30,62 @@ type KeybindingsStore = {
 const STORAGE_KEY = "geonexus:keybindings"
 
 const DEFAULT_BINDINGS: Keybinding[] = [
-  { action: "command_palette", label: "Paleta de comandos", defaultKeys: "CmdOrCtrl+K", currentKeys: "CmdOrCtrl+K", category: "General" },
-  { action: "new_conversation", label: "Nueva conversación", defaultKeys: "CmdOrCtrl+N", currentKeys: "CmdOrCtrl+N", category: "Chat" },
-  { action: "toggle_sidebar", label: "Alternar barra lateral", defaultKeys: "CmdOrCtrl+B", currentKeys: "CmdOrCtrl+B", category: "General" },
-  { action: "send_message", label: "Enviar mensaje", defaultKeys: "Enter", currentKeys: "Enter", category: "Chat" },
-  { action: "search_documents", label: "Buscar documentos", defaultKeys: "CmdOrCtrl+Shift+F", currentKeys: "CmdOrCtrl+Shift+F", category: "Workspace" },
-  { action: "toggle_web_search", label: "Búsqueda web", defaultKeys: "CmdOrCtrl+Shift+W", currentKeys: "CmdOrCtrl+Shift+W", category: "Chat" },
-  { action: "toggle_agent_mode", label: "Modo agente", defaultKeys: "CmdOrCtrl+Shift+A", currentKeys: "CmdOrCtrl+Shift+A", category: "Chat" },
-  { action: "open_settings", label: "Configuración", defaultKeys: "CmdOrCtrl+Shift+P", currentKeys: "CmdOrCtrl+Shift+P", category: "General" },
+  {
+    action: "command_palette",
+    label: "Paleta de comandos",
+    defaultKeys: "CmdOrCtrl+K",
+    currentKeys: "CmdOrCtrl+K",
+    category: "General",
+  },
+  {
+    action: "new_conversation",
+    label: "Nueva conversación",
+    defaultKeys: "CmdOrCtrl+N",
+    currentKeys: "CmdOrCtrl+N",
+    category: "Chat",
+  },
+  {
+    action: "toggle_sidebar",
+    label: "Alternar barra lateral",
+    defaultKeys: "CmdOrCtrl+B",
+    currentKeys: "CmdOrCtrl+B",
+    category: "General",
+  },
+  {
+    action: "send_message",
+    label: "Enviar mensaje",
+    defaultKeys: "Enter",
+    currentKeys: "Enter",
+    category: "Chat",
+  },
+  {
+    action: "search_documents",
+    label: "Buscar documentos",
+    defaultKeys: "CmdOrCtrl+Shift+F",
+    currentKeys: "CmdOrCtrl+Shift+F",
+    category: "Workspace",
+  },
+  {
+    action: "toggle_web_search",
+    label: "Búsqueda web",
+    defaultKeys: "CmdOrCtrl+Shift+W",
+    currentKeys: "CmdOrCtrl+Shift+W",
+    category: "Chat",
+  },
+  {
+    action: "toggle_agent_mode",
+    label: "Modo agente",
+    defaultKeys: "CmdOrCtrl+Shift+A",
+    currentKeys: "CmdOrCtrl+Shift+A",
+    category: "Chat",
+  },
+  {
+    action: "open_settings",
+    label: "Configuración",
+    defaultKeys: "CmdOrCtrl+Shift+P",
+    currentKeys: "CmdOrCtrl+Shift+P",
+    category: "General",
+  },
 ]
 
 function loadBindings(): Keybinding[] {
@@ -66,7 +114,8 @@ function normalizeKeys(e: KeyboardEvent): string {
   else if (e.ctrlKey) parts.push("CmdOrCtrl")
   if (e.shiftKey) parts.push("Shift")
   if (e.altKey) parts.push("Alt")
-  const key = e.key === "Meta" || e.key === "Control" || e.key === "Shift" || e.key === "Alt" ? "" : e.key
+  const key =
+    e.key === "Meta" || e.key === "Control" || e.key === "Shift" || e.key === "Alt" ? "" : e.key
   if (key) {
     parts.push(key.length === 1 ? key.toUpperCase() : key)
   }

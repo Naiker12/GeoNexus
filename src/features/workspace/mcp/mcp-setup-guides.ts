@@ -17,8 +17,7 @@ export const MCP_SETUP_GUIDES: Record<string, McpSetupGuide> = {
 }
 
 export const DEFAULT_GUIDE: McpSetupGuide = {
-  message:
-    "Verifica que el servidor esté iniciado y la URL/comando sean correctos.",
+  message: "Verifica que el servidor esté iniciado y la URL/comando sean correctos.",
 }
 
 export function getSetupGuide(serverId: string): McpSetupGuide {

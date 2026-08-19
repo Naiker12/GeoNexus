@@ -9,22 +9,48 @@ interface SkillCardProps {
 }
 
 const CATEGORY_CONFIG: Record<SkillCategory, { icon: string; color: string; label: string }> = {
-  gis:       { icon: "🗺️", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400", label: "GIS" },
-  research:  { icon: "🔍", color: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400", label: "Research" },
-  data:      { icon: "📊", color: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400", label: "Datos" },
-  agent:     { icon: "🤖", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", label: "Agente" },
-  tool:      { icon: "⚡", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", label: "Tool" },
-  connector: { icon: "🔌", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400", label: "Conector" },
+  gis: {
+    icon: "🗺️",
+    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+    label: "GIS",
+  },
+  research: {
+    icon: "🔍",
+    color: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400",
+    label: "Research",
+  },
+  data: {
+    icon: "📊",
+    color: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400",
+    label: "Datos",
+  },
+  agent: {
+    icon: "🤖",
+    color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+    label: "Agente",
+  },
+  tool: {
+    icon: "⚡",
+    color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+    label: "Tool",
+  },
+  connector: {
+    icon: "🔌",
+    color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400",
+    label: "Conector",
+  },
 }
 
 export function SkillCard({ skill, onToggle, onView, onUseInChat }: SkillCardProps) {
   const cat = CATEGORY_CONFIG[skill.category]
 
   return (
-    <div className={cn(
-      "rounded-xl border p-4 transition-all",
-      skill.enabled ? "border-border bg-card/95" : "border-border/50 bg-muted/30 opacity-60"
-    )}>
+    <div
+      className={cn(
+        "rounded-xl border p-4 transition-all",
+        skill.enabled ? "border-border bg-card/95" : "border-border/50 bg-muted/30 opacity-60"
+      )}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xl shrink-0">{cat.icon}</span>
@@ -51,22 +77,22 @@ export function SkillCard({ skill, onToggle, onView, onUseInChat }: SkillCardPro
           )}
           title={skill.enabled ? "Desactivar" : "Activar"}
         >
-          <span className={cn(
-            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-            skill.enabled ? "translate-x-5" : "translate-x-0.5"
-          )} />
+          <span
+            className={cn(
+              "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+              skill.enabled ? "translate-x-5" : "translate-x-0.5"
+            )}
+          />
         </button>
       </div>
 
       {skill.description && (
-        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-          {skill.description}
-        </p>
+        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{skill.description}</p>
       )}
 
       {skill.mcpServers.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
-          {skill.mcpServers.map(mcp => (
+          {skill.mcpServers.map((mcp) => (
             <span key={mcp} className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono">
               {mcp}
             </span>
@@ -76,8 +102,10 @@ export function SkillCard({ skill, onToggle, onView, onUseInChat }: SkillCardPro
 
       {skill.tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
-          {skill.tags.slice(0, 4).map(tag => (
-            <span key={tag} className="text-[10px] text-muted-foreground">#{tag}</span>
+          {skill.tags.slice(0, 4).map((tag) => (
+            <span key={tag} className="text-[10px] text-muted-foreground">
+              #{tag}
+            </span>
           ))}
         </div>
       )}
@@ -86,8 +114,12 @@ export function SkillCard({ skill, onToggle, onView, onUseInChat }: SkillCardPro
         <span>Usado {skill.useCount}x</span>
         {skill.author && <span className="truncate">por {skill.author}</span>}
         {skill.sourceUrl && (
-          <a href={skill.sourceUrl} target="_blank" rel="noreferrer"
-             className="text-primary hover:underline shrink-0">
+          <a
+            href={skill.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline shrink-0"
+          >
             GitHub ↗
           </a>
         )}

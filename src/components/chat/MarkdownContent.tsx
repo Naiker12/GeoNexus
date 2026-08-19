@@ -1,18 +1,17 @@
-import { useState, useMemo, memo } from "react"
-import ReactMarkdown from "react-markdown"
-import remarkGfm from "remark-gfm"
-import { CodeBlock } from "@/components/chat/CodeBlock"
 import { cn } from "@/lib/utils"
+import { code } from "@streamdown/code"
+import { math } from "@streamdown/math"
+import { mermaid } from "@streamdown/mermaid"
+import { memo, useMemo } from "react"
+import { Streamdown } from "streamdown"
 import {
-  looksLikeAsciiChart,
-  parseAsciiChart,
-  looksLikeMatplotlibChart,
-  parseMatplotlibChart,
+  AreaChartBlock,
   BarChartBlock,
   LineChartBlock,
   PieChartBlock,
-  AreaChartBlock,
   RadarChartBlock,
+  looksLikeAsciiChart,
+  parseAsciiChart,
 } from "./charts"
 
 interface MarkdownContentProps {
@@ -20,9 +19,7 @@ interface MarkdownContentProps {
   isStreaming?: boolean
 }
 
-type Segment =
-  | { type: "md"; text: string }
-  | { type: "chart"; code: string }
+type Segment = { type: "md"; text: string } | { type: "chart"; code: string }
 
 function splitContent(content: string): Segment[] {
   if (!content) return []
@@ -32,11 +29,11 @@ function splitContent(content: string): Segment[] {
 
   function flushChart() {
     if (chartBlock.length > 0) {
-      const code = chartBlock.join("\n\n")
-      if (looksLikeAsciiChart(code)) {
-        segments.push({ type: "chart", code })
+      const codeStr = chartBlock.join("\n\n")
+      if (looksLikeAsciiChart(codeStr)) {
+        segments.push({ type: "chart", code: codeStr })
       } else {
-        segments.push({ type: "md", text: code })
+        segments.push({ type: "md", text: codeStr })
       }
       chartBlock.length = 0
     }
@@ -60,169 +57,8 @@ function splitContent(content: string): Segment[] {
   return segments
 }
 
-function StreamingContent({ content }: { content: string }) {
-  const lines = useMemo(() => {
-    const trimmed = content.replace(/\n{3,}/g, "\n\n")
-    return trimmed.split("\n").filter(Boolean)
-  }, [content])
-
-  if (lines.length <= 3) {
-    return <p className="mb-2 leading-relaxed whitespace-pre-wrap">{content}</p>
-  }
-
-  return (
-    <>
-      {lines.slice(0, 3).map((line, i) => (
-        <p key={i} className="mb-1 leading-relaxed whitespace-pre-wrap last:mb-0">
-          {line}
-        </p>
-      ))}
-      <span className="text-xs text-muted-foreground">···</span>
-    </>
-  )
-}
-
-const RenderedContent = memo(function RenderedContent({
-  content,
-}: {
-  content: string
-}) {
-  const segments = useMemo(() => splitContent(content), [content])
-
-  return (
-    <>
-      {segments.map((seg, i) =>
-        seg.type === "chart" ? (
-          <ChartFromText key={i} code={seg.code} />
-        ) : (
-          <ReactMarkdown
-            key={i}
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code({ className, children }) {
-                const isInline = !className?.startsWith("language-")
-                return (
-                  <CodeBlock className={className} inline={isInline}>
-                    {String(children)}
-                  </CodeBlock>
-                )
-              },
-              pre({ children }) {
-                return <>{children}</>
-              },
-              p({ children }) {
-                return <p className="text-[14px] text-stone-700 leading-[1.75] mb-3 last:mb-0">{children}</p>
-              },
-              h1({ children }) {
-                return <h1 className="text-[18px] font-medium text-stone-800 mt-5 mb-2">{children}</h1>
-              },
-              h2({ children }) {
-                return <h2 className="text-[16px] font-medium text-stone-800 mt-4 mb-2">{children}</h2>
-              },
-              h3({ children }) {
-                return <h3 className="text-[14px] font-medium text-stone-800 mt-3 mb-1.5">{children}</h3>
-              },
-              ul({ children }) {
-                return <ul className="list-none pl-0 mb-3 space-y-1">{children}</ul>
-              },
-              ol({ children }) {
-                return <ol className="list-decimal list-inside mb-3 space-y-1 text-[14px] text-stone-700">{children}</ol>
-              },
-              li({ children }) {
-                return (
-                  <li className="flex items-start gap-2 text-[14px] text-stone-700 leading-[1.7]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-stone-400 mt-[9px] flex-shrink-0" />
-                    <span>{children}</span>
-                  </li>
-                )
-              },
-              blockquote({ children }) {
-                return (
-                  <blockquote className="border-l-2 border-stone-300 pl-4 my-3 text-stone-500 italic text-[13px]">
-                    {children}
-                  </blockquote>
-                )
-              },
-              table({ children }) {
-                return (
-                  <div className="overflow-x-auto my-3">
-                    <table className="w-full text-[13px] border-collapse">{children}</table>
-                  </div>
-                )
-              },
-              thead({ children }) {
-                return <thead className="border-b border-stone-200">{children}</thead>
-              },
-              th({ children }) {
-                return (
-                  <th className="text-left px-3 py-2 text-[12px] font-medium text-stone-500 uppercase tracking-wide">
-                    {children}
-                  </th>
-                )
-              },
-              td({ children }) {
-                return (
-                  <td className="px-3 py-2 text-stone-700 border-b border-stone-100">
-                    {children}
-                  </td>
-                )
-              },
-              tr({ children }) {
-                return <tr className="hover:bg-stone-50 transition-colors">{children}</tr>
-              },
-              a({ href, children }) {
-                return (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-700 underline underline-offset-2 hover:text-amber-600 transition-colors"
-                  >
-                    {children}
-                  </a>
-                )
-              },
-              hr() {
-                return <hr className="border-stone-200 my-4" />
-              },
-              strong({ children }) {
-                return <strong className="font-medium text-stone-800">{children}</strong>
-              },
-              em({ children }) {
-                return <em className="italic text-stone-600">{children}</em>
-              },
-            }}
-          >
-            {seg.text}
-          </ReactMarkdown>
-        )
-      )}
-    </>
-  )
-})
-
-export const MarkdownContent = memo(function MarkdownContent({
-  content,
-  isStreaming,
-}: MarkdownContentProps) {
-  return (
-    <div className={cn(
-      "space-y-2 text-sm leading-relaxed text-foreground break-words overflow-wrap-anywhere",
-    )}>
-      {isStreaming ? (
-        <StreamingContent content={content} />
-      ) : (
-        <RenderedContent content={content} />
-      )}
-      {isStreaming && (
-        <span className="inline-block w-[3px] h-[1em] ml-0.5 bg-emerald-500 animate-pulse align-middle" />
-      )}
-    </div>
-  )
-})
-
-function ChartFromText({ code }: { code: string }) {
-  const parsed = parseAsciiChart(code)
+function ChartFromText({ code: chartCode }: { code: string }) {
+  const parsed = parseAsciiChart(chartCode)
   if (parsed.type === "area" && parsed.series.length > 0) {
     return <AreaChartBlock title={parsed.title} series={parsed.series} labels={parsed.labels} />
   }
@@ -240,3 +76,51 @@ function ChartFromText({ code }: { code: string }) {
   }
   return null
 }
+
+const streamdownPlugins = {
+  code,
+  math,
+  mermaid,
+}
+
+const streamdownControls = {
+  code: true,
+  table: true,
+  mermaid: true,
+}
+
+export const MarkdownContent = memo(function MarkdownContent({
+  content,
+  isStreaming,
+}: MarkdownContentProps) {
+  const segments = useMemo(() => splitContent(content), [content])
+
+  return (
+    <div
+      className={cn(
+        "space-y-3 text-[14px] leading-relaxed text-foreground break-words overflow-wrap-anywhere prose dark:prose-invert max-w-none",
+        "prose-headings:font-medium prose-h1:text-[18px] prose-h2:text-[16px] prose-h3:text-[14px]",
+        "prose-p:leading-[1.75] prose-p:my-2 prose-pre:my-3 prose-pre:rounded-xl",
+        "prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-a:underline-offset-2"
+      )}
+    >
+      {segments.map((seg, i) =>
+        seg.type === "chart" ? (
+          <ChartFromText key={`chart-${i}`} code={seg.code} />
+        ) : (
+          <Streamdown
+            key={`stream-${i}`}
+            mode={isStreaming ? "streaming" : "static"}
+            plugins={streamdownPlugins}
+            controls={streamdownControls}
+          >
+            {seg.text}
+          </Streamdown>
+        )
+      )}
+      {isStreaming && (
+        <span className="inline-block w-[3px] h-[1em] ml-0.5 bg-emerald-500 animate-pulse align-middle" />
+      )}
+    </div>
+  )
+})

@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { deleteMcpServer, discoverMcpTools } from "@/api/mcp"
 import { Button } from "@/components/ui/Button"
 import { McpRegisterDialog } from "@/features/workspace/mcp/McpRegisterDialog"
 import { McpServerCard } from "@/features/workspace/mcp/McpServerCard"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
-import { deleteMcpServer, discoverMcpTools } from "@/api/mcp"
+import { useState } from "react"
 
 export function McpRouterSection() {
   const { servers, loading, onlineCount, register, ping, refresh } = useMcpServers()
@@ -25,16 +25,23 @@ export function McpRouterSection() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        {servers.map(server => (
+        {servers.map((server) => (
           <McpServerCard
             key={server.id}
             server={server}
             isActive={server.id === selectedServerId}
-            onSelect={() => setSelectedServerId(prev => prev === server.id ? null : server.id)}
-            onPing={async () => { await ping(server.id) }}
-            onEdit={() => setSelectedServerId(prev => prev === server.id ? null : server.id)}
-            onDelete={async () => { await handleDelete(server.id) }}
-            onDiscoverTools={async () => { await discoverMcpTools(server.id); await refresh() }}
+            onSelect={() => setSelectedServerId((prev) => (prev === server.id ? null : server.id))}
+            onPing={async () => {
+              await ping(server.id)
+            }}
+            onEdit={() => setSelectedServerId((prev) => (prev === server.id ? null : server.id))}
+            onDelete={async () => {
+              await handleDelete(server.id)
+            }}
+            onDiscoverTools={async () => {
+              await discoverMcpTools(server.id)
+              await refresh()
+            }}
           />
         ))}
       </div>
@@ -48,7 +55,9 @@ export function McpRouterSection() {
       <McpRegisterDialog
         open={registerOpen}
         onOpenChange={setRegisterOpen}
-        onRegistered={async (p) => { await register(p) }}
+        onRegistered={async (p) => {
+          await register(p)
+        }}
       />
     </div>
   )

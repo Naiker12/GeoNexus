@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
@@ -6,7 +5,7 @@ import {
   DatabaseIcon,
   GlobeIcon,
   HardDriveIcon,
-  SearchIcon,
+  type SearchIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -53,10 +52,7 @@ export function SearchingIndicator({ steps }: SearchingIndicatorProps) {
         const Icon = config.icon
 
         return (
-          <div
-            key={`${step.source}-${i}`}
-            className="flex items-center gap-2 text-xs"
-          >
+          <div key={`${step.source}-${i}`} className="flex items-center gap-2 text-xs">
             <div className={cn("flex size-4 items-center justify-center", config.color)}>
               <Icon className="size-3.5" />
             </div>
@@ -64,21 +60,15 @@ export function SearchingIndicator({ steps }: SearchingIndicatorProps) {
             <span className="flex-1 text-muted-foreground">{step.label}</span>
 
             <div className="flex items-center gap-1">
-              {step.status === "searching" && (
-                <SpinnerSmall />
-              )}
+              {step.status === "searching" && <SpinnerSmall />}
               {step.status === "found" && (
                 <>
                   <span className="font-medium text-foreground">{step.count}</span>
                   <CheckCircle2Icon className="size-3 text-emerald-500" />
                 </>
               )}
-              {step.status === "empty" && (
-                <span className="text-muted-foreground/60">0</span>
-              )}
-              {step.status === "error" && (
-                <AlertCircleIcon className="size-3 text-destructive" />
-              )}
+              {step.status === "empty" && <span className="text-muted-foreground/60">0</span>}
+              {step.status === "error" && <AlertCircleIcon className="size-3 text-destructive" />}
             </div>
           </div>
         )

@@ -1,18 +1,24 @@
-import type { McpServer, McpTool, RegisterServerPayload, CallToolPayload, CallToolResult, PingResult, ImportResult, AllowlistRule, UpsertAllowlistPayload } from "@/types/mcp"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import type {
+  AllowlistRule,
+  CallToolPayload,
+  CallToolResult,
+  ImportResult,
+  McpServer,
+  McpTool,
+  PingResult,
+  RegisterServerPayload,
+  UpsertAllowlistPayload,
+} from "@/types/mcp"
+import { isTauriAvailable } from "@/api/invoke"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
-async function getInvoke(): Promise<typeof import('@tauri-apps/api/core').invoke | null> {
+async function getInvoke(): Promise<typeof import("@tauri-apps/api/core").invoke | null> {
   if (!isTauriAvailable()) return null
   try {
-    const { invoke: tauriInvoke } = await import('@tauri-apps/api/core')
+    const { invoke: tauriInvoke } = await import("@tauri-apps/api/core")
     return tauriInvoke
   } catch (e) {
-    console.error('[getInvoke] Could not import invoke:', e)
+    console.error("[getInvoke] Could not import invoke:", e)
     return null
   }
 }
@@ -35,10 +41,7 @@ async function invokeOrFallback<T>(
   }
 }
 
-async function invokeRequired<T>(
-  command: string,
-  args: Record<string, unknown>
-): Promise<T> {
+async function invokeRequired<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const invoke = await getInvoke()
   if (!invoke) {
     throw new Error(`No se puede ejecutar ${command} fuera del runtime Tauri`)
@@ -64,12 +67,20 @@ export function registerMcpServer(payload: RegisterServerPayload): Promise<McpSe
 
 export function pingMcpServer(serverId: string): Promise<PingResult> {
   if (!serverId.trim()) throw new Error("server_id requerido")
-  return invokeOrFallback("ping_mcp_server", { serverId }, { online: false, latencyMs: null, error: "Tauri not available" })
+  return invokeOrFallback(
+    "ping_mcp_server",
+    { serverId },
+    { online: false, latencyMs: null, error: "Tauri not available" }
+  )
 }
 
 export function pingMcpUrl(url: string): Promise<PingResult> {
   if (!url.trim()) throw new Error("URL requerida")
-  return invokeOrFallback("ping_mcp_server_url", { url }, { online: false, latencyMs: null, error: "Tauri not available" })
+  return invokeOrFallback(
+    "ping_mcp_server_url",
+    { url },
+    { online: false, latencyMs: null, error: "Tauri not available" }
+  )
 }
 
 export function listMcpTools(serverId: string): Promise<McpTool[]> {

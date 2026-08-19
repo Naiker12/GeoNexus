@@ -45,8 +45,11 @@ export function McpServerRow({
     e.stopPropagation()
     if (isStdio) return
     setPinging(true)
-    try { await onPing() }
-    finally { setPinging(false) }
+    try {
+      await onPing()
+    } finally {
+      setPinging(false)
+    }
   }
 
   return (
@@ -59,12 +62,14 @@ export function McpServerRow({
       )}
     >
       {/* Icon */}
-      <div className={cn(
-        "flex size-8 items-center justify-center rounded-md ring-1 ring-border text-xs font-bold uppercase",
-        isStdio
-          ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
-          : "bg-muted text-primary"
-      )}>
+      <div
+        className={cn(
+          "flex size-8 items-center justify-center rounded-md ring-1 ring-border text-xs font-bold uppercase",
+          isStdio
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+            : "bg-muted text-primary"
+        )}
+      >
         {server.name[0]?.toUpperCase() ?? "M"}
       </div>
 
@@ -77,15 +82,18 @@ export function McpServerRow({
           </span>
         </div>
         <p className="truncate font-mono text-[0.65rem] text-muted-foreground/70 mt-0.5">
-          {isStdio
-            ? (server.command ?? "comando local")
-            : server.url}
+          {isStdio ? (server.command ?? "comando local") : server.url}
         </p>
       </div>
 
       {/* Status */}
       <div className="flex items-center gap-1.5 shrink-0">
-        <span className={cn("size-1.5 rounded-full", isDisabled ? "bg-gray-400" : (STATUS_DOT[server.status] ?? "bg-gray-400"))} />
+        <span
+          className={cn(
+            "size-1.5 rounded-full",
+            isDisabled ? "bg-gray-400" : (STATUS_DOT[server.status] ?? "bg-gray-400")
+          )}
+        />
         <span className="text-xs text-muted-foreground">
           {isDisabled ? "desactivado" : (STATUS_LABEL[server.status] ?? server.status)}
         </span>
@@ -98,7 +106,7 @@ export function McpServerRow({
 
       {/* Latency */}
       <span className="text-xs text-muted-foreground text-center tabular-nums">
-        {server.latency_ms ? `${server.latency_ms}ms` : (isStdio ? "N/A" : "—")}
+        {server.latency_ms ? `${server.latency_ms}ms` : isStdio ? "N/A" : "—"}
       </span>
 
       {/* Actions */}
@@ -106,7 +114,11 @@ export function McpServerRow({
         {isStdio ? (
           <button
             className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            onClick={(e) => { e.stopPropagation(); setDiscovering(true); onDiscoverTools().finally(() => setDiscovering(false)) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              setDiscovering(true)
+              onDiscoverTools().finally(() => setDiscovering(false))
+            }}
             disabled={discovering}
           >
             {discovering ? "..." : "Descubrir"}
@@ -122,13 +134,19 @@ export function McpServerRow({
         )}
         <button
           className="text-[10px] px-2 py-0.5 rounded border border-border bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          onClick={(e) => { e.stopPropagation(); onEdit() }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onEdit()
+          }}
         >
           Editar
         </button>
         <button
           className="text-[10px] px-1.5 py-0.5 rounded border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive/70 hover:text-destructive transition-colors"
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
         >
           ✕
         </button>

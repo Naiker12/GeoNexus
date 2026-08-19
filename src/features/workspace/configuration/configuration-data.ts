@@ -3,15 +3,13 @@ import {
   BrainCircuitIcon,
   DatabaseIcon,
   FolderCogIcon,
+  HardDriveIcon,
   KeyboardIcon,
   LayersIcon,
-  MapIcon,
-  MessageSquareIcon,
+  PaletteIcon,
   ServerIcon,
-  Shield,
-  SlidersHorizontalIcon,
+  ShieldIcon,
   SparklesIcon,
-  TerminalIcon,
   WrenchIcon,
 } from "lucide-react"
 
@@ -19,98 +17,23 @@ import type { ConfigGroup } from "@/features/workspace/configuration/configurati
 
 export const configGroups: ConfigGroup[] = [
   {
-    label: "SISTEMA",
-    sections: [
-      {
-        id: "ai-embeddings",
-        label: "IA y embeddings",
-        icon: BrainCircuitIcon,
-        indicator: "green",
-      },
-      {
-        id: "mcp-router",
-        label: "MCP Router",
-        icon: ServerIcon,
-        indicator: "yellow",
-      },
-    ],
-  },
-  {
-    label: "INTEGRACIONES",
-    sections: [
-      {
-        id: "telegram",
-        label: "Telegram",
-        icon: MessageSquareIcon,
-        indicator: null,
-      },
-    ],
-  },
-  {
-    label: "GEOESPACIAL",
-    sections: [
-      {
-        id: "map-engines",
-        label: "Motores de mapa",
-        icon: MapIcon,
-        indicator: null,
-      },
-      {
-        id: "connectors",
-        label: "Conectores",
-        icon: LayersIcon,
-        indicator: null,
-      },
-      {
-        id: "gis-tools",
-        label: "Herramientas GIS",
-        icon: SlidersHorizontalIcon,
-        indicator: null,
-      },
-    ],
-  },
-  {
-    label: "DATOS",
-    sections: [
-      {
-        id: "memory",
-        label: "Memoria y vectores",
-        icon: DatabaseIcon,
-        indicator: null,
-      },
-      {
-        id: "local-paths",
-        label: "Rutas locales",
-        icon: FolderCogIcon,
-        indicator: null,
-      },
-      {
-        id: "allowed-paths",
-        label: "Directorios permitidos",
-        icon: Shield,
-        indicator: null,
-      },
-    ],
-  },
-  {
-    label: "SISTEMA",
+    label: "GENERAL",
     sections: [
       {
         id: "workspace",
-        label: "Workspace",
+        label: "Workspace y Entorno",
         icon: FolderCogIcon,
         indicator: null,
       },
       {
-        id: "agents",
-        label: "Agentes",
-        icon: SparklesIcon,
+        id: "appearance",
+        label: "Apariencia y Temas",
+        icon: PaletteIcon,
         indicator: null,
       },
-
       {
         id: "keybindings",
-        label: "Atajos",
+        label: "Atajos de Teclado",
         icon: KeyboardIcon,
         indicator: null,
       },
@@ -118,6 +41,58 @@ export const configGroups: ConfigGroup[] = [
         id: "notifications",
         label: "Notificaciones",
         icon: BellIcon,
+        indicator: null,
+      },
+    ],
+  },
+  {
+    label: "MODELOS E IA",
+    sections: [
+      {
+        id: "ai-embeddings",
+        label: "Proveedores e IA",
+        icon: BrainCircuitIcon,
+        indicator: null,
+      },
+      {
+        id: "agents",
+        label: "Agentes y Permisos",
+        icon: SparklesIcon,
+        indicator: null,
+      },
+      {
+        id: "mcp-router",
+        label: "Protocolo MCP",
+        icon: ServerIcon,
+        indicator: null,
+      },
+    ],
+  },
+  {
+    label: "CONEXIONES Y DATOS",
+    sections: [
+      {
+        id: "connectors",
+        label: "Conectores",
+        icon: LayersIcon,
+        indicator: null,
+      },
+      {
+        id: "memory",
+        label: "Memoria y Grafo RAG",
+        icon: DatabaseIcon,
+        indicator: null,
+      },
+      {
+        id: "local-paths",
+        label: "Rutas Locales",
+        icon: HardDriveIcon,
+        indicator: null,
+      },
+      {
+        id: "allowed-paths",
+        label: "Directorios Permitidos",
+        icon: ShieldIcon,
         indicator: null,
       },
       {

@@ -1,3 +1,1 @@
-export type AgentSourceType =
-  | "onedrive" | "filesystem" | "arcgis"
-  | "graph" | "github"
+export type AgentSourceType = "onedrive" | "filesystem" | "arcgis" | "graph" | "github"

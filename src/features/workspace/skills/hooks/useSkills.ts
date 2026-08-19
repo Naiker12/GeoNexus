@@ -1,7 +1,13 @@
-import { useState, useEffect, useCallback } from "react"
-import { open } from "@tauri-apps/plugin-dialog"
-import { listSkills, installSkillFromFile, installSkillFromGithub, toggleSkill, readSkillMd } from "@/api/skills"
+import {
+  installSkillFromFile,
+  installSkillFromGithub,
+  listSkills,
+  readSkillMd,
+  toggleSkill,
+} from "@/api/skills"
 import type { Skill } from "@/types/skills"
+import { open } from "@tauri-apps/plugin-dialog"
+import { useCallback, useEffect, useState } from "react"
 
 export function useSkills() {
   const [skills, setSkills] = useState<Skill[]>([])
@@ -21,19 +27,27 @@ export function useSkills() {
     }
   }, [])
 
-  useEffect(() => { fetchSkills() }, [fetchSkills])
+  useEffect(() => {
+    fetchSkills()
+  }, [fetchSkills])
 
   const installFromFile = useCallback(async (path?: string) => {
-    const selected = path || await open({
-      filters: [{ name: "Skill", extensions: ["md"] }],
-      multiple: false,
-    })
+    const selected =
+      path ||
+      (await open({
+        filters: [{ name: "Skill", extensions: ["md"] }],
+        multiple: false,
+      }))
     if (!selected || typeof selected !== "string") return null
 
     const skill = await installSkillFromFile(selected, null)
-    setSkills(prev => {
-      const idx = prev.findIndex(s => s.id === skill.id)
-      if (idx >= 0) { const n = [...prev]; n[idx] = skill; return n }
+    setSkills((prev) => {
+      const idx = prev.findIndex((s) => s.id === skill.id)
+      if (idx >= 0) {
+        const n = [...prev]
+        n[idx] = skill
+        return n
+      }
       return [...prev, skill]
     })
     return skill
@@ -41,9 +55,9 @@ export function useSkills() {
 
   const installFromGithub = useCallback(async (url: string) => {
     const installed = await installSkillFromGithub(url)
-    setSkills(prev => {
-      const map = new Map(prev.map(s => [s.id, s]))
-      installed.forEach(s => map.set(s.id, s))
+    setSkills((prev) => {
+      const map = new Map(prev.map((s) => [s.id, s]))
+      installed.forEach((s) => map.set(s.id, s))
       return Array.from(map.values())
     })
     return installed
@@ -51,7 +65,7 @@ export function useSkills() {
 
   const handleToggle = useCallback(async (skillId: string, enabled: boolean) => {
     await toggleSkill(skillId, enabled)
-    setSkills(prev => prev.map(s => s.id === skillId ? { ...s, enabled } : s))
+    setSkills((prev) => prev.map((s) => (s.id === skillId ? { ...s, enabled } : s)))
   }, [])
 
   const handleReadMd = useCallback(async (skillId: string) => {
@@ -59,9 +73,13 @@ export function useSkills() {
   }, [])
 
   return {
-    skills, loading, error,
-    installFromFile, installFromGithub,
-    toggleSkill: handleToggle, readSkillMd: handleReadMd,
+    skills,
+    loading,
+    error,
+    installFromFile,
+    installFromGithub,
+    toggleSkill: handleToggle,
+    readSkillMd: handleReadMd,
     refresh: fetchSkills,
   }
 }

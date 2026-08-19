@@ -1,5 +1,3 @@
-import { useUiStore } from "@/stores/uiStore"
-
 export interface CommandDef {
   id: string
   label: string
@@ -118,5 +116,3 @@ export function buildRegistry(navigate: NavigateFn): CommandDef[] {
     },
   ]
 }
-
-

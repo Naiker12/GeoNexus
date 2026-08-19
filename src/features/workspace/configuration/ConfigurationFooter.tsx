@@ -1,5 +1,5 @@
-import * as React from "react"
 import { Loader2Icon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
 import { useToast } from "@/components/ui/toast"
@@ -17,18 +17,18 @@ export function ConfigurationFooter({ onCancel, onSave }: ConfigurationFooterPro
     if (!onSave) {
       toast({
         title: "Sin implementar",
-        description: "La funcion de guardado aun no esta disponible.",
+        description: "La función de guardado aún no está disponible.",
         variant: "info",
       })
       return
     }
     setSaving(true)
-    const loadingId = showLoading("Guardando configuracion...", "Aplicando cambios")
+    const loadingId = showLoading("Guardando configuración...", "Aplicando cambios")
     try {
       await onSave()
       dismiss(loadingId)
       toast({
-        title: "Configuracion guardada",
+        title: "Configuración guardada",
         description: "Los cambios se aplicaron correctamente.",
         variant: "success",
       })
@@ -45,18 +45,26 @@ export function ConfigurationFooter({ onCancel, onSave }: ConfigurationFooterPro
   }
 
   return (
-    <footer className="flex shrink-0 items-center justify-end gap-4 border-t border-border px-5 py-3">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" type="button" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button size="sm" type="button" onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : null}
-          {saving ? "Guardando..." : "Guardar y aplicar"}
-        </Button>
-      </div>
+    <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border/70 bg-muted/10 px-6 py-3.5">
+      <Button
+        variant="ghost"
+        size="sm"
+        type="button"
+        onClick={onCancel}
+        className="rounded-xl text-xs"
+      >
+        Cancelar
+      </Button>
+      <Button
+        size="sm"
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="rounded-xl text-xs gap-1.5 font-medium"
+      >
+        {saving ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
+        {saving ? "Guardando..." : "Guardar y aplicar"}
+      </Button>
     </footer>
   )
 }

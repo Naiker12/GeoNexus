@@ -1,6 +1,13 @@
-import { TerminalSquareIcon, PuzzleIcon, CheckCircle2Icon, ShieldAlertIcon, CalendarIcon, SearchXIcon } from "lucide-react"
-import type { McpServer, McpTool } from "@/types/mcp"
 import { cn } from "@/lib/utils"
+import type { McpTool } from "@/types/mcp"
+import {
+  CalendarIcon,
+  CheckCircle2Icon,
+  PuzzleIcon,
+  SearchXIcon,
+  ShieldAlertIcon,
+  TerminalSquareIcon,
+} from "lucide-react"
 import { useMcpServers } from "./hooks/useMcpServers"
 
 interface McpToolsViewerProps {
@@ -13,8 +20,8 @@ export function McpToolsViewer({ serverId, tools }: McpToolsViewerProps) {
 
   if (!serverId) return null
 
-  const server = servers.find(s => s.id === serverId)
-  const realTools = tools.filter(t => t.category !== "placeholder" && t.status !== "planned")
+  const server = servers.find((s) => s.id === serverId)
+  const realTools = tools.filter((t) => t.category !== "placeholder" && t.status !== "planned")
 
   if (realTools.length === 0) {
     return (
@@ -53,7 +60,7 @@ export function McpToolsViewer({ serverId, tools }: McpToolsViewerProps) {
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {realTools.map(tool => (
+        {realTools.map((tool) => (
           <article
             key={tool.name}
             className="flex flex-col justify-between rounded-lg border border-border/60 bg-background/40 p-3 shadow-inner hover:border-emerald-500/30 transition-all duration-200"
@@ -83,12 +90,18 @@ export function McpToolsViewer({ serverId, tools }: McpToolsViewerProps) {
               <div className="py-1">
                 <span className="text-muted-foreground/60 select-none">args: </span>
                 <span className="text-[#e06c75] font-semibold">
-                  ({tool.args || tool.args_schema ? JSON.stringify(tool.args_schema) || "..." : "void"})
+                  (
+                  {tool.args || tool.args_schema
+                    ? JSON.stringify(tool.args_schema) || "..."
+                    : "void"}
+                  )
                 </span>
               </div>
               <div className="mt-1 pt-1.5 border-t border-white/[0.02] text-muted-foreground/80">
                 <span className="text-muted-foreground/50 select-none">retorna: </span>
-                <span className="text-[#98c379] font-medium">{tool.result || tool.return_type || "\u2014"}</span>
+                <span className="text-[#98c379] font-medium">
+                  {tool.result || tool.return_type || "\u2014"}
+                </span>
               </div>
             </div>
           </article>
@@ -100,15 +113,29 @@ export function McpToolsViewer({ serverId, tools }: McpToolsViewerProps) {
 
 function ToolStatusPill({ status }: { status: McpTool["status"] }) {
   return (
-    <span className={cn(
-      "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium select-none border",
-      status === "ready" && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      status === "guarded" && "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      status === "planned" && "bg-muted text-muted-foreground border-border"
-    )}>
-      {status === "ready" && <><CheckCircle2Icon className="size-2.5" /> listo</>}
-      {status === "guarded" && <><ShieldAlertIcon className="size-2.5" /> protegido</>}
-      {status === "planned" && <><CalendarIcon className="size-2.5" /> planeado</>}
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-medium select-none border",
+        status === "ready" && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+        status === "guarded" && "bg-amber-500/10 text-amber-500 border-amber-500/20",
+        status === "planned" && "bg-muted text-muted-foreground border-border"
+      )}
+    >
+      {status === "ready" && (
+        <>
+          <CheckCircle2Icon className="size-2.5" /> listo
+        </>
+      )}
+      {status === "guarded" && (
+        <>
+          <ShieldAlertIcon className="size-2.5" /> protegido
+        </>
+      )}
+      {status === "planned" && (
+        <>
+          <CalendarIcon className="size-2.5" /> planeado
+        </>
+      )}
     </span>
   )
 }

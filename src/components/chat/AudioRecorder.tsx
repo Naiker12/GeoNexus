@@ -1,7 +1,6 @@
-import React from 'react'
-import { MicIcon, SquareIcon, Loader2Icon } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { useAudioRecorder } from '@/hooks/useAudioRecorder'
+import { Button } from "@/components/ui/Button"
+import { useAudioRecorder } from "@/hooks/useAudioRecorder"
+import { Loader2Icon, MicIcon, SquareIcon } from "lucide-react"
 
 interface AudioRecorderProps {
   onTranscription: (text: string) => void
@@ -10,10 +9,10 @@ interface AudioRecorderProps {
 
 export function AudioRecorder({ onTranscription, disabled = false }: AudioRecorderProps) {
   const { status, startRecording, stopRecording, errorMessage } = useAudioRecorder({
-    onTranscription
+    onTranscription,
   })
 
-  if (status === 'recording') {
+  if (status === "recording") {
     return (
       <Button
         type="button"
@@ -28,15 +27,9 @@ export function AudioRecorder({ onTranscription, disabled = false }: AudioRecord
     )
   }
 
-  if (status === 'processing') {
+  if (status === "processing") {
     return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Processing audio"
-        disabled
-      >
+      <Button type="button" variant="ghost" size="icon-sm" aria-label="Processing audio" disabled>
         <Loader2Icon className="size-4 animate-spin" />
       </Button>
     )
@@ -50,7 +43,7 @@ export function AudioRecorder({ onTranscription, disabled = false }: AudioRecord
       aria-label="Record audio"
       onClick={startRecording}
       disabled={disabled}
-      title={errorMessage || 'Record audio'}
+      title={errorMessage || "Record audio"}
     >
       <MicIcon className="size-4" />
     </Button>

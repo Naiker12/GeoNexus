@@ -1,20 +1,20 @@
-import * as React from "react"
 import {
+  CheckCircle2Icon,
   DownloadIcon,
   Loader2Icon,
   RefreshCwIcon,
   Trash2Icon,
   XCircleIcon,
-  CheckCircle2Icon,
 } from "lucide-react"
+import * as React from "react"
 
+import { deleteDataAsset } from "@/api/data"
 import { Button } from "@/components/ui/Button"
 import { useToast } from "@/components/ui/toast"
-import { invoke } from "@tauri-apps/api/core"
-import { deleteDataAsset } from "@/api/data"
 import { DocumentAssetIcon } from "@/features/workspace/documents/DocumentAssetIcon"
 import { cn } from "@/lib/utils"
 import type { DataAsset } from "@/types/data"
+import { invoke } from "@tauri-apps/api/core"
 import type { SortField } from "./DocumentFilters"
 
 type DocumentsListProps = {
@@ -30,10 +30,7 @@ function SkeletonRows() {
   return (
     <div className="divide-y divide-border">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 px-3 py-2 animate-pulse"
-        >
+        <div key={i} className="flex items-center gap-3 px-3 py-2 animate-pulse">
           <div className="size-5 rounded bg-muted" />
           <div className="flex-1 space-y-1.5">
             <div className="h-3 w-48 rounded bg-muted" />
@@ -104,13 +101,15 @@ function DocumentRow({
   const { toast } = useToast()
   const [downloading, setDownloading] = React.useState(false)
   const typeLabel = asset.kind.toUpperCase()
-  const sizeLabel = asset.size_bytes
-    ? `${(asset.size_bytes / 1024 / 1024).toFixed(2)} MB`
-    : "0 MB"
+  const sizeLabel = asset.size_bytes ? `${(asset.size_bytes / 1024 / 1024).toFixed(2)} MB` : "0 MB"
 
   const handleDownload = async () => {
     if (!asset.location) {
-      toast({ title: "Sin archivo", description: "Este asset no tiene una ruta de archivo asociada.", variant: "warning" })
+      toast({
+        title: "Sin archivo",
+        description: "Este asset no tiene una ruta de archivo asociada.",
+        variant: "warning",
+      })
       return
     }
     setDownloading(true)
@@ -162,16 +161,10 @@ function DocumentRow({
       <Pill>{typeLabel}</Pill>
       <DocumentStatus status={asset.status} />
       <div className="text-xs text-muted-foreground md:text-right">
-        <span className="font-medium text-foreground">{asset.chunks}</span>{" "}
-        chunks
+        <span className="font-medium text-foreground">{asset.chunks}</span> chunks
       </div>
       <div className="flex items-center gap-1 justify-end">
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          aria-label="Eliminar"
-          onClick={handleDeleteDoc}
-        >
+        <Button variant="ghost" size="icon-xs" aria-label="Eliminar" onClick={handleDeleteDoc}>
           <Trash2Icon className="size-3 text-destructive/70 hover:text-destructive" />
         </Button>
         <Button

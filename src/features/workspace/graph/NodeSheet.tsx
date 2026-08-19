@@ -1,4 +1,14 @@
-import { useState } from "react"
+import { Button } from "@/components/ui/Button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
+import type { GraphEdge, GraphNode, GraphNodeKind } from "@/types/graph"
 import {
   BrainCircuitIcon,
   DatabaseIcon,
@@ -15,23 +25,9 @@ import {
   Trash2Icon,
   UploadIcon,
 } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { cn } from "@/lib/utils"
-import { nodeColor, nodeTailwind, nodeTypeLabel } from "./graph-colors"
-import type { GraphEdge, GraphNode, GraphNodeKind } from "@/types/graph"
-
-/** Detecta si estamos dentro del runtime Tauri o en navegador (vite dev server) */
-function isTauriAvailable(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI_INTERNALS__ !== undefined
-}
+import { isTauriAvailable } from "@/api/invoke"
+import { useState } from "react"
+import { nodeTailwind, nodeTypeLabel } from "./graph-colors"
 
 /** Obtains invoke function safely, returning null if Tauri isn't available */
 async function getInvoke() {
@@ -45,22 +41,24 @@ async function getInvoke() {
 }
 
 export function nodeIcon(type: GraphNodeKind) {
-  return {
-    entity: DatabaseIcon,
-    concept: SparklesIcon,
-    file: FileTextIcon,
-    agent: BrainCircuitIcon,
-    norma: FileTextIcon,
-    documento: DatabaseIcon,
-    capa: Layers3Icon,
-    zona: MapPinnedIcon,
-    concepto: SparklesIcon,
-    chat_turn: MessageSquareTextIcon,
-    web_search: GlobeIcon,
-    upload: UploadIcon,
-    connector: LinkIcon,
-    rag_recall: BrainCircuitIcon,
-  }[type] ?? FileTextIcon
+  return (
+    {
+      entity: DatabaseIcon,
+      concept: SparklesIcon,
+      file: FileTextIcon,
+      agent: BrainCircuitIcon,
+      norma: FileTextIcon,
+      documento: DatabaseIcon,
+      capa: Layers3Icon,
+      zona: MapPinnedIcon,
+      concepto: SparklesIcon,
+      chat_turn: MessageSquareTextIcon,
+      web_search: GlobeIcon,
+      upload: UploadIcon,
+      connector: LinkIcon,
+      rag_recall: BrainCircuitIcon,
+    }[type] ?? FileTextIcon
+  )
 }
 
 export function nodeBubbleColor(type: GraphNodeKind) {
@@ -95,8 +93,7 @@ export function NodeSheet({
   const relationStrength =
     relations.length > 0
       ? Math.round(
-          relations.reduce((total, item) => total + item.edge.strength, 0) /
-            relations.length
+          relations.reduce((total, item) => total + item.edge.strength, 0) / relations.length
         )
       : 0
 
@@ -188,13 +185,9 @@ export function NodeSheet({
               <InfoIcon className="size-4 text-primary" />
               Información almacenada
             </div>
-            <p className="text-sm leading-5 text-muted-foreground">
-              {node.description}
-            </p>
+            <p className="text-sm leading-5 text-muted-foreground">{node.description}</p>
             <div className="mt-3 rounded-md border border-border bg-card/70 px-2.5 py-2 text-xs text-muted-foreground">
-              <span className="block font-medium text-foreground">
-                Evidencia
-              </span>
+              <span className="block font-medium text-foreground">Evidencia</span>
               <span className="mt-0.5 block truncate">{node.evidence}</span>
             </div>
           </section>
@@ -205,9 +198,7 @@ export function NodeSheet({
                 <NetworkIcon className="size-4 text-primary" />
                 Relaciones del punto
               </div>
-              <span className="text-xs text-muted-foreground">
-                {relations.length} activas
-              </span>
+              <span className="text-xs text-muted-foreground">{relations.length} activas</span>
             </div>
             <div className="grid gap-2">
               {relations.map(({ edge, connectedNode }) => (
@@ -223,9 +214,7 @@ export function NodeSheet({
                           nodeDotColor(connectedNode.kind)
                         )}
                       />
-                      <p className="truncate text-sm font-medium">
-                        {connectedNode.label}
-                      </p>
+                      <p className="truncate text-sm font-medium">{connectedNode.label}</p>
                     </div>
                     <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[0.68rem] font-medium text-primary">
                       {edge.strength}%
@@ -295,11 +284,7 @@ export function NodeSheet({
                 : "También se borrarán sus conexiones. Esta acción puede deshacerse (soft-delete)."}
             </p>
             <div className="mt-3 flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>
                 Cancelar
               </Button>
               <Button
@@ -335,7 +320,6 @@ export function NodeSheet({
                 Fuente
               </a>
             </Button>
-
           </div>
         </SheetFooter>
       </SheetContent>

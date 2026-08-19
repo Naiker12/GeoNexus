@@ -1,5 +1,7 @@
-import * as React from "react"
+import { getSyncEvents } from "@/api/data"
+import type { SyncEvent, SyncEventType } from "@/types/data"
 import {
+  AlertTriangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DownloadIcon,
@@ -7,15 +9,16 @@ import {
   HistoryIcon,
   LayersIcon,
   LinkIcon,
-  AlertTriangleIcon,
   Loader2Icon,
 } from "lucide-react"
-import { getSyncEvents } from "@/api/data"
-import type { SyncEvent, SyncEventType } from "@/types/data"
+import * as React from "react"
 
 const PAGE_SIZE = 5
 
-const EVENT_CONFIG: Record<SyncEventType, { icon: React.FC<{ className?: string }>; label: string }> = {
+const EVENT_CONFIG: Record<
+  SyncEventType,
+  { icon: React.FC<{ className?: string }>; label: string }
+> = {
   discovered: { icon: FileSearchIcon, label: "Descubierto" },
   downloaded: { icon: DownloadIcon, label: "Descargado" },
   indexed: { icon: LayersIcon, label: "Indexado" },

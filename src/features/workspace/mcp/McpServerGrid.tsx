@@ -29,7 +29,9 @@ export function McpServerGrid({
     return (
       <section className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-sm text-muted-foreground">No hay servidores MCP registrados</p>
-        <p className="text-xs text-muted-foreground mt-1">Agrega uno desde el botón "Registrar servidor"</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Agrega uno desde el botón "Registrar servidor"
+        </p>
       </section>
     )
   }
@@ -37,7 +39,7 @@ export function McpServerGrid({
   if (viewMode === "list") {
     return (
       <section className="flex flex-col gap-0.5 rounded-lg border border-border bg-card/50 p-1">
-        {servers.map(server => (
+        {servers.map((server) => (
           <McpServerRow
             key={server.id}
             server={server}
@@ -45,7 +47,9 @@ export function McpServerGrid({
             onSelect={() => onSelectServer(server.id)}
             onPing={() => onPingServer(server.id)}
             onEdit={() => onEditServer(server.id)}
-onDelete={async () => { await onDeleteServer?.(server.id) }}
+            onDelete={async () => {
+              await onDeleteServer?.(server.id)
+            }}
             onDiscoverTools={() => onDiscoverTools(server.id)}
           />
         ))}
@@ -55,7 +59,7 @@ onDelete={async () => { await onDeleteServer?.(server.id) }}
 
   return (
     <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {servers.map(server => (
+      {servers.map((server) => (
         <McpServerCard
           key={server.id}
           server={server}
@@ -63,7 +67,9 @@ onDelete={async () => { await onDeleteServer?.(server.id) }}
           onSelect={() => onSelectServer(server.id)}
           onPing={() => onPingServer(server.id)}
           onEdit={() => onEditServer(server.id)}
-          onDelete={async () => { await onDeleteServer?.(server.id) }}
+          onDelete={async () => {
+            await onDeleteServer?.(server.id)
+          }}
           onDiscoverTools={() => onDiscoverTools(server.id)}
         />
       ))}

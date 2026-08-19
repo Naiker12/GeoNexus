@@ -1,11 +1,11 @@
-import { useUpdater } from '../hooks/useUpdater';
-import { Button } from './ui/Button';
-import { X, Download, ArrowUpCircle } from 'lucide-react';
+import { ArrowUpCircle, Download, X } from "lucide-react"
+import { useUpdater } from "../hooks/useUpdater"
+import { Button } from "./ui/Button"
 
 export function UpdateBanner() {
-  const { updateInfo, installing, installUpdate, dismissed, dismiss } = useUpdater();
+  const { updateInfo, installing, installUpdate, dismissed, dismiss } = useUpdater()
 
-  if (!updateInfo.available || dismissed) return null;
+  if (!updateInfo.available || dismissed) return null
 
   return (
     <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 flex items-center justify-between">
@@ -43,5 +43,5 @@ export function UpdateBanner() {
         </Button>
       </div>
     </div>
-  );
+  )
 }

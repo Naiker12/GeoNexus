@@ -1,12 +1,12 @@
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
 } from "recharts"
 import type { ChartEntry } from "./chart-utils"
 import { ChartTooltip } from "./shared"
@@ -37,14 +37,19 @@ export function BarChartBlock({
       <ResponsiveContainer width="100%" height={Math.max(180, entries.length * 32)}>
         <BarChart data={data} layout="vertical" margin={{ left: 20, right: 20, top: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" />
-          <XAxis type="number" domain={[0, niceMax]} tick={{ fontSize: 11 }} stroke="var(--color-muted-foreground)" />
+          <XAxis
+            type="number"
+            domain={[0, niceMax]}
+            tick={{ fontSize: 11 }}
+            stroke="var(--color-muted-foreground)"
+          />
           <YAxis
             type="category"
             dataKey="name"
             width={180}
             tick={{ fontSize: 11 }}
             stroke="var(--color-muted-foreground)"
-            tickFormatter={(val) => val.length > 28 ? val.substring(0, 26) + "..." : val}
+            tickFormatter={(val) => (val.length > 28 ? `${val.substring(0, 26)}...` : val)}
           />
           <Tooltip content={<ChartTooltip />} />
           <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>

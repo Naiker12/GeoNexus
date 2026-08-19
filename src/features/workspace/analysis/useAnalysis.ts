@@ -1,23 +1,14 @@
-import { useState, useEffect, useCallback } from "react"
-import type {
-  AnalysisMetrics,
-  TokenBucket,
-  ModelUsage,
-  AnalysisRun,
-  SkillUsage,
-  CostSummary,
-  TopQuery,
-  Timeframe,
-} from "@/types/analysis"
 import {
+  getCostByTimeframe as apiCost,
   getAnalysisMetrics as apiMetrics,
-  getTokenTimeline as apiTimeline,
   getModelUsage as apiModelUsage,
   listAnalysisRuns as apiRuns,
   getSkillUsage as apiSkills,
-  getCostByTimeframe as apiCost,
+  getTokenTimeline as apiTimeline,
   getTopQueries as apiTopQueries,
 } from "@/api/analysis"
+import type { CostSummary, Timeframe, TopQuery } from "@/types/analysis"
+import { useCallback, useEffect, useState } from "react"
 
 interface AsyncState<T> {
   data: T | null
@@ -25,7 +16,10 @@ interface AsyncState<T> {
   error: string | null
 }
 
-function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[]): AsyncState<T> & { reload: () => void } {
+function useAsync<T>(
+  fetcher: () => Promise<T>,
+  deps: unknown[]
+): AsyncState<T> & { reload: () => void } {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,35 +37,37 @@ function useAsync<T>(fetcher: () => Promise<T>, deps: unknown[]): AsyncState<T> 
     }
   }, deps)
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+  }, [load])
 
   return { data, loading, error, reload: load }
 }
 
-export function useAnalysisMetrics(projectId: string = "project-default") {
+export function useAnalysisMetrics(projectId = "project-default") {
   return useAsync(() => apiMetrics(projectId), [projectId])
 }
 
-export function useTokenTimeline(projectId: string = "project-default", timeframe: Timeframe = "hoy") {
+export function useTokenTimeline(projectId = "project-default", timeframe: Timeframe = "hoy") {
   return useAsync(() => apiTimeline(projectId, timeframe), [projectId, timeframe])
 }
 
-export function useModelUsage(projectId: string = "project-default") {
+export function useModelUsage(projectId = "project-default") {
   return useAsync(() => apiModelUsage(projectId), [projectId])
 }
 
-export function useAnalysisRuns(projectId: string = "project-default") {
+export function useAnalysisRuns(projectId = "project-default") {
   return useAsync(() => apiRuns(projectId), [projectId])
 }
 
-export function useSkillUsage(projectId: string = "project-default") {
+export function useSkillUsage(projectId = "project-default") {
   return useAsync(() => apiSkills(projectId), [projectId])
 }
 
-export function useCostByTimeframe(projectId: string = "project-default") {
+export function useCostByTimeframe(projectId = "project-default") {
   return useAsync<CostSummary>(() => apiCost(projectId), [projectId])
 }
 
-export function useTopQueries(projectId: string = "project-default", limit: number = 5) {
+export function useTopQueries(projectId = "project-default", limit = 5) {
   return useAsync<TopQuery[]>(() => apiTopQueries(projectId, limit), [projectId, limit])
 }

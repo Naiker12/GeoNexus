@@ -1,18 +1,16 @@
 import { cn } from "@/lib/utils"
 import {
-  PlayIcon,
-  PauseIcon,
-  ClockIcon,
-  CalendarIcon,
-  HashIcon,
-  GlobeIcon,
   BotIcon,
-  FileDownIcon,
+  CalendarIcon,
+  ClockIcon,
   Edit3Icon,
+  FileDownIcon,
+  GlobeIcon,
+  HashIcon,
+  PlayIcon,
   Trash2Icon,
-  Loader2Icon,
 } from "lucide-react"
-import type { Automation, ActionType } from "../types"
+import type { ActionType, Automation } from "../types"
 
 interface AutomationCardProps {
   automation: Automation
@@ -23,29 +21,56 @@ interface AutomationCardProps {
 }
 
 const ACTION_CONFIG: Record<ActionType, { icon: typeof PlayIcon; color: string; label: string }> = {
-  chat:    { icon: BotIcon,    color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400", label: "Mensaje" },
-  webhook: { icon: GlobeIcon, color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400", label: "Webhook" },
-  skill:   { icon: PlayIcon,  color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400", label: "Skill" },
-  export:  { icon: FileDownIcon, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400", label: "Exportar" },
+  chat: {
+    icon: BotIcon,
+    color: "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
+    label: "Mensaje",
+  },
+  webhook: {
+    icon: GlobeIcon,
+    color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+    label: "Webhook",
+  },
+  skill: {
+    icon: PlayIcon,
+    color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    label: "Skill",
+  },
+  export: {
+    icon: FileDownIcon,
+    color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+    label: "Exportar",
+  },
 }
 
-export function AutomationCard({ automation, onToggle, onEdit, onDelete, onRunNow }: AutomationCardProps) {
+export function AutomationCard({
+  automation,
+  onToggle,
+  onEdit,
+  onDelete,
+  onRunNow,
+}: AutomationCardProps) {
   const action = ACTION_CONFIG[automation.action_type as ActionType] ?? ACTION_CONFIG.chat
   const ActionIcon = action.icon
 
   const formatDate = (ts: number | null) => {
     if (!ts) return "Nunca"
     return new Date(ts * 1000).toLocaleString("es-ES", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     })
   }
 
   return (
-    <div className={cn(
-      "rounded-xl border p-4 transition-all",
-      automation.enabled ? "border-border bg-card/95" : "border-border/50 bg-muted/30 opacity-60"
-    )}>
+    <div
+      className={cn(
+        "rounded-xl border p-4 transition-all",
+        automation.enabled ? "border-border bg-card/95" : "border-border/50 bg-muted/30 opacity-60"
+      )}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn("rounded-lg p-1.5", action.color)}>
@@ -64,16 +89,16 @@ export function AutomationCard({ automation, onToggle, onEdit, onDelete, onRunNo
           )}
           title={automation.enabled ? "Desactivar" : "Activar"}
         >
-          <span className={cn(
-            "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-            automation.enabled ? "translate-x-5" : "translate-x-0.5"
-          )} />
+          <span
+            className={cn(
+              "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+              automation.enabled ? "translate-x-5" : "translate-x-0.5"
+            )}
+          />
         </button>
       </div>
 
-      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-        {automation.intent}
-      </p>
+      <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{automation.intent}</p>
 
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground mb-3">
         <span className="flex items-center gap-1">
@@ -82,9 +107,7 @@ export function AutomationCard({ automation, onToggle, onEdit, onDelete, onRunNo
         </span>
         <span className="flex items-center gap-1">
           <CalendarIcon className="size-3" />
-          {automation.next_run_at
-            ? formatDate(automation.next_run_at)
-            : "No programada"}
+          {automation.next_run_at ? formatDate(automation.next_run_at) : "No programada"}
         </span>
         <span className="flex items-center gap-1">
           <HashIcon className="size-3" />

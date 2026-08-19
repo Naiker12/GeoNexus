@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react"
-import { XIcon, Loader2Icon, SparklesIcon, CheckIcon, AlertCircleIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { translateNlToCron } from "@/api/chat"
+import { cn } from "@/lib/utils"
+import { AlertCircleIcon, CheckIcon, Loader2Icon, SparklesIcon, XIcon } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { ACTION_TYPES, CHANNELS } from "../types"
 import type { Automation } from "../types"
 
@@ -22,7 +22,12 @@ interface CreateAutomationDialogProps {
   editAutomation?: Automation | null
 }
 
-export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation }: CreateAutomationDialogProps) {
+export function CreateAutomationDialog({
+  open,
+  onClose,
+  onSubmit,
+  editAutomation,
+}: CreateAutomationDialogProps) {
   const [form, setForm] = useState<AutomationForm>({
     name: "",
     description: "",
@@ -34,7 +39,10 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
   })
   const [submitting, setSubmitting] = useState(false)
   const [translating, setTranslating] = useState(false)
-  const [cronResult, setCronResult] = useState<{ cron_expression: string; confidence: number } | null>(null)
+  const [cronResult, setCronResult] = useState<{
+    cron_expression: string
+    confidence: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,7 +60,15 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
       })
       setCronResult(null)
     } else {
-      setForm({ name: "", description: "", intent: "", action_type: "chat", action_config: "{}", channel: "all", cron_expression: "" })
+      setForm({
+        name: "",
+        description: "",
+        intent: "",
+        action_type: "chat",
+        action_config: "{}",
+        channel: "all",
+        cron_expression: "",
+      })
       setCronResult(null)
     }
     setError(null)
@@ -66,9 +82,9 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
       const result = await translateNlToCron(form.intent)
       setCronResult(result)
       if (result.cron_expression && !result.cron_expression.startsWith("now+")) {
-        setForm(f => ({ ...f, cron_expression: result.cron_expression }))
+        setForm((f) => ({ ...f, cron_expression: result.cron_expression }))
       }
-    } catch (e) {
+    } catch (_e) {
       setError("Error al interpretar la intención")
     } finally {
       setTranslating(false)
@@ -76,8 +92,14 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
   }, [form.intent])
 
   const handleSubmit = async () => {
-    if (!form.name.trim()) { setError("El nombre es requerido"); return }
-    if (!form.intent.trim()) { setError("Describe qué debe hacer la automatización"); return }
+    if (!form.name.trim()) {
+      setError("El nombre es requerido")
+      return
+    }
+    if (!form.intent.trim()) {
+      setError("Describe qué debe hacer la automatización")
+      return
+    }
 
     setSubmitting(true)
     setError(null)
@@ -100,7 +122,10 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
           <h2 className="text-sm font-semibold">
             {editAutomation ? "Editar automatización" : "Nueva automatización"}
           </h2>
-          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/80">
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+          >
             <XIcon className="size-4" />
           </button>
         </div>
@@ -112,7 +137,7 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
             <input
               type="text"
               value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="Resumen semanal de documentos"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
             />
@@ -126,7 +151,7 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
             <div className="relative">
               <textarea
                 value={form.intent}
-                onChange={e => setForm(f => ({ ...f, intent: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, intent: e.target.value }))}
                 placeholder='Ej: "cada lunes a las 8am resume mis documentos nuevos"'
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50 resize-none"
@@ -148,17 +173,20 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
 
           {/* Resultado de interpretación */}
           {cronResult && (
-            <div className={cn(
-              "rounded-lg border p-3 text-xs",
-              cronResult.confidence >= 0.7
-                ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900/30 dark:bg-emerald-950/20"
-                : "border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20"
-            )}>
+            <div
+              className={cn(
+                "rounded-lg border p-3 text-xs",
+                cronResult.confidence >= 0.7
+                  ? "border-emerald-200 bg-emerald-50 dark:border-emerald-900/30 dark:bg-emerald-950/20"
+                  : "border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20"
+              )}
+            >
               <div className="flex items-center gap-1.5 mb-1">
-                {cronResult.confidence >= 0.7
-                  ? <CheckIcon className="size-3.5 text-emerald-600" />
-                  : <AlertCircleIcon className="size-3.5 text-amber-600" />
-                }
+                {cronResult.confidence >= 0.7 ? (
+                  <CheckIcon className="size-3.5 text-emerald-600" />
+                ) : (
+                  <AlertCircleIcon className="size-3.5 text-amber-600" />
+                )}
                 <span className="font-medium">
                   {cronResult.confidence >= 0.7 ? "Interpretado" : "Interpretación parcial"}
                 </span>
@@ -180,7 +208,7 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
             <input
               type="text"
               value={form.cron_expression}
-              onChange={e => setForm(f => ({ ...f, cron_expression: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, cron_expression: e.target.value }))}
               placeholder="0 8 * * 1"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:border-primary/50"
             />
@@ -188,11 +216,13 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
 
           {/* Descripción */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Descripción (opcional)</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Descripción (opcional)
+            </label>
             <input
               type="text"
               value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="Resume automático semanal"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
             />
@@ -200,12 +230,14 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
 
           {/* Tipo de acción */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo de acción</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Tipo de acción
+            </label>
             <div className="flex flex-wrap gap-2">
-              {ACTION_TYPES.map(at => (
+              {ACTION_TYPES.map((at) => (
                 <button
                   key={at.id}
-                  onClick={() => setForm(f => ({ ...f, action_type: at.id }))}
+                  onClick={() => setForm((f) => ({ ...f, action_type: at.id }))}
                   className={cn(
                     "px-3 py-1.5 text-xs rounded-lg border transition-colors text-left",
                     form.action_type === at.id
@@ -228,7 +260,7 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
               </label>
               <textarea
                 value={form.action_config}
-                onChange={e => setForm(f => ({ ...f, action_config: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, action_config: e.target.value }))}
                 rows={3}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary/50 resize-none"
               />
@@ -240,11 +272,13 @@ export function CreateAutomationDialog({ open, onClose, onSubmit, editAutomation
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Canal</label>
             <select
               value={form.channel}
-              onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}
+              onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
             >
-              {CHANNELS.map(ch => (
-                <option key={ch.id} value={ch.id}>{ch.label}</option>
+              {CHANNELS.map((ch) => (
+                <option key={ch.id} value={ch.id}>
+                  {ch.label}
+                </option>
               ))}
             </select>
           </div>

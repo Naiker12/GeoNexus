@@ -1,10 +1,9 @@
-import { FilterIcon, XIcon } from "lucide-react"
-import * as React from "react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
-import { nodeDotColor } from "./NodeSheet"
-import { nodeTypeLabel } from "./graph-colors"
 import type { GraphNodeKind } from "@/types/graph"
+import { FilterIcon, XIcon } from "lucide-react"
+import * as React from "react"
+import { nodeDotColor } from "./NodeSheet"
 
 export type KindFilter = "all" | GraphNodeKind
 
@@ -48,7 +47,12 @@ export function GraphFilters({
           }`}
         >
           {opt.value !== "all" && (
-            <span className={cn("size-2 rounded-full inline-block", nodeDotColor(opt.value as GraphNodeKind))} />
+            <span
+              className={cn(
+                "size-2 rounded-full inline-block",
+                nodeDotColor(opt.value as GraphNodeKind)
+              )}
+            />
           )}
           {opt.label}
         </button>
@@ -62,7 +66,12 @@ export function GraphFilters({
       </button>
     </div>
   ) : (
-    <Button variant="outline" size="sm" className="h-7 bg-card/90" onClick={() => setFilterOpen(true)}>
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-7 bg-card/90"
+      onClick={() => setFilterOpen(true)}
+    >
       <FilterIcon className="size-4" />
       {kindFilter === "all" ? "Filtros" : KIND_OPTIONS.find((o) => o.value === kindFilter)?.label}
     </Button>

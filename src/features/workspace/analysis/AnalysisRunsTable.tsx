@@ -1,11 +1,11 @@
-import { useState } from "react"
-import { ActivityIcon, CopyIcon, ExternalLinkIcon, WrenchIcon } from "lucide-react"
-import { toast } from "sonner"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/Button"
-import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useAnalysisRuns } from "@/features/workspace/analysis/useAnalysis"
+import { cn } from "@/lib/utils"
 import type { AnalysisRun } from "@/types/analysis"
+import { ActivityIcon, CopyIcon, ExternalLinkIcon, WrenchIcon } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 const PAGE_SIZE = 10
 
@@ -178,7 +178,10 @@ export function AnalysisRunsTable() {
                   {run.trace_id ? (
                     <>
                       <span
-                        onClick={(e) => { e.stopPropagation(); copyTraceId(run.trace_id) }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyTraceId(run.trace_id)
+                        }}
                         className="hover:text-foreground transition-colors cursor-pointer"
                         title="Copiar Trace ID"
                       >
@@ -192,14 +195,16 @@ export function AnalysisRunsTable() {
                 </code>
                 <span className="text-xs font-medium">{run.tokens.toLocaleString()}</span>
                 <div className="flex items-center gap-2">
-                  <span className={cn(
-                    "w-fit rounded-md px-1.5 py-0.5 text-[0.68rem] font-medium",
-                    run.duration_ms < 5000
-                      ? "bg-emerald-500/10 text-emerald-600"
-                      : run.duration_ms < 15000
-                        ? "bg-yellow-500/10 text-yellow-600"
-                        : "bg-red-500/10 text-red-500"
-                  )}>
+                  <span
+                    className={cn(
+                      "w-fit rounded-md px-1.5 py-0.5 text-[0.68rem] font-medium",
+                      run.duration_ms < 5000
+                        ? "bg-emerald-500/10 text-emerald-600"
+                        : run.duration_ms < 15000
+                          ? "bg-yellow-500/10 text-yellow-600"
+                          : "bg-red-500/10 text-red-500"
+                    )}
+                  >
                     {formatDuration(run.duration_ms)}
                   </span>
                   {run.tool_calls > 0 ? (
@@ -245,7 +250,13 @@ export function AnalysisRunsTable() {
         )}
       </section>
 
-      <TraceDetailDialog run={detail} open={detail !== null} onOpenChange={(v) => { if (!v) setDetail(null) }} />
+      <TraceDetailDialog
+        run={detail}
+        open={detail !== null}
+        onOpenChange={(v) => {
+          if (!v) setDetail(null)
+        }}
+      />
     </>
   )
 }

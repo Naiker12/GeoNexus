@@ -1,5 +1,5 @@
-import * as React from "react"
 import { Trash2Icon, XCircleIcon } from "lucide-react"
+import type * as React from "react"
 
 import {
   Dialog,
@@ -41,20 +41,17 @@ export function ConfirmSettingsDialog({
         <DialogHeader className="mb-0 border-b border-border px-4 pb-3 pt-4">
           <div className="flex items-start gap-2.5 pr-8">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
-              {isDelete ? (
-                <Trash2Icon className="size-4" />
-              ) : (
-                <XCircleIcon className="size-4" />
-              )}
+              {isDelete ? <Trash2Icon className="size-4" /> : <XCircleIcon className="size-4" />}
             </div>
             <div className="min-w-0">
               <DialogTitle className="text-base font-semibold">
                 {isDelete ? "Confirmar eliminación" : "Confirmar desactivación"}
               </DialogTitle>
               <DialogDescription className="mt-1 text-xs leading-5">
-                {description ?? (isDelete
-                  ? `Esto eliminará ${name} de la configuración local.`
-                  : `Esto desactivará ${name} sin eliminar sus datos.`)}
+                {description ??
+                  (isDelete
+                    ? `Esto eliminará ${name} de la configuración local.`
+                    : `Esto desactivará ${name} sin eliminar sus datos.`)}
               </DialogDescription>
             </div>
           </div>

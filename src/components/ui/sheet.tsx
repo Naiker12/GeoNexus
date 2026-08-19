@@ -1,31 +1,25 @@
 "use client"
 
-import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
+import * as React from "react"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
+import { cn } from "@/lib/utils"
 import { XIcon } from "lucide-react"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
 }
 
-function SheetTrigger({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
+function SheetTrigger({ ...props }: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />
 }
 
-function SheetClose({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Close>) {
+function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Close>) {
   return <SheetPrimitive.Close data-slot="sheet-close" {...props} />
 }
 
-function SheetPortal({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Portal>) {
+function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />
 }
 
@@ -67,11 +61,7 @@ const SheetContent = React.forwardRef<
       {children}
       {showCloseButton && (
         <SheetPrimitive.Close data-slot="sheet-close" asChild>
-          <Button
-            variant="ghost"
-            className="absolute top-3 right-3"
-            size="icon-sm"
-          >
+          <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">
             <XIcon />
             <span className="sr-only">Cerrar</span>
           </Button>
@@ -109,10 +99,7 @@ const SheetTitle = React.forwardRef<
   <SheetPrimitive.Title
     ref={ref}
     data-slot="sheet-title"
-    className={cn(
-      "text-base font-medium text-foreground",
-      className
-    )}
+    className={cn("text-base font-medium text-foreground", className)}
     {...props}
   />
 ))

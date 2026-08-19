@@ -1,5 +1,5 @@
+import type { EventPreviewState, PreviewChunk } from "@/types/chat"
 import { useEffect, useState } from "react"
-import type { PreviewChunk, EventPreviewState } from "@/types/chat"
 
 const previewStore = new Map<string, EventPreviewState>()
 const listeners = new Map<string, Set<() => void>>()

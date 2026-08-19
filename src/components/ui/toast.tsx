@@ -20,7 +20,11 @@ export function useToast() {
   return {
     toast: (input: ToastInput) => {
       const { title, description, variant = "info", persistent, duration, id } = input
-      const opts = { description, duration: duration ?? (persistent ? Infinity : undefined), id }
+      const opts = {
+        description,
+        duration: duration ?? (persistent ? Number.POSITIVE_INFINITY : undefined),
+        id,
+      }
       switch (variant) {
         case "success":
           return sonnerToast.success(title, opts)

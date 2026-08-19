@@ -1,18 +1,14 @@
-import * as React from "react"
 import { CheckIcon, ChevronDownIcon, SearchIcon, Trash2Icon } from "lucide-react"
+import * as React from "react"
 
 import { Button } from "@/components/ui/Button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { ProviderBrandIcon } from "@/features/workspace/ai-containers/ProviderBrandIcon"
 import type { ProviderOption } from "@/features/workspace/ai-containers/provider-options"
-import type { AiConnector } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
+import type { AiConnector } from "@/types/workspace-types"
 
 type ActiveProviderPanelProps = {
   activeOption: ProviderOption | null
@@ -71,9 +67,7 @@ export function ActiveProviderPanel({
             </dd>
 
             <dt className="text-muted-foreground">endpoint</dt>
-            <dd className="text-right font-mono text-muted-foreground">
-              {endpoint}
-            </dd>
+            <dd className="text-right font-mono text-muted-foreground">{endpoint}</dd>
 
             <dt className="text-muted-foreground">estado</dt>
             <dd className="text-right font-medium">
@@ -81,8 +75,7 @@ export function ActiveProviderPanel({
                 className={cn(
                   status === "online" && "text-emerald-600 dark:text-emerald-400",
                   status === "offline" && "text-muted-foreground",
-                  status === "needs-key" &&
-                    "text-orange-600 dark:text-orange-400"
+                  status === "needs-key" && "text-orange-600 dark:text-orange-400"
                 )}
               >
                 {status === "needs-key" ? "requiere key" : status}
@@ -91,8 +84,7 @@ export function ActiveProviderPanel({
 
             <dt className="text-muted-foreground">tipo</dt>
             <dd className="text-right text-muted-foreground">
-              {activeOption.type} -{" "}
-              {activeOption.auth === "api-key" ? "keychain" : "sin key"}
+              {activeOption.type} - {activeOption.auth === "api-key" ? "keychain" : "sin key"}
             </dd>
           </dl>
         </div>
@@ -123,13 +115,9 @@ export function ActiveProviderPanel({
           Embeddings
         </h2>
         <div className="flex flex-col gap-3 rounded-lg border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur">
-          <div className="text-sm text-muted-foreground">
-            Sin modelo de embeddings configurado
-          </div>
+          <div className="text-sm text-muted-foreground">Sin modelo de embeddings configurado</div>
           <div className="flex items-center justify-between border-t border-border pt-3">
-            <span className="text-xs text-muted-foreground">
-              Fallback local
-            </span>
+            <span className="text-xs text-muted-foreground">Fallback local</span>
             <Switch disabled />
           </div>
         </div>
@@ -154,10 +142,7 @@ function ModelCard({
   const [query, setQuery] = React.useState("")
 
   const filtered = React.useMemo(
-    () =>
-      query
-        ? models.filter((m) => m.toLowerCase().includes(query.toLowerCase()))
-        : models,
+    () => (query ? models.filter((m) => m.toLowerCase().includes(query.toLowerCase())) : models),
     [models, query]
   )
 
@@ -176,17 +161,11 @@ function ModelCard({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-between text-xs"
-          >
+          <Button variant="outline" size="sm" className="w-full justify-between text-xs">
             {selected !== "Sin modelo" ? (
               <span className="truncate">{selected}</span>
             ) : (
-              <span className="text-muted-foreground">
-                Seleccionar modelo...
-              </span>
+              <span className="text-muted-foreground">Seleccionar modelo...</span>
             )}
             <ChevronDownIcon className="size-3.5 shrink-0 opacity-50" />
           </Button>
@@ -202,7 +181,6 @@ function ModelCard({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filtrar modelos..."
               className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              autoFocus
             />
           </div>
           <div className="max-h-64 overflow-y-auto p-1">
@@ -217,10 +195,7 @@ function ModelCard({
                   {filtered.length} de {models.length} modelos
                 </div>
                 {filtered.map((m) => (
-                  <div
-                    key={m}
-                    className="group/model flex items-center gap-1"
-                  >
+                  <div key={m} className="group/model flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -260,12 +235,14 @@ function ModelCard({
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
         title="Eliminar modelo"
         description={
           <>
-            ¿Eliminar <strong>{deleteTarget}</strong>? El modelo dejará de estar
-            disponible en el chat y los conectores.
+            ¿Eliminar <strong>{deleteTarget}</strong>? El modelo dejará de estar disponible en el
+            chat y los conectores.
           </>
         }
         onConfirm={() => {

@@ -1,12 +1,10 @@
-import { describe, expect, it, vi } from "vitest"
 import type { AiConnector } from "@/types/workspace-types"
+import { describe, expect, it, vi } from "vitest"
 
 // Mock the ConnectorsContext
 vi.mock("@/contexts/ConnectorsContext", () => ({
   useConnectors: vi.fn(),
 }))
-
-import { useConnectors } from "@/contexts/ConnectorsContext"
 
 // Build items the same way MentionPicker does
 function buildMentionItems(connectors: AiConnector[]) {
@@ -33,9 +31,51 @@ function filterItems(items: ReturnType<typeof buildMentionItems>, query: string)
 }
 
 const mockConnectors: AiConnector[] = [
-  { id: "c1", name: "OneDrive", provider: "cloud", role: "chat", status: "online", model: "gpt4", models: ["gpt4"], endpoint: "https://", supportsTools: true, privacy: "keychain", latency: "50ms", description: "", icon: undefined as any },
-  { id: "c2", name: "Archivos Locales", provider: "local", role: "chat", status: "offline", model: "gpt4", models: ["gpt4"], endpoint: "file://", supportsTools: true, privacy: "local", latency: "1ms", description: "", icon: undefined as any },
-  { id: "c3", name: "QGIS", provider: "local", role: "chat", status: "online", model: "gpt4", models: ["gpt4"], endpoint: "qgis://", supportsTools: true, privacy: "local", latency: "5ms", description: "", icon: undefined as any },
+  {
+    id: "c1",
+    name: "OneDrive",
+    provider: "cloud",
+    role: "chat",
+    status: "online",
+    model: "gpt4",
+    models: ["gpt4"],
+    endpoint: "https://",
+    supportsTools: true,
+    privacy: "keychain",
+    latency: "50ms",
+    description: "",
+    icon: undefined as any,
+  },
+  {
+    id: "c2",
+    name: "Archivos Locales",
+    provider: "local",
+    role: "chat",
+    status: "offline",
+    model: "gpt4",
+    models: ["gpt4"],
+    endpoint: "file://",
+    supportsTools: true,
+    privacy: "local",
+    latency: "1ms",
+    description: "",
+    icon: undefined as any,
+  },
+  {
+    id: "c3",
+    name: "QGIS",
+    provider: "local",
+    role: "chat",
+    status: "online",
+    model: "gpt4",
+    models: ["gpt4"],
+    endpoint: "qgis://",
+    supportsTools: true,
+    privacy: "local",
+    latency: "5ms",
+    description: "",
+    icon: undefined as any,
+  },
 ]
 
 describe("MentionPicker item building", () => {

@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import type { NavItem } from "@/types/workspace-types"
 import {
   SidebarMenuButton,
   SidebarMenuItem,
@@ -7,7 +8,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "./menu"
-import type { NavItem } from "@/types/workspace-types"
 
 type SidebarNavItemProps = {
   item: NavItem
@@ -26,7 +26,7 @@ function isActiveRoute(activeRoute: string, itemUrl: string) {
 const SidebarNavItem = React.memo(function SidebarNavItem({
   item,
   activeRoute,
-  depth = 0,
+  depth: _depth = 0,
   onNavigate,
 }: SidebarNavItemProps) {
   const [expanded, setExpanded] = React.useState(true)
@@ -55,7 +55,14 @@ const SidebarNavItem = React.memo(function SidebarNavItem({
                 >
                   <a
                     href={child.url}
-                    onClick={onNavigate ? (e) => { e.preventDefault(); onNavigate(child.url!) } : undefined}
+                    onClick={
+                      onNavigate
+                        ? (e) => {
+                            e.preventDefault()
+                            onNavigate(child.url!)
+                          }
+                        : undefined
+                    }
                   >
                     <child.icon className="size-3.5" />
                     <span className="truncate">{child.title}</span>
@@ -79,7 +86,14 @@ const SidebarNavItem = React.memo(function SidebarNavItem({
       >
         <a
           href={item.url}
-          onClick={onNavigate ? (e) => { e.preventDefault(); onNavigate(item.url!) } : undefined}
+          onClick={
+            onNavigate
+              ? (e) => {
+                  e.preventDefault()
+                  onNavigate(item.url!)
+                }
+              : undefined
+          }
         >
           <item.icon className="size-4" />
           <span className="truncate">{item.title}</span>

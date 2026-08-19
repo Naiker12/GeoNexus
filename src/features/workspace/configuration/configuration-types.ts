@@ -1,20 +1,19 @@
 import type { LucideIcon } from "lucide-react"
 
 export type ConfigSectionId =
+  | "workspace"
+  | "appearance"
+  | "keybindings"
+  | "notifications"
   | "ai-embeddings"
+  | "agents"
   | "mcp-router"
-  | "telegram"
-  | "map-engines"
   | "connectors"
   | "memory"
   | "local-paths"
   | "allowed-paths"
-  | "gis-tools"
   | "maintenance"
-  | "agents"
-  | "notifications"
-  | "workspace"
-  | "keybindings"
+  | "telegram"
 
 export type ConfigSection = {
   id: ConfigSectionId

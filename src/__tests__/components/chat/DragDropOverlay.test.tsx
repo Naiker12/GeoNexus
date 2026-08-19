@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, afterEach } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 afterEach(() => {
   document.body.innerHTML = ""
@@ -12,9 +12,7 @@ describe("global drag&drop event contract", () => {
     window.addEventListener("geonexus:global-drop-files", handler)
 
     const file = new File(["test"], "test.txt", { type: "text/plain" })
-    window.dispatchEvent(
-      new CustomEvent("geonexus:global-drop-files", { detail: [file] })
-    )
+    window.dispatchEvent(new CustomEvent("geonexus:global-drop-files", { detail: [file] }))
 
     expect(handler).toHaveBeenCalled()
     const event = handler.mock.calls[0][0] as CustomEvent

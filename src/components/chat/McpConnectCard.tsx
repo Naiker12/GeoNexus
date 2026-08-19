@@ -1,5 +1,4 @@
-import * as React from "react"
-import { Server, ExternalLink } from "lucide-react"
+import { ExternalLink, Server } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 
@@ -11,7 +10,13 @@ interface McpConnectCardProps {
   onConnect?: () => void
 }
 
-export function McpConnectCard({ serverId, serverName, serverUrl, reason, onConnect }: McpConnectCardProps) {
+export function McpConnectCard({
+  serverId: _serverId,
+  serverName,
+  serverUrl,
+  reason,
+  onConnect,
+}: McpConnectCardProps) {
   return (
     <div className="my-2 overflow-hidden rounded-lg border border-blue-500/30 bg-blue-500/5">
       <div className="flex items-center gap-2 p-2">
@@ -24,15 +29,9 @@ export function McpConnectCard({ serverId, serverName, serverUrl, reason, onConn
             Conectar servidor MCP {serverName ? `"${serverName}"` : ""}
           </p>
           {serverUrl && (
-            <p className="mt-0.5 leading-tight text-muted-foreground font-mono">
-              {serverUrl}
-            </p>
+            <p className="mt-0.5 leading-tight text-muted-foreground font-mono">{serverUrl}</p>
           )}
-          {reason && (
-            <p className="mt-0.5 leading-tight text-muted-foreground">
-              {reason}
-            </p>
-          )}
+          {reason && <p className="mt-0.5 leading-tight text-muted-foreground">{reason}</p>}
         </div>
 
         <Button

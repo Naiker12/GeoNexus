@@ -10,12 +10,7 @@ type AiStatusPillProps = {
   className?: string
 }
 
-export function AiStatusPill({
-  connector,
-  model,
-  status,
-  className,
-}: AiStatusPillProps) {
+export function AiStatusPill({ connector, model, status, className }: AiStatusPillProps) {
   const isOnline = status === "online"
 
   return (
@@ -28,9 +23,7 @@ export function AiStatusPill({
         className
       )}
     >
-      <CircleIcon
-        className={cn("size-2 fill-current", isOnline && "text-primary")}
-      />
+      <CircleIcon className={cn("size-2 fill-current", isOnline && "text-primary")} />
       <GeoAgentsIcon className="size-4" variant="agent" />
       <span>{connector}</span>
       <span className="text-current/60">-</span>

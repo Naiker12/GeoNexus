@@ -35,26 +35,12 @@ const sourceFallbackIcons: Record<string, ComponentType<{ className?: string }>>
   "URL / SharePoint": LinkIcon,
 }
 
-export function DocumentAssetIcon({
-  className,
-  kind,
-  variant = "file",
-}: DocumentAssetIconProps) {
+export function DocumentAssetIcon({ className, kind, variant = "file" }: DocumentAssetIconProps) {
   const normalizedKind = kind.toUpperCase()
-  const route =
-    variant === "source"
-      ? sourceIconRoutes[kind]
-      : fileIconRoutes[normalizedKind]
+  const route = variant === "source" ? sourceIconRoutes[kind] : fileIconRoutes[normalizedKind]
 
   if (route) {
-    return (
-      <img
-        alt=""
-        aria-hidden="true"
-        className={cn("object-contain", className)}
-        src={route}
-      />
-    )
+    return <img alt="" aria-hidden="true" className={cn("object-contain", className)} src={route} />
   }
 
   if (variant === "source" && sourceFallbackIcons[kind]) {

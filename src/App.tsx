@@ -1,18 +1,18 @@
 import * as React from "react"
 
+import { UpdateBanner } from "@/components/UpdateBanner"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toast"
+import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { GeoAgentsWorkspace } from "@/features/workspace/GeoAgentsWorkspace"
-import { UpdateBanner } from "@/components/UpdateBanner"
 import { OnboardingWizard } from "@/features/workspace/onboarding/OnboardingWizard"
 import { SkillOfferingBanner } from "@/features/workspace/skills/SkillOfferingBanner"
-import { useOnboarding } from "@/hooks/useOnboarding"
-import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext"
 import { TelegramBridgeMount } from "@/hooks/TelegramBridgeMount"
 import { useGlobalShortcuts } from "@/hooks/useGlobalShortcuts"
-import type { ThemePresetId } from "@/types/workspace-types"
+import { useOnboarding } from "@/hooks/useOnboarding"
 import type { ToastPosition } from "@/types/notifications"
+import type { ThemePresetId } from "@/types/workspace-types"
 import type { CSSProperties } from "react"
 
 const STORAGE_KEY = "geonexus:notification-settings"
@@ -24,7 +24,9 @@ function readToastPosition(): ToastPosition {
       const parsed = JSON.parse(raw)
       if (parsed.toastPosition) return parsed.toastPosition
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return "bottom-right"
 }
 
@@ -40,13 +42,12 @@ const BUILTIN_THEMES: ThemePresetId[] = [
 ]
 
 export default function App() {
-  const [activeTheme, setActiveTheme] =
-    React.useState<ThemePresetId>(() => {
-      if (typeof window !== "undefined") {
-        return (localStorage.getItem("geonexus.theme") as ThemePresetId) || "geo-light"
-      }
-      return "geo-light"
-    })
+  const [activeTheme, setActiveTheme] = React.useState<ThemePresetId>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("geonexus.theme") as ThemePresetId) || "geo-light"
+    }
+    return "geo-light"
+  })
   const [configOpen, setConfigOpen] = React.useState(false)
   const { loading, showWizard, completeOnboarding, dismissOnboarding } = useOnboarding()
   const activeRoute = useHashRoute()
@@ -57,7 +58,7 @@ export default function App() {
 
   React.useEffect(() => {
     const allThemeClasses = [...BUILTIN_THEMES]
-    document.querySelectorAll<HTMLStyleElement>("[id^='theme-']").forEach(el => {
+    document.querySelectorAll<HTMLStyleElement>("[id^='theme-']").forEach((el) => {
       const id = el.id.replace("theme-", "")
       if (id) allThemeClasses.push(id as ThemePresetId)
     })
@@ -77,29 +78,29 @@ export default function App() {
 
   return (
     <NotificationSettingsProvider>
-    <SidebarProvider
-      className={`${activeTheme} bg-background text-foreground`}
-      style={
-        {
-          "--sidebar-width": "17.5rem",
-        } as CSSProperties
-      }
-    >
-      <AppSidebar
-        activeRoute={activeRoute}
-        activeTheme={activeTheme}
-        onThemeChange={setActiveTheme}
-        onOpenConfig={() => setConfigOpen(true)}
-      />
-      <SidebarInset className="overflow-hidden flex flex-col">
-        <UpdateBanner />
-        <GeoAgentsWorkspace
+      <SidebarProvider
+        className={`${activeTheme} bg-background text-foreground`}
+        style={
+          {
+            "--sidebar-width": "17.5rem",
+          } as CSSProperties
+        }
+      >
+        <AppSidebar
           activeRoute={activeRoute}
-          configOpen={configOpen}
-          onConfigOpenChange={setConfigOpen}
+          activeTheme={activeTheme}
+          onThemeChange={setActiveTheme}
+          onOpenConfig={() => setConfigOpen(true)}
         />
-      </SidebarInset>
-    </SidebarProvider>
+        <SidebarInset className="overflow-hidden flex flex-col">
+          <UpdateBanner />
+          <GeoAgentsWorkspace
+            activeRoute={activeRoute}
+            configOpen={configOpen}
+            onConfigOpenChange={setConfigOpen}
+          />
+        </SidebarInset>
+      </SidebarProvider>
       <Toaster position={toastPosition} />
       <TelegramBridgeMount />
       <SkillOfferingBanner />
@@ -115,10 +116,7 @@ export default function App() {
 }
 
 function useHashRoute() {
-  const getRoute = React.useCallback(
-    () => window.location.hash || "#chat",
-    []
-  )
+  const getRoute = React.useCallback(() => window.location.hash || "#chat", [])
   const [route, setRoute] = React.useState(getRoute)
 
   React.useEffect(() => {

@@ -1,4 +1,3 @@
-import * as React from "react"
 import {
   CpuIcon,
   DatabaseIcon,
@@ -11,23 +10,24 @@ import {
   ShieldCheckIcon,
   WrenchIcon,
 } from "lucide-react"
+import * as React from "react"
 
-import { Button } from "@/components/ui/Button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { useToast } from "@/components/ui/toast"
-import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
 import { registerLocalConnector } from "@/api/connector"
+import { ConnectorStatusBadge } from "@/components/chat/ConnectorStatusBadge"
+import { Button } from "@/components/ui/Button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/toast"
+import { useOAuthFlow } from "@/features/workspace/connectors/hooks/useOAuthFlow"
 import type { MentionableSourceItem } from "@/types/chat"
 import { invoke } from "@tauri-apps/api/core"
-import { cn } from "@/lib/utils"
-import { useOAuthFlow } from "@/features/workspace/connectors/hooks/useOAuthFlow"
 
-const CLOUD_PROVIDERS = new Set(["onedrive", "google_drive", "googledrive", "sharepoint", "dropbox"])
+const CLOUD_PROVIDERS = new Set([
+  "onedrive",
+  "google_drive",
+  "googledrive",
+  "sharepoint",
+  "dropbox",
+])
 
 const PROVIDER_META: Record<string, { name: string; icon: string; color: string }> = {
   onedrive: { name: "OneDrive", icon: "Cloud", color: "#0078D4" },
@@ -45,12 +45,7 @@ type Props = {
   onConnected: () => void
 }
 
-export function ConnectorConnectionDialog({
-  connector,
-  open,
-  onOpenChange,
-  onConnected,
-}: Props) {
+export function ConnectorConnectionDialog({ connector, open, onOpenChange, onConnected }: Props) {
   const { toast } = useToast()
   const [connecting, setConnecting] = React.useState(false)
   const [folderPath, setFolderPath] = React.useState("")
@@ -75,13 +70,14 @@ export function ConnectorConnectionDialog({
         variant: "error",
       })
     }
-  }, [oauth.status])
+    // eslint-disable-next-line -- intentionally reacting only to status changes
+  }, [oauth.status, oauth.error, connector.label, onConnected, onOpenChange, toast])
 
   React.useEffect(() => {
     setConnecting(false)
     setFolderPath("")
     oauth.reset()
-  }, [connector.id, open])
+  }, [oauth.reset])
 
   const prov = connector.provider ?? ""
   const isCloud = CLOUD_PROVIDERS.has(prov)
@@ -94,7 +90,11 @@ export function ConnectorConnectionDialog({
       const folder = await invoke<string | null>("open_folder_picker")
       if (folder) setFolderPath(folder)
     } catch (err) {
-      toast({ title: "Error", description: `No se pudo abrir el selector: ${err}`, variant: "error" })
+      toast({
+        title: "Error",
+        description: `No se pudo abrir el selector: ${err}`,
+        variant: "error",
+      })
     }
   }
 
@@ -203,20 +203,27 @@ export function ConnectorConnectionDialog({
                   Cómo funciona
                 </div>
                 <p className="mt-1.5 text-sm leading-5 text-muted-foreground">
-                  Connector Manager recibe la solicitud, valida permisos, crea el
-                  conector, envía archivos al indexador, genera embeddings en ChromaDB y
-                  actualiza el Knowledge Graph.
+                  Connector Manager recibe la solicitud, valida permisos, crea el conector, envía
+                  archivos al indexador, genera embeddings en ChromaDB y actualiza el Knowledge
+                  Graph.
                 </p>
               </div>
               <div className="lg:col-span-2 rounded-lg border border-border bg-background/70 p-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Formatos</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Formatos
+                </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[".geojson", ".shp", ".dxf", ".pdf", ".csv", ".xlsx", ".kml", ".gpkg"].map((fmt) => (
-                    <span key={fmt} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/45 px-2 py-1 text-xs text-muted-foreground">
-                      <FileIcon className="size-3" />
-                      {fmt}
-                    </span>
-                  ))}
+                  {[".geojson", ".shp", ".dxf", ".pdf", ".csv", ".xlsx", ".kml", ".gpkg"].map(
+                    (fmt) => (
+                      <span
+                        key={fmt}
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/45 px-2 py-1 text-xs text-muted-foreground"
+                      >
+                        <FileIcon className="size-3" />
+                        {fmt}
+                      </span>
+                    )
+                  )}
                 </div>
               </div>
             </div>
@@ -224,7 +231,11 @@ export function ConnectorConnectionDialog({
             <div className="flex flex-col gap-4">
               <ConnectorInfoPanel
                 title="Qué conecta"
-                items={["Carpeta local del sistema de archivos", "Escaneo recursivo de documentos GIS", "Filtro por extensión configurable"]}
+                items={[
+                  "Carpeta local del sistema de archivos",
+                  "Escaneo recursivo de documentos GIS",
+                  "Filtro por extensión configurable",
+                ]}
                 icon={FolderOpenIcon}
               />
               <div className="flex flex-col gap-2">
@@ -266,7 +277,9 @@ export function ConnectorConnectionDialog({
               ) : (
                 <ExternalLinkIcon className="size-4" />
               )}
-              {connecting || oauth.status === "pending" ? "Conectando..." : `Conectar con ${connector.label}`}
+              {connecting || oauth.status === "pending"
+                ? "Conectando..."
+                : `Conectar con ${connector.label}`}
             </Button>
           )}
           {isLocal && (
@@ -290,7 +303,11 @@ export function ConnectorConnectionDialog({
   )
 }
 
-function ConnectorInfoPanel({ title, items, icon: Icon }: { title: string; items: string[]; icon: typeof DatabaseIcon }) {
+function ConnectorInfoPanel({
+  title,
+  items,
+  icon: Icon,
+}: { title: string; items: string[]; icon: typeof DatabaseIcon }) {
   return (
     <div className="rounded-lg border border-border bg-background/70 p-3.5">
       <div className="flex items-center gap-2 text-sm font-semibold">

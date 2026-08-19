@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
 import { isFirstLaunch, setOnboardingCompleted } from "@/api/filesystem-config"
+import { useEffect, useState } from "react"
 
 export function useOnboarding() {
   const [loading, setLoading] = useState(true)

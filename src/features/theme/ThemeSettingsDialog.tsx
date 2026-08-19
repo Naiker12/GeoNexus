@@ -1,5 +1,5 @@
+import { CheckIcon, PaletteIcon, SparklesIcon, UploadIcon, XIcon } from "lucide-react"
 import * as React from "react"
-import { CheckIcon, PaletteIcon, PlusIcon, SparklesIcon, UploadIcon, XIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/Button"
 import {
@@ -11,8 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { themePresets as builtInPresets } from "@/constants/workspace"
-import type { ThemePreset, ThemePresetId } from "@/types/workspace-types"
 import { cn } from "@/lib/utils"
+import type { ThemePreset, ThemePresetId } from "@/types/workspace-types"
 
 const CUSTOM_THEMES_KEY = "geonexus:custom-themes"
 
@@ -49,10 +49,7 @@ type ThemeSettingsDialogProps = {
   onThemeChange: (theme: ThemePresetId) => void
 }
 
-export function ThemeSettingsDialog({
-  activeTheme,
-  onThemeChange,
-}: ThemeSettingsDialogProps) {
+export function ThemeSettingsDialog({ activeTheme, onThemeChange }: ThemeSettingsDialogProps) {
   const [customThemes, setCustomThemes] = React.useState<CustomThemePreset[]>(loadCustomThemes)
   const allPresets = React.useMemo(() => [...builtInPresets, ...customThemes], [customThemes])
 
@@ -65,7 +62,11 @@ export function ThemeSettingsDialog({
       if (!file) return
       try {
         const text = await file.text()
-        const parsed = JSON.parse(text) as { id: string; name: string; variables: Record<string, string> }
+        const parsed = JSON.parse(text) as {
+          id: string
+          name: string
+          variables: Record<string, string>
+        }
         if (!parsed.id || !parsed.name || !parsed.variables) {
           alert("Formato inválido. Debe contener: id, name, variables")
           return
@@ -78,7 +79,9 @@ export function ThemeSettingsDialog({
           tone: "Custom",
           cssVariables: parsed.variables,
         }
-        const exists = customThemes.some(t => t.id === parsed.id) || builtInPresets.some(t => t.id === parsed.id)
+        const exists =
+          customThemes.some((t) => t.id === parsed.id) ||
+          builtInPresets.some((t) => t.id === parsed.id)
         if (exists) {
           alert(`El tema "${parsed.id}" ya existe`)
           return
@@ -95,24 +98,30 @@ export function ThemeSettingsDialog({
     input.click()
   }, [customThemes, onThemeChange])
 
-  const handleRemoveCustom = React.useCallback((id: string) => {
-    const updated = customThemes.filter(t => t.id !== id)
-    setCustomThemes(updated)
-    saveCustomThemes(updated)
-    const el = document.getElementById(`theme-${id}`)
-    if (el) el.remove()
-    if (activeTheme === id) {
-      onThemeChange("geo-light")
-    }
-  }, [customThemes, activeTheme, onThemeChange])
+  const handleRemoveCustom = React.useCallback(
+    (id: string) => {
+      const updated = customThemes.filter((t) => t.id !== id)
+      setCustomThemes(updated)
+      saveCustomThemes(updated)
+      const el = document.getElementById(`theme-${id}`)
+      if (el) el.remove()
+      if (activeTheme === id) {
+        onThemeChange("geo-light")
+      }
+    },
+    [customThemes, activeTheme, onThemeChange]
+  )
 
-  const handleThemeSelect = React.useCallback((id: ThemePresetId) => {
-    const custom = customThemes.find(t => t.id === id)
-    if (custom) {
-      injectCustomTheme(id, custom.cssVariables)
-    }
-    onThemeChange(id)
-  }, [customThemes, onThemeChange])
+  const handleThemeSelect = React.useCallback(
+    (id: ThemePresetId) => {
+      const custom = customThemes.find((t) => t.id === id)
+      if (custom) {
+        injectCustomTheme(id, custom.cssVariables)
+      }
+      onThemeChange(id)
+    },
+    [customThemes, onThemeChange]
+  )
 
   return (
     <Dialog>
@@ -122,9 +131,7 @@ export function ThemeSettingsDialog({
           className="w-full justify-start gap-2 overflow-hidden px-2 hover:bg-transparent hover:text-sidebar-foreground group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2"
         >
           <PaletteIcon className="size-4" />
-          <span className="group-data-[collapsible=icon]:hidden">
-            Temas
-          </span>
+          <span className="group-data-[collapsible=icon]:hidden">Temas</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="rounded-xl p-0 sm:max-w-[46rem] border border-border shadow-2xl">
@@ -136,8 +143,7 @@ export function ThemeSettingsDialog({
             <div className="min-w-0">
               <DialogTitle className="text-base font-bold">Apariencia</DialogTitle>
               <DialogDescription className="mt-1 max-w-lg text-sm leading-5">
-                Ajusta el tema visual de Geo Agents sin cambiar tus datos ni el
-                contexto de trabajo.
+                Ajusta el tema visual de Geo Agents sin cambiar tus datos ni el contexto de trabajo.
               </DialogDescription>
             </div>
           </div>
@@ -146,7 +152,7 @@ export function ThemeSettingsDialog({
         <div className="grid max-h-[min(32rem,calc(100svh-8rem))] gap-4 overflow-auto p-4 [scrollbar-width:thin] grid-cols-1 sm:grid-cols-2 sm:p-6">
           {allPresets.map((theme) => {
             const active = activeTheme === theme.id
-            const isCustom = customThemes.some(t => t.id === theme.id)
+            const isCustom = customThemes.some((t) => t.id === theme.id)
 
             return (
               <button
@@ -188,7 +194,10 @@ export function ThemeSettingsDialog({
                 {isCustom && (
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); handleRemoveCustom(theme.id) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleRemoveCustom(theme.id)
+                    }}
                     className="absolute right-3 bottom-3 flex size-4 items-center justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
                     title="Eliminar tema"
                   >
@@ -216,9 +225,7 @@ export function ThemeSettingsDialog({
 }
 
 function ThemePreview({ theme }: { theme: ThemePreset }) {
-  const isBright = ["geo-light", "emerald", "cobalt", "lagoon", "terra"].includes(
-    theme.id
-  )
+  const isBright = ["geo-light", "emerald", "cobalt", "lagoon", "terra"].includes(theme.id)
   const accentClass = getPreviewAccent(theme.id)
 
   return (
@@ -242,10 +249,19 @@ function ThemePreview({ theme }: { theme: ThemePreset }) {
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-[3px] pl-1.5">
         <span className="flex items-center gap-[2px]">
-          <SparklesIcon className={cn("size-[10px]", isBright ? "text-black/55" : "text-white/80")} />
-          <span className={cn("h-[3px] flex-1 rounded-sm", isBright ? "bg-black/40" : "bg-white/70")} />
+          <SparklesIcon
+            className={cn("size-[10px]", isBright ? "text-black/55" : "text-white/80")}
+          />
+          <span
+            className={cn("h-[3px] flex-1 rounded-sm", isBright ? "bg-black/40" : "bg-white/70")}
+          />
         </span>
-        <span className={cn("mt-auto h-[12px] rounded-sm shadow-sm", isBright ? "bg-white" : "bg-white/85")}>
+        <span
+          className={cn(
+            "mt-auto h-[12px] rounded-sm shadow-sm",
+            isBright ? "bg-white" : "bg-white/85"
+          )}
+        >
           <span className={cn("block h-full w-1/2 rounded-sm", accentClass)} />
         </span>
       </span>

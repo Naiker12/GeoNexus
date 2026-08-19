@@ -1,10 +1,4 @@
-export type LlmProvider =
-  | 'ollama'
-  | 'lmstudio'
-  | 'openrouter'
-  | 'openai'
-  | 'anthropic'
-  | 'custom'
+export type LlmProvider = "ollama" | "lmstudio" | "openrouter" | "openai" | "anthropic" | "custom"
 
 export interface LlmModelInfo {
   id: string

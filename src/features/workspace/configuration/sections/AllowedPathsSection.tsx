@@ -1,10 +1,10 @@
-import * as React from "react"
-import { Plus, Trash2, Shield, ShieldCheck, ShieldAlert } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { SettingGroup, SideMetric } from "@/features/workspace/configuration/settings-ui"
-import { AllowedPathDialog } from "@/features/workspace/configuration/AllowedPathDialog"
 import { getFilesystemConfig, saveFilesystemConfig } from "@/api/filesystem-config"
 import type { AllowedPathEntry } from "@/api/filesystem-config"
+import { Button } from "@/components/ui/Button"
+import { AllowedPathDialog } from "@/features/workspace/configuration/AllowedPathDialog"
+import { SettingGroup, SideMetric } from "@/features/workspace/configuration/settings-ui"
+import { Plus, Shield, ShieldAlert, ShieldCheck, Trash2 } from "lucide-react"
+import * as React from "react"
 
 const LEVEL_LABELS: Record<string, string> = {
   read: "Lectura",
@@ -20,7 +20,7 @@ const LEVEL_COLORS: Record<string, string> = {
   admin: "bg-red-500/10 text-red-600 dark:text-red-400",
 }
 
-const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+const _PERMISSION_DESCRIPTIONS: Record<string, string> = {
   read: "El agente puede leer archivos pero no modificarlos",
   write: "El agente puede leer y crear/modificar archivos",
   execute: "Incluye escritura + puede ejecutar scripts en esta ruta",
@@ -34,10 +34,12 @@ export function AllowedPathsSection() {
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
-    getFilesystemConfig().then((config) => {
-      if (config) setPaths(config.allowed_paths)
-      setLoading(false)
-    }).catch(() => setLoading(false))
+    getFilesystemConfig()
+      .then((config) => {
+        if (config) setPaths(config.allowed_paths)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
   const persistPaths = async (updated: AllowedPathEntry[]) => {
@@ -50,7 +52,7 @@ export function AllowedPathsSection() {
 
   const handleSaveDialog = (entry: AllowedPathEntry) => {
     const updated = editingEntry
-      ? paths.map((p) => p.path === editingEntry.path ? entry : p)
+      ? paths.map((p) => (p.path === editingEntry.path ? entry : p))
       : [...paths, entry]
     persistPaths(updated)
     setEditingEntry(null)
@@ -69,7 +71,14 @@ export function AllowedPathsSection() {
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-muted-foreground">Rutas configuradas</span>
-        <Button variant="outline" size="xs" onClick={() => { setEditingEntry(null); setDialogOpen(true) }}>
+        <Button
+          variant="outline"
+          size="xs"
+          onClick={() => {
+            setEditingEntry(null)
+            setDialogOpen(true)
+          }}
+        >
           <Plus className="size-3.5 mr-1" /> Añadir ruta
         </Button>
       </div>
@@ -81,13 +90,16 @@ export function AllowedPathsSection() {
           <ShieldAlert size={32} className="text-muted-foreground opacity-30" />
           <p className="text-sm text-muted-foreground">No hay rutas configuradas</p>
           <p className="text-xs text-muted-foreground opacity-70 max-w-xs">
-            Los directorios permitidos controlan qué carpetas puede leer y escribir el agente
-            a través del servidor MCP de filesystem. Añade una ruta para empezar.
+            Los directorios permitidos controlan qué carpetas puede leer y escribir el agente a
+            través del servidor MCP de filesystem. Añade una ruta para empezar.
           </p>
           <Button
             variant="outline"
             size="xs"
-            onClick={() => { setEditingEntry(null); setDialogOpen(true) }}
+            onClick={() => {
+              setEditingEntry(null)
+              setDialogOpen(true)
+            }}
             className="mt-2"
           >
             <Plus className="size-3.5 mr-1" /> Añadir primera ruta
@@ -107,12 +119,17 @@ export function AllowedPathsSection() {
                 <p className="truncate text-sm font-medium">{entry.label}</p>
                 <p className="truncate text-xs text-muted-foreground">{entry.path}</p>
               </div>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${LEVEL_COLORS[entry.level] || ""}`}>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${LEVEL_COLORS[entry.level] || ""}`}
+              >
                 {LEVEL_LABELS[entry.level] || entry.level}
               </span>
               <button
                 type="button"
-                onClick={() => { setEditingEntry(entry); setDialogOpen(true) }}
+                onClick={() => {
+                  setEditingEntry(entry)
+                  setDialogOpen(true)
+                }}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
               >
                 Editar
@@ -134,7 +151,12 @@ export function AllowedPathsSection() {
       <AllowedPathDialog
         open={dialogOpen}
         entry={editingEntry}
-        onOpenChange={(o) => { if (!o) { setDialogOpen(false); setEditingEntry(null) } }}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDialogOpen(false)
+            setEditingEntry(null)
+          }
+        }}
         onSave={handleSaveDialog}
       />
     </SettingGroup>

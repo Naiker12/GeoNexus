@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
+import { type CuratedMcpEntry, installCuratedMcpServer, listCuratedMcpServers } from "@/api/mcp"
 import { Button } from "@/components/ui/Button"
-import { listCuratedMcpServers, installCuratedMcpServer, type CuratedMcpEntry } from "@/api/mcp"
+import { useCallback, useEffect, useState } from "react"
 
 const categoryLabels: Record<string, string> = {
   storage: "Almacenamiento",
@@ -34,11 +34,13 @@ export function McpCatalogPicker() {
     }
   }, [])
 
-  const categories = [...new Set(servers.map(s => s.category))]
-  const filtered = servers.filter(s =>
-    !filter || s.name.toLowerCase().includes(filter.toLowerCase()) ||
-    s.description.toLowerCase().includes(filter.toLowerCase()) ||
-    s.tags.some(t => t.toLowerCase().includes(filter.toLowerCase()))
+  const categories = [...new Set(servers.map((s) => s.category))]
+  const filtered = servers.filter(
+    (s) =>
+      !filter ||
+      s.name.toLowerCase().includes(filter.toLowerCase()) ||
+      s.description.toLowerCase().includes(filter.toLowerCase()) ||
+      s.tags.some((t) => t.toLowerCase().includes(filter.toLowerCase()))
   )
 
   return (
@@ -56,12 +58,12 @@ export function McpCatalogPicker() {
         className="w-full rounded border border-border bg-secondary px-3 py-1.5 text-xs outline-none focus:border-primary"
         placeholder="Buscar servidores..."
         value={filter}
-        onChange={e => setFilter(e.target.value)}
+        onChange={(e) => setFilter(e.target.value)}
       />
 
       <div className="max-h-96 space-y-4 overflow-y-auto pr-1">
-        {categories.map(cat => {
-          const catServers = filtered.filter(s => s.category === cat)
+        {categories.map((cat) => {
+          const catServers = filtered.filter((s) => s.category === cat)
           if (catServers.length === 0) return null
           return (
             <div key={cat}>
@@ -69,7 +71,7 @@ export function McpCatalogPicker() {
                 {categoryLabels[cat] || cat}
               </h4>
               <div className="grid gap-2">
-                {catServers.map(server => (
+                {catServers.map((server) => (
                   <div
                     key={server.id}
                     className="flex items-start gap-3 rounded border border-border bg-secondary/50 p-3"
@@ -86,8 +88,11 @@ export function McpCatalogPicker() {
                       </p>
                       {server.tags.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {server.tags.map(tag => (
-                            <span key={tag} className="rounded bg-accent/30 px-1 py-0.5 text-[10px] text-accent-foreground">
+                          {server.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded bg-accent/30 px-1 py-0.5 text-[10px] text-accent-foreground"
+                            >
                               {tag}
                             </span>
                           ))}

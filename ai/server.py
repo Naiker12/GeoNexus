@@ -281,6 +281,55 @@ async def handle_chat_llm(params: dict, ws: WebSocket) -> None:
     await ws.send_json(result)  # raw result dict, no wrapping
 
 
+async def handle_hub_search(params: dict, ws: WebSocket) -> None:
+    from core.hub.discover import search_hf_models
+    res = search_hf_models(
+        query=params.get("query", ""),
+        task=params.get("task", "text-generation"),
+        sort=params.get("sort", "downloads"),
+        limit=params.get("limit", 15),
+    )
+    await ws.send_json({"type": "result", "data": res})
+
+
+async def handle_hub_inventory(params: dict, ws: WebSocket) -> None:
+    from core.hub.inventory import scan_local_inventory
+    res = scan_local_inventory()
+    await ws.send_json({"type": "result", "data": res})
+
+
+async def handle_hub_vram_fit(params: dict, ws: WebSocket) -> None:
+    from core.hub.vram_fit import calculate_vram_fit
+    res = calculate_vram_fit(
+        model_size_gb=float(params.get("model_size_gb", 4.0)),
+        context_tokens=int(params.get("context_tokens", 4096)),
+        format_type=params.get("format_type", "gguf"),
+    )
+    await ws.send_json({"type": "result", "data": res})
+
+
+async def handle_hub_delete_model(params: dict, ws: WebSocket) -> None:
+    from core.hub.inventory import delete_local_model
+    res = delete_local_model(params.get("filename", ""))
+    await ws.send_json({"type": "result", "data": res})
+
+
+async def handle_loaded_models_list(params: dict, ws: WebSocket) -> None:
+    from core.runtime.loaded_tracker import list_loaded_models
+    res = list_loaded_models()
+    await ws.send_json({"type": "result", "data": res})
+
+
+async def handle_loaded_models_eject(params: dict, ws: WebSocket) -> None:
+    from core.runtime.loaded_tracker import eject_loaded_model, eject_all_models
+    model_id = params.get("model_id")
+    if model_id:
+        res = eject_loaded_model(model_id)
+    else:
+        res = eject_all_models()
+    await ws.send_json({"type": "result", "data": res})
+
+
 # ── Router principal ─────────────────────────────────────────────────
 
 HANDLERS = {
@@ -300,6 +349,12 @@ HANDLERS = {
     "audio_transcribe": handle_audio_transcribe,
     "audio_synthesize": handle_audio_synthesize,
     "execute_shell_command": handle_execute_shell,
+    "hub_search": handle_hub_search,
+    "hub_inventory": handle_hub_inventory,
+    "hub_vram_fit": handle_hub_vram_fit,
+    "hub_delete_model": handle_hub_delete_model,
+    "loaded_models_list": handle_loaded_models_list,
+    "loaded_models_eject": handle_loaded_models_eject,
 }
 
 

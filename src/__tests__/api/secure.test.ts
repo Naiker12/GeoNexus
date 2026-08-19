@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 
 beforeAll(() => {
   vi.stubGlobal("window", { __TAURI_INTERNALS__: {} })
@@ -8,8 +8,8 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
 }))
 
+import { deleteSecure, getSecure, setSecure } from "@/api/secure"
 import { invoke } from "@tauri-apps/api/core"
-import { setSecure, getSecure, deleteSecure } from "@/api/secure"
 
 describe("secure API", () => {
   describe("setSecure", () => {
@@ -17,7 +17,8 @@ describe("secure API", () => {
       vi.mocked(invoke).mockResolvedValueOnce(undefined)
       await setSecure("api-key-openai", "sk-...")
       expect(invoke).toHaveBeenCalledWith("set_secure", {
-        key: "api-key-openai", value: "sk-...",
+        key: "api-key-openai",
+        value: "sk-...",
       })
     })
 

@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react"
-import { FileUpIcon, Grid3X3Icon, ListIcon, Loader2Icon, PlugZapIcon, RefreshCwIcon, ServerIcon } from "lucide-react"
-import { Button } from "@/components/ui/Button"
-import { cn } from "@/lib/utils"
 import { getSetting } from "@/api/settings"
-import type { McpServer } from "@/types/mcp"
+import { Button } from "@/components/ui/Button"
 import type { McpViewMode } from "@/features/workspace/mcp/McpServerGrid"
+import { cn } from "@/lib/utils"
+import type { McpServer } from "@/types/mcp"
+import {
+  FileUpIcon,
+  Grid3X3Icon,
+  ListIcon,
+  Loader2Icon,
+  PlugZapIcon,
+  RefreshCwIcon,
+  ServerIcon,
+} from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface McpHeaderProps {
   servers: McpServer[]
@@ -39,19 +47,24 @@ export function McpHeader({
 }: McpHeaderProps) {
   const [rateLimit, setRateLimit] = useState(60)
   const pingingAll = pingProgress !== null
-  const activeCount = servers.filter(s => s.status === "online").length
-  const notDisabledCount = servers.filter(s => !s.disabled).length
+  const activeCount = servers.filter((s) => s.status === "online").length
+  const notDisabledCount = servers.filter((s) => !s.disabled).length
   const toolCount = servers.reduce((acc, s) => acc + (s.tools_count ?? 0), 0)
 
   useEffect(() => {
-    getSetting("mcp.rate_limit_rpm").then(val => {
-      if (val) setRateLimit(Number(val))
-    }).catch(() => {})
+    getSetting("mcp.rate_limit_rpm")
+      .then((val) => {
+        if (val) setRateLimit(Number(val))
+      })
+      .catch(() => {})
   }, [])
 
   const handlePingAll = async () => {
-    try { await onPingAll() }
-    catch { /* handled in parent */ }
+    try {
+      await onPingAll()
+    } catch {
+      /* handled in parent */
+    }
   }
 
   return (
@@ -70,8 +83,13 @@ export function McpHeader({
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs px-2.5"
-            onClick={handlePingAll} disabled={pingingAll || notDisabledCount === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs px-2.5"
+            onClick={handlePingAll}
+            disabled={pingingAll || notDisabledCount === 0}
+          >
             {pingingAll ? (
               <Loader2Icon className="mr-1.5 size-3.5 animate-spin" />
             ) : (
@@ -81,9 +99,13 @@ export function McpHeader({
               ? `Probando ${pingProgress.current}/${pingProgress.total}...`
               : "Probar todos"}
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs px-2.5"
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs px-2.5"
             title="Compatible con claude_desktop_config.json"
-            onClick={onOpenConfig}>
+            onClick={onOpenConfig}
+          >
             <FileUpIcon className="mr-1.5 size-3.5" />
             Cargar config
           </Button>
@@ -96,14 +118,15 @@ export function McpHeader({
 
       {/* Stats bar */}
       <div className="grid grid-cols-2 divide-x divide-y divide-border sm:grid-cols-4 sm:divide-y-0">
-        <MetricBox label="Servidores" value={servers.length}
-          suffix="registrados" />
-        <MetricBox label="Online" value={activeCount}
-          suffix={`de ${servers.length} activos`} accent />
-        <MetricBox label="Tools" value={toolCount}
-          suffix="expuestas al chat" />
-        <MetricBox label="Rate limit" value={rateLimit}
-          suffix="req/min global" />
+        <MetricBox label="Servidores" value={servers.length} suffix="registrados" />
+        <MetricBox
+          label="Online"
+          value={activeCount}
+          suffix={`de ${servers.length} activos`}
+          accent
+        />
+        <MetricBox label="Tools" value={toolCount} suffix="expuestas al chat" />
+        <MetricBox label="Rate limit" value={rateLimit} suffix="req/min global" />
       </div>
 
       {/* Filter bar */}
@@ -114,7 +137,9 @@ export function McpHeader({
             type="button"
             className={cn(
               "flex items-center justify-center size-7 transition-colors",
-              viewMode === "grid" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              viewMode === "grid"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => onViewModeChange("grid")}
             title="Vista grid"
@@ -125,7 +150,9 @@ export function McpHeader({
             type="button"
             className={cn(
               "flex items-center justify-center size-7 transition-colors",
-              viewMode === "list" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+              viewMode === "list"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground"
             )}
             onClick={() => onViewModeChange("list")}
             title="Vista lista"
@@ -171,14 +198,23 @@ export function McpHeader({
   )
 }
 
-function MetricBox({ label, value, suffix, accent }: { label: string; value: number; suffix: string; accent?: boolean }) {
+function MetricBox({
+  label,
+  value,
+  suffix,
+  accent,
+}: { label: string; value: number; suffix: string; accent?: boolean }) {
   return (
     <div className="px-4 py-2">
-      <p className="text-[0.6rem] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn(
-        "mt-0.5 flex items-baseline gap-1.5 text-lg font-bold",
-        accent && "text-emerald-500"
-      )}>
+      <p className="text-[0.6rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 flex items-baseline gap-1.5 text-lg font-bold",
+          accent && "text-emerald-500"
+        )}
+      >
         {value}
         <span className="text-[0.65rem] font-normal text-muted-foreground">{suffix}</span>
       </p>

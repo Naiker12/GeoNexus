@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+import { listen } from "@tauri-apps/api/event"
+import { useCallback, useState } from "react"
 
 type OAuthStatus = "idle" | "pending" | "connected" | "error"
 
@@ -49,7 +49,9 @@ export function useOAuthFlow(provider: OAuthProvider) {
     try {
       const config = PROVIDER_CONFIGS[provider]
       if (config.clientId.startsWith("REPLACE_WITH_")) {
-        throw new Error(`OAuth no configurado: falta ${provider} client ID. Define VITE_${provider.toUpperCase()}_CLIENT_ID en .env`)
+        throw new Error(
+          `OAuth no configurado: falta ${provider} client ID. Define VITE_${provider.toUpperCase()}_CLIENT_ID en .env`
+        )
       }
       if (!config) throw new Error(`Configuración no encontrada para ${provider}`)
 
@@ -116,7 +118,7 @@ export function useOAuthFlow(provider: OAuthProvider) {
           }
 
           unlisten()
-        },
+        }
       )
 
       // Timeout de 5 minutos para el callback
@@ -126,7 +128,8 @@ export function useOAuthFlow(provider: OAuthProvider) {
         unlisten()
       }, 300_000)
     } catch (err) {
-      const message = typeof err === "string" ? err : err instanceof Error ? err.message : String(err)
+      const message =
+        typeof err === "string" ? err : err instanceof Error ? err.message : String(err)
       setError(message)
       setStatus("error")
     }

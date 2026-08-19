@@ -58,6 +58,17 @@ export type FileAttachment = {
   previewUrl?: string
 }
 
+export interface Artifact {
+  id: string
+  name: string
+  path: string
+  type: "code" | "report" | "map" | "dashboard" | "geo_json" | "pdf" | "csv" | "image"
+  description: string
+  lineCount: number
+  status: "pending" | "generating" | "done" | "error"
+  content?: string
+}
+
 export type AgentTraceEvent = {
   type: string
   id: string
@@ -97,7 +108,9 @@ export type Message = {
   attachments?: FileAttachment[]
   reasoning_events?: AgentTraceEvent[]
   reasoning_content?: string
+  reasoning?: string
   reasoning_duration_ms?: number
+  toolCalls?: unknown[]
 }
 
 export type RecallChunk = {
@@ -187,7 +200,13 @@ export interface SlashCommand {
 
 // ── Mention Sources ──
 
-export type MentionKind = "connector" | "asset" | "graph_node" | "agent_source" | "skill" | "mcp_server"
+export type MentionKind =
+  | "connector"
+  | "asset"
+  | "graph_node"
+  | "agent_source"
+  | "skill"
+  | "mcp_server"
 
 export interface MentionSource {
   id: string

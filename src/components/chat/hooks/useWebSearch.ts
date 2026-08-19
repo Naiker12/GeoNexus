@@ -1,5 +1,5 @@
-import * as React from "react"
 import type { SessionSummary } from "@/types/chat"
+import * as React from "react"
 
 const WEB_SEARCH_KEY = "geonexus.webSearchEnabled"
 
@@ -7,28 +7,39 @@ function loadWebSearchEnabled(): boolean {
   try {
     const stored = localStorage.getItem(WEB_SEARCH_KEY)
     return stored === "true"
-  } catch { return false }
+  } catch {
+    return false
+  }
 }
 
 function saveWebSearchEnabled(enabled: boolean) {
-  try { localStorage.setItem(WEB_SEARCH_KEY, enabled ? "true" : "false") } catch { }
+  try {
+    localStorage.setItem(WEB_SEARCH_KEY, enabled ? "true" : "false")
+  } catch {}
 }
 
 let researchTimerId: ReturnType<typeof setInterval> | null = null
 
 export function useWebSearch() {
-  const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(() => loadWebSearchEnabled())
+  const [webSearchEnabled, setWebSearchEnabled] = React.useState<boolean>(() =>
+    loadWebSearchEnabled()
+  )
   const [sessionSummary, setSessionSummary] = React.useState<SessionSummary | null>(null)
   const [lastIntent, setLastIntent] = React.useState<string | null>(null)
 
-  React.useEffect(() => { saveWebSearchEnabled(webSearchEnabled) }, [webSearchEnabled])
+  React.useEffect(() => {
+    saveWebSearchEnabled(webSearchEnabled)
+  }, [webSearchEnabled])
 
-  const startResearchTimer = React.useCallback((startTime: number, assistantMsgId: string, onTick: (elapsed: number) => void) => {
-    researchTimerId = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000
-      onTick(elapsed)
-    }, 500)
-  }, [])
+  const startResearchTimer = React.useCallback(
+    (startTime: number, _assistantMsgId: string, onTick: (elapsed: number) => void) => {
+      researchTimerId = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000
+        onTick(elapsed)
+      }, 500)
+    },
+    []
+  )
 
   const stopResearchTimer = React.useCallback(() => {
     if (researchTimerId) {

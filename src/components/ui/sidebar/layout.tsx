@@ -1,8 +1,8 @@
-import * as React from "react"
+import type * as React from "react"
 
-import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/Input"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
 function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
   return (
@@ -17,10 +17,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
   )
 }
 
-function SidebarInput({
-  className,
-  ...props
-}: React.ComponentProps<typeof Input>) {
+function SidebarInput({ className, ...props }: React.ComponentProps<typeof Input>) {
   return (
     <Input
       data-slot="sidebar-input"
@@ -53,10 +50,7 @@ function SidebarFooter({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function SidebarSeparator({
-  className,
-  ...props
-}: React.ComponentProps<typeof Separator>) {
+function SidebarSeparator({ className, ...props }: React.ComponentProps<typeof Separator>) {
   return (
     <Separator
       data-slot="sidebar-separator"
@@ -81,4 +75,11 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-export { SidebarInset, SidebarInput, SidebarHeader, SidebarFooter, SidebarSeparator, SidebarContent }
+export {
+  SidebarInset,
+  SidebarInput,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarSeparator,
+  SidebarContent,
+}

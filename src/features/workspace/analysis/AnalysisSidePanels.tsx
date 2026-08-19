@@ -1,18 +1,25 @@
-import { useState } from "react"
-import { BrainCircuitIcon, GaugeIcon, BarChart3Icon, CopyIcon, InfoIcon, MessageSquareTextIcon } from "lucide-react"
-import { RecentTracesPanel } from "@/features/workspace/traces/RecentTracesPanel"
-import { toast } from "sonner"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/Button"
-import { useModelUsage, useSkillUsage, useTokenTimeline, useTopQueries } from "@/features/workspace/analysis/useAnalysis"
-import type { ModelUsage } from "@/types/analysis"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  useModelUsage,
+  useSkillUsage,
+  useTokenTimeline,
+  useTopQueries,
+} from "@/features/workspace/analysis/useAnalysis"
+import { RecentTracesPanel } from "@/features/workspace/traces/RecentTracesPanel"
 import { cn } from "@/lib/utils"
+import type { ModelUsage } from "@/types/analysis"
+import {
+  BarChart3Icon,
+  BrainCircuitIcon,
+  CopyIcon,
+  GaugeIcon,
+  InfoIcon,
+  MessageSquareTextIcon,
+} from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 const MODEL_COLORS = [
   "bg-primary",
@@ -186,9 +193,18 @@ function ModelUsagePanel() {
                     </TooltipTrigger>
                     <TooltipContent side="left" className="max-w-56">
                       <div className="grid gap-1 text-xs">
-                        <p><span className="text-muted-foreground">Input:</span> {item.input_tokens.toLocaleString()}</p>
-                        <p><span className="text-muted-foreground">Output:</span> {item.output_tokens.toLocaleString()}</p>
-                        <p><span className="text-muted-foreground">Promedio:</span> {avgTokens.toLocaleString()} / solicitud</p>
+                        <p>
+                          <span className="text-muted-foreground">Input:</span>{" "}
+                          {item.input_tokens.toLocaleString()}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Output:</span>{" "}
+                          {item.output_tokens.toLocaleString()}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Promedio:</span>{" "}
+                          {avgTokens.toLocaleString()} / solicitud
+                        </p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
@@ -196,14 +212,18 @@ function ModelUsagePanel() {
               )
             })
           ) : (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Sin uso registrado
-            </div>
+            <div className="py-6 text-center text-sm text-muted-foreground">Sin uso registrado</div>
           )}
         </div>
       </section>
 
-      <ModelDetailDialog model={detail} open={detail !== null} onOpenChange={(v) => { if (!v) setDetail(null) }} />
+      <ModelDetailDialog
+        model={detail}
+        open={detail !== null}
+        onOpenChange={(v) => {
+          if (!v) setDetail(null)
+        }}
+      />
     </>
   )
 }
@@ -221,7 +241,10 @@ function SkillPanel() {
       <div className="grid gap-2">
         {loading ? (
           Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="animate-pulse rounded-md border border-border bg-background/75 p-2">
+            <div
+              key={i}
+              className="animate-pulse rounded-md border border-border bg-background/75 p-2"
+            >
               <div className="h-4 w-24 rounded bg-muted" />
             </div>
           ))
@@ -243,14 +266,24 @@ function SkillPanel() {
                         <p className="truncate text-sm font-medium">{toolLabel(item.tool_name)}</p>
                         <p className="text-xs text-muted-foreground">{item.calls} llamadas</p>
                       </div>
-                      <span className={cn("rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium", rateColor)}>
+                      <span
+                        className={cn(
+                          "rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium",
+                          rateColor
+                        )}
+                      >
                         {item.success_rate}%
                       </span>
                     </article>
                   </TooltipTrigger>
                   <TooltipContent side="left" className="max-w-48">
-                    <p><span className="text-muted-foreground">Tool:</span> {item.tool_name}</p>
-                    <p><span className="text-muted-foreground">Tasa de éxito:</span> {item.success_rate}%</p>
+                    <p>
+                      <span className="text-muted-foreground">Tool:</span> {item.tool_name}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Tasa de éxito:</span>{" "}
+                      {item.success_rate}%
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -347,7 +380,7 @@ function TokensBarChart() {
           ))
         ) : items.length > 0 ? (
           items.map((item) => {
-            const pct = maxTokens ? (item.total_tokens / maxTokens) * 100 : 0
+            const _pct = maxTokens ? (item.total_tokens / maxTokens) * 100 : 0
             return (
               <TooltipProvider key={item.hora}>
                 <Tooltip>
@@ -373,18 +406,25 @@ function TokensBarChart() {
                   </TooltipTrigger>
                   <TooltipContent side="left" className="max-w-48">
                     <p className="font-medium">{item.hora}</p>
-                    <p><span className="text-muted-foreground">Input:</span> {item.input_tokens.toLocaleString()}</p>
-                    <p><span className="text-muted-foreground">Output:</span> {item.output_tokens.toLocaleString()}</p>
-                    <p><span className="text-muted-foreground">Total:</span> {item.total_tokens.toLocaleString()}</p>
+                    <p>
+                      <span className="text-muted-foreground">Input:</span>{" "}
+                      {item.input_tokens.toLocaleString()}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Output:</span>{" "}
+                      {item.output_tokens.toLocaleString()}
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Total:</span>{" "}
+                      {item.total_tokens.toLocaleString()}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )
           })
         ) : (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            Sin datos de tokens
-          </div>
+          <div className="py-6 text-center text-sm text-muted-foreground">Sin datos de tokens</div>
         )}
       </div>
     </section>

@@ -1,13 +1,11 @@
-import * as React from "react"
-import {
-  EyeIcon, PencilIcon, RefreshCwIcon, Trash2Icon, XCircleIcon,
-} from "lucide-react"
+import { deleteMcpServer, listMcpAllowlist } from "@/api/mcp"
 import { Button } from "@/components/ui/Button"
 import type { SettingsDialog } from "@/features/workspace/configuration/settings-types"
 import { CheckRow } from "@/features/workspace/configuration/settings-ui"
 import { useMcpServers } from "@/features/workspace/mcp/hooks/useMcpServers"
-import { listMcpAllowlist, deleteMcpAllowlist, deleteMcpServer } from "@/api/mcp"
 import type { AllowlistRule } from "@/types/mcp"
+import { PencilIcon, RefreshCwIcon, Trash2Icon, XCircleIcon } from "lucide-react"
+import * as React from "react"
 
 export function McpRulesTable({
   onDialogChange,
@@ -19,12 +17,14 @@ export function McpRulesTable({
 
   React.useEffect(() => {
     servers.forEach((srv) => {
-      listMcpAllowlist(srv.id).then((list) => {
-        const global = list.find((r) => r.tool_name === "*")
-        if (global) {
-          setRules((prev) => ({ ...prev, [srv.id]: global }))
-        }
-      }).catch(() => {})
+      listMcpAllowlist(srv.id)
+        .then((list) => {
+          const global = list.find((r) => r.tool_name === "*")
+          if (global) {
+            setRules((prev) => ({ ...prev, [srv.id]: global }))
+          }
+        })
+        .catch(() => {})
     })
   }, [servers])
 
@@ -73,15 +73,25 @@ export function McpRulesTable({
       </div>
 
       <div className="divide-y divide-border">
-        {servers.map(server => {
+        {servers.map((server) => {
           const rule = rules[server.id]
           const isActive = rule?.allowed ?? server.status === "online"
-          const statusText = isActive ? "Activo" : server.status === "pending" ? "Pendiente" : "Inactivo"
-          const rateText = rule?.rate_limit ? `${rule.rate_limit}/min` : isActive ? "60/min" : "30/min"
+          const statusText = isActive
+            ? "Activo"
+            : server.status === "pending"
+              ? "Pendiente"
+              : "Inactivo"
+          const rateText = rule?.rate_limit
+            ? `${rule.rate_limit}/min`
+            : isActive
+              ? "60/min"
+              : "30/min"
 
           return (
-            <article key={server.id}
-              className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_6rem_7rem_auto] md:items-center">
+            <article
+              key={server.id}
+              className="grid gap-2 px-3 py-2 md:grid-cols-[9rem_minmax(0,1fr)_6rem_7rem_auto] md:items-center"
+            >
               <div>
                 <p className="truncate text-sm font-medium">{server.name}</p>
                 <p className="text-xs text-muted-foreground">{statusText}</p>
@@ -90,7 +100,9 @@ export function McpRulesTable({
               <span className="text-xs text-muted-foreground">{rateText}</span>
               <CheckRow label="Schema" checked={isActive} />
               <RowActions
-                onEdit={() => onDialogChange({ type: "edit-mcp", name: server.name, serverId: server.id })}
+                onEdit={() =>
+                  onDialogChange({ type: "edit-mcp", name: server.name, serverId: server.id })
+                }
                 onDisable={() => handleDisable(server.id)}
                 onDelete={() => handleDelete(server.id)}
               />
@@ -102,8 +114,14 @@ export function McpRulesTable({
   )
 }
 
-function RowActions({ onEdit, onDisable, onDelete }: {
-  onEdit: () => void; onDisable: () => void; onDelete: () => void
+function RowActions({
+  onEdit,
+  onDisable,
+  onDelete,
+}: {
+  onEdit: () => void
+  onDisable: () => void
+  onDelete: () => void
 }) {
   return (
     <div className="flex justify-end gap-1">
