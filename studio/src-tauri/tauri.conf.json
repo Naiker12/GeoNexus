@@ -1,0 +1,99 @@
+{
+  "productName": "Spartan Agents",
+  "identifier": "com.spartanagents.studio",
+  "build": {
+    "beforeDevCommand": {
+      "cwd": "../frontend",
+      "script": "npm run dev -- --port 5173 --strictPort"
+    },
+    "beforeBuildCommand": {
+      "cwd": "../frontend",
+      "script": "npm run build"
+    },
+    "frontendDist": "../frontend/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:* https://huggingface.co https://*.huggingface.co https://datasets-server.huggingface.co; img-src 'self' data: blob: https:; media-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' http://localhost:* http://127.0.0.1:*"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Spartan Agents",
+        "width": 760,
+        "height": 560,
+        "center": true,
+        "visible": false,
+        "resizable": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 14, "y": 26 },
+        "hiddenTitle": true
+      }
+    ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["nexus", "geonexus"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBQzA4RjczODM0RjE1QjcKUldTM0ZVK0RjNC9BR2t4R0RVaFR5cTkyUlRVQ1FwaGV0Nk04eWNwWXBhZnlzalJydllmZm1QTS8K",
+      "endpoints": [
+        "https://github.com/Naiker12/GeoNexus/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "publisher": "Spartan Agents",
+    "homepage": "https://github.com/Naiker12/GeoNexus",
+    "copyright": "© 2026 Spartan Agents. All rights reserved.",
+    "license": "AGPL-3.0-only",
+    "targets": ["app", "appimage", "deb", "dmg", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh",
+        "template": "./windows/installer.nsi",
+        "installerIcon": "./icons/icon.ico",
+        "headerImage": "./windows/branding/nsis-header.bmp",
+        "sidebarImage": "./windows/branding/nsis-sidebar.bmp",
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false
+      }
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true,
+        "files": {
+          "/usr/lib/libappindicator3.so.1": "/usr/lib/x86_64-linux-gnu/libappindicator3.so.1"
+        }
+      },
+      "deb": {
+        "desktopTemplate": "./linux/nexus.desktop",
+        "provides": ["nexus-studio-desktop"],
+        "conflicts": ["nexus-studio-desktop"],
+        "replaces": ["nexus-studio-desktop"],
+        "postRemoveScript": "./linux/postremove.sh"
+      }
+    }
+  }
+}
