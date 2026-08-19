@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==80.9.0", "setuptools-scm==9.2.0"]
+requires = ["setuptools==84.0.0", "setuptools-scm==10.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,10 +30,10 @@ dependencies = [
     "nest-asyncio",
     # Every CLI command imports studio.backend.*, which reaches structlog at
     # module level. The rest of the server stack lives in the studio extra.
-    "structlog>=24.1.0",
+    "structlog>=26.1.0",
     # unsloth_cli/__init__.py reaches click via commands/start.py, so every
     # command needs it. typer supplied it until 0.27 dropped the dependency.
-    "click>=8.0",
+    "click>=8.4.2",
 ]
 
 [project.scripts]
@@ -117,47 +117,47 @@ studio = [
     "matplotlib==3.10.9",
     "pandas==2.3.3",
     "nest_asyncio==1.6.0",
-    "datasets==4.3.0",
+    "datasets==5.0.1",
     "pyjwt==2.13.0",
-    "huggingface-hub>=1.23.0,<2.0 ; python_version >= '3.10'",
+    "huggingface-hub>=1.27.0,<2.0 ; python_version >= '3.10'",
     "huggingface-hub==0.36.2 ; python_version < '3.10'",
-    "urllib3>=2.3.0",
-    "structlog>=24.1.0",
+    "urllib3>=2.7.0",
+    "structlog>=26.1.0",
     "diceware==1.0.1",
     "ddgs==9.14.4 ; python_version >= '3.10'",
     "ddgs==9.8.0 ; python_version < '3.10'",
-    "cryptography>=42.0.0",
-    "boto3>=1.34.0",
-    "httpx>=0.27.0",
-    "fastmcp>=3.0.2",
+    "cryptography>=50.0.0",
+    "boto3>=1.43.70",
+    "httpx>=0.28.1",
+    "fastmcp>=3.4.7",
     "gguf==0.19.0 ; python_version >= '3.10'",
     "gguf==0.18.0 ; python_version < '3.10'",
-    "av>=12.0.0",
+    "av>=17.1.0",
     "sqlite-vec==0.1.9",
-    "pymupdf==1.27.2.3",
-    "pymupdf4llm==0.3.4",
+    "pymupdf==1.28.2",
+    "pymupdf4llm==1.28.2",
     "python-docx==1.2.0",
 ]
 
 triton = [
-    "triton>=3.0.0 ; ('linux' in sys_platform)",
+    "triton>=3.7.1 ; ('linux' in sys_platform)",
     "triton-windows ; (sys_platform == 'win32') and (platform_machine == 'AMD64' or platform_machine == 'x86_64')",
 ]
 
 huggingfacenotorch = [
     "unsloth_zoo>=2026.8.12",
-    "wheel>=0.42.0",
+    "wheel>=0.48.0",
     "packaging",
     "numpy",
     "tqdm",
     "psutil",
     "tyro",
     "protobuf",
-    "sentencepiece>=0.2.0",
-    "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
-    "accelerate>=0.34.1",
-    "peft>=0.18.0,!=0.11.0",
-    "huggingface_hub>=0.34.0",
+    "sentencepiece>=0.2.2",
+    "datasets!=4.0.0.dev,!=4.1.0,>=5.0.1,<5.1.0",
+    "accelerate>=1.14.0",
+    "peft!=0.11.0,>=0.20.0",
+    "huggingface_hub>=1.27.0",
     "hf_transfer",
     # 0.39 is the floor the diffusion stack already assumes: Krea2Pipeline (the Krea 2
     # workflow raises without it), the cache_context child-registry behavior, and the
@@ -170,8 +170,8 @@ huggingfacenotorch = [
     # on 3.9 and the whole extra becomes unresolvable.
     "diffusers>=0.39.0 ; python_version >= '3.10'",
     "diffusers ; python_version < '3.10'",
-    "transformers>=4.51.3,!=4.52.0,!=4.52.1,!=4.52.2,!=4.52.3,!=4.53.0,!=4.54.0,!=4.55.0,!=4.55.1,!=4.57.0,!=4.57.4,!=4.57.5,!=5.0.0,!=5.1.0,<=5.5.0",
-    "trl>=0.18.2,!=0.19.0,<=0.24.0",
+    "transformers!=4.52.0,!=4.52.1,!=4.52.2,!=4.52.3,!=4.53.0,!=4.54.0,!=4.55.0,!=4.55.1,!=4.57.0,!=4.57.4,!=4.57.5,!=5.0.0,!=5.1.0,<=5.15.0,>=5.15.0",
+    "trl!=0.19.0,<=1.9.2,>=1.9.2",
     "sentence-transformers",
 ]
 # torchcodec backend for Gemma audio / datasets>=4 (#7225).
@@ -182,13 +182,13 @@ huggingfacenotorch = [
 # Gate on the platforms that have a wheel, matching
 # PLATFORM_LACKS_TORCHCODEC_WHEEL in studio/install_python_stack.py.
 audio-torch210 = [
-    "torchcodec>=0.10.0,<0.11.0 ; python_version >= '3.10' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
+    "torchcodec>=0.15.0,<0.16.0 ; python_version >= '3.10' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
 ]
 audio-torch290 = [
-    "torchcodec>=0.8.0,<0.10.0 ; python_version >= '3.10' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
+    "torchcodec>=0.15.0,<0.16.0 ; python_version >= '3.10' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
 ]
 audio-torch280 = [
-    "torchcodec>=0.6.0,<0.8.0 ; python_version >= '3.9' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
+    "torchcodec>=0.15.0,<0.16.0 ; python_version >= '3.9' and (((sys_platform == 'linux' or sys_platform == 'win32') and (platform_machine == 'x86_64' or platform_machine == 'AMD64')) or (sys_platform == 'darwin' and platform_machine == 'arm64'))",
 ]
 huggingface = [
     "unsloth[huggingfacenotorch]",
@@ -234,8 +234,8 @@ huggingface = [
 # handles instead.
 windows = [
     "unsloth[huggingface]",
-    "bitsandbytes>=0.45.5,!=0.46.0,!=0.48.0 ; (sys_platform == 'win32')",
-    "xformers>=0.0.22.post7 ; (sys_platform == 'win32')",
+    "bitsandbytes!=0.46.0,!=0.48.0,>=0.50.0 ; (sys_platform == 'win32')",
+    "xformers>=0.0.35 ; (sys_platform == 'win32')",
 ]
 base = [
     "unsloth[huggingface]",
@@ -483,22 +483,22 @@ cu121 = [
 ]
 cu118-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu118onlytorch211]",
 ]
 cu121-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu121onlytorch211]",
 ]
 cu118-torch212 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu118onlytorch212]",
 ]
 cu121-torch212 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu121onlytorch212]",
 ]
 cu118-torch220 = [
@@ -691,16 +691,16 @@ conda = [
 ]
 colab-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu121onlytorch211]",
 ]
 colab-ampere-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu121onlytorch211]",
     "packaging",
     "ninja",
-    "flash-attn>=2.6.3 ; ('linux' in sys_platform)",
+    "flash-attn>=2.8.3.post1 ; ('linux' in sys_platform)",
 ]
 colab-torch220 = [
     "unsloth[huggingface]",
@@ -713,30 +713,30 @@ colab-ampere-torch220 = [
     "unsloth[cu121onlytorch220]",
     "packaging",
     "ninja",
-    "flash-attn>=2.6.3 ; ('linux' in sys_platform)",
+    "flash-attn>=2.8.3.post1 ; ('linux' in sys_platform)",
 ]
 colab-new = [
     "unsloth_zoo>=2026.8.12",
     "packaging",
     "tyro",
-    "transformers>=4.51.3,!=4.52.0,!=4.52.1,!=4.52.2,!=4.52.3,!=4.53.0,!=4.54.0,!=4.55.0,!=4.55.1,!=4.57.0,!=4.57.4,!=4.57.5,!=5.0.0,!=5.1.0,<=5.5.0",
-    "datasets>=3.4.1,!=4.0.*,!=4.1.0,<4.4.0",
-    "sentencepiece>=0.2.0",
+    "transformers!=4.52.0,!=4.52.1,!=4.52.2,!=4.52.3,!=4.53.0,!=4.54.0,!=4.55.0,!=4.55.1,!=4.57.0,!=4.57.4,!=4.57.5,!=5.0.0,!=5.1.0,<=5.15.0,>=5.15.0",
+    "datasets!=4.0.0.dev,!=4.1.0,>=5.0.1,<5.1.0",
+    "sentencepiece>=0.2.2",
     "tqdm",
     "psutil",
-    "wheel>=0.42.0",
+    "wheel>=0.48.0",
     "numpy",
     "protobuf",
-    "huggingface_hub>=0.34.0",
+    "huggingface_hub>=1.27.0",
     "hf_transfer",
     "bitsandbytes>=0.45.5,!=0.46.0,!=0.48.0",
     "unsloth[triton]",
     "sentence-transformers",
 ]
 colab-no-deps = [
-    "accelerate>=0.34.1",
-    "trl>=0.18.2,!=0.19.0,<=0.24.0",
-    "peft>=0.18.0",
+    "accelerate>=1.14.0",
+    "trl!=0.19.0,<=1.9.2,>=1.9.2",
+    "peft>=0.20.0",
     "xformers ; ('linux' in sys_platform or sys_platform == 'win32') and (platform_machine == 'AMD64' or platform_machine == 'x86_64')",
     "bitsandbytes>=0.45.5,!=0.46.0,!=0.48.0",
     "protobuf",
@@ -747,7 +747,7 @@ colab = [
 flashattention = [
     "packaging ; ('linux' in sys_platform)",
     "ninja ; ('linux' in sys_platform)",
-    "flash-attn>=2.6.3 ; ('linux' in sys_platform)",
+    "flash-attn>=2.8.3.post1 ; ('linux' in sys_platform)",
 ]
 colab-ampere = [
     "unsloth[colab-ampere-torch220]",
@@ -767,13 +767,13 @@ cu121-ampere = [
 ]
 cu118-ampere-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu118onlytorch211]",
     "unsloth[flashattention]",
 ]
 cu121-ampere-torch211 = [
     "unsloth[huggingface]",
-    "bitsandbytes==0.45.5",
+    "bitsandbytes==0.50.0",
     "unsloth[cu121onlytorch211]",
     "unsloth[flashattention]",
 ]
