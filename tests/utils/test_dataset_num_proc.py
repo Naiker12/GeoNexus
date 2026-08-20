@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Tests for unsloth.dataset_num_proc, the fallback copy of the policy.
@@ -7,7 +7,7 @@ unsloth_zoo.dataset_num_proc owns it; this copy only runs on a zoo that predates
 the module, and ``test_the_two_copies_have_not_drifted`` holds them together.
 
 The module is stdlib-only by design and is loaded straight off disk rather than
-via ``import nexus``, so these assertions stay meaningful on a host whose
+via ``import spartan_agent``, so these assertions stay meaningful on a host whose
 torch/unsloth_zoo pair cannot import. The ``test_rl_codegen_*`` cases tie it back
 to the import path ``unsloth/models/rl.py`` generates, catching a rename.
 """
@@ -871,7 +871,7 @@ def test_rl_codegen_imports_the_module_that_exists():
 def test_generated_source_reaches_for_the_zoo_before_unsloth():
     """Generated trainer source must not import back into unsloth.
 
-    unsloth/__init__.py generates that source, so a `from nexus...` there is an
+    unsloth/__init__.py generates that source, so a `from spartan_agent...` there is an
     import of the package mid-flight, and it drags unsloth/utils/__init__.py ->
     packing -> attention_dispatch -> models._utils (torch and the model stack)
     into a module needing none of it. Both call sites must try the zoo first.

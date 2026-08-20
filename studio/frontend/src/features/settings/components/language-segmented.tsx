@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright 2026-present the Nexus AI team. All rights reserved.
+// Copyright 2026-present the Spartan Agent AI team. All rights reserved.
 
 import { cn } from "@/lib/utils";
 import {

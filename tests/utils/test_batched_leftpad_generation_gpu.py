@@ -1,4 +1,4 @@
-﻿"""End-to-end GPU guard for batched left-padded generation (issues #1066, #3699).
+"""End-to-end GPU guard for batched left-padded generation (issues #1066, #3699).
 
 Greedy generation in a left-padded batch must match solo batch-size-1
 generation for the first PREFIX_TOKENS tokens (the bug makes padded rows
@@ -40,7 +40,7 @@ PROMPTS = [
 
 @pytest.fixture(scope = "module")
 def model_and_tokenizer():
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
 
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = MODEL_NAME,

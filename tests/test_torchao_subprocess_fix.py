@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from nexus import import_fixes as IF  # noqa: E402
+from spartan_agent import import_fixes as IF  # noqa: E402
 
 
 # ---- the generated sitecustomize -----------------------------------------
@@ -84,8 +84,8 @@ def test_the_child_never_imports_unsloth():
     import cost each time and could recurse back through
     propagate_torchao_fix_to_subprocesses, so the logic is inlined."""
     src = IF._subprocess_sitecustomize_source()
-    assert "import nexus" not in src
-    assert "from nexus" not in src
+    assert "import spartan_agent" not in src
+    assert "from spartan_agent" not in src
 
 
 def test_it_only_imports_the_stdlib_and_torch():
@@ -225,7 +225,7 @@ def test_it_refuses_a_directory_owned_by_someone_else(monkeypatch, tmp_path):
 def test_an_existing_loose_directory_is_tightened(monkeypatch, tmp_path, mode):
     """`os.makedirs(mode = 0o700, exist_ok = True)` does NOT re-apply the mode
     to an existing directory, and one left group- or world-writable is code
-    execution in every subprocess started after `import nexus`."""
+    execution in every subprocess started after `import spartan_agent`."""
     if not hasattr(os, "getuid"):
         pytest.skip("POSIX permissions only")
     monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Regression: _patch_trl_rl_trainers (the ring-fencing wrapper in
@@ -14,7 +14,7 @@ pytest.importorskip("trl")
 
 def _import_helpers():
     try:
-        from nexus.models.rl import (
+        from spartan_agent.models.rl import (
             _patch_trl_rl_trainers,
             _patch_trl_rl_trainers_impl,
         )
@@ -41,7 +41,7 @@ def test_impl_is_separately_exposed():
 
 
 def test_wrapper_delegates_to_impl(monkeypatch):
-    from nexus.models import rl as _rl
+    from spartan_agent.models import rl as _rl
 
     sentinel = object()
     calls = []
@@ -56,7 +56,7 @@ def test_wrapper_delegates_to_impl(monkeypatch):
 
 
 def test_wrapper_swallows_impl_exception(monkeypatch):
-    from nexus.models import rl as _rl
+    from spartan_agent.models import rl as _rl
 
     def _boom(_trainer_file):
         raise RuntimeError("simulated TRL 1.x rename failure")
@@ -66,7 +66,7 @@ def test_wrapper_swallows_impl_exception(monkeypatch):
 
 
 def test_grpo_config_sibling_module_import_is_patched(tmp_path):
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     from trl import GRPOConfig as top_config
     from trl.trainer import GRPOConfig as trainer_config
     from trl.trainer.grpo_config import GRPOConfig as config_module_config

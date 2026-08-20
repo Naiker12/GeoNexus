@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Llama 3.1 (3B) GRPO LoRA train + merged-model save/eval."""
 
 # tests/saving scripts run their whole body at import, so plain pytest
@@ -15,7 +15,7 @@ _require_opt_in(
 )
 
 
-from nexus import FastLanguageModel
+from spartan_agent import FastLanguageModel
 import torch
 import sys
 from pathlib import Path
@@ -39,7 +39,7 @@ def evaluate_merged_model(
     load_in_4bit = False,
     load_in_8bit = False,
 ):
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
     from tests.utils.aime_eval import evaluate_model_aime
 
     max_seq_length = 2048
@@ -195,7 +195,7 @@ def training_run(result_queue):
         start_tag = "<SOLUTION>",
         end_tag = "</SOLUTION>",
     ):
-        """Extract answer from nexus SOLUTION tags"""
+        """Extract answer from spartan_agent SOLUTION tags"""
         pattern = re.escape(start_tag) + r"(.*?)" + re.escape(end_tag)
         matches = re.findall(pattern, text, re.DOTALL)
 
@@ -471,7 +471,7 @@ def training_run(result_queue):
         seed = 0,
     )
 
-    from nexus.chat_templates import get_chat_template
+    from spartan_agent.chat_templates import get_chat_template
 
     tokenizer = get_chat_template(
         tokenizer,
@@ -495,7 +495,7 @@ def training_run(result_queue):
 
     from trl import SFTTrainer
     from transformers import DataCollatorForSeq2Seq, TrainingArguments
-    from nexus import is_bfloat16_supported
+    from spartan_agent import is_bfloat16_supported
 
     print(f"\n{'*'*60}")
     print("🎯 STAGE 1: Qlora Fine-Tuning on LIMO")
@@ -547,7 +547,7 @@ def training_run(result_queue):
             ),
         )
 
-        from nexus.chat_templates import train_on_responses_only
+        from spartan_agent.chat_templates import train_on_responses_only
 
         trainer = train_on_responses_only(
             trainer,

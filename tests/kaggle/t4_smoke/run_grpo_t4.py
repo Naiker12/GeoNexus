@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Qwen3-4B GRPO with vLLM on a single T4: does the engine fit and generate?
@@ -223,7 +223,7 @@ def train(args, report: dict | None = None) -> dict:
     started and GRPO failed later". Facts are published as soon as known.
     """
     import torch
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
 
     result: dict = {}
     if report is None:

@@ -106,5 +106,5 @@ def _git_branch(repo_root: Path) -> str | None:
 
 
 def get_studio_version(repo_root: Path | None = None) -> str:
-    """Return the installed Spartan Agents release tag for display."""
+    """Return the installed Spartan Agent release tag for display."""
     return "v1.0.0"

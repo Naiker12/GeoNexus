@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """The command a locked-out user is told to run has to run.
@@ -102,7 +102,7 @@ def test_the_bootstrap_matches_the_one_the_cli_uses(auth):
             for target in node.targets
         ):
             canonical = ast.literal_eval(node.value)
-    assert canonical, "_WINDOWS_CLI_ENTRYPOINT is gone from nexus_cli/commands/studio.py"
+    assert canonical, "_WINDOWS_CLI_ENTRYPOINT is gone from spartan_agent_cli/commands/studio.py"
     assert auth._CLI_BOOTSTRAP == canonical
 
 

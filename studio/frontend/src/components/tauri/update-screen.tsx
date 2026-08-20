@@ -27,7 +27,7 @@ function Logo() {
     <div className="flex items-center justify-center gap-3">
       <img
         src="/spartan-logo.svg"
-        alt="SPARTAN AGENTS"
+        alt="SPARTAN AGENT"
         aria-hidden="true"
         className="h-[64px] w-[64px] rounded-2xl object-contain shadow-lg"
       />
@@ -35,7 +35,7 @@ function Logo() {
         className="text-ui-50 font-bold uppercase leading-none tracking-[0.04em] text-foreground"
         style={{ fontFamily: '"Hellix", sans-serif' }}
       >
-        SPARTAN AGENTS
+        SPARTAN AGENT
       </span>
     </div>
   );

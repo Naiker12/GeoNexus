@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -20,8 +20,8 @@ import weakref
 
 import torch
 
-from nexus.utils import attention_dispatch
-from nexus.utils import packing as packing_utils
+from spartan_agent.utils import attention_dispatch
+from spartan_agent.utils import packing as packing_utils
 
 
 def _make_seq_info(lengths):

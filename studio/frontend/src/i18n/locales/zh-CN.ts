@@ -75,8 +75,8 @@ export const zhCN = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "{name} 账号菜单",
     updateAvailable: "有可用更新",
     resize: {
@@ -1300,7 +1300,7 @@ export const zhCN = {
       reportIssue: "报告问题",
       license: {
         sectionTitle: "许可证",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "基于 GNU AGPL v3.0 开源。",
         libraryLabel: "Spartan Core",

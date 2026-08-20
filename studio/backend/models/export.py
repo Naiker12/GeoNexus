@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Pydantic schemas for Export API."""
@@ -172,7 +172,7 @@ class ExportMergedModelRequest(ExportCommonOptions):
         None,
         description = "Optional quantized-export alias. Either a compressed-tensors scheme "
         "(e.g. 'fp8', 'fp8_static', 'w8a8', 'w4a16', 'mxfp4', 'mxfp8', 'nvfp4' - NVIDIA only) "
-        "from nexus.save COMPRESSED_EXPORT_SCHEMES, or a portable torchao alias "
+        "from spartan_agent.save COMPRESSED_EXPORT_SCHEMES, or a portable torchao alias "
         "('torchao_fp8', 'torchao_int8') from TORCHAO_EXPORT_SCHEMES that needs no NVIDIA GPU. "
         "When set, it overrides format_type. Lets the export UI expose the full set of formats "
         "beyond the quick buttons.",

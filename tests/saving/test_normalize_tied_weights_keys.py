@@ -1,4 +1,4 @@
-﻿"""Unit tests for the tied-weights-keys coercion used by unsloth.save.
+"""Unit tests for the tied-weights-keys coercion used by unsloth.save.
 
 Regression for the NemotronH save / GGUF-export crash: transformers >= 5
 ``save_pretrained`` reads ``_tied_weights_keys.keys()`` and raises on the legacy list
@@ -8,7 +8,7 @@ form. Exercised on tiny module trees, no model download.
 import pytest
 import torch
 
-from nexus.save import (
+from spartan_agent.save import (
     _coerce_tied_weights_keys_to_dict,
     _normalize_tied_weights_keys_for_save,
     _restore_tied_weights_keys,

@@ -61,7 +61,7 @@ def print_studio_stop_hint() -> None:
             [
                 "",
                 style(
-                    "  To stop Spartan Agents: press Ctrl+C "
+                    "  To stop Spartan Agent: press Ctrl+C "
                     "(Control+C, not Command+C, on macOS).",
                     stop_hint_style,
                 ),
@@ -123,7 +123,7 @@ def print_studio_access_banner(
 
     lines: list[str] = [
         "",
-        style("⚔️ Spartan Agents is running", title),
+        style("⚔️ Spartan Agent is running", title),
         style("─" * 52, dim),
         style("  On this machine -- open this in your browser:", dim),
         style(f"    {primary_url}", local_url_style),
@@ -147,7 +147,7 @@ def print_studio_access_banner(
         )
         lines.append(
             style(
-                "  Only on trusted networks -- anyone who reaches this machine can access Spartan Agents.",
+                "  Only on trusted networks -- anyone who reaches this machine can access Spartan Agent.",
                 secondary,
             )
         )

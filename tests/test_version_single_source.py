@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ def test_importing_the_version_alone_pulls_in_no_heavy_dependency():
 def test_models_utils_still_re_exports_the_same_version():
     # Every banner, every saved config's unsloth_version, and unsloth.__version__ on the
     # GPU path come through here.
-    from nexus.models._utils import __version__ as via_utils
+    from spartan_agent.models._utils import __version__ as via_utils
     assert via_utils == _load_version_module_standalone().__version__
 
 

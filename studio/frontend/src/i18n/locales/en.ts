@@ -72,8 +72,8 @@ export const en = {
   },
   shell: {
     beta: "BETA",
-    brand: "SPARTAN AGENTS",
-    product: "Spartan Agents",
+    brand: "SPARTAN AGENT",
+    product: "Spartan Agent",
     accountMenu: "{name} account menu",
     updateAvailable: "Update available",
     resize: {
@@ -1327,7 +1327,7 @@ export const en = {
       reportIssue: "Report an issue",
       license: {
         sectionTitle: "License",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "Open source under the GNU AGPL v3.0.",
         libraryLabel: "Spartan Core",
@@ -2145,4 +2145,3 @@ export const en = {
     },
   },
 } as const;
-

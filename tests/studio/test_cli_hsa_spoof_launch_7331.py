@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Regression tests for the launch half of issue #7331.
@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pytest
 
-import nexus_cli.commands.studio as studio_cli
+import spartan_agent_cli.commands.studio as studio_cli
 
 
 def _make_venv(
@@ -320,7 +320,7 @@ class TestEveryLaunchEntryPointClearsIt:
     def test_the_top_level_run_alias_is_the_same_function(self):
         """unsloth_cli/__init__.py binds `unsloth run` to studio_run directly, so the
         group callback is skipped there."""
-        import nexus_cli
+        import spartan_agent_cli
         assert unsloth_cli.studio_run is studio_cli.run
 
 
@@ -333,7 +333,7 @@ def test_a_rocm_metapackage_orphaned_by_a_switch_to_generic_wheels_arbitrates_no
     may be the only reason the GPU works at all. Torch's own requirements are the
     discriminator, so the identical tree with an AMD torch still arbitrates.
     """
-    from nexus_cli.commands.studio import _installed_rocm_single_arch
+    from spartan_agent_cli.commands.studio import _installed_rocm_single_arch
 
     live = _make_venv(tmp_path / "live", "rocm_sdk_libraries_gfx1151")
     assert _installed_rocm_single_arch(live) == "gfx1151"

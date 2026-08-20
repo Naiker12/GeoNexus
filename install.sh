@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Spartan Agents Installer
+# Spartan Agent Installer
 #
 # Usage, supported options and configuration are documented in the repository README.
 #
@@ -9,7 +9,7 @@
 # (--no-torch, --python, --local).
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-# Copyright 2026-present Spartan Agents. All rights reserved.
+# Copyright 2026-present Spartan Agent. All rights reserved.
 set -e
 # ── Why the installer lives in a function ──
 # Under a piped web install, sh is the pipe READER. This file is ~150KB, so a top-level
@@ -5647,11 +5647,11 @@ if [ -n "$_path_unsloth" ] && [ -x "$VENV_DIR/bin/python" ]; then
 fi
 
 echo ""
-printf "  ${C_TITLE}%s${C_RST}\n" "Spartan Agents installed!"
+printf "  ${C_TITLE}%s${C_RST}\n" "Spartan Agent installed!"
 printf "  ${C_DIM}%s${C_RST}\n" "$RULE"
 echo ""
 
-# In interactive terminals, ask the user before starting Spartan Agents unless the
+# In interactive terminals, ask the user before starting Spartan Agent unless the
 # caller explicitly disabled the post-install prompt.
 # In non-interactive environments (Docker, CI, cloud-init) just print instructions.
 if [ "$_SKIP_AUTOSTART" != true ] && [ -t 1 ]; then
@@ -5660,14 +5660,14 @@ if [ "$_SKIP_AUTOSTART" != true ] && [ -t 1 ]; then
     # Prompt only when something can answer: `test -r` passes on the unopenable
     # /dev/tty found in containers, leaving a dangling question in the log.
     if _can_read_tty; then
-        printf "  Start Spartan Agents now? [Y/n] "
+        printf "  Start Spartan Agent now? [Y/n] "
         read -r _reply </dev/tty || _reply="n"
     else
         _reply="n"
     fi
     case "${_reply:-y}" in
         [Yy]*|"")
-            step "launch" "starting Spartan Agents..."
+            step "launch" "starting Spartan Agent..."
             # Detach stdin from the piped web install's pipe: as a foreground server the
             # studio would otherwise drain the rest of this piped script, leaving
             # the shell to die parsing the now-truncated tail (`unexpected fi`).

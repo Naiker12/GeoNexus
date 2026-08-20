@@ -79,8 +79,8 @@ export const ja = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "{name} のアカウントメニュー",
     updateAvailable: "アップデートが利用可能です",
     resize: {
@@ -1309,7 +1309,7 @@ export const ja = {
       reportIssue: "問題を報告",
       license: {
         sectionTitle: "ライセンス",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "GNU AGPL v3.0 の下でオープンソース化されています。",
         libraryLabel: "Spartan Core",

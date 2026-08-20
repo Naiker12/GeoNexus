@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 
 """Unit tests for the UMA safetensors clone-then-move fast load.
@@ -131,7 +131,7 @@ def test_wrapper_passes_through_off_uma(uma, force_uma, monkeypatch):
 
 def test_patch_install_does_not_evaluate_gate(uma, monkeypatch):
     """Installing the wrapper must NOT query the integrated-GPU property -- that
-    would init CUDA at ``import nexus`` (fork-unsafe, and before the Spark
+    would init CUDA at ``import spartan_agent`` (fork-unsafe, and before the Spark
     allocator config is set)."""
 
     def _boom():

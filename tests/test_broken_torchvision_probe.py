@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -16,7 +16,7 @@
 
 `torchvision_compatibility_check` compared version metadata, which cannot see
 an ABI break. Found by running `Gemma4_(E2B)_GRPO`: its T4 branch installs
-vllm==0.9.2 beside Colab's torch, and `import nexus` then died with
+vllm==0.9.2 beside Colab's torch, and `import spartan_agent` then died with
 `RuntimeError: operator torchvision::nms does not exist`, raised from
 `transformers/image_utils.py` and naming nothing. The vLLM half of the same
 breakage was already handled.
@@ -30,7 +30,7 @@ from unittest import mock
 
 import pytest
 
-from nexus import import_fixes
+from spartan_agent import import_fixes
 
 
 _NMS = RuntimeError("operator torchvision::nms does not exist")
@@ -66,7 +66,7 @@ def test_the_other_shapes_of_the_same_break_are_recognised(message):
 )
 def test_an_unrelated_loader_failure_is_not_claimed(message):
     """The probe imports torchvision where nothing used to, so it must not turn
-    a failure it did not cause into a hard error on `import nexus`."""
+    a failure it did not cause into a hard error on `import spartan_agent`."""
     assert not import_fixes._is_broken_torchvision_error(ImportError(message))
 
 
@@ -186,7 +186,7 @@ def test_the_repair_names_the_wheel_for_this_torch_patch():
     """`0.22.*` on a torch 2.7.0 host resolves torchvision 0.22.1, which requires
     torch 2.7.1, and `--no-deps` then keeps the 2.7.0 that does not match it. The
     advertised repair would rebuild the mismatch it is meant to fix."""
-    from nexus.import_fixes import _torchvision_repair_command
+    from spartan_agent.import_fixes import _torchvision_repair_command
 
     assert '"torchvision==0.22.0"' in _torchvision_repair_command((0, 22, 0))
     assert '"torchvision==0.22.1"' in _torchvision_repair_command((0, 22, 1))
@@ -196,7 +196,7 @@ def test_the_repair_names_the_wheel_for_this_torch_patch():
 def test_a_minor_only_pair_still_gets_a_command():
     """The table and the forward-compat formula both answer with two numbers when
     the torch version carries no patch. Nothing to derive, so the range stands."""
-    from nexus.import_fixes import _torchvision_repair_command
+    from spartan_agent.import_fixes import _torchvision_repair_command
 
     assert '"torchvision==0.22.*"' in _torchvision_repair_command((0, 22))
     assert '"torchvision"' in _torchvision_repair_command(None)

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """llama-server inference backend for GGUF models.
@@ -18195,7 +18195,7 @@ class LlamaCppBackend:
                         cmd = _fa_cmd
                         healthy = _spawn_and_wait(_fa_cmd, label = "-noflash")
 
-                # MTP from nexus's spec flags or the user's (extra_args
+                # MTP from spartan_agent's spec flags or the user's (extra_args
                 # --spec-type / LLAMA_ARG_SPEC_TYPE). The env survives to the child only
                 # when the extras own --spec-type (the launch scrubs it otherwise), so
                 # anything else would judge a server it is not starting.

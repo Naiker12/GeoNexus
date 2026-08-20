@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """``check_transformers_dependency_versions`` in ``unsloth/import_fixes.py``.
@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from nexus import import_fixes as IF
+from spartan_agent import import_fixes as IF
 
 
 # Base (no-extras) requirements as declared by two real transformers releases.
@@ -406,7 +406,7 @@ def test_check_warns_rather_than_raises_on_a_violation(monkeypatch, caplog):
 def test_a_transformers_stub_in_sys_modules_does_not_break_the_import(monkeypatch, caplog):
     """`find_spec` RAISES on a module in sys.modules whose `__spec__` is None or unset,
     rather than returning None (documented behaviour, CPython Lib/importlib/util.py).
-    An unguarded probe there turns a warn-only check into a failed `import nexus`.
+    An unguarded probe there turns a warn-only check into a failed `import spartan_agent`.
     """
     import sys
     import types

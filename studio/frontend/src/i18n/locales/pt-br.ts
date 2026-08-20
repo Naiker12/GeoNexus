@@ -79,8 +79,8 @@ export const ptBR = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "Menu da conta de {name}",
     updateAvailable: "Atualização disponível",
     resize: {
@@ -1348,7 +1348,7 @@ export const ptBR = {
       reportIssue: "Reportar um problema",
       license: {
         sectionTitle: "Licença",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription:
           "Código aberto sob a licença GNU AGPL v3.0.",

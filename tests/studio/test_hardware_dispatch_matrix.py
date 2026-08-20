@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 """Unsloth hardware dispatch matrix: spoofs platform/torch/mlx per PROFILES to exercise CUDA/ROCm/XPU/MLX/CPU paths without real hardware."""
 
 from __future__ import annotations
@@ -258,7 +258,7 @@ def spoof_hardware(monkeypatch):
 
 
 def _evaluate_unsloth_is_mlx_gate() -> bool:
-    """Re-evaluate the exact expression from nexus/__init__.py:20-24."""
+    """Re-evaluate the exact expression from spartan_agent/__init__.py:20-24."""
     import importlib.util
     import platform
 

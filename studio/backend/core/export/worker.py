@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Export subprocess entry point.
@@ -202,7 +202,7 @@ def _offline_window_if_unreachable(step = "loading"):
             logger.warning("Hugging Face endpoint unreachable; %s offline", step)
             if "huggingface_hub" in sys.modules:
                 try:
-                    from nexus.models.loader_utils import _force_hf_offline
+                    from spartan_agent.models.loader_utils import _force_hf_offline
                     force_ctx = _force_hf_offline()
                     force_ctx.__enter__()  # sets env + in-process flags + resets sessions
                 except Exception:

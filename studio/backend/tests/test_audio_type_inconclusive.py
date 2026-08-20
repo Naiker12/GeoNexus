@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """An unreadable tokenizer_config.json must not read as "not an audio model".
@@ -78,7 +78,7 @@ import transformers  # noqa: E402
 # transformers` is not the one `from transformers import AutoProcessor` reads, and a stub on the
 # stale one is invisible to the trainer, which then makes a real network call. Resolving both
 # names once here settles that before any test patches them. Only visible with unsloth stubbed:
-# a real `import nexus` resolves them long before collection reaches this module.
+# a real `import spartan_agent` resolves them long before collection reaches this module.
 transformers.AutoProcessor  # noqa: B018
 transformers.AutoTokenizer  # noqa: B018
 transformers = sys.modules["transformers"]

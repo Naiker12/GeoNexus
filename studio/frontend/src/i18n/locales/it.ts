@@ -20,8 +20,8 @@ export const it = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "Menu dell'account di {name}",
     updateAvailable: "Aggiornamento disponibile",
     resize: {
@@ -1315,7 +1315,7 @@ export const it = {
       reportIssue: "Segnala un problema",
       license: {
         sectionTitle: "Licenza",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "Open source con licenza GNU AGPL v3.0.",
         libraryLabel: "Spartan Core",

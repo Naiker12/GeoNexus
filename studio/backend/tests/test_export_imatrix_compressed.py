@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Tests for the GGUF imatrix option and compressed-tensors merged export wiring.
@@ -266,7 +266,7 @@ def test_merged_request_accepts_compressed_method():
 
 
 def test_export_merged_resolves_alias_via_registry():
-    # The scheme + suffix must come from nexus.save's registry normalizer, not a hardcoded dict.
+    # The scheme + suffix must come from spartan_agent.save's registry normalizer, not a hardcoded dict.
     m = _func_src("core/export/export.py", "export_merged_model")
     assert "compressed_method" in m
     assert "_normalize_compressed_method(compressed_alias)" in m

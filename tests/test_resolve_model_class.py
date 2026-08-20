@@ -1,4 +1,4 @@
-﻿from nexus.models._utils import resolve_model_class
+from spartan_agent.models._utils import resolve_model_class
 
 
 class _AutoModelLike:

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """run.py writes the Studio PID files; `unsloth studio stop` globs for them.
@@ -38,7 +38,7 @@ def _backend_pid_path(root: Path, port: int) -> Path:
 
 
 def test_stop_finds_a_pid_file_named_the_way_the_backend_writes_it(tmp_path, monkeypatch):
-    from nexus_cli.commands import studio as cli
+    from spartan_agent_cli.commands import studio as cli
 
     path = _backend_pid_path(tmp_path, 8901)
     # The same three-line body _write_pid_file emits (create_time is blank when

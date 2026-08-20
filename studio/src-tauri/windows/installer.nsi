@@ -59,7 +59,7 @@ ${StrLoc}
 !define PRODUCTNAME "{{product_name}}"
 
 ; Stable across display-name changes.
-!define INSTALLIDENTITY "Spartan Agents (Desktop)"
+!define INSTALLIDENTITY "Spartan Agent (Desktop)"
 !define VERSION "{{version}}"
 !define VERSIONWITHBUILD "{{version_with_build}}"
 !define HOMEPAGE "{{homepage}}"

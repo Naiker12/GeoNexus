@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """`grouped_gemm(gather_indices = None)` must survive when nothing permutes.
@@ -30,7 +30,7 @@ import torch  # noqa: E402
 pytest.importorskip("triton", reason = "the grouped GEMM is a Triton kernel")
 
 try:
-    from nexus.kernels.moe.grouped_gemm.interface import grouped_gemm
+    from spartan_agent.kernels.moe.grouped_gemm.interface import grouped_gemm
 except Exception as exc:  # pragma: no cover - depends on the installed stack
     pytest.skip(f"grouped_gemm is unimportable here: {exc}", allow_module_level = True)
 

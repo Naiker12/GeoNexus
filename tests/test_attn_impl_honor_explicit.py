@@ -1,4 +1,4 @@
-﻿"""An explicit non-flash attention request must survive the flash disable path.
+"""An explicit non-flash attention request must survive the flash disable path.
 
 When flash attention is disabled for a model, a caller who explicitly asked for
 "sdpa" or "flex_attention" should keep that choice instead of being downgraded
@@ -7,7 +7,7 @@ to whatever the conservative supports_* fallback would pick.
 
 import pytest
 
-from nexus.models._utils import (
+from spartan_agent.models._utils import (
     _disable_flash_attention_if_needed,
     resolve_attention_implementation,
 )

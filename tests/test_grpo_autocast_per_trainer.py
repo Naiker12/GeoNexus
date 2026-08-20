@@ -1,4 +1,4 @@
-﻿# Unsloth Zoo - Utilities for Unsloth
+# Unsloth Zoo - Utilities for Unsloth
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -669,7 +669,7 @@ def test_an_outer_autocast_is_inherited_rather_than_overridden():
     """
     if not torch.cuda.is_available():
         pytest.skip("needs CUDA: torch.is_autocast_enabled('cuda') is the branch")
-    from nexus.models.rl_replacements import _unsloth_grpo_autocast_kwargs
+    from spartan_agent.models.rl_replacements import _unsloth_grpo_autocast_kwargs
 
     class _Trainer:
         pass

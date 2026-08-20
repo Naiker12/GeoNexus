@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Fake-CUDA GRPO patch run against the *installed* TRL (CPU-only, no training).
 
@@ -72,7 +72,7 @@ def _patch_grpo_and_get_source() -> str:
     no-op."""
     import trl.trainer.grpo_trainer as _g
 
-    from nexus.models import rl as _rl
+    from spartan_agent.models import rl as _rl
 
     _rl._patch_trl_rl_trainers_impl("grpo_trainer")
     patched = _g.GRPOTrainer
@@ -95,9 +95,9 @@ def generated_grpo_source():
     if importlib.util.find_spec("trl") is None:
         pytest.skip("trl not installed")
     # Do NOT swallow import errors: unsloth is installed here, so a failing
-    # `import nexus` is exactly the import-time TRL/transformers drift this
+    # `import spartan_agent` is exactly the import-time TRL/transformers drift this
     # canary must surface as a failure, not a skip.
-    import nexus  # noqa: F401  -- _gpu_init bootstrap under spoof
+    import spartan_agent  # noqa: F401  -- _gpu_init bootstrap under spoof
 
     return _patch_grpo_and_get_source()
 
@@ -175,10 +175,10 @@ def _patch_and_get_source(trainer_file: str, trainer_cls: str) -> str:
     if importlib.util.find_spec("unsloth") is None or importlib.util.find_spec("trl") is None:
         pytest.skip("unsloth or trl not installed")
     # Let a real import failure fail the test (import-time drift is the target).
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     import trl.trainer  # noqa: F401
 
-    from nexus.models import rl as _rl
+    from spartan_agent.models import rl as _rl
 
     _rl._patch_trl_rl_trainers_impl(trainer_file)
     mod = importlib.import_module(f"trl.trainer.{trainer_file}")
@@ -220,10 +220,10 @@ def test_dpo_patch_generates_valid_source():
 def test_per_token_logps_arity_gate_both_directions(monkeypatch):
     if importlib.util.find_spec("unsloth") is None:
         pytest.skip("unsloth not installed")
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     from packaging.version import Version
 
-    from nexus.models import rl_replacements as _rlr
+    from spartan_agent.models import rl_replacements as _rlr
 
     gate = _rlr.grpo_trainer__get_per_token_logps_and_entropies
 

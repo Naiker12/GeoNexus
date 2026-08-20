@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """`python -m unsloth_cli` must be the console script, byte for byte.
@@ -39,7 +39,7 @@ import pytest
 # any one side of the language boundary fails this test.
 TRAMPOLINE = (
     "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
-    "sys.argv[0] = 'unsloth'; from nexus_cli import app; sys.exit(app())"
+    "sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())"
 )
 
 # No -I. It implies -E, which would discard every PYTHON* variable the console
@@ -62,7 +62,7 @@ _REPO_PACKAGE = _REPO_ROOT / "unsloth_cli"
 
 
 def _installed_package_dir() -> Path | None:
-    """Where a child interpreter's `import nexus_cli` actually lands.
+    """Where a child interpreter's `import spartan_agent_cli` actually lands.
 
     The trampoline strips the working directory from sys.path, so a child
     resolves the INSTALLED package and never this checkout by way of the cwd.
@@ -79,7 +79,7 @@ def _installed_package_dir() -> Path | None:
             *INTERPRETER,
             "-c",
             "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
-            "import nexus_cli; print(os.path.dirname(unsloth_cli.__file__))",
+            "import spartan_agent_cli; print(os.path.dirname(unsloth_cli.__file__))",
         ]
     )
     if probe.returncode != 0:
@@ -102,7 +102,7 @@ _INSTALLED_PACKAGE = _installed_package_dir()
 requires_this_checkout_installed = pytest.mark.skipif(
     _INSTALLED_PACKAGE is None or _INSTALLED_PACKAGE.resolve() != _REPO_PACKAGE,
     reason = (
-        f"`import nexus_cli` in a child resolves to {_INSTALLED_PACKAGE}, not "
+        f"`import spartan_agent_cli` in a child resolves to {_INSTALLED_PACKAGE}, not "
         f"{_REPO_PACKAGE}; install this checkout (pip install -e .) to run the "
         "subprocess parity cases"
     ),
@@ -199,7 +199,7 @@ def test_the_attached_np_short_is_still_canonicalised(monkeypatch):
     """
     import runpy
 
-    import nexus_cli
+    import spartan_agent_cli
 
     recorded = {}
 
@@ -267,7 +267,7 @@ def test_the_module_entry_source_keeps_its_two_load_bearing_details():
     source = (_REPO_PACKAGE / "__main__.py").read_text(encoding = "utf-8")
 
     argv_assignment = source.find('sys.argv[0] = "unsloth"')
-    package_import = source.find("import nexus_cli")
+    package_import = source.find("import spartan_agent_cli")
     assert argv_assignment != -1, "__main__.py no longer rewrites argv[0]"
     assert package_import != -1, "__main__.py no longer imports the package"
     assert argv_assignment < package_import, (
@@ -420,7 +420,7 @@ def test_the_stream_reconfigure_happens_once_per_process(monkeypatch):
     C-locale console again and flushed it again. Harmless, but it is a difference
     from what the console script did before this file grew a second entry route.
     """
-    import nexus_cli
+    import spartan_agent_cli
 
     calls = []
 

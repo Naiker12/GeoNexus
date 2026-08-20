@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """`pytest tests` must collect cleanly.
@@ -66,7 +66,7 @@ def test_saving_scripts_opt_in_before_running_at_import():
 
 
 def test_raw_text_does_not_leave_its_datasets_mock_in_sys_modules():
-    """tests/test_raw_text.py stubs `datasets` to import nexus.dataprep.raw_text.
+    """tests/test_raw_text.py stubs `datasets` to import spartan_agent.dataprep.raw_text.
 
     It used to leave the stub in sys.modules for the rest of the session, so
     every later `from datasets import IterableDataset` raised ImportError and

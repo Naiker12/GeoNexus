@@ -103,8 +103,8 @@ const ADV = {
 } as const;
 
 const DOC_LINKS = [
-  { label: "Claude Code", href: "https://github.com/Naiker12/GeoNexus" },
-  { label: "Codex", href: "https://github.com/Naiker12/GeoNexus" },
+  { label: "Claude Code", href: "https://github.com/Naiker12/Spartan-Agent" },
+  { label: "Codex", href: "https://github.com/Naiker12/Spartan-Agent" },
 ];
 
 // Fallback until the backend's installed-CLI check resolves. Mirrors

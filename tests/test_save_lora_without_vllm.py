@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -185,7 +185,7 @@ def test_the_adapter_save_keeps_everything_peft_would_keep(tmp_path, lora_kwargs
     `modules_to_save` by itself once new tokens are trained, so both are
     reachable with no vLLM in sight.
     """
-    from nexus.models._utils import save_lora_adapter
+    from spartan_agent.models._utils import save_lora_adapter
 
     reference = _saved_keys(
         _peft_case(**lora_kwargs), lambda m, d: m.save_pretrained(d), tmp_path, "peft"
@@ -201,7 +201,7 @@ def test_the_saved_adapter_still_loads_back(tmp_path):
     torch = pytest.importorskip("torch")
     transformers = pytest.importorskip("transformers")
     peft = pytest.importorskip("peft")
-    from nexus.models._utils import save_lora_adapter
+    from spartan_agent.models._utils import save_lora_adapter
 
     model = _peft_case(use_dora = True, modules_to_save = ["lm_head"])
     directory = tmp_path / "roundtrip"
@@ -217,7 +217,7 @@ def test_the_adapter_is_cast_to_the_embedding_dtype(tmp_path):
     """Which is the only thing the Zoo helper does beyond `save_pretrained`."""
     torch = pytest.importorskip("torch")
     safetensors = pytest.importorskip("safetensors.torch")
-    from nexus.models._utils import save_lora_adapter
+    from spartan_agent.models._utils import save_lora_adapter
 
     model = _peft_case()
     directory = tmp_path / "dtype"

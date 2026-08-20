@@ -231,7 +231,7 @@ if _STUDIO_ROOT_RESOLVED != _LEGACY_STUDIO_ROOT:
 
     mark_managed_llama_cpp_path(_MANAGED_LLAMA_CPP_PATH)
 
-# The studio bundles unsloth_zoo; declare unsloth present (as `import nexus` does) so its
+# The studio bundles unsloth_zoo; declare unsloth present (as `import spartan_agent` does) so its
 # lazy submodule imports and the DiffusionGemma runner don't trip the install guard.
 os.environ.setdefault("UNSLOTH_IS_PRESENT", "1")
 
@@ -784,9 +784,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title = "Nexus UI Backend",
+    title = "Spartan Agent UI Backend",
     version = UNSLOTH_VERSION,
-    description = "Backend API for Nexus UI - Training and Model Management",
+    description = "Backend API for Spartan Agent UI - Training and Model Management",
     lifespan = lifespan,
     # Swagger UI and ReDoc are re-registered below on these same paths, against vendored
     # assets instead of a CDN. FastAPI's built-ins point at cdn.jsdelivr.net, and this origin

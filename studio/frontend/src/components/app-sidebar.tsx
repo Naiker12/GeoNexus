@@ -2765,11 +2765,11 @@ export function AppSidebar() {
                       base + (root scale - 1) * 8px. Exact base sizes at 16px. */}
                   <img
                     src="/spartan-logo.svg"
-                    alt="SPARTAN AGENTS"
+                    alt="SPARTAN AGENT"
                     className="relative top-px h-[calc(24px+0.5rem*var(--ui-font-scale,1))] w-[calc(24px+0.5rem*var(--ui-font-scale,1))] shrink-0 rounded-lg object-contain shadow-sm"
                   />
                   <span className="relative -top-px truncate font-heading text-[calc(13px+0.5rem*var(--ui-font-scale,1))] font-bold tracking-[0.06em] uppercase leading-tight text-black dark:text-white">
-                    SPARTAN AGENTS
+                    SPARTAN AGENT
                   </span>
                 </Link>
               <div className="flex shrink-0 items-center gap-0.25">
@@ -3575,7 +3575,7 @@ export function AppSidebar() {
                       pr on the button reserves room for the settings cog */}
                   <div className="flex min-w-0 flex-1 flex-col gap-px leading-tight group-data-[collapsible=icon]:hidden">
                     <span className="truncate font-heading text-ui-13p5 tracking-[0.025em] dark:tracking-[0.04em] font-semibold text-nav-fg">{displayTitle}</span>
-                    <span className="truncate text-ui-11p5 tracking-nav text-muted-foreground">Spartan Agents</span>
+                    <span className="truncate text-ui-11p5 tracking-nav text-muted-foreground">Spartan Agent</span>
                   </div>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>

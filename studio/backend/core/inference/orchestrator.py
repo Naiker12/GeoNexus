@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -303,7 +303,7 @@ class InferenceOrchestrator:
         return result
 
     def _fetch_top_models(self) -> None:
-        """Fetch top GGUF and non-GGUF repos from nexus by downloads."""
+        """Fetch top GGUF and non-GGUF repos from spartan_agent by downloads."""
         try:
             import httpx
             resp = httpx.get(

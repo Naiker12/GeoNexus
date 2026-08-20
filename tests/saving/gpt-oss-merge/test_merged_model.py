@@ -1,4 +1,4 @@
-﻿# tests/saving scripts run their whole body at import, so plain pytest
+# tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
 from pathlib import Path as _Path
@@ -12,7 +12,7 @@ _require_opt_in(
 )
 
 # inference_on_merged.py
-from nexus import FastLanguageModel
+from spartan_agent import FastLanguageModel
 from transformers import TextStreamer
 import torch
 import gc

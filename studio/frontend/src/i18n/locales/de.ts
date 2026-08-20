@@ -80,8 +80,8 @@ export const de = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "Kontomenü von {name}",
     updateAvailable: "Update verfügbar",
     resize: {
@@ -90,7 +90,7 @@ export const de = {
       drag: "Zum Ändern der Größe ziehen",
     },
     aria: {
-      home: "Nexus-Startseite",
+      home: "Spartan Agent-Startseite",
       closeSidebar: "Seitenleiste schließen",
       openSidebar: "Seitenleiste öffnen",
       resizeSidebar: "Seitenleiste anpassen oder einklappen",
@@ -1068,7 +1068,7 @@ export const de = {
       options: {
         title: "Gängige Optionen",
         description:
-          "Nexus-Optionen werden zuerst ausgewertet; alles Unbekannte wird unverändert an den Agenten weitergereicht.",
+          "Spartan Agent-Optionen werden zuerst ausgewertet; alles Unbekannte wird unverändert an den Agenten weitergereicht.",
         model:
           "Wählt ein Modell aus. Ohne --model verwendet Spartan start das aktuell in Studio geladene Modell und bricht mit einem Fehler ab, wenn keines geladen ist.",
         contextLength:
@@ -1355,7 +1355,7 @@ export const de = {
     about: {
       title: "Info",
       description: "Dokumentation, Versionshinweise, Feedback und Build-Infos.",
-      studioVersion: "Nexus-Version",
+      studioVersion: "Spartan Agent-Version",
       packageVersion: "Paketversion",
       desktopAppVersion: "Version der Desktop-App",
       desktopAppVersionUnavailable: "Nicht verfügbar",
@@ -1374,7 +1374,7 @@ export const de = {
       reportIssue: "Problem melden",
       license: {
         sectionTitle: "Lizenz",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "Open Source unter der GNU AGPL v3.0.",
         libraryLabel: "Spartan Core",

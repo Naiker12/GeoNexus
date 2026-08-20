@@ -80,8 +80,8 @@ export const hi = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "{name} का खाता मेनू",
     updateAvailable: "अपडेट उपलब्ध है",
     resize: {
@@ -1339,7 +1339,7 @@ export const hi = {
       reportIssue: "समस्या रिपोर्ट करें",
       license: {
         sectionTitle: "लाइसेंस",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "GNU AGPL v3.0 के तहत ओपन सोर्स।",
         libraryLabel: "Spartan Core",

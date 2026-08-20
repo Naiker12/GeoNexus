@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """GPU-free test harness.
@@ -155,7 +155,7 @@ def _preimport_bitsandbytes() -> None:
     and the rest of its submodules cached, so the next import re-executes __init__ against
     those cached submodules, re-binds nothing, and hands back a module with no
     `.functional`. `unsloth/kernels/utils.py` reads `bnb.functional.get_ptr` at module
-    scope, so every later `import nexus` in that process dies with
+    scope, so every later `import spartan_agent` in that process dies with
     "module 'bitsandbytes' has no attribute 'functional'".
 
     Importing first, outside the window, keeps bitsandbytes on its CPU backend and fully
@@ -178,7 +178,7 @@ if not _has_real_accelerator():
 
 
 # ---------------------------------------------------------------------------
-# Apply upstream-drift fixes (vllm/triton/peft) by triggering ``import nexus``
+# Apply upstream-drift fixes (vllm/triton/peft) by triggering ``import spartan_agent``
 # (they run at import time in unsloth/import_fixes.py). The harness above lets
 # the import survive CPU-only runners; the ImportError is swallowed otherwise.
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ if not _has_real_accelerator():
 
 def _apply_upstream_import_fixes_for_tests() -> None:
     try:
-        import nexus  # noqa: F401  # runs unsloth/import_fixes.py
+        import spartan_agent  # noqa: F401  # runs unsloth/import_fixes.py
     except Exception:
         pass
 

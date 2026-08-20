@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ import os
 
 import pytest
 
-from nexus import save as S
+from spartan_agent import save as S
 
 GB = 1024**3
 
@@ -797,7 +797,7 @@ class TestTheRecipesIgnoredModulesStay16Bit:
 
     def test_a_missing_recipe_symbol_leaves_the_estimate_alone(self, monkeypatch):
         """A renamed or deleted `compressed_ignore_patterns` must not raise."""
-        import nexus._compressed_quantize as Q
+        import spartan_agent._compressed_quantize as Q
 
         monkeypatch.delattr(Q, "compressed_ignore_patterns")
         assert S._compressed_ignore_patterns(self._vlm()) == []
@@ -826,8 +826,8 @@ class TestTheRecipesIgnoredModulesStay16Bit:
         import inspect
 
         source = inspect.getsource(S._compressed_ignore_patterns)
-        assert "from nexus._compressed_quantize import compressed_ignore_patterns" in source
-        import nexus._compressed_quantize as Q
+        assert "from spartan_agent._compressed_quantize import compressed_ignore_patterns" in source
+        import spartan_agent._compressed_quantize as Q
 
         main_source = inspect.getsource(Q.main)
         assert "compressed_ignore_patterns(config)" in main_source
@@ -1002,7 +1002,7 @@ class TestTorchaoStagingSharesTheRedirectDestination:
         succeeded, and the `unsloth.disk_utils` fallback never returns one, so
         the helper is unreachable with a destination that does not exist.
         """
-        from nexus.disk_utils import HAS_ZOO_DISK_UTILS
+        from spartan_agent.disk_utils import HAS_ZOO_DISK_UTILS
 
         if not HAS_ZOO_DISK_UTILS:
             assert S.kaggle_tmp_redirect("model", need_bytes = GB)[1] is None
@@ -2326,7 +2326,7 @@ class TestIgnoredModulesAreSizedFromLogicalShapes:
 
     def test_the_helper_is_the_one_the_merge_estimate_uses(self):
         """One definition, so the two sizings cannot drift apart."""
-        from nexus import disk_utils
+        from spartan_agent import disk_utils
 
         assert S.logical_numel is disk_utils.logical_numel
         assert "logical_numel" in disk_utils.__all__

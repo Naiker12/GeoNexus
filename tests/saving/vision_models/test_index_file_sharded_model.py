@@ -1,4 +1,4 @@
-﻿# tests/saving scripts run their whole body at import, so plain pytest
+# tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
 from pathlib import Path as _Path
@@ -11,8 +11,8 @@ _require_opt_in(
     "GPU + Hub saving script; its body runs at import.",
 )
 
-from nexus import FastVisionModel, is_bf16_supported
-from nexus.trainer import UnslothVisionDataCollator
+from spartan_agent import FastVisionModel, is_bf16_supported
+from spartan_agent.trainer import UnslothVisionDataCollator
 
 import torch
 import os

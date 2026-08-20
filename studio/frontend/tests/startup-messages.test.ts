@@ -32,7 +32,7 @@ test("installer progress rotates reassurance without changing actual phases", ()
   const expectedTitles = new Map([
     [-1, "Preparing your workspace..."],
     [2, "Downloading required components..."],
-    [4, "Installing Spartan Agents..."],
+    [4, "Installing Spartan Agent..."],
     [6, "Finishing setup..."],
   ]);
 
@@ -48,9 +48,9 @@ test("installer progress rotates reassurance without changing actual phases", ()
 });
 
 test("startup copy rotates while preserving backend phase transitions", () => {
-  assert.equal(startupWaitingMessage(INITIAL_STARTUP_MESSAGE, 0), "Starting Spartan Agents...");
+  assert.equal(startupWaitingMessage(INITIAL_STARTUP_MESSAGE, 0), "Starting Spartan Agent...");
   assert.equal(startupWaitingMessage(INITIAL_STARTUP_MESSAGE, 1), "Loading projects...");
-  assert.equal(startupWaitingMessage(INITIAL_STARTUP_MESSAGE, 2), "Starting Spartan Agents...");
+  assert.equal(startupWaitingMessage(INITIAL_STARTUP_MESSAGE, 2), "Starting Spartan Agent...");
 });
 
 test("nearly done only appears after the backend starts its server", () => {

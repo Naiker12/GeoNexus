@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -111,10 +111,10 @@ def _import_attempt():
     _needs_the_cuda_branch()
     return _run(
         """
-        import nexus
-        from nexus import FastLanguageModel, FastModel
-        import nexus.models._utils as _utils
-        import nexus._gpu_init as _gpu_init
+        import spartan_agent
+        from spartan_agent import FastLanguageModel, FastModel
+        import spartan_agent.models._utils as _utils
+        import spartan_agent._gpu_init as _gpu_init
         print("DEVICE_TYPE", _gpu_init.DEVICE_TYPE)
         print("SUPPORTS_BFLOAT16", _gpu_init.SUPPORTS_BFLOAT16, _utils.SUPPORTS_BFLOAT16)
         print("HAS_FLASH_ATTENTION", _utils.HAS_FLASH_ATTENTION)
@@ -149,7 +149,7 @@ def test_the_devices_really_are_hidden_and_the_variable_is_what_opens_the_import
     documented message. If this ever passes, the host has a visible GPU and every
     other case in this file is vacuous."""
     _needs_the_cuda_branch()
-    out = _run("import nexus")
+    out = _run("import spartan_agent")
     assert out.returncode != 0, "a device is visible; this file proves nothing here"
     assert "You need a GPU" in out.stderr, out.stderr[-3000:]
 
@@ -249,7 +249,7 @@ def test_a_driverless_import_does_not_try_to_repair_cuda_linkage(tmp_path):
     log = tmp_path / "calls.log"
     log.write_text("", encoding = "utf-8")
     out = _run(
-        "import nexus\nprint('IMPORT_OK')",
+        "import spartan_agent\nprint('IMPORT_OK')",
         extra_path = (tmp_path,),
         UNSLOTH_ALLOW_CPU = "1",
         PROBE_LOG = str(log),

@@ -1,4 +1,4 @@
-﻿# tests/saving scripts run their whole body at import, so plain pytest
+# tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
 from pathlib import Path as _Path
@@ -11,8 +11,8 @@ _require_opt_in(
     "GPU + Hub saving script; its body runs at import.",
 )
 
-from nexus import FastLanguageModel
-from nexus.chat_templates import get_chat_template
+from spartan_agent import FastLanguageModel
+from spartan_agent.chat_templates import get_chat_template
 from trl import SFTTrainer, SFTConfig
 from transformers import DataCollatorForSeq2Seq, TrainingArguments
 from datasets import load_dataset
@@ -91,7 +91,7 @@ model = FastLanguageModel.get_peft_model(
     loftq_config = None,
 )
 
-from nexus import is_bfloat16_supported
+from spartan_agent import is_bfloat16_supported
 
 trainer = SFTTrainer(
     model = model,

@@ -48,7 +48,7 @@ router = APIRouter()
 # the bootstrap unsloth_cli/__main__.py documents for user-site installs.
 _CLI_BOOTSTRAP = (
     "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
-    "sys.argv[0] = 'unsloth'; from nexus_cli import app; sys.exit(app())"
+    "sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())"
 )
 
 
@@ -422,15 +422,15 @@ async def auth_status() -> AuthStatusResponse:
     """Auth initialization state; always initialized and never requiring password change."""
     return AuthStatusResponse(
         initialized = True,
-        default_username = "nexus",
+        default_username = "spartan_agent",
         requires_password_change = False,
     )
 
 
 @router.post("/login", response_model = Token)
 async def login(payload: AuthLoginRequest, request: Request) -> Token:
-    """Login without password restrictions for direct Nexus access."""
-    username = payload.username or "nexus"
+    """Login without password restrictions for direct Spartan Agent access."""
+    username = payload.username or "spartan_agent"
     access_token = create_access_token(subject = username)
     refresh_token = create_refresh_token(subject = username)
     return Token(
@@ -452,8 +452,8 @@ async def logout(
 async def desktop_login(payload: DesktopLoginRequest) -> Token:
     """Instant desktop authentication."""
     return Token(
-        access_token = create_access_token(subject = "nexus", desktop = True),
-        refresh_token = create_refresh_token(subject = "nexus", desktop = True),
+        access_token = create_access_token(subject = "spartan_agent", desktop = True),
+        refresh_token = create_refresh_token(subject = "spartan_agent", desktop = True),
         token_type = "bearer",
         must_change_password = False,
     )
@@ -463,8 +463,8 @@ async def desktop_login(payload: DesktopLoginRequest) -> Token:
 async def refresh(payload: RefreshTokenRequest) -> Token:
     """Refresh tokens directly without locking out the session."""
     return Token(
-        access_token = create_access_token(subject = "nexus"),
-        refresh_token = create_refresh_token(subject = "nexus"),
+        access_token = create_access_token(subject = "spartan_agent"),
+        refresh_token = create_refresh_token(subject = "spartan_agent"),
         token_type = "bearer",
         must_change_password = False,
     )

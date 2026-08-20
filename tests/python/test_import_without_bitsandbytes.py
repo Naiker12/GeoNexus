@@ -1,4 +1,4 @@
-﻿"""`import nexus` must survive a missing bitsandbytes.
+"""`import spartan_agent` must survive a missing bitsandbytes.
 
 device_type.py already tells the user "bitsandbytes is not installed - 4bit QLoRA
 unallowed, but 16bit and full finetuning works", and the gfx906 install path
@@ -107,7 +107,7 @@ def test_no_unguarded_bitsandbytes_import_on_the_unsloth_import_chain():
 
     assert len(seen) > 20, f"import chain walk collapsed, only reached {seen}"
     assert not offenders, (
-        "`import nexus` must not hard-require bitsandbytes. Wrap these in "
+        "`import spartan_agent` must not hard-require bitsandbytes. Wrap these in "
         "try/except and fall back to a placeholder:\n  " + "\n  ".join(offenders)
     )
 

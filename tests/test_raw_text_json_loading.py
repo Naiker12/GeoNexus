@@ -1,4 +1,4 @@
-﻿"""Regression test for .json parsing in unsloth/dataprep/raw_text.py.
+"""Regression test for .json parsing in unsloth/dataprep/raw_text.py.
 
 Both .json and .jsonl map to the "json_lines" handler, which used to parse the
 file one line at a time. A real .json file is a single JSON document (commonly
@@ -8,7 +8,7 @@ the valid file as "empty"). The handler now parses the file as one JSON value
 first and falls back to line-by-line for true .jsonl.
 
 raw_text.py's only third-party import is `datasets`, so we stub it and exec the
-module directly, with no `import nexus` (which needs a GPU / unsloth_zoo).
+module directly, with no `import spartan_agent` (which needs a GPU / unsloth_zoo).
 """
 
 import json

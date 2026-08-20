@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """One vetted path for every diffusion monkey-patch.
@@ -93,7 +93,7 @@ def _helpers() -> Optional[dict]:
             if attempt or not _retry_could_help(exc):
                 break
             try:
-                import nexus  # noqa: F401 — sets UNSLOTH_IS_PRESENT for the retry
+                import spartan_agent  # noqa: F401 — sets UNSLOTH_IS_PRESENT for the retry
             except Exception:  # noqa: BLE001 — not installed / no accelerator: give up quietly
                 break
     _HELPERS = {}

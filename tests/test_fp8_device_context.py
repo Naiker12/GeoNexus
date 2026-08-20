@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import ast
 from contextlib import nullcontext
@@ -172,7 +172,7 @@ def _require_two_cuda_devices():
 
 def test_weight_dequant_block_runs_on_tensor_device_when_current_device_differs() -> None:
     torch = _require_two_cuda_devices()
-    from nexus.kernels.fp8 import weight_dequant_block
+    from spartan_agent.kernels.fp8 import weight_dequant_block
 
     previous_device = torch.cuda.current_device()
     try:
@@ -199,7 +199,7 @@ def test_act_quant_runs_on_tensor_device_when_current_device_differs() -> None:
     if torch.cuda.get_device_capability(1)[0] < 9:
         pytest.skip("requires FP8-capable CUDA hardware")
 
-    from nexus.kernels.fp8 import act_quant
+    from spartan_agent.kernels.fp8 import act_quant
 
     previous_device = torch.cuda.current_device()
     try:
@@ -222,7 +222,7 @@ def test_w8a8_block_fp8_matmul_triton_runs_on_tensor_device_when_current_device_
     if torch.cuda.get_device_capability(1)[0] < 9:
         pytest.skip("requires FP8-capable CUDA hardware")
 
-    from nexus.kernels.fp8 import w8a8_block_fp8_matmul_triton
+    from spartan_agent.kernels.fp8 import w8a8_block_fp8_matmul_triton
 
     previous_device = torch.cuda.current_device()
     try:

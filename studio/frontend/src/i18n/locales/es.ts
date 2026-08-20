@@ -80,8 +80,8 @@ export const es = {
   },
   shell: {
     beta: "BETA",
-    brand: "spartan agents",
-    product: "Spartan Agents",
+    brand: "spartan agent",
+    product: "Spartan Agent",
     accountMenu: "Menú de cuenta de {name}",
     updateAvailable: "Actualización disponible",
     resize: {
@@ -1367,7 +1367,7 @@ export const es = {
       reportIssue: "Reportar un problema",
       license: {
         sectionTitle: "Licencia",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "Código abierto bajo la GNU AGPL v3.0.",
         libraryLabel: "Spartan Core",
@@ -2224,4 +2224,3 @@ export const es = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

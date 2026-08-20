@@ -1,4 +1,4 @@
-﻿# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
+# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -563,7 +563,7 @@ def test_accelerate_recursively_apply_empty_logits_patch():
     pytest.importorskip("accelerate")
 
     import accelerate.utils.operations as acc_ops
-    from nexus.import_fixes import patch_accelerate_recursively_apply
+    from spartan_agent.import_fixes import patch_accelerate_recursively_apply
 
     class EmptyLogits:
         pass
@@ -580,7 +580,7 @@ def test_accelerate_gather_empty_logits_debug_mode_patch():
     pytest.importorskip("accelerate")
     from accelerate.state import PartialState, DistributedType
     import accelerate.utils.operations as acc_ops
-    from nexus.import_fixes import patch_accelerate_recursively_apply
+    from spartan_agent.import_fixes import patch_accelerate_recursively_apply
     import unittest.mock as mock
     import torch
 
@@ -668,7 +668,7 @@ def test_accelerate_patch_is_idempotent():
     """Calling patch_accelerate_recursively_apply twice must not stack wrappers."""
     pytest.importorskip("accelerate")
     import accelerate.utils.operations as acc_ops
-    from nexus.import_fixes import patch_accelerate_recursively_apply
+    from spartan_agent.import_fixes import patch_accelerate_recursively_apply
 
     patch_accelerate_recursively_apply()
     recursively_apply = acc_ops.recursively_apply
@@ -686,7 +686,7 @@ def test_accelerate_find_device_skips_empty_logits():
     import torch
     import accelerate.utils.operations as acc_ops
     from accelerate.state import PartialState
-    from nexus.import_fixes import patch_accelerate_recursively_apply
+    from spartan_agent.import_fixes import patch_accelerate_recursively_apply
 
     class EmptyLogits:
         pass

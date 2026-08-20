@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Automatic transformers version switching.
@@ -2006,7 +2006,7 @@ def _sidecar_scan(venv_dir: str, limit: int = 3) -> tuple[list[str], bool]:
     return _sidecar_scan_impl(venv_dir, limit)
 
 
-# Mirrored from nexus_cli/_studio_deps.py, not imported, for the reason given in
+# Mirrored from spartan_agent_cli/_studio_deps.py, not imported, for the reason given in
 # _sidecar_scan_impl below: the backend never imports the CLI package. Keep in sync.
 _SHARED_NON_RUNTIME_ROOTS = frozenset(
     (

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Recover `unsloth`/`unsloth_zoo` from a namespace-package shadow. Stdlib-only."""
@@ -46,7 +46,7 @@ def ensure_real_packages(*names: str) -> None:
             del sys.modules[cached]
     try:
         importlib.invalidate_caches()
-        # import nexus before unsloth_zoo: unsloth.__init__ runs GPU/bnb fixes zoo relies on
+        # import spartan_agent before unsloth_zoo: unsloth.__init__ runs GPU/bnb fixes zoo relies on
         for name in reversed(names):
             importlib.import_module(name)
     finally:

@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -30,8 +30,8 @@ forward + backward), bisected on document count.
 import pytest
 import torch
 
-import nexus  # noqa: F401
-from nexus.utils import attention_dispatch as ad
+import spartan_agent  # noqa: F401
+from spartan_agent.utils import attention_dispatch as ad
 
 
 # (n_heads, head_dim, doc_len, last document count observed to run clean on a B200)

@@ -192,7 +192,7 @@ test("the overlay names the wait it is covering", async () => {
   const screen = await source("components/tauri/startup-screen.tsx");
   const body = closingContent(screen);
 
-  assert.match(body, /Closing (?:Nexus|Unsloth|Spartan Agents) Desktop\.\.\./);
+  assert.match(body, /Closing (?:Spartan Agent|Unsloth|Spartan Agent) Desktop\.\.\./);
   assert.match(body, /Shutting down the backend\./);
   // A still screen reads as the freeze it is there to explain.
   assert.match(body, /<Spinner className="size-6 text-primary" \/>/);

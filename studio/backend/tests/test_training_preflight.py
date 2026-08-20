@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """_preflight_first_batch rejects an empty/non-integer first batch (the base-model
@@ -1698,7 +1698,7 @@ def test_cli_mlx_trainer_activates_before_importing_trainer():
     script = """
 import json
 import sys
-import nexus_cli.commands.train as train_cmd
+import spartan_agent_cli.commands.train as train_cmd
 from studio.backend.core.training import training as training_mod
 from utils.hardware import hardware as hw
 

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """LTX-2.3 pipeline assembly for diffusers 0.39.
@@ -621,7 +621,7 @@ def load_ltx23_pipeline(
     if any(k.endswith((".weight_scale", ".input_scale")) for k in groups["dit"]):
         raise ValueError(
             "This LTX checkpoint stores scaled fp8 weights, which this loader does "
-            "not dequantize yet. Use the GGUF quants from nexus/LTX-2.3-GGUF "
+            "not dequantize yet. Use the GGUF quants from spartan_agent/LTX-2.3-GGUF "
             "instead (Q8_0 for the highest fidelity) or the official bf16 checkpoint."
         )
 

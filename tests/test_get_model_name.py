@@ -1,8 +1,8 @@
-﻿import unittest
+import unittest
 from unittest.mock import patch
-from nexus.models.loader_utils import get_model_name
-from nexus.models import loader_utils
-from nexus.models.mapper import FLOAT_TO_INT_MAPPER, MAP_TO_UNSLOTH_16bit
+from spartan_agent.models.loader_utils import get_model_name
+from spartan_agent.models import loader_utils
+from spartan_agent.models.mapper import FLOAT_TO_INT_MAPPER, MAP_TO_UNSLOTH_16bit
 
 
 def _no_remote_mapper():

@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""torchao 0.18 must not be able to kill `import nexus`.
+"""torchao 0.18 must not be able to kill `import spartan_agent`.
 
 torchao 0.17 guarded `from torch.nn.functional import ScalingType, SwizzleType`
 behind `torch_version_at_least("2.10.0")`; 0.18.0 left it unguarded at module
@@ -36,7 +36,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from nexus.import_fixes import (  # noqa: E402
+from spartan_agent.import_fixes import (  # noqa: E402
     _TORCHAO_TORCH_SYMBOLS,
     _make_torch_symbol_placeholder,
     fix_torchao_torch_symbol_skew,
@@ -126,7 +126,7 @@ def test_no_torchao_means_nothing_to_do():
 
 
 def test_it_never_raises():
-    """It runs during `import nexus`, so anything it raises replaces the
+    """It runs during `import spartan_agent`, so anything it raises replaces the
     problem it exists to prevent."""
     assert fix_torchao_torch_symbol_skew() in (True, False)
 
@@ -176,7 +176,7 @@ def test_symbols_torch_already_provides_are_never_replaced():
     """scaled_dot_product_attention exists on every supported torch, so a
     raising placeholder would break attention itself."""
     import torch.nn.functional as F
-    import nexus.import_fixes as IF
+    import spartan_agent.import_fixes as IF
 
     real = F.scaled_dot_product_attention
     IF.fix_torchao_torch_symbol_skew()
@@ -190,7 +190,7 @@ def test_the_real_torchao_018_import_line_is_unblocked(monkeypatch):
     """The decisive test: run torchao 0.18's own import line on this torch and
     show it goes from raising to succeeding. Everything above is gating."""
     import torch.nn.functional as F
-    import nexus.import_fixes as IF
+    import spartan_agent.import_fixes as IF
 
     # conftest.py imports unsloth, so on an affected environment the
     # placeholders are already on F. Drop them, or the "before" half cannot
@@ -313,20 +313,20 @@ def test_the_mlx_call_cannot_break_the_import():
 def test_the_version_gate(version, affected):
     """The gate decides whether we touch torch at all, so it must cope with
     local versions and dev builds, not just clean releases."""
-    from nexus.import_fixes import Version
+    from spartan_agent.import_fixes import Version
     assert (Version(version) >= Version("0.18.0")) is affected
 
 
 def test_an_unparseable_version_is_not_patched(monkeypatch):
     """Leave torch alone rather than guess from a version we cannot parse."""
-    import nexus.import_fixes as IF
+    import spartan_agent.import_fixes as IF
 
     monkeypatch.setattr(IF, "importlib_version", lambda name: "not-a-version-at-all")
     assert IF.fix_torchao_torch_symbol_skew() is False
 
 
 def test_a_missing_version_is_not_patched(monkeypatch):
-    import nexus.import_fixes as IF
+    import spartan_agent.import_fixes as IF
 
     def _boom(name):
         raise Exception("no metadata")

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Regression tests for install.ps1 under a user PowerShell profile.
@@ -31,7 +31,7 @@ STUDIO_COMMAND = REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
 
 def _framed(record: str, *, banner: str = "") -> str:
     """What the probe child really prints: the framed record, plus whatever the profile said."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
     return f"{banner}{studio_cmd._PROXY_PROBE_BEGIN}\n{record}\n{studio_cmd._PROXY_PROBE_END}\n"
 
 
@@ -909,7 +909,7 @@ def test_the_probe_reads_a_hostile_profile_without_carrying_anything_else(tmp_pa
         check = False,
         env = {**os.environ, "XDG_CONFIG_HOME": str(home), "HOME": str(tmp_path)},
     )
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     if "proxy.corp" not in (result.stdout or ""):
         pytest.skip(f"pwsh did not load the planted profile (got {result.stdout!r})")
@@ -926,7 +926,7 @@ def test_a_profile_that_prints_a_banner_does_not_cost_the_proxy(monkeypatch):
     anything: a MOTD, a "loading modules" line, a corporate banner. With the record bare, that
     output arrived first, the parse threw, and the answer was dropped -- so the locked-down host
     that needed the proxy handed the -NoProfile child nothing."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -943,7 +943,7 @@ def test_a_profile_that_prints_a_banner_does_not_cost_the_proxy(monkeypatch):
 
 
 def test_a_profile_that_prints_nothing_useful_is_still_no_answer(monkeypatch):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -959,7 +959,7 @@ def test_the_caller_edition_is_read_from_the_order_not_the_absence(monkeypatch):
     documents. Reading "7 is present, so the caller is 7" then gave the wrong profile
     precedence and let its proxy override the console the command was typed into. Each host
     puts its own module directory first, so the earliest tree names the caller."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     monkeypatch.setattr(studio_cmd.shutil, "which", lambda name: f"C:\\{name}")
     windows = "C:\\Users\\me\\Documents\\WindowsPowerShell\\Modules"
@@ -985,7 +985,7 @@ def test_the_probe_pins_its_own_output_encoding(monkeypatch):
     """Windows PowerShell 5.1 writes REDIRECTED output in the console code page while this
     process decodes UTF-8, so a non-ASCII proxy value came back with replacement characters,
     still parsed as JSON, and handed setup a proxy that does not resolve."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     probe = studio_cmd._PS_PROXY_PROBE
     assert "[Console]::OutputEncoding" in probe
@@ -998,7 +998,7 @@ def test_one_host_owns_a_cmdlet_outright(monkeypatch):
     configuration neither host has: the earlier host's Proxy with the later host's
     ProxyUseDefaultCredentials, which offers the user's Windows credentials to a proxy whose
     own profile never asked for that."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1053,7 +1053,7 @@ def test_the_probe_asks_both_powershell_editions(monkeypatch):
     a machine that has pwsh at all. The -NoProfile child then had no proxy and setup.ps1's
     downloads failed.
     """
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     asked: list[str] = []
 
@@ -1081,7 +1081,7 @@ def test_the_probe_asks_both_powershell_editions(monkeypatch):
 
 
 def test_the_callers_edition_wins_where_the_two_profiles_disagree(monkeypatch):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1102,7 +1102,7 @@ def test_two_spellings_of_one_key_are_one_key(monkeypatch):
     With both spellings carried across, the prelude replayed them in order and the
     lower-priority host's value landed last -- the exact reverse of earlier-host-wins, and on
     a stricter host the case-colliding JSON is rejected outright."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1121,7 +1121,7 @@ def test_two_spellings_of_one_key_are_one_key(monkeypatch):
 def test_one_profile_that_prints_both_spellings_is_folded_too(monkeypatch):
     # Same collision inside a single host's answer: the first spelling wins and the second
     # never reaches the child.
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1147,7 +1147,7 @@ def test_a_wildcard_key_claims_the_whole_cmdlet_family(monkeypatch):
     Invoke-Web*:Proxy from one host merge with Invoke-WebRequest:ProxyUseDefaultCredentials from
     the other -- one invocation configured from two profiles, offering the user's Windows
     credentials to a proxy whose own profile never asked for that."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1175,7 +1175,7 @@ def test_two_wildcards_that_share_a_cmdlet_are_one_family(monkeypatch):
     match sets overlap: Invoke-Web* and *-WebRequest both apply to Invoke-WebRequest and neither
     matches the other. Overlap between two patterns is assumed, so the lower-priority profile
     cannot slip ProxyUseDefaultCredentials in beside the other's proxy."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1202,7 +1202,7 @@ def test_the_probe_re_pins_utf8_after_the_profiles_have_run():
     overrides the pin at the top of the probe. The parent decodes this stream as UTF-8, so a
     profile that leaves the console on UTF-16 or a legacy code page corrupts the framed record
     and a non-ASCII proxy URI goes with it."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE as probe
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE as probe
 
     pin = "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false"
     assert probe.count(pin) == 2, "pinned before the profiles and again after them"
@@ -1215,7 +1215,7 @@ def test_the_record_is_emitted_through_the_builtin_cmdlets():
     name, and clearing $PSDefaultParameterValues does not cover a command override. A wrapper
     that reshapes the output produces a frame the reader cannot parse, which costs a standalone
     update its only proxy."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE as probe
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE as probe
 
     assert probe.count("Microsoft.PowerShell.Utility\\Write-Output") == 2
     assert "Microsoft.PowerShell.Utility\\ConvertTo-Json -Compress" in probe
@@ -1229,7 +1229,7 @@ def test_a_vscode_terminal_still_reads_its_own_host_profile():
     extension's host. Substituting Microsoft.VSCode_profile.ps1 for the current-host profile
     therefore missed the proxy a plain pwsh terminal in VS Code actually has, while applying an
     unrelated one. Both are read, current-host last."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE as probe
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE as probe
 
     assert "$__unslothProfiles += $PROFILE.CurrentUserCurrentHost; " in probe
     assert "$__unslothProfiles += $PROFILE.AllUsersCurrentHost; " in probe
@@ -1241,7 +1241,7 @@ def test_a_vscode_terminal_still_reads_its_own_host_profile():
 
 
 def test_the_probe_host_order_follows_the_console_the_user_typed_into(monkeypatch):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     monkeypatch.setattr(studio_cmd.shutil, "which", lambda name: f"C:/{name}")
 
@@ -1330,7 +1330,7 @@ def test_the_parity_workflow_runs_when_the_studio_command_changes():
 
 
 def test_the_parity_job_installs_what_this_suite_imports():
-    """Three tests here import nexus_cli.commands.studio, which pulls typer -> pyyaml ->
+    """Three tests here import spartan_agent_cli.commands.studio, which pulls typer -> pyyaml ->
     pydantic -> click. The job installed pip and pytest only, so on a clean setup-python it
     died with ModuleNotFoundError before a single test ran, on both matrix legs."""
     workflow = (
@@ -1380,7 +1380,7 @@ def test_the_probe_output_is_decoded_lossily():
 def test_a_non_ascii_banner_does_not_cost_the_proxy(monkeypatch):
     # The decode is the parent's job, so this drives the extractor with the mangled text the
     # lossy decode produces: the record is ASCII and has to survive whatever precedes it.
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1399,7 +1399,7 @@ def test_the_setup_child_does_not_hand_the_proxy_secret_to_its_descendants():
     copies it into $PSDefaultParameterValues, which is NOT inherited -- but the environment
     variable it read from is, so every native process setup.ps1 starts, and everything they
     start in turn, saw the plaintext credential. It is removed the moment it has been read."""
-    from nexus_cli.commands.studio import _PS_PROXY_DEFAULTS_PRELUDE
+    from spartan_agent_cli.commands.studio import _PS_PROXY_DEFAULTS_PRELUDE
 
     prelude = _PS_PROXY_DEFAULTS_PRELUDE
     read_at = prelude.find("$env:_UNSLOTH_PS_PROXY_DEFAULTS")
@@ -1420,7 +1420,7 @@ def test_the_probe_adds_the_callers_host_profile_beside_the_current_host_one(mon
     every VS Code integrated terminal, so substitution robbed a plain pwsh terminal there of the
     only profile it has. Named hosts only, since a directory-wide sweep of
     Microsoft.*_profile.ps1 ran profiles for hosts nobody was using."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     probe = studio_cmd._PS_PROXY_PROBE
     assert "$env:_UNSLOTH_PS_HOST_PROFILE" in probe
@@ -1456,7 +1456,7 @@ def test_the_probe_loads_the_all_users_profiles_in_startup_order():
     user's own profile never mentions it, so sourcing only the current-user pair reported no
     proxy on exactly the locked-down host that has one. Order is part of the fix: the user's
     profile is entitled to override the machine's, which it only does if it runs last."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE as probe
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE as probe
 
     assert "$PROFILE.AllUsersAllHosts" in probe
     assert "Split-Path -Parent $PROFILE.AllUsersCurrentHost" in probe
@@ -1476,7 +1476,7 @@ def test_the_probe_clears_profile_defaults_before_it_serializes():
     two that emit the record. ConvertTo-Json:AsArray = $true is a legitimate setting and it
     turns the payload into a JSON array, which the reader rejects for not being a dictionary --
     dropping the caller's proxy on the host that needed it. $out already holds copies."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE as probe
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE as probe
 
     assert "$PSDefaultParameterValues = @{}" in probe
     # After the table has been read, and before anything is written.
@@ -1492,7 +1492,7 @@ def test_a_script_block_proxy_default_is_evaluated_not_dropped():
     Invoke-WebRequest evaluates it per call, so the caller downloads fine while the handoff
     silently omitted it. Both serializers evaluate the block and carry the RESULT -- executable
     code must not cross into the child."""
-    from nexus_cli.commands.studio import _PS_PROXY_PROBE
+    from spartan_agent_cli.commands.studio import _PS_PROXY_PROBE
 
     assert "[scriptblock]" in _PS_PROXY_PROBE
     assert "& $v" in _PS_PROXY_PROBE, "the block has to be invoked, not serialized"
@@ -1527,7 +1527,7 @@ def test_an_installer_launch_with_no_proxy_still_skips_the_probe(monkeypatch):
 def test_the_profile_probe_shares_one_timeout_across_hosts(monkeypatch):
     """Both editions installed and both profiles hung meant two full timeouts back to back, so
     every standalone setup stalled for twice the cost the helper documents."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     budget = 0.4
     monkeypatch.setattr(studio_cmd, "_PROFILE_PROBE_TIMEOUT_SECONDS", budget)
@@ -1557,7 +1557,7 @@ def test_the_probe_child_runs_with_no_profile(monkeypatch):
     run, and the profiles the caller's session would have loaded ($PROFILE.CurrentUserAllHosts
     plus its host profile) are dot-sourced by name -- $PROFILE is fully populated under
     -NoProfile because the paths are computed, not loaded."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     seen: list[list[str]] = []
 
@@ -1606,7 +1606,7 @@ def test_disjoint_wildcard_families_from_two_hosts_both_survive(monkeypatch):
     """Assuming every wildcard pair overlaps threw away entries that provably cannot: a
     higher-priority Start-Bits* dropped the other host's Invoke-Web*, so setup was left without
     the proxy Invoke-WebRequest needs on a locked-down box."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):
@@ -1640,13 +1640,13 @@ def test_disjoint_wildcard_families_from_two_hosts_both_survive(monkeypatch):
     ],
 )
 def test_two_command_patterns_overlap_exactly_when_a_name_matches_both(left, right, overlaps):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
     assert studio_cmd._patterns_can_overlap(left, right) is overlaps
     assert studio_cmd._patterns_can_overlap(right, left) is overlaps
 
 
 def _windows_probe_env(monkeypatch, host, module_path):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     monkeypatch.setattr(studio_cmd.platform, "system", lambda: "Windows")
     monkeypatch.setenv("SystemRoot", r"C:\Windows")
@@ -1697,7 +1697,7 @@ def test_the_pwsh_probe_keeps_the_inherited_module_path(monkeypatch):
 def test_the_probe_reads_the_module_path_windows_actually_exports(monkeypatch):
     """dict(os.environ) on Windows is keyed PSMODULEPATH and a plain dict is case-sensitive, so
     reading "PSModulePath" dropped the caller's entries and added a second, case-differing key."""
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     monkeypatch.setattr(studio_cmd.platform, "system", lambda: "Windows")
     monkeypatch.setenv("SystemRoot", r"C:\Windows")
@@ -1711,7 +1711,7 @@ def test_the_probe_reads_the_module_path_windows_actually_exports(monkeypatch):
 
 
 def test_the_module_path_is_untouched_off_windows(monkeypatch):
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     monkeypatch.setattr(studio_cmd.platform, "system", lambda: "Linux")
     monkeypatch.setenv("PSModulePath", _PS7_MODULE_PATH)
@@ -1721,7 +1721,7 @@ def test_the_module_path_is_untouched_off_windows(monkeypatch):
 
 def test_each_probed_host_gets_its_own_module_path(monkeypatch):
     # The wiring: the repair is per host, so the env has to be built from the host being run.
-    from nexus_cli.commands import studio as studio_cmd
+    from spartan_agent_cli.commands import studio as studio_cmd
 
     class _Result:
         def __init__(self, stdout):

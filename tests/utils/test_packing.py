@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from nexus import FastLanguageModel
-import nexus.trainer as trainer_module
-import nexus.utils.packing as packing_module
-from nexus.utils import attention_dispatch as attention_dispatch_utils
-from nexus.utils.packing import (
+from spartan_agent import FastLanguageModel
+import spartan_agent.trainer as trainer_module
+import spartan_agent.utils.packing as packing_module
+from spartan_agent.utils import attention_dispatch as attention_dispatch_utils
+from spartan_agent.utils.packing import (
     configure_padding_free,
     configure_sample_packing,
     enable_padding_free_metadata,
@@ -112,7 +112,7 @@ def _build_packed_training_setup(tmp_path, device):
         if torch.is_tensor(value):
             batch[key] = value.to(model_device)
 
-    from nexus.models import llama as llama_mod
+    from spartan_agent.models import llama as llama_mod
 
     return model, batch, trainer, llama_mod
 
@@ -1218,7 +1218,7 @@ def test_wrapped_packing_injection_is_drift_resistant(monkeypatch):
     # _unsloth_pack_has_strategy instead of re-calling _inspect.signature(pack_dataset).
     import ast
     import textwrap
-    import nexus.models.rl_replacements as rlr
+    import spartan_agent.models.rl_replacements as rlr
 
     monkeypatch.setitem(rlr.RL_REPLACEMENTS, "sft_prepare_dataset", sft_prepare_dataset)
 
@@ -1243,7 +1243,7 @@ def test_wrapped_packing_injection_is_drift_resistant(monkeypatch):
 
 
 def test_require_replace_raises_on_missing_anchor():
-    from nexus.models.rl_replacements import _require_replace
+    from spartan_agent.models.rl_replacements import _require_replace
 
     assert _require_replace("abc", "b", "B") == "aBc"
     with pytest.raises(RuntimeError):

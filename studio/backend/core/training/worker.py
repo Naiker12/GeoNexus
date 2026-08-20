@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -5011,7 +5011,7 @@ def _run_embedding_training(event_queue: Any, stop_queue: Any, config: dict) -> 
         from core.import_guards import ensure_real_packages
 
         ensure_real_packages("unsloth_zoo", "unsloth")
-        from nexus import FastSentenceTransformer, is_bfloat16_supported
+        from spartan_agent import FastSentenceTransformer, is_bfloat16_supported
         from sentence_transformers import (
             SentenceTransformerTrainer,
             SentenceTransformerTrainingArguments,

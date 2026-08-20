@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-# Copyright 2026-present Spartan Agents. All rights reserved.
+# Copyright 2026-present Spartan Agent. All rights reserved.
 #
-# Spartan Agents uninstaller for Windows PowerShell. Run -Help for details.
+# Spartan Agent uninstaller for Windows PowerShell. Run -Help for details.
 #
 # Usage: run -Help.
 
@@ -15,7 +15,7 @@ function Uninstall-SpartanStudio {
 
     function _Usage {
         Write-Host @'
-Spartan Agents uninstaller (Windows PowerShell).
+Spartan Agent uninstaller (Windows PowerShell).
 
 Usage:
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\scripts\uninstall.ps1

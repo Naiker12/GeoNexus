@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Fake CPU training runs for the Unsloth-patched SFT / GRPO / DPO trainers.
 
@@ -238,9 +238,9 @@ def _require_stack(_cpu_only_torch):
     if importlib.util.find_spec("unsloth") is None or importlib.util.find_spec("trl") is None:
         pytest.skip("unsloth or trl not installed")
     # A real import failure is a regression we want to surface, so do not guard it.
-    import nexus  # noqa: F401  -- patches TRL trainers to the Unsloth variants
+    import spartan_agent  # noqa: F401  -- patches TRL trainers to the Unsloth variants
 
-    # `import nexus` reinstalls the real torch.compile (overwriting the eager
+    # `import spartan_agent` reinstalls the real torch.compile (overwriting the eager
     # passthrough set at module load), so the GRPO hot path (chunked_selective_
     # log_softmax) would really compile -- and inductor picks the spoofed CUDA
     # device, crashing on device props (`gcnArchName`). Re-apply the eager

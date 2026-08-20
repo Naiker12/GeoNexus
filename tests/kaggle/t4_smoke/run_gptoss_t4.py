@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """gpt-oss-20b LoRA on a single T4: does the compile-and-offload path hold?
@@ -210,7 +210,7 @@ def build_dataset(tokenizer, rows: list[dict]):
 
 def train_and_infer(args) -> dict:
     import torch
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
 
     result: dict = {}
 

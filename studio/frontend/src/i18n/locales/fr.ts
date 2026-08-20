@@ -80,8 +80,8 @@ export const fr = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "Menu du compte de {name}",
     updateAvailable: "Mise à jour disponible",
     resize: {
@@ -1355,7 +1355,7 @@ export const fr = {
       title: "À propos",
       description:
         "Documentation, notes de version, retours et informations de compilation.",
-      studioVersion: "Version d'Nexus",
+      studioVersion: "Version d'Spartan Agent",
       packageVersion: "Version du paquet",
       desktopAppVersion: "Version de l’application de bureau",
       desktopAppVersionUnavailable: "Indisponible",
@@ -1374,7 +1374,7 @@ export const fr = {
       reportIssue: "Signaler un problème",
       license: {
         sectionTitle: "Licence",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "Open source sous licence GNU AGPL v3.0.",
         libraryLabel: "Spartan Core",

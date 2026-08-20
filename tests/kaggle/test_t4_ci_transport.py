@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """What the kernel builder generates and what the launcher can read back.
@@ -230,7 +230,7 @@ def test_a_shared_argument_does_not_override_a_legs_own_option():
 
 
 def test_a_probe_failure_is_reported_as_a_failed_payload(tmp_path, monkeypatch):
-    """A commit that breaks `import nexus` must not exit green.
+    """A commit that breaks `import spartan_agent` must not exit green.
 
     The probe raises before the run cell can write a report, so without one of
     its own the launcher extracts nothing, calls the run `infra` and passes on a

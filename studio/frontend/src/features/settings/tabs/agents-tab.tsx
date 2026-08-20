@@ -134,13 +134,13 @@ const SUPPORTED_AGENTS: AgentDetails[] = [
   {
     id: "claude",
     name: "Claude Code",
-    docsUrl: "https://github.com/Naiker12/GeoNexus",
+    docsUrl: "https://github.com/Naiker12/Spartan-Agent",
     logo: "anthropic",
   },
   {
     id: "codex",
     name: "OpenAI Codex",
-    docsUrl: "https://github.com/Naiker12/GeoNexus",
+    docsUrl: "https://github.com/Naiker12/Spartan-Agent",
     logo: "openai",
   },
 ];

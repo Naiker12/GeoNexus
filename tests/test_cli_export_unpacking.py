@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Regression tests for unsloth_cli.commands.export: pin the CLI to the export_* 3-tuple contract (was unpacking 2, crashing every `unsloth export`) via a fake ExportBackend in sys.modules."""
@@ -57,7 +57,7 @@ def _install_fake_studio_backend(monkeypatch: pytest.MonkeyPatch) -> None:
 def cli_app(monkeypatch: pytest.MonkeyPatch) -> typer.Typer:
     """Typer app wrapping unsloth_cli.commands.export.export."""
     _install_fake_studio_backend(monkeypatch)
-    from nexus_cli.commands import export as export_cmd
+    from spartan_agent_cli.commands import export as export_cmd
 
     app = typer.Typer()
     app.command("export")(export_cmd.export)

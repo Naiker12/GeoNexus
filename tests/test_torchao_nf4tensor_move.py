@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ on the new torchao.
 
 Built like the vLLM tokenizer stub beside it: a meta path finder APPENDED after
 the real ones, so an older torchao that still ships the module wins, and
-resolution is lazy so `import nexus` pays nothing.
+resolution is lazy so `import spartan_agent` pays nothing.
 
 The layouts are real package trees written to tmp_path and imported in a
 SUBPROCESS. Stubbing `sys.modules` would test the stub; this tests the import
@@ -150,7 +150,7 @@ def test_neither_layout_still_raises(tmp_path):
 
 
 def test_it_is_idempotent(tmp_path):
-    """`import nexus` twice, or a re-import, must not stack finders."""
+    """`import spartan_agent` twice, or a re-import, must not stack finders."""
     _make_torchao(tmp_path, old = False, new = True)
     r = _run(
         tmp_path,
@@ -189,7 +189,7 @@ def test_no_torchao_means_no_finder(tmp_path):
 
 
 def test_it_does_not_import_torchao_eagerly(tmp_path):
-    """Calling the fix must not drag torchao into every `import nexus`,
+    """Calling the fix must not drag torchao into every `import spartan_agent`,
     which on some builds is seconds and a CUDA probe."""
     _make_torchao(tmp_path, old = False, new = True)
     r = _run(

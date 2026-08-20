@@ -1,9 +1,9 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Unsloth macOS tab-capability Playwright test.
 
-Covers the two field failures from nexus Desktop 0.1.524-beta on Apple Silicon:
+Covers the two field failures from spartan_agent Desktop 0.1.524-beta on Apple Silicon:
 
 1. The Train and Video sidebar rows rendered blacked out for minutes after launch,
    then came back. The store seeded chat-only from a browser-UA guess, so on a Mac

@@ -14,8 +14,8 @@ import {
 
 const UNREACHABLE_PROFILE = /cannot reach your user folder/;
 const UPDATE_ADVICE = /studio update/;
-const MANAGED_TOO_OLD = /Managed (Spartan|Nexus|Unsloth) install is too old/;
-const OWNED_TOO_OLD = /Desktop-owned (Spartan|Nexus|Unsloth) backend is too old/;
+const MANAGED_TOO_OLD = /Managed (Spartan|Spartan Agent|Unsloth) install is too old/;
+const OWNED_TOO_OLD = /Desktop-owned (Spartan|Spartan Agent|Unsloth) backend is too old/;
 const TOO_OLD = /too old/;
 
 test("an unreachable profile is not reported as an outdated install", () => {
@@ -94,6 +94,6 @@ test("the setting that could not be resolved is named", () => {
   assert.match(named, /full path/);
   // Without a name it still reads as a sentence, and still is not an update.
   const unnamed = preflightStaleMessage("managed_stale", PATH_SETTING_UNRESOLVABLE);
-  assert.match(unnamed, /One of (Spartan|Nexus|Unsloth)'s folder settings points/);
+  assert.match(unnamed, /One of (Spartan|Spartan Agent|Unsloth)'s folder settings points/);
   assert.doesNotMatch(unnamed, UPDATE_ADVICE);
 });

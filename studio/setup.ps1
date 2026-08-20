@@ -1,9 +1,9 @@
 #Requires -Version 5.1
 # SPDX-License-Identifier: AGPL-3.0-only
-# Copyright 2026-present Spartan Agents. All rights reserved.
+# Copyright 2026-present Spartan Agent. All rights reserved.
 <#
 .SYNOPSIS
-    Full environment setup for Spartan Agents on Windows (bundled version).
+    Full environment setup for Spartan Agent on Windows (bundled version).
 .DESCRIPTION
     Uses an isolated, managed Node.js for the frontend build when the
     system Node/npm do not meet requirements (never modifies the system Node).

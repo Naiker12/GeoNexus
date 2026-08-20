@@ -1,4 +1,4 @@
-﻿import importlib.util
+import importlib.util
 import asyncio
 import hashlib
 import json
@@ -676,7 +676,7 @@ def test_desktop_login_rejects_invalid_secret():
 
 
 def test_write_desktop_secret_file_is_0600_on_unix(tmp_path):
-    from nexus_cli.commands import studio as studio_cli
+    from spartan_agent_cli.commands import studio as studio_cli
 
     path = tmp_path / ".desktop_secret"
     if platform.system() != "Windows":
@@ -692,7 +692,7 @@ def test_write_desktop_secret_file_is_0600_on_unix(tmp_path):
 
 def test_reset_password_removes_desktop_secret_files(tmp_path, monkeypatch):
     from typer.testing import CliRunner
-    from nexus_cli.commands import studio as studio_cli
+    from spartan_agent_cli.commands import studio as studio_cli
 
     from auth import storage as auth_storage
     from storage import credential_secrets
@@ -751,7 +751,7 @@ def test_reset_password_removes_desktop_secret_files(tmp_path, monkeypatch):
 
 def test_reset_password_removes_desktop_secret_files_without_db(tmp_path, monkeypatch):
     from typer.testing import CliRunner
-    from nexus_cli.commands import studio as studio_cli
+    from spartan_agent_cli.commands import studio as studio_cli
 
     auth_dir = tmp_path / "auth"
     auth_dir.mkdir()
@@ -766,7 +766,7 @@ def test_reset_password_removes_desktop_secret_files_without_db(tmp_path, monkey
 
 def test_desktop_capabilities_json_reports_rollout_safe_flags():
     from typer.testing import CliRunner
-    import nexus_cli.commands.studio as studio_cli
+    import spartan_agent_cli.commands.studio as studio_cli
 
     result = CliRunner().invoke(
         studio_cli.studio_app,
@@ -902,7 +902,7 @@ def guarded_import(name, globals = None, locals = None, fromlist = (), level = 0
     return real_import(name, globals, locals, fromlist, level)
 
 builtins.__import__ = guarded_import
-from nexus_cli.commands import studio as studio_cli
+from spartan_agent_cli.commands import studio as studio_cli
 
 studio_cli.STUDIO_HOME = studio_home
 result = CliRunner().invoke(studio_cli.studio_app, ["provision-desktop-auth"])
@@ -965,7 +965,7 @@ if result.exit_code != 0:
 
 def test_provision_desktop_auth_keeps_existing_admin_password(tmp_path, monkeypatch):
     from typer.testing import CliRunner
-    from nexus_cli.commands import studio as studio_cli
+    from spartan_agent_cli.commands import studio as studio_cli
 
     auth_dir = tmp_path / "auth"
     auth_dir.mkdir()

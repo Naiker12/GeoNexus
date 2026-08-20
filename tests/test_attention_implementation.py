@@ -1,9 +1,9 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
-import nexus  # noqa: F401
+import spartan_agent  # noqa: F401
 from transformers.utils import import_utils
 
-from nexus.models import _utils
+from spartan_agent.models import _utils
 
 
 class SupportsFlexAndSdpa:

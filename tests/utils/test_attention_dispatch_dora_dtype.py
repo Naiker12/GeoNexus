@@ -1,10 +1,10 @@
-﻿"""Regression test for unslothai/unsloth#1013: run_attention must downcast DoRA's
+"""Regression test for unslothai/unsloth#1013: run_attention must downcast DoRA's
 fp32 q/k/v for FlashAttention while leaving already-16bit tensors untouched."""
 
 import torch
-import nexus  # noqa: F401
+import spartan_agent  # noqa: F401
 
-from nexus.utils import attention_dispatch as ad
+from spartan_agent.utils import attention_dispatch as ad
 
 
 def _run(monkeypatch, qkv_dtype, backend):

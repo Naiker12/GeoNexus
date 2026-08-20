@@ -1,10 +1,10 @@
-﻿"""Regression test for unsloth#4202: detect missing torchvision so the loader can
+"""Regression test for unsloth#4202: detect missing torchvision so the loader can
 surface the real cause instead of a misleading collator error."""
 
 import importlib.util
 from unittest import mock
 
-from nexus.models.vision import _missing_torchvision_error
+from spartan_agent.models.vision import _missing_torchvision_error
 
 
 def test_error_text_mentions_torchvision_is_detected():

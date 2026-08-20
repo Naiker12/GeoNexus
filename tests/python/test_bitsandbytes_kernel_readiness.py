@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """`ALLOW_BITSANDBYTES` must follow the kernels, not the mere presence of the module.
@@ -147,7 +147,7 @@ def test_device_type_gates_the_flags_on_the_kernels():
 def test_the_ctypes_binds_are_gated_on_the_same_verdict():
     """Clearing the flag is not enough on its own: ``bnb is None`` alone let an
     importable-but-dead wheel reach the binds, and 0.45.5 sets ``functional.lib = None``
-    on a native-load failure, so they killed ``import nexus`` outright instead of
+    on a native-load failure, so they killed ``import spartan_agent`` outright instead of
     degrading to 16bit."""
     source = (REPO_ROOT / "unsloth" / "kernels" / "utils.py").read_text(encoding = "utf-8")
     assert "from ..bnb_availability import native_kernels_ready" in source

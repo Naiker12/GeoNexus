@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Regression guard for issue #6881: FastSentenceTransformer must preprocess text
 like a stock SentenceTransformer for decoder embedding models. ST 5.x infers a
@@ -92,8 +92,8 @@ def test_fast_sentence_transformer_matches_stock_st():
         ctrl.encode(texts, normalize_embeddings = True, batch_size = 8), dtype = np.float32
     )
 
-    import nexus  # noqa: F401
-    from nexus import FastSentenceTransformer
+    import spartan_agent  # noqa: F401
+    from spartan_agent import FastSentenceTransformer
 
     fast = FastSentenceTransformer.from_pretrained(
         model_id,

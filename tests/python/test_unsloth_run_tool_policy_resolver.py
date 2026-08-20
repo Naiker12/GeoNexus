@@ -1,4 +1,4 @@
-﻿# Copyright 2025-present the Unsloth AI Inc. team. All rights reserved.
+# Copyright 2025-present the Unsloth AI Inc. team. All rights reserved.
 
 """Truth-table tests for `resolve_tool_policy`: no flag installs no process-wide
 OVERRIDE on any bind (loopback, --secure tunnel, raw network), so a request's own
@@ -8,7 +8,7 @@ wins, and the resolver never prompts (yes/silent/prompt kept for compatibility).
 
 import pytest
 
-from nexus_cli._tool_policy import is_external_host, resolve_tool_policy
+from spartan_agent_cli._tool_policy import is_external_host, resolve_tool_policy
 
 
 def _never_prompt(_msg: str) -> bool:

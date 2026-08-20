@@ -1,4 +1,4 @@
-﻿"""AST-based tests that `unsloth run` is registered as a top-level alias for `unsloth studio run`."""
+"""AST-based tests that `unsloth run` is registered as a top-level alias for `unsloth studio run`."""
 
 from __future__ import annotations
 
@@ -60,5 +60,5 @@ def test_studio_run_imported_for_alias():
                 break
     assert (
         has_import
-    ), "Expected `from nexus_cli.commands.studio import run` in unsloth_cli/__init__.py"
+    ), "Expected `from spartan_agent_cli.commands.studio import run` in unsloth_cli/__init__.py"
 

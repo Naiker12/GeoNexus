@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -2964,7 +2964,7 @@ def _determine_attention_impl_for_gpu_estimate(config) -> str:
     except ImportError:
         pass
 
-    from nexus.models._utils import resolve_attention_implementation
+    from spartan_agent.models._utils import resolve_attention_implementation
     from transformers import AutoModel, AutoModelForCausalLM
 
     # why: resolve_attention_implementation writes _attn_implementation onto the
@@ -4076,7 +4076,7 @@ def _shared_policy():
     """The shared num_proc policy module, or None on an installation without it.
 
     The Zoo owns it. ``unsloth.dataset_num_proc`` is a byte-identical fallback
-    for a Zoo that predates the module. ``import nexus.dataset_num_proc``
+    for a Zoo that predates the module. ``import spartan_agent.dataset_num_proc``
     would run the package __init__, which patches torch and loads the model
     stack -- unacceptable from inside hardware detection -- so that form is used
     only when the package is already imported. Otherwise the file is loaded
@@ -4092,7 +4092,7 @@ def _shared_policy():
         pass
     if "unsloth" in sys.modules:
         try:
-            import nexus.dataset_num_proc as policy
+            import spartan_agent.dataset_num_proc as policy
             return policy
         except Exception as e:
             logger.debug("local dataset_num_proc fallback unavailable: %s", e)

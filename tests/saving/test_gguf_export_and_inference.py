@@ -1,4 +1,4 @@
-﻿"""GPU smoke test for the llama.cpp (GGUF) export path.
+"""GPU smoke test for the llama.cpp (GGUF) export path.
 
 Trains a tiny LoRA to imprint a distinctive phrase, exports a full-model q8_0 GGUF via
 `save_pretrained_gguf` (merge -> convert_hf_to_gguf -> llama-quantize), then:
@@ -24,7 +24,7 @@ import threading
 import pytest
 import torch
 
-from nexus import FastLanguageModel
+from spartan_agent import FastLanguageModel
 
 pytestmark = pytest.mark.skipif(
     not torch.cuda.is_available(),

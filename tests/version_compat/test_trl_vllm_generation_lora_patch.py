@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Behavioural check on `vllm_generation_init_patch()` across TRL `generate` shapes.
 
@@ -140,7 +140,7 @@ class FakeEngine:
 
 
 def _rl_replacements():
-    from nexus.models import rl_replacements
+    from spartan_agent.models import rl_replacements
     return rl_replacements
 
 

@@ -1,4 +1,4 @@
-# Spartan Agents Installer for Windows PowerShell
+# Spartan Agent Installer for Windows PowerShell
 #
 # Usage, options and configuration: see the repository README
 #
@@ -7,7 +7,7 @@
 # local run takes the equivalent flags (--no-torch, --skip-autostart, --python, --local).
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-# Copyright 2026-present Spartan Agents. All rights reserved.
+# Copyright 2026-present Spartan Agent. All rights reserved.
 function Install-SpartanStudio {
     $ErrorActionPreference = "Stop"
 

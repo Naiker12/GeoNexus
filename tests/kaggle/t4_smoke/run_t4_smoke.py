@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Deterministic Unsloth training smoke test, sized for a single Tesla T4.
@@ -240,7 +240,7 @@ def pin_initial_loss_scale(trainer, value: float) -> dict:
 def train_once(args, run_index: int) -> dict:
     """One full load / train / save / infer cycle. Returns a result dict."""
     import torch
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
 
     if args.force_sdpa:
         # LOCAL REPRODUCTION ONLY, never on the target hardware. Unsloth prefers
@@ -253,7 +253,7 @@ def train_once(args, run_index: int) -> dict:
         # impossible to reproduce on such a box. Forcing SDPA changes the
         # numeric path, so a local run under it is evidence about the HARNESS,
         # not about T4 numerics.
-        from nexus.utils import attention_dispatch
+        from spartan_agent.utils import attention_dispatch
         attention_dispatch.HAS_XFORMERS = False
         _log("force-sdpa: HAS_XFORMERS pinned False (local repro only)")
 
@@ -813,7 +813,7 @@ def environment_fingerprint() -> dict:
     except Exception:  # noqa: BLE001
         pass
     try:
-        import nexus
+        import spartan_agent
         info["unsloth"] = getattr(unsloth, "__version__", "unknown")
     except Exception:  # noqa: BLE001
         pass

@@ -1,4 +1,4 @@
-﻿# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
+# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ import urllib.request
 
 import pytest
 
-from nexus.import_fixes import (
+from spartan_agent.import_fixes import (
     _get_vllm_cuda_mismatch_message,
     _get_vllm_wheel_url,
     _VLLM_WHEEL_ASSETS,
@@ -206,7 +206,7 @@ def _mismatch_message(
     soname = 13,
 ):
     import platform as _platform
-    import nexus.import_fixes as import_fixes
+    import spartan_agent.import_fixes as import_fixes
 
     monkeypatch.setattr(_platform, "machine", lambda: machine)
     monkeypatch.setattr(_platform, "system", lambda: system)
@@ -278,7 +278,7 @@ def test_matching_cuda_is_not_reported_as_a_mismatch(monkeypatch):
 
 
 def test_unrelated_error_is_not_reported_as_a_mismatch(monkeypatch):
-    import nexus.import_fixes as import_fixes
+    import spartan_agent.import_fixes as import_fixes
     assert (
         import_fixes._get_vllm_cuda_mismatch_message(
             ImportError("vllm._C: undefined symbol: _ZN3c108ListType3ofTsEv")

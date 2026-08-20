@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from nexus_cli import _studio_runtime_gate as gate
+from spartan_agent_cli import _studio_runtime_gate as gate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -95,7 +95,7 @@ def test_terminal_setup_holds_the_gate_through_environment_mutation():
 
 
 def test_interrupted_windows_setup_kills_tree_before_return(monkeypatch):
-    from nexus_cli.commands import studio as studio_command
+    from spartan_agent_cli.commands import studio as studio_command
 
     events = []
 

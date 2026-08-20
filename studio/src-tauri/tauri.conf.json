@@ -1,6 +1,6 @@
 {
-  "productName": "Spartan Agents",
-  "identifier": "com.spartanagents.studio",
+  "productName": "Spartan Agent",
+  "identifier": "com.spartanagent.studio",
   "build": {
     "beforeDevCommand": {
       "cwd": "../frontend",
@@ -21,7 +21,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Spartan Agents",
+        "title": "Spartan Agent",
         "width": 760,
         "height": 560,
         "center": true,
@@ -37,13 +37,13 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["nexus", "geonexus"]
+        "schemes": ["spartan_agent", "spartan-agent"]
       }
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBQzA4RjczODM0RjE1QjcKUldTM0ZVK0RjNC9BR2t4R0RVaFR5cTkyUlRVQ1FwaGV0Nk04eWNwWXBhZnlzalJydllmZm1QTS8K",
       "endpoints": [
-        "https://github.com/Naiker12/GeoNexus/releases/latest/download/latest.json"
+        "https://github.com/Naiker12/Spartan-Agent/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"
@@ -53,9 +53,9 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,
-    "publisher": "Spartan Agents",
-    "homepage": "https://github.com/Naiker12/GeoNexus",
-    "copyright": "© 2026 Spartan Agents. All rights reserved.",
+    "publisher": "Spartan Agent",
+    "homepage": "https://github.com/Naiker12/Spartan-Agent",
+    "copyright": "© 2026 Spartan Agent. All rights reserved.",
     "license": "AGPL-3.0-only",
     "targets": ["app", "appimage", "deb", "dmg", "nsis"],
     "icon": [
@@ -88,10 +88,10 @@
         }
       },
       "deb": {
-        "desktopTemplate": "./linux/nexus.desktop",
-        "provides": ["nexus-studio-desktop"],
-        "conflicts": ["nexus-studio-desktop"],
-        "replaces": ["nexus-studio-desktop"],
+        "desktopTemplate": "./linux/spartan-agent.desktop",
+        "provides": ["spartan-agent-studio-desktop"],
+        "conflicts": ["spartan-agent-studio-desktop"],
+        "replaces": ["spartan-agent-studio-desktop"],
         "postRemoveScript": "./linux/postremove.sh"
       }
     }

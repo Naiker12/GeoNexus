@@ -1,8 +1,8 @@
 [package]
-name = "nexus-studio"
+name = "spartan_agent-studio"
 version = "1.0.0"
-description = "Nexus Desktop App"
-authors = ["Nexus"]
+description = "Spartan Agent Desktop App"
+authors = ["Spartan Agent"]
 edition = "2021"
 # std::fs::File::lock, used for the desktop ownership id.
 rust-version = "1.89"

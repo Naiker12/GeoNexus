@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import torch
 # errors instead of producing a skip. Any other import error still surfaces as a failure.
 pytest.importorskip("bitsandbytes")
 
-import nexus  # noqa: F401  (sets UNSLOTH_IS_PRESENT before transformers)
-from nexus.kernels.utils import get_lora_parameters_bias, _FP8_WEIGHT_DTYPES
+import spartan_agent  # noqa: F401  (sets UNSLOTH_IS_PRESENT before transformers)
+from spartan_agent.kernels.utils import get_lora_parameters_bias, _FP8_WEIGHT_DTYPES
 
 _FP8 = _FP8_WEIGHT_DTYPES[0] if _FP8_WEIGHT_DTYPES else None
 

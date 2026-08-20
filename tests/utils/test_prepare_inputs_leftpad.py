@@ -1,4 +1,4 @@
-﻿"""Regression guard for batched left-padded generation (issues #1066, #3699).
+"""Regression guard for batched left-padded generation (issues #1066, #3699).
 
 Guards `_fast_prepare_inputs_for_generation` (unsloth/models/llama.py),
 shared by every decoder family wired through fix_prepare_inputs_for_generation,
@@ -294,7 +294,7 @@ class FakeModelWith4DMask(FakeModel):
 
 
 def _prepare(model, input_ids, attention_mask, **kwargs):
-    from nexus.models import llama as llama_mod
+    from spartan_agent.models import llama as llama_mod
     return llama_mod._fast_prepare_inputs_for_generation(
         model, input_ids, attention_mask = attention_mask, **kwargs
     )

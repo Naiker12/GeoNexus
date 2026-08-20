@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT))
 
 import torch  # noqa: E402
 
-from nexus.save import _offloaded_parameter_hint  # noqa: E402
+from spartan_agent.save import _offloaded_parameter_hint  # noqa: E402
 
 
 class _Model:

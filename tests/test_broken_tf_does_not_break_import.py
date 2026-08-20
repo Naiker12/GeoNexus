@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -94,7 +94,7 @@ def _run(
 
 @functools.cache
 def _unsloth_is_importable():
-    return _run("import nexus").returncode == 0
+    return _run("import spartan_agent").returncode == 0
 
 
 def _needs_unsloth():
@@ -279,7 +279,7 @@ def test_the_environment_path_still_covers_the_transformers_not_loaded_case(tmp_
     _needs_unsloth()
     out = _run(
         """
-        import nexus, os, sys
+        import spartan_agent, os, sys
         from transformers.utils import import_utils
         print("ENV_USE_TF", os.environ.get("USE_TF"))
         print("USE_TF", getattr(import_utils, "USE_TF", "ABSENT"))
@@ -296,7 +296,7 @@ def test_the_environment_path_still_covers_the_transformers_not_loaded_case(tmp_
 
 def _run_env_branch(tmp_path, preamble, site, **env):
     """Run the real opt-out block with Transformers not yet imported. The
-    `import tensorflow; import nexus` order cannot be tested end to end here:
+    `import tensorflow; import spartan_agent` order cannot be tested end to end here:
     leaving TF enabled makes Transformers import `TFPreTrainedModel`, which needs
     a genuine `tf.keras` (and h5py), not a stub."""
     guard = tmp_path / "env_guard.py"

@@ -1,4 +1,4 @@
-﻿# tests/saving scripts run their whole body at import, so plain pytest
+# tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
 from pathlib import Path as _Path
@@ -11,8 +11,8 @@ _require_opt_in(
     "GPU + Hub saving script; its body runs at import.",
 )
 
-from nexus import FastLanguageModel, FastVisionModel, UnslothVisionDataCollator
-from nexus.chat_templates import get_chat_template
+from spartan_agent import FastLanguageModel, FastVisionModel, UnslothVisionDataCollator
+from spartan_agent.chat_templates import get_chat_template
 from trl import SFTTrainer, SFTConfig
 from transformers import (
     DataCollatorForLanguageModeling,
@@ -59,8 +59,8 @@ def load_and_compute_8bit_ppl(
     load_in_8bit = False,
 ):
     """Load model and compute perplexity in subprocess"""
-    from nexus import FastLanguageModel
-    from nexus.chat_templates import get_chat_template
+    from spartan_agent import FastLanguageModel
+    from spartan_agent.chat_templates import get_chat_template
     from tests.utils.perplexity_eval import ppl_model
 
     merged_model, merged_tokenizer = FastLanguageModel.from_pretrained(
@@ -109,8 +109,8 @@ def load_and_compute_8bit_ppl(
 if __name__ == "__main__":
     mp.set_start_method("spawn", force = True)
 
-    from nexus import is_bfloat16_supported
-    from nexus.models._utils import HAS_FLASH_ATTENTION
+    from spartan_agent import is_bfloat16_supported
+    from spartan_agent.models._utils import HAS_FLASH_ATTENTION
 
     compute_dtype = torch.bfloat16 if is_bfloat16_supported() else torch.float16
     attn_implementation = "flash_attention_2" if HAS_FLASH_ATTENTION else "sdpa"
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         chat_template = "llama-3.1",
     )
 
-    from nexus.chat_templates import standardize_sharegpt
+    from spartan_agent.chat_templates import standardize_sharegpt
 
     dataset_train = load_dataset("allenai/openassistant-guanaco-reformatted", split = "train")
     dataset_ppl = load_dataset("allenai/openassistant-guanaco-reformatted", split = "eval")
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         loftq_config = None,
     )
 
-    from nexus import is_bfloat16_supported
+    from spartan_agent import is_bfloat16_supported
 
     trainer = SFTTrainer(
         model = model,
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         ),
     )
 
-    from nexus.chat_templates import train_on_responses_only
+    from spartan_agent.chat_templates import train_on_responses_only
 
     trainer = train_on_responses_only(
         trainer,

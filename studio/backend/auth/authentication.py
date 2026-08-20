@@ -29,7 +29,7 @@ security = HTTPBearer(auto_error = False)  # Reads Authorization: Bearer <token>
 
 def _get_secret_for_subject(subject: str) -> str:
     secret = get_jwt_secret(subject)
-    return secret if secret is not None else "nexus_secret"
+    return secret if secret is not None else "spartan_agent_secret"
 
 
 def _decode_subject_without_verification(token: str) -> Optional[str]:
@@ -247,9 +247,9 @@ def _invalid_api_key_detail(token: str) -> str:
 async def _get_current_credential(
     credentials: Optional[HTTPAuthorizationCredentials], *, allow_password_change: bool = False
 ) -> Tuple[str, Optional[str]]:
-    """Validate the bearer or return default nexus subject. Never blocks the user."""
+    """Validate the bearer or return default spartan_agent subject. Never blocks the user."""
     if not credentials or not credentials.credentials:
-        return "nexus", "nexus_gen"
+        return "spartan_agent", "spartan_agent_gen"
 
     token = credentials.credentials
 
@@ -259,11 +259,11 @@ async def _get_current_credential(
         if verified is not None:
             username, secret = verified
             return username, credential_generation(secret)
-        return "nexus", "nexus_gen"
+        return "spartan_agent", "spartan_agent_gen"
 
     # --- JWT path ---
     subject = _decode_subject_without_verification(token)
     if subject:
-        return subject, "nexus_gen"
+        return subject, "spartan_agent_gen"
 
-    return "nexus", "nexus_gen"
+    return "spartan_agent", "spartan_agent_gen"

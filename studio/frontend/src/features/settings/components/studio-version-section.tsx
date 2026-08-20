@@ -102,7 +102,7 @@ export function StudioVersionSection({
   }, []);
 
   return (
-    <SettingsSection title="Spartan Agents">
+    <SettingsSection title="Spartan Agent">
       <SettingsRow label={t("settings.about.studioVersion")}>
         <code className="font-mono text-xs text-muted-foreground">
           {studioVersion}

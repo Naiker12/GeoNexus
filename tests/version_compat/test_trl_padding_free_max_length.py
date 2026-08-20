@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Padding-free + `max_length` handshake across TRL versions.
 
@@ -77,16 +77,16 @@ _USER_MAX_LENGTH = 64
 
 @pytest.fixture(scope = "module", autouse = True)
 def patched_sft(_cpu_only_torch):
-    """import nexus, and force both halves of the SFT patch on.
+    """import spartan_agent, and force both halves of the SFT patch on.
 
     `UNSLOTH_ALLOW_CPU=1` (which CPU-only CI sets) skips both, so ask explicitly,
     in `_gpu_init`'s order: the codegen swaps `trl.SFTTrainer` out wholesale, so
     the `__init__` wrapper has to go on afterwards. Both are no-ops once applied.
     """
     global torch  # the `import torch._dynamo` below would otherwise shadow it
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
 
-    # Through the module's MonkeyPatch: `import nexus` reinstalls the real
+    # Through the module's MonkeyPatch: `import spartan_agent` reinstalls the real
     # torch.compile over the passthrough, and dynamo's kill switch is global too.
     _cpu_only_torch.setattr(torch, "compile", _eager_compile)
     try:
@@ -98,8 +98,8 @@ def patched_sft(_cpu_only_torch):
     import trl
 
     if trl.SFTTrainer.__name__ != "UnslothSFTTrainer":
-        from nexus.models.rl import _patch_trl_rl_trainers
-        from nexus.trainer import _patch_trl_trainer
+        from spartan_agent.models.rl import _patch_trl_rl_trainers
+        from spartan_agent.trainer import _patch_trl_trainer
 
         _patch_trl_rl_trainers("sft_trainer")
         _patch_trl_trainer()
@@ -522,7 +522,7 @@ def _pristine_sft_config_cls():
 
     `PatchFastRL` rebinds `trl.SFTConfig` to `UnslothSFTConfig`, which re-adds a
     `max_seq_length` field no TRL from 0.22.2 to 1.9.2 declares. A caller who
-    imported SFTConfig before `import nexus` still passes the pristine class.
+    imported SFTConfig before `import spartan_agent` still passes the pristine class.
     """
     # Go by the marker rather than the name: the generated subclass is renamed
     # onto TRL's own name so that instances of it keep pickling, so `Unsloth`
@@ -596,7 +596,7 @@ def test_pristine_trl_config_without_max_seq_length_still_truncates(tmp_path, tr
 
 def _padding_free_codegen_block():
     """The emitted padding-free branch, sliced out of rl.py's generator."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = inspect.getsource(rl)
     start = source.index("if getattr(args, 'padding_free', False) is True")
@@ -635,7 +635,7 @@ def test_packing_keeps_max_length(tmp_path):
 
 def test_generator_only_emits_the_none_for_a_trl_that_guards():
     """The codegen edit is gated on the guard text, so old TRLs are untouched."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = inspect.getsource(rl)
     assert '"`max_length` is not enforced" in old_RLTrainer_source' in source
@@ -658,7 +658,7 @@ def test_generator_only_emits_the_none_for_a_trl_that_guards():
     ],
 )
 def test_padding_free_error_matcher(message, expected):
-    from nexus.trainer import _should_skip_auto_padding_free_error
+    from spartan_agent.trainer import _should_skip_auto_padding_free_error
     assert _should_skip_auto_padding_free_error(ValueError(message)) is expected
 
 
@@ -1062,7 +1062,7 @@ def _stub_trainer_class(prepares_late = False):
     was the base Trainer's and never prepared anything, from 1.7.0 it calls
     `_prepare_dataset` on a split passed straight to it.
     """
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -1191,7 +1191,7 @@ def test_evaluate_caps_every_split_of_a_dict():
 
 def test_wrapping_evaluate_twice_is_a_no_op():
     """The patch runs again on a second FastLanguageModel call in one process."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     Stub, _ = _stub_trainer_class()
     first = Stub.evaluate
@@ -1224,7 +1224,7 @@ def test_a_none_completion_only_loss_does_not_filter_a_pretokenized_split():
 def test_the_predict_entry_point_is_capped_too():
     """`predict(test_dataset = ...)` comes from the base Trainer and reaches
     the same collator by the same route as `evaluate`."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -1256,7 +1256,7 @@ def test_the_predict_entry_point_is_capped_too():
 
 def test_a_trainer_without_predict_is_not_broken():
     """Not every generated trainer has one; absence must not raise."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     class OnlyEvaluate:
         def evaluate(
@@ -1379,7 +1379,7 @@ def test_the_codegen_leaves_a_packed_eval_split_to_the_packer():
     """
     import inspect
 
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     block = inspect.getsource(rl)
     assert (
@@ -1530,7 +1530,7 @@ def _packing_aware_stub():
     `self.get_eval_dataloader(eval_dataset)` (transformers 4.57.6
     trainer.py:4467 and 4481). That builder is the entry point that caps.
     """
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -1684,7 +1684,7 @@ def test_predict_still_caps_under_eval_packing_on_every_trl():
 
 def test_predict_caps_a_split_under_eval_packing():
     """`predict()` is the base Trainer's, and never runs TRL's prep at all."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -1991,7 +1991,7 @@ def test_a_short_and_fully_supervised_split_comes_back_untouched():
 
 def _stub_with_stored_eval():
     """A stub whose `evaluate()` falls back to `self.eval_dataset`, as HF does."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -2041,7 +2041,7 @@ def test_the_stored_split_is_restored_even_when_evaluate_raises():
     _, tok = _load_plain()
     late = _tokenized_dataset(tok)
 
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     class Stub:
         def evaluate(
@@ -2125,7 +2125,7 @@ def test_a_split_is_only_scanned_once():
 def _late_cap_helpers():
     """`evaluate`/`predict` wrapped onto a stub, so the late cap can be driven
     without standing up a real trainer."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     seen = {}
 
@@ -2169,7 +2169,7 @@ def test_the_capped_wrappers_are_picklable():
     startup dies before a single row is evaluated."""
     import pickle
 
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     for name in ("_CappedBase", "_CappedRows"):
         cls = getattr(rl, name)
@@ -2184,7 +2184,7 @@ def test_the_capped_wrappers_are_picklable():
 def test_the_stream_wrapper_is_picklable_too():
     import pickle
 
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     rows = [{"input_ids": list(range(8)), "attention_mask": [1] * 8}]
     stream = rl._capped_stream(rows, slice(None, 4), (), ("input_ids", "attention_mask"))
@@ -2196,7 +2196,7 @@ def test_the_stream_wrapper_is_picklable_too():
 def test_probing_a_generator_does_not_eat_its_first_row():
     """`iter(gen) is gen`, so reading a row off it consumes that row for good
     and the split silently evaluates one example short."""
-    from nexus.models.rl import _column_names
+    from spartan_agent.models.rl import _column_names
 
     def _gen():
         for i in range(3):
@@ -2210,7 +2210,7 @@ def test_probing_a_generator_does_not_eat_its_first_row():
 def test_probing_a_rewindable_split_hands_it_straight_back():
     from datasets import Dataset
 
-    from nexus.models.rl import _column_names
+    from spartan_agent.models.rl import _column_names
 
     ds = Dataset.from_list([{"input_ids": [1, 2], "attention_mask": [1, 1]}])
     names, source, _probed = _column_names(ds)
@@ -2335,7 +2335,7 @@ def test_the_max_length_seed_rewrite_is_required():
 
     import pytest as _pytest
 
-    from nexus.models import rl_replacements
+    from spartan_agent.models import rl_replacements
 
     with _pytest.raises(RuntimeError, match = "required source edit"):
         rl_replacements._replace_or_fallback(
@@ -2353,7 +2353,7 @@ def test_an_optional_rewrite_still_only_warns():
     """The control: the worker-count edit must keep degrading quietly."""
     import re as _re
 
-    from nexus.models import rl_replacements
+    from spartan_agent.models import rl_replacements
 
     source = "def f():\n    pass\n"
     assert (
@@ -2392,7 +2392,7 @@ def test_the_schema_probe_replays_a_shared_iterator_row():
     """`iterator is dataset` is true for a bare generator and false for a split
     whose `__iter__` returns a stored one, so the probed row was dropped and the
     split started at row 2."""
-    from nexus.models.rl import _column_names
+    from spartan_agent.models.rl import _column_names
 
     rows = [{"input_ids": [i]} for i in range(3)]
     names, source, _probed = _column_names(_shared_iterator_split(rows))
@@ -2406,7 +2406,7 @@ def test_a_rewindable_stream_is_not_chained():
     probed row on to a fresh pass would duplicate it."""
     from datasets import Dataset
 
-    from nexus.models.rl import _column_names
+    from spartan_agent.models.rl import _column_names
 
     split = Dataset.from_dict({"input_ids": [[0], [1], [2]]}).to_iterable_dataset()
     names, source, _probed = _column_names(split)
@@ -2724,7 +2724,7 @@ def test_the_dataloader_builders_cap_a_late_split_too(method, keyword):
     """Both are public API and neither goes through `evaluate`/`predict`, so a
     caller building a dataloader directly reached the padding-free collator with
     `args.max_length` already cleared and nothing capping the split."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     _, tok = _load_plain()
     seen = {}
@@ -2775,7 +2775,7 @@ def test_capping_a_one_shot_stream_twice_does_not_eat_its_rows():
     the cap twice. `_CappedStream.__iter__` hands out a fresh generator over the
     same exhausting source rather than rewinding, so the second pass's schema and
     per-token probes read the first rows off instead of replaying them."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     _, tok = _load_plain()
     ids = tok("The quick brown fox. " * 200)["input_ids"]
@@ -2814,7 +2814,7 @@ def test_a_capped_split_is_handed_straight_back_to_the_second_pass():
     """The signature is what stops the second pass, and it must be OUR mark:
     `_CappedBase.__getattr__` forwards anything it does not hold to the split
     inside, so an unmarked wrapper around a marked split would answer for it."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     inner = rl._CappedRows.__new__(rl._CappedRows)
     inner.__dict__[rl._CAP_SIGNATURE_ATTR] = (16, True)
@@ -2893,7 +2893,7 @@ def test_a_one_shot_stream_slices_every_aligned_column():
     `_sliceable_per_token` with nothing to measure, so it cut `input_ids` alone
     and left `labels`/`attention_mask` overlength -- supervision that no longer
     lines up with the tokens it describes."""
-    from nexus.models.rl import _wrap_sft_evaluate_cap
+    from spartan_agent.models.rl import _wrap_sft_evaluate_cap
 
     _, tok = _load_plain()
     ids = tok("The quick brown fox. " * 200)["input_ids"]
@@ -2928,7 +2928,7 @@ def test_an_unfiltered_map_style_split_is_not_scanned_up_front():
     """With no supervision columns every row survives, so building an identity
     index read and transformed the whole split before the dataloader could
     start -- a second on-access tokenization pass for no information."""
-    from nexus.models.rl import _CappedRows
+    from spartan_agent.models.rl import _CappedRows
 
     reads = []
 
@@ -2950,7 +2950,7 @@ def test_an_unfiltered_map_style_split_is_not_scanned_up_front():
 def test_a_filtered_split_still_drops_its_unsupervised_rows():
     """The control: supervision present means the index is real, and the rows
     with no supervised token still go."""
-    from nexus.models.rl import _CappedRows
+    from spartan_agent.models.rl import _CappedRows
 
     rows = [
         {"input_ids": [1, 2, 3], "labels": [-100, -100, -100]},
@@ -3035,7 +3035,7 @@ def _cap_scan_shapes():
 
 @pytest.mark.parametrize("dataset, expected", _cap_scan_shapes())
 def test_the_importable_cap_scan_matches_the_generated_one(dataset, expected):
-    from nexus.models.rl import pretokenized_within_cap
+    from spartan_agent.models.rl import pretokenized_within_cap
     assert pretokenized_within_cap(dataset, 3) is expected
 
 
@@ -3044,7 +3044,7 @@ def test_the_generated_cap_scan_matches_the_importable_one(dataset, expected):
     """The inline copy, extracted from the generator and executed as written."""
     import inspect as _inspect
     import re
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = _inspect.getsource(rl)
     start = source.index('"    def _unsloth_within_cap(_ds):\\n"')
@@ -3058,7 +3058,7 @@ def test_the_generated_cap_scan_matches_the_importable_one(dataset, expected):
 def test_an_unscannable_split_never_reads_as_capped():
     """A split that raises mid-scan has proven nothing, and the caller is about
     to decide whether anything downstream enforces the cap."""
-    from nexus.models.rl import pretokenized_within_cap, splits_within_cap
+    from spartan_agent.models.rl import pretokenized_within_cap, splits_within_cap
 
     class Angry:
         def __len__(self):
@@ -3074,7 +3074,7 @@ def test_an_unscannable_split_never_reads_as_capped():
 
 def test_every_eval_split_counts_towards_the_cap():
     from datasets import Dataset
-    from nexus.models.rl import splits_within_cap
+    from spartan_agent.models.rl import splits_within_cap
 
     fits = Dataset.from_dict({"input_ids": [[1, 2]]})
     over = Dataset.from_dict({"input_ids": [[1, 2, 3, 4]]})
@@ -3092,7 +3092,7 @@ def _padding_free_fallback(
     Returns the number of `original_init` calls, or the propagated error.
     """
     from types import SimpleNamespace
-    from nexus.trainer import (
+    from spartan_agent.trainer import (
         _bound_splits,
         _cap_is_enforceable_without_padding_free,
     )
@@ -3140,7 +3140,7 @@ def test_the_padding_free_fallback_still_runs_when_the_cap_holds():
 def test_the_fallback_reads_splits_through_the_signature():
     """TRL has moved these parameters between releases; a positional index reads
     the data collator on the version that did."""
-    from nexus.trainer import _bound_splits
+    from spartan_agent.trainer import _bound_splits
 
     def moved(
         self,
@@ -3162,7 +3162,7 @@ def test_completion_only_ignores_the_columns_of_a_transformed_split():
     yielded row, resolved True and applied `completion_mask` -- so the cap
     filters kept rows whose completion had been truncated away entirely."""
     import inspect as _inspect
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = _inspect.getsource(rl)
     guard = (
@@ -3184,7 +3184,7 @@ def test_a_later_row_that_cannot_take_the_slice_does_not_raise():
     there and None further in used to raise inside the dataloader -- a failure
     the caller would not have had without the cap. The `map` path already
     validates per row; the read-side wrapper has to as well."""
-    from nexus.models.rl import _CappedRows
+    from spartan_agent.models.rl import _CappedRows
 
     rows = [
         _row(range(10), token_type_ids = [0] * 10),
@@ -3214,7 +3214,7 @@ def test_a_misaligned_later_row_keeps_its_own_length():
     """Same probe, different drift: a column that is aligned in row 0 and a
     different width in row 1. Cutting it there would report a mask for tokens
     the row never had."""
-    from nexus.models.rl import _CappedRows
+    from spartan_agent.models.rl import _CappedRows
 
     # Longer than the tokens, not shorter, so cutting it is visible: a shorter
     # value comes back unchanged from the slice either way.
@@ -3229,7 +3229,7 @@ def test_input_ids_comes_first_so_every_column_is_measured():
     """`_column_names` returns a SET, and the `map` path reads the width off
     `input_ids` as it walks this list. A run that ordered `labels` first sliced
     the labels having compared them to nothing at all."""
-    from nexus.models.rl import _sliceable_per_token
+    from spartan_agent.models.rl import _sliceable_per_token
 
     # Worst case spelled out, since a set's own order is stable within a run.
     names = ("labels", "attention_mask", "input_ids")
@@ -3240,7 +3240,7 @@ def test_input_ids_comes_first_so_every_column_is_measured():
 def test_a_custom_per_token_column_rides_along_with_the_slice():
     """`loss_mask` is not on the allow-list, so it kept its full length while
     `input_ids` was cut and a custom collator got mismatched rows."""
-    from nexus.models.rl import _sliceable_per_token
+    from spartan_agent.models.rl import _sliceable_per_token
 
     probed = _row(range(10), loss_mask = [1] * 10)
     kept = _sliceable_per_token(None, set(probed), 4, probed)
@@ -3250,7 +3250,7 @@ def test_a_custom_per_token_column_rides_along_with_the_slice():
 def test_a_coincidentally_long_text_column_does_not_ride_along():
     """Alignment alone is not proof: a list of ten strings is ten long too.
     Only a flat vector of scalars is a per-token field."""
-    from nexus.models.rl import _sliceable_per_token
+    from spartan_agent.models.rl import _sliceable_per_token
 
     probed = _row(range(10), messages = [{"role": "user"}] * 10, tags = ["a"] * 10, text = "0123456789")
     kept = _sliceable_per_token(None, set(probed), 4, probed)
@@ -3262,7 +3262,7 @@ def test_a_mark_is_not_trusted_after_the_split_is_mutated():
     back. Mutating it -- a `set_transform` that starts yielding longer rows --
     left the mark in place, so the rescan was skipped and the new rows went
     through uncapped."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     class Split:
         _fingerprint = "before"
@@ -3278,7 +3278,7 @@ def test_an_unfingerprintable_split_is_never_trusted_by_its_mark():
     """The memo excludes these on purpose because their rows can change under a
     stable identity. The mark has to reach the same conclusion, or it becomes
     the way around the memo."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     class Plain:
         pass
@@ -3297,7 +3297,7 @@ def test_our_own_wrapper_is_still_handed_straight_back():
     """The mark exists to stop the paired wrappers capping one call twice, and
     over a one-shot stream the second pass is destructive. A wrapper holds a
     fixed slice and cannot drift, so it is trusted without a fingerprint."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     wrapper = rl._CappedRows([], slice(None, 4), (), ("input_ids",))
     rl._mark_capped(wrapper, 16, True)
@@ -3309,7 +3309,7 @@ def test_the_late_evaluation_memo_is_bounded():
     """Every entry pins the original split AND the capped copy for the trainer's
     lifetime. A caller building a fresh validation subset each epoch grew this
     dictionary without bound until the host ran out of memory."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     _, tok = _load_plain()
     Stub, seen = _late_cap_helpers()
@@ -3332,7 +3332,7 @@ def test_a_nullable_value_does_not_break_the_construction_time_truncation():
     assert "_unsloth_cut_value(_v, _r)" in block, "the batch map still slices unguarded"
     import inspect as _inspect
     import re
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = _inspect.getsource(rl)
     start = source.index('"        def _unsloth_cut_value(_v, _r):\\n"')
@@ -3375,7 +3375,7 @@ def test_the_fallback_does_not_scan_an_eval_packed_split():
     """Disabling padding-free keeps `max_length`, and TRL's eval packer owns and
     chunks the overflow, so an overlength row in a packed eval split is not an
     unenforced cap. The generated exact-match path already excludes those."""
-    from nexus.trainer import _cap_is_enforceable_without_padding_free as enforceable
+    from spartan_agent.trainer import _cap_is_enforceable_without_padding_free as enforceable
 
     long_rows = [{"input_ids": list(range(64))}]
     short = [{"input_ids": [1, 2]}]
@@ -3399,7 +3399,7 @@ def test_a_zoo_that_already_normalizes_the_seed_is_left_alone():
     anchor, and `required = True` then failed every SFT trainer over behaviour
     already present. `old` is also a PREFIX of `new` here, so the wide anchor
     matched the normalized line and appended a second `or 0`."""
-    from nexus.models import rl_replacements as R
+    from spartan_agent.models import rl_replacements as R
 
     old = '    max_seq_length = getattr(args, "max_length", 0)'
     new = '    max_seq_length = getattr(args, "max_length", 0) or 0'
@@ -3438,7 +3438,7 @@ def test_a_single_quoted_normalized_seed_is_recognised():
     to as well. A Zoo carrying the replacement single-quoted matched neither the
     literal nor the `$`-anchored regex, and `required = True` then raised on
     every SFT trainer over behaviour already present."""
-    from nexus.models import rl_replacements as R
+    from spartan_agent.models import rl_replacements as R
 
     old = '    max_seq_length = getattr(args, "max_length", 0)'
     new = '    max_seq_length = getattr(args, "max_length", 0) or 0'
@@ -3503,7 +3503,7 @@ def test_the_rank_window_degrades_to_a_no_op():
     still cap. The helper is executed as written."""
     import inspect as _inspect
     import re
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = _inspect.getsource(rl)
     start = source.index('"        def _unsloth_rank_first():\\n"')

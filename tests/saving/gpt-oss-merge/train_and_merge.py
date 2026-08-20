@@ -1,4 +1,4 @@
-﻿from nexus import FastLanguageModel
+from spartan_agent import FastLanguageModel
 from trl import SFTTrainer, SFTConfig
 from datasets import load_dataset
 import torch

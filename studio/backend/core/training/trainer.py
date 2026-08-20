@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -47,7 +47,7 @@ if hasattr(torch._dynamo.config, "recompile_limit"):
 from core.import_guards import ensure_real_packages as _ensure_real_packages
 
 _ensure_real_packages("unsloth_zoo", "unsloth")
-from nexus import FastLanguageModel, FastVisionModel, is_bfloat16_supported
+from spartan_agent import FastLanguageModel, FastVisionModel, is_bfloat16_supported
 
 import json
 import threading
@@ -996,7 +996,7 @@ class UnslothTrainer:
 
             if self._audio_type == "csm":
                 # CSM: FastModel, auto_model=CsmForConditionalGeneration, load_in_4bit=False
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 from transformers import CsmForConditionalGeneration
 
                 self.model, self.tokenizer = FastModel.from_pretrained(
@@ -1016,7 +1016,7 @@ class UnslothTrainer:
 
             elif self._audio_type == "whisper":
                 # Whisper: FastModel, auto_model=WhisperForConditionalGeneration, load_in_4bit=False
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 from transformers import WhisperForConditionalGeneration
 
                 self.model, self.tokenizer = FastModel.from_pretrained(
@@ -1059,7 +1059,7 @@ class UnslothTrainer:
             elif self._audio_type == "bicodec":
                 # Spark-TTS: download the full repo (sparktts + BiCodec weights), load only the LLM
                 # subfolder. model_name is "Spark-TTS-0.5B/LLM" (YAML mapping) or "unsloth/Spark-TTS-0.5B".
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 from huggingface_hub import snapshot_download
 
                 if model_name.endswith("/LLM"):
@@ -1092,7 +1092,7 @@ class UnslothTrainer:
 
             elif self._audio_type == "dac":
                 # OuteTTS: uses FastModel (not FastLanguageModel) with load_in_4bit=False
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 self.model, self.tokenizer = FastModel.from_pretrained(
                     lookup_name,
                     max_seq_length = max_seq_length,
@@ -1108,7 +1108,7 @@ class UnslothTrainer:
 
             elif self.is_audio_vlm:
                 # Audio VLM (e.g. Gemma 3N): FastModel returns (model, processor).
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 self.model, self.tokenizer = FastModel.from_pretrained(
                     model_name = lookup_name,
                     max_seq_length = max_seq_length,
@@ -1350,7 +1350,7 @@ class UnslothTrainer:
 
             if self._audio_type in ("csm", "bicodec", "dac") or self.is_audio_vlm:
                 # Use FastModel.get_peft_model (codec audio + audio VLM)
-                from nexus import FastModel
+                from spartan_agent import FastModel
 
                 label = self._audio_type or "audio_vlm"
                 logger.info(f"{label} LoRA configuration:")
@@ -1387,7 +1387,7 @@ class UnslothTrainer:
 
             elif self._audio_type == "whisper":
                 # Whisper: FastModel.get_peft_model with task_type=None
-                from nexus import FastModel
+                from spartan_agent import FastModel
 
                 logger.info(f"Audio model (whisper) LoRA configuration:")
                 logger.info(f"  - Target modules: {target_modules}\n")
@@ -1541,7 +1541,7 @@ class UnslothTrainer:
             logits_to_keep = 0,
             **kwargs,
         ):
-            # Strip non-standard kwargs from nexus/PEFT.
+            # Strip non-standard kwargs from spartan_agent/PEFT.
             output_attentions = kwargs.pop("output_attentions", None)
             output_hidden_states = kwargs.pop("output_hidden_states", None)
             kwargs.pop("return_dict", None)
@@ -3977,7 +3977,7 @@ class UnslothTrainer:
 
             elif self.is_vlm and not raw_text_mode:
                 logger.info("Using UnslothVisionDataCollator for vision model\n")
-                from nexus.trainer import UnslothVisionDataCollator
+                from spartan_agent.trainer import UnslothVisionDataCollator
 
                 FastVisionModel.for_training(self.model)
                 vision_image_size = training_args.get("vision_image_size")
@@ -4218,7 +4218,7 @@ class UnslothTrainer:
 
                 if is_cpt:
                     try:
-                        from nexus import (
+                        from spartan_agent import (
                             UnslothTrainer as _UnslothCPTTrainer,
                             UnslothTrainingArguments as _UnslothTrainingArguments,
                         )
@@ -4293,7 +4293,7 @@ class UnslothTrainer:
                 and not self.is_audio
                 and not is_deepseek_ocr
             ):
-                from nexus.chat_templates import train_on_responses_only
+                from spartan_agent.chat_templates import train_on_responses_only
 
                 logger.info("Configuring train on responses only...\n")
 

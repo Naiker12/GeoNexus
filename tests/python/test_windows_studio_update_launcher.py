@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Focused regression tests for the Windows Studio updater launcher transaction."""
@@ -647,7 +647,7 @@ def test_a_policy_blocked_launcher_falls_back_to_the_interpreter(monkeypatch, st
         "-I",
         "-c",
         "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
-        "sys.argv[0] = 'unsloth'; from nexus_cli import app; sys.exit(app())",
+        "sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())",
         "--version",
     ]
     # The launcher probe gets 10s, a process start. This one has to import the whole
@@ -932,7 +932,7 @@ def bare_probe_venv(real_venv):
     [
         # An emptied directory. find_spec calls this a namespace package and
         # returns a spec for it, so a spec lookup answers yes to a venv the
-        # trampoline's `from nexus_cli import app` cannot start. This is the
+        # trampoline's `from spartan_agent_cli import app` cannot start. This is the
         # shape antivirus leaves when it takes the module files out from under a
         # package it decided it disliked.
         ("an emptied package directory", {}),
@@ -1051,7 +1051,7 @@ def test_a_custom_root_survives_the_launcher_being_quarantined(monkeypatch, stud
     shim = root / "bin" / "unsloth.cmd"
     shim.write_bytes(
         b"@echo off\r\nrem unsloth-studio-managed-launcher\r\n"
-        b'"%~dp0..\\unsloth_studio\\Scripts\\python.exe" -X utf8 -c "from nexus_cli import app" %*\r\n'
+        b'"%~dp0..\\unsloth_studio\\Scripts\\python.exe" -X utf8 -c "from spartan_agent_cli import app" %*\r\n'
     )
     assert studio._looks_like_installer_managed_studio_home(root)
 
@@ -1067,7 +1067,7 @@ def test_a_custom_root_survives_the_launcher_being_quarantined(monkeypatch, stud
     [
         # This decides which tree the CLI manages and the directory is on PATH,
         # so any file of that name would otherwise be enough to redirect a root.
-        ("a hand-rolled wrapper", b'@echo off\r\npython -c "from nexus_cli import app" %*\r\n'),
+        ("a hand-rolled wrapper", b'@echo off\r\npython -c "from spartan_agent_cli import app" %*\r\n'),
         ("the marker without the call", b"@echo off\r\nrem unsloth-studio-managed-launcher\r\n"),
         ("an unrelated batch file", b"@echo off\r\necho hello\r\n"),
         ("empty", b""),
@@ -1090,7 +1090,7 @@ def test_an_oversized_cmd_shim_is_not_read_into_memory(monkeypatch, studio, tmp_
     (root / "bin").mkdir(parents = True)
     shim = root / "bin" / "unsloth.cmd"
     shim.write_bytes(
-        b"rem unsloth-studio-managed-launcher\r\nfrom nexus_cli import app\r\n" + b"x" * 9000
+        b"rem unsloth-studio-managed-launcher\r\nfrom spartan_agent_cli import app\r\n" + b"x" * 9000
     )
     monkeypatch.setattr(studio.platform, "system", lambda: "Windows")
 
@@ -1102,7 +1102,7 @@ def test_posix_root_inference_is_unchanged(monkeypatch, studio, tmp_path):
     root = tmp_path / "root"
     (root / "bin").mkdir(parents = True)
     (root / "bin" / "unsloth.cmd").write_bytes(
-        b"rem unsloth-studio-managed-launcher\r\nfrom nexus_cli import app\r\n"
+        b"rem unsloth-studio-managed-launcher\r\nfrom spartan_agent_cli import app\r\n"
     )
     monkeypatch.setattr(studio.platform, "system", lambda: "Linux")
 
@@ -1118,7 +1118,7 @@ def test_the_import_probe_performs_the_trampolines_own_import(studio):
     an empty directory and a raising __init__ both resolve as specs, and both
     give the gate a yes the launch immediately contradicts.
     """
-    assert "from nexus_cli import app" in studio._MANAGED_CLI_IMPORT_PROBE
+    assert "from spartan_agent_cli import app" in studio._MANAGED_CLI_IMPORT_PROBE
     assert "find_spec" not in studio._MANAGED_CLI_IMPORT_PROBE
 
 

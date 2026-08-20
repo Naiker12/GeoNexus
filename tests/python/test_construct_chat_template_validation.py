@@ -1,4 +1,4 @@
-﻿"""Negative-path validation tests for unsloth.chat_templates.construct_chat_template.
+"""Negative-path validation tests for unsloth.chat_templates.construct_chat_template.
 
 Regression coverage for the no-match guards added in the PR #5763 follow-up:
 missing placeholders or unrecoverable two-example structures must raise
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from nexus.chat_templates import construct_chat_template
+from spartan_agent.chat_templates import construct_chat_template
 
 
 class _FakeTokenizer:

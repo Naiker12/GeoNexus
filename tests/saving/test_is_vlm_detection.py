@@ -1,4 +1,4 @@
-﻿"""Regression test for `_is_vlm` in `unsloth/save.py`.
+"""Regression test for `_is_vlm` in `unsloth/save.py`.
 
 The VLM check in `unsloth_save_pretrained_gguf` (and the torchao export path)
 used to guard on `hasattr(self.config, "architectures")` and then iterate
@@ -11,7 +11,7 @@ before any merge/convert work.
 `_is_vlm` centralizes the check and guards `architectures` with
 `getattr(config, "architectures", None) or ()`, matching the sibling
 `_is_gpt_oss` / `_is_qwen3_5_vlm` helpers. We ast-extract just that function so
-the test runs with no GPU and no `import nexus` (which needs `unsloth_zoo`).
+the test runs with no GPU and no `import spartan_agent` (which needs `unsloth_zoo`).
 """
 
 import ast

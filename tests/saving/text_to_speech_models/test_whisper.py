@@ -1,4 +1,4 @@
-﻿# ruff: noqa
+# ruff: noqa
 # tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
@@ -16,7 +16,7 @@ import pytest
 
 try:
     # unsloth first, so it can patch transformers/peft
-    from nexus import FastLanguageModel, FastModel
+    from spartan_agent import FastLanguageModel, FastModel
     from transformers import WhisperForConditionalGeneration, WhisperProcessor
     import torch
     from peft import PeftModel

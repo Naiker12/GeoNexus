@@ -1,6 +1,6 @@
-# ⚔️ Spartan Agents - Documentación Integral del Sistema y Funcionalidades
+# ⚔️ Spartan Agent - Documentación Integral del Sistema y Funcionalidades
 
-**Spartan Agents** es una suite integral de Inteligencia Artificial local, desarrollo con LLMs, orquestación de agentes autónomos y ejecución multimodal de alto rendimiento (**Rust + Tauri + React + FastAPI + llama.cpp**).
+**Spartan Agent** es una suite integral de Inteligencia Artificial local, desarrollo con LLMs, orquestación de agentes autónomos y ejecución multimodal de alto rendimiento (**Rust + Tauri + React + FastAPI + llama.cpp**).
 
 ---
 

@@ -1,4 +1,4 @@
-﻿"""Unit tests for the offline-loading helpers in unsloth/models/loader_utils.py:
+"""Unit tests for the offline-loading helpers in unsloth/models/loader_utils.py:
 error classification, _force_hf_offline flip/restore, and the retry orchestrator.
 Pure CPU, no network, no GPU."""
 
@@ -8,7 +8,7 @@ import traceback
 
 import pytest
 
-from nexus.models import loader_utils as L
+from spartan_agent.models import loader_utils as L
 
 
 # ---------------------------------------------------------------------------

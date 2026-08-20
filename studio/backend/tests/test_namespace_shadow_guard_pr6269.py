@@ -1,11 +1,11 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Verification tests for PR #6269 (namespace-shadow guard).
 
 `ensure_real_packages` (core/import_guards.py) drops namespace-package
 shadow dirs (a `unsloth`/`unsloth_zoo` dir with no __init__.py on sys.path)
-before `from nexus import ...`. Order matters: `unsloth.__init__` runs its
+before `from spartan_agent import ...`. Order matters: `unsloth.__init__` runs its
 ROCm/Windows bnb fixes before importing unsloth_zoo, so the guard must import
 unsloth first. Each test runs the real guard (ast-extracted from source, no
 GPU/torch) in a subprocess, with fake packages reachable only via a meta path
@@ -66,7 +66,7 @@ _DRIVER = textwrap.dedent(
     cfg = json.load(open(sys.argv[1]))
 
     # Extract the real ensure_real_packages from import_guards.py source
-    # without importing the heavy module or its `from nexus import ...` line.
+    # without importing the heavy module or its `from spartan_agent import ...` line.
     src = open(cfg["guard_py"]).read()
     tree = ast.parse(src)
     fn = next(n for n in tree.body

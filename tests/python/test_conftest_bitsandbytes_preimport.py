@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Guard the ordering that keeps bitsandbytes usable under the GPU-free harness.
@@ -51,7 +51,7 @@ def test_conftest_defines_the_bitsandbytes_preimport():
     assert "_preimport_bitsandbytes" in defined, (
         "tests/conftest.py must define _preimport_bitsandbytes(); without it a "
         "bitsandbytes import inside the CUDA spoof window permanently breaks "
-        "`import nexus` for the rest of the process"
+        "`import spartan_agent` for the rest of the process"
     )
 
 

@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ load_in_4bit=True. Uses synthetic configs (no network) so it runs offline in CI.
 
 from types import SimpleNamespace
 
-# import nexus first to set UNSLOTH_IS_PRESENT env var.
-import nexus
+# import spartan_agent first to set UNSLOTH_IS_PRESENT env var.
+import spartan_agent
 from unsloth_zoo.utils import get_quant_type
-from nexus.models.loader_utils import check_and_disable_bitsandbytes_loading
+from spartan_agent.models.loader_utils import check_and_disable_bitsandbytes_loading
 
 
 def _make_config(quantization_config = None, model_type = "llama"):

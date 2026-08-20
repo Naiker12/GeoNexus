@@ -1,4 +1,4 @@
-﻿"""RaiseUninitialized must ignore a checkpoint that only re-initializes deterministic
+"""RaiseUninitialized must ignore a checkpoint that only re-initializes deterministic
 position_ids buffers, but still raise when a real weight is missing -- even if the same
 HF record also lists a benign position_ids buffer.
 """
@@ -9,7 +9,7 @@ import logging
 
 import pytest
 
-from nexus.models._utils import (
+from spartan_agent.models._utils import (
     _all_missing_keys_are_position_ids,
     _RaiseUninitialized,
 )

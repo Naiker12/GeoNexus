@@ -66,7 +66,7 @@ test("the Python client agrees", () => {
   let cli = "";
   try {
     cli = readFileSync(
-      new URL("../../../nexus_cli/_inference.py", import.meta.url),
+      new URL("../../../spartan_agent_cli/_inference.py", import.meta.url),
       "utf8",
     );
   } catch {

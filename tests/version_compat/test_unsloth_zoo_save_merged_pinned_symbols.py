@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Pinned-symbol canary for unsloth-zoo save_pretrained_merged guards
 (unslothai/unsloth-zoo#647 / unslothai/unsloth#5410). Skips until #647
@@ -113,6 +113,6 @@ def test_unsloth_save_pretrained_merged_entry_point_exists():
     if not save_py.is_file():
         pytest.skip(f"{save_py} not present")
     text = save_py.read_text(encoding = "utf-8", errors = "replace")
-    assert "save_pretrained_merged" in text, "entry point removed from nexus/save.py."
+    assert "save_pretrained_merged" in text, "entry point removed from spartan_agent/save.py."
     assert "merge_and_overwrite_lora" in text, "no dispatch into unsloth_zoo merge; #647 bypassed."
 

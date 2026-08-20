@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Integration tests for #7481 using real cached Gemma weights.
@@ -73,7 +73,7 @@ def test_real_cached_snapshot_resolves_offline(monkeypatch):
     _offline_env(monkeypatch)
     _block_network(monkeypatch)
 
-    from nexus.models.loader_utils import _resolve_hub_repo_local_dir
+    from spartan_agent.models.loader_utils import _resolve_hub_repo_local_dir
 
     snap = Path(
         _resolve_hub_repo_local_dir(
@@ -92,7 +92,7 @@ def test_real_cached_tokenizer_loads_from_snapshot_not_repo_id(monkeypatch):
     _offline_env(monkeypatch)
     _block_network(monkeypatch)
 
-    from nexus.models.loader_utils import _load_pretrained_tokenizer_fast
+    from spartan_agent.models.loader_utils import _load_pretrained_tokenizer_fast
 
     tok = _load_pretrained_tokenizer_fast(
         REPO,
@@ -110,8 +110,8 @@ def test_real_cached_unsloth_helpers_offline(monkeypatch):
     _offline_env(monkeypatch)
     _block_network(monkeypatch)
 
-    from nexus.models.loader_utils import _load_pretrained_tokenizer_fast
-    from nexus.save import _has_tokenizer_model
+    from spartan_agent.models.loader_utils import _load_pretrained_tokenizer_fast
+    from spartan_agent.save import _has_tokenizer_model
 
     tok = _load_pretrained_tokenizer_fast(
         REPO,

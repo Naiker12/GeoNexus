@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 
 # ruff: noqa
@@ -85,7 +85,7 @@ def test_fast_inference():
     # Import here, not at module load: importing unsloth probes for an
     # accelerator and errors on CPU-only machines, so deferring keeps pytest
     # collection and the skip path import-free. Unsloth must precede TRL.
-    from nexus import FastLanguageModel
+    from spartan_agent import FastLanguageModel
     from datasets import Dataset
     from trl import GRPOConfig, GRPOTrainer
 

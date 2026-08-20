@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Control markup pasted into a prompt must not reach the template as markup (#7066).
@@ -48,7 +48,7 @@ def _inference_module():
 
     It imports unsloth at module scope, which raises ImportError("Unsloth: torch not
     found") without torch. ``pytest.importorskip`` does not skip on that, because the error
-    comes from nexus rather than from the module named here, so the guard is explicit.
+    comes from spartan_agent rather than from the module named here, so the guard is explicit.
     """
     try:
         import core.inference.inference as inference_module

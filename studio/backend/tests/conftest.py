@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Shared pytest configuration for the backend test suite.
@@ -45,7 +45,7 @@ if str(_backend_root) not in sys.path:
 # Let the diffusion patch backend lazily import unsloth_zoo on a CPU-only test host: unsloth_zoo runs accelerator
 # detection at import and raises without a GPU unless this is set. setdefault so an explicit override wins.
 os.environ.setdefault("UNSLOTH_ALLOW_CPU", "1")
-# The other half of the same guard: unsloth_zoo.__init__ refuses to import unless this is present, normally set by `import nexus`. Without it
+# The other half of the same guard: unsloth_zoo.__init__ refuses to import unless this is present, normally set by `import spartan_agent`. Without it
 # the patch backend's only route to the helpers is that ~940 MB import, which a CPU-only host cannot complete. run.py and main.py do the same.
 os.environ.setdefault("UNSLOTH_IS_PRESENT", "1")
 # The on-demand attention-backend installer defaults to "auto", so ANY test that loads a

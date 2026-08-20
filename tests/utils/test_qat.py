@@ -1,4 +1,4 @@
-﻿from nexus import FastLanguageModel
+from spartan_agent import FastLanguageModel
 
 from typing import Dict
 

@@ -77,8 +77,8 @@ export const ko = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "{name} 계정 메뉴",
     updateAvailable: "업데이트 사용 가능",
     resize: {
@@ -444,7 +444,7 @@ export const ko = {
     },
     general: {
       title: "일반",
-      description: "Nexus의 전역 환경설정입니다.",
+      description: "Spartan Agent의 전역 환경설정입니다.",
       account: "계정",
       huggingFaceToken: "Hugging Face 토큰",
       huggingFaceTokenDescription:
@@ -621,10 +621,10 @@ export const ko = {
     },
     profile: {
       title: "프로필",
-      description: "Nexus에서 프로필이 표시되는 방식입니다.",
+      description: "Spartan Agent에서 프로필이 표시되는 방식입니다.",
       changePicture: "프로필 사진 변경",
       displayName: "표시 이름",
-      nickname: "Nexus가 당신을 어떻게 부르면 될까요?",
+      nickname: "Spartan Agent가 당신을 어떻게 부르면 될까요?",
       nicknamePlaceholder: "닉네임",
       nicknameSaved: "선호하는 이름이 저장되었습니다",
       avatarShape: "프로필 사진 모양",
@@ -806,7 +806,7 @@ export const ko = {
       language: {
         title: "언어",
         label: "표시 언어",
-        description: "Nexus에서 사용하는 언어입니다.",
+        description: "Spartan Agent에서 사용하는 언어입니다.",
         autoDetect: "자동 감지",
       },
       layout: {
@@ -886,7 +886,7 @@ export const ko = {
           description: "직접 빌드한 llama-server를 사용합니다.",
           hint: "llama-server가 들어 있는 llama.cpp 폴더 또는 build/bin 아래에 있는 빌드를 선택하세요. 사용자 지정 런타임은 GGUF 채팅, 임베딩, 지원되는 음성 모델에 사용됩니다. 환경 변수가 계속 우선합니다.",
           automatic: "자동(번들)",
-          bundled: "Nexus가 설치한 llama.cpp 런타임을 사용합니다.",
+          bundled: "Spartan Agent가 설치한 llama.cpp 런타임을 사용합니다.",
           active: "다음 모델 로드부터 사용자 지정 llama-server를 사용합니다.",
           environmentManaged: "{variable} 환경 변수로 관리됩니다.",
           missingBinary: "이 폴더에서 llama-server를 더 이상 사용할 수 없습니다. 다른 폴더를 선택하거나 번들 런타임을 사용하세요.",
@@ -1046,7 +1046,7 @@ export const ko = {
         serve: "자동 로컬 서버를 켜거나 끕니다.",
         launch: "에이전트를 실행하거나, 명령과 환경 변수만 출력합니다.",
         persist:
-          "Nexus가 관리하는 에이전트 저장소를 실행 사이에 유지합니다.",
+          "Spartan Agent가 관리하는 에이전트 저장소를 실행 사이에 유지합니다.",
         asSubagent:
           "상위 에이전트는 현재 모델을 유지하고 Spartan를 로컬 서브에이전트로 등록합니다(Claude Code, Codex, OpenCode).",
         apiKey:
@@ -1331,7 +1331,7 @@ export const ko = {
       reportIssue: "문제 보고",
       license: {
         sectionTitle: "라이선스",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription: "GNU AGPL v3.0에 따라 공개된 오픈 소스입니다.",
         libraryLabel: "Spartan Core",
@@ -1351,7 +1351,7 @@ export const ko = {
         commandCopied: "{label} 복사됨",
         copyNamedCommand: "{label} 복사",
         checkingInstall: "Spartan 설치 방식을 확인하는 중...",
-        installIntro: "Nexus를 설치하거나 업데이트하려면:",
+        installIntro: "Spartan Agent를 설치하거나 업데이트하려면:",
         localUpdateHeading: "로컬 업데이트",
         installCommandUnix: "macOS/Linux 설치 명령",
         installCommandWindows: "Windows 설치 명령",
@@ -1384,7 +1384,7 @@ export const ko = {
         desktopCheckFailedDescription:
           "연결 상태를 확인한 후 다시 시도하세요.",
         desktopCurrent: "데스크톱 앱이 최신 버전입니다",
-        desktopCurrentDescription: "Nexus가 계속 자동으로 확인합니다.",
+        desktopCurrentDescription: "Spartan Agent가 계속 자동으로 확인합니다.",
         checkForUpdates: "업데이트 확인",
         checkAgain: "다시 확인",
         retryCheck: "다시 시도",

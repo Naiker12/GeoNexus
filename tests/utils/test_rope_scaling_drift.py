@@ -1,4 +1,4 @@
-﻿"""Guard against config.rope_scaling being silently dropped (issue #2405):
+"""Guard against config.rope_scaling being silently dropped (issue #2405):
 the replacement rotary classes ignored it on the config path, so Llama-3.1
 ran with unscaled RoPE and produced gibberish past ~32K tokens.
 
@@ -183,7 +183,7 @@ def _make_config(rope_scaling):
 
 
 def _unsloth_rotary(config):
-    from nexus.models import llama as llama_mod
+    from spartan_agent.models import llama as llama_mod
     return llama_mod.LlamaRotaryEmbedding(config = config)
 
 
@@ -200,7 +200,7 @@ def _vanilla_inv_freq():
 
 
 def _compute_helper(config, rope_scaling):
-    from nexus.models.llama import _compute_config_rope_inv_freq
+    from spartan_agent.models.llama import _compute_config_rope_inv_freq
     return _compute_config_rope_inv_freq(config, rope_scaling)
 
 
@@ -240,7 +240,7 @@ def test_default_rope_type_matches_vanilla_inv_freq():
 
 def test_recompute_helper_scales_on_cpu():
     # Exercise the exact method loader._fix_rope_inv_freq calls, without CUDA.
-    from nexus.models.llama import LlamaRotaryEmbedding, _get_rope_theta
+    from spartan_agent.models.llama import LlamaRotaryEmbedding, _get_rope_theta
 
     def recompute(config):
         rot = object.__new__(LlamaRotaryEmbedding)
@@ -265,7 +265,7 @@ def test_extended_rope_scaling_keeps_llama3_and_carries_theta():
     # linear dict carries rope_theta so transformers v5 does not fall back to base 10000.
     from types import SimpleNamespace
 
-    from nexus.models.llama import _extended_rope_scaling
+    from spartan_agent.models.llama import _extended_rope_scaling
 
     # llama3 model: keep native scaling, do not synthesize linear.
     scaling, native = _extended_rope_scaling(_make_config(LLAMA3_ROPE_SCALING), 2.0)
@@ -297,7 +297,7 @@ def test_extended_rotary_reads_config_factor():
     # (Llama-3.2 uses 32); otherwise the subclass path re-drops scaling (#2405).
     from types import SimpleNamespace
 
-    from nexus.models.llama import LlamaExtendedRotaryEmbedding
+    from spartan_agent.models.llama import LlamaExtendedRotaryEmbedding
 
     rot = object.__new__(LlamaExtendedRotaryEmbedding)
     rot.base = ROPE_THETA
@@ -325,7 +325,7 @@ def test_extended_rotary_reads_rope_parameters_v5():
     # back-compat shim that may be removed); the factor must still be read.
     from types import SimpleNamespace
 
-    from nexus.models.llama import LlamaExtendedRotaryEmbedding
+    from spartan_agent.models.llama import LlamaExtendedRotaryEmbedding
 
     rot = object.__new__(LlamaExtendedRotaryEmbedding)
     rot.base = ROPE_THETA
@@ -428,7 +428,7 @@ def _blank_nonpersistent_buffers(module):
 
 
 def _build_llama3_rotary():
-    from nexus.models import llama as llama_mod
+    from spartan_agent.models import llama as llama_mod
     config = _make_config(LLAMA3_ROPE_SCALING)
     return llama_mod.LlamaRotaryEmbedding(config = config), config
 
@@ -436,7 +436,7 @@ def _build_llama3_rotary():
 def _build_longrope_rotary():
     from types import SimpleNamespace
 
-    from nexus.models import llama as llama_mod
+    from spartan_agent.models import llama as llama_mod
 
     short_factor, long_factor = [1.05] * 48, [1.3] * 48
     rot = llama_mod.LongRopeRotaryEmbedding(
@@ -467,7 +467,7 @@ def test_v5_blank_repair_roundtrip(build):
     # load) -> run the repair -> every buffer must return to its scaled value.
     # Family-agnostic: encodes no scaling math, so it guards any rotary that
     # keeps scaling in a buffer (issue #2405 / PR #6907).
-    from nexus.models import loader
+    from spartan_agent.models import loader
 
     # The repair only runs on transformers v5 (it is what blanks the buffers);
     # on v4 _fix_rope_inv_freq is a no-op, so the round-trip cannot restore.
@@ -501,7 +501,7 @@ def test_object_style_rope_scaling_does_not_crash():
     # Object-style rope_scaling must be normalized, not .get()'d directly.
     from dataclasses import dataclass
 
-    from nexus.models.llama import _compute_config_rope_inv_freq
+    from spartan_agent.models.llama import _compute_config_rope_inv_freq
 
     @dataclass
     class FakeRopeScalingConfig:
@@ -526,7 +526,7 @@ def test_object_style_rope_scaling_on_config_delegates_correctly():
     # 'linear' has no inline fallback; only the normalized-config retry passes this.
     from dataclasses import dataclass
 
-    from nexus.models.llama import _compute_config_rope_inv_freq
+    from spartan_agent.models.llama import _compute_config_rope_inv_freq
 
     @dataclass
     class FakeLinearRopeScalingConfig:

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -10168,7 +10168,7 @@ async def _unload_model_impl(request: UnloadRequest, current_subject: str):
                 logger.info(f"Unloaded GGUF model: {request.model_path}")
                 return UnloadResponse(status = "unloaded", model = request.model_path)
 
-            # Unload from nexus backend off the event loop: unload takes _gen_lock, which
+            # Unload from spartan_agent backend off the event loop: unload takes _gen_lock, which
             # a slow SSE stream paused between tokens still holds, so a sync call would block
             # the loop that drives the stream's next token and the lock release.
             backend = await asyncio.to_thread(get_inference_backend)

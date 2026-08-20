@@ -107,7 +107,7 @@ function Logo() {
         <div className="absolute -inset-4 rounded-full bg-primary/10 blur-2xl dark:bg-primary/20 pointer-events-none" />
         <img
           src="/spartan-logo.svg"
-          alt="SPARTAN AGENTS"
+          alt="SPARTAN AGENT"
           aria-hidden="true"
           className="relative h-28 w-28 sm:h-36 sm:w-36 object-contain drop-shadow-[0_12px_28px_rgba(0,0,0,0.4)] transition-transform duration-300 hover:scale-105"
         />
@@ -117,7 +117,7 @@ function Logo() {
           className="text-2xl sm:text-3xl font-black uppercase tracking-[0.12em] text-foreground"
           style={{ fontFamily: '"Hellix", sans-serif' }}
         >
-          SPARTAN AGENTS
+          SPARTAN AGENT
         </span>
       </div>
     </div>
@@ -174,7 +174,7 @@ function NotInstalledContent({ onInstall }: { onInstall: () => void }) {
           className="text-ui-13 font-semibold tracking-[-0.01em] text-muted-foreground"
           style={{ fontFamily: '"Hellix", sans-serif' }}
         >
-          To install Spartan Agents, click Get Started.
+          To install Spartan Agent, click Get Started.
         </p>
         <ActionButton onClick={onInstall}>
           Get Started
@@ -297,7 +297,7 @@ function ClosingContent() {
       <div className="mb-10 flex w-full flex-col items-center gap-2">
         <Spinner className="size-6 text-primary" />
         <p className="text-sm font-bold text-foreground" aria-live="polite">
-          Closing Spartan Agents Desktop...
+          Closing Spartan Agent Desktop...
         </p>
         <p className="text-sm text-muted-foreground">Shutting down the backend.</p>
       </div>

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Run script for Unsloth UI Backend.
@@ -1301,7 +1301,7 @@ if _STUDIO_ROOT_RESOLVED != _LEGACY_STUDIO_ROOT:
 
     mark_managed_llama_cpp_path(_MANAGED_LLAMA_CPP_PATH)
 
-# The studio bundles unsloth_zoo; declare unsloth present (as `import nexus`
+# The studio bundles unsloth_zoo; declare unsloth present (as `import spartan_agent`
 # does) so its lazy submodule imports (export, hardware, mlx) and the
 # DiffusionGemma runner never trip the install guard on a clean install.
 os.environ.setdefault("UNSLOTH_IS_PRESENT", "1")

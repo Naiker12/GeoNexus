@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """The GRPO hidden-states fallback must wrap the module that owns the head.
@@ -18,9 +18,9 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-import nexus  # noqa: F401,E402  (must be imported before transformers)
+import spartan_agent  # noqa: F401,E402  (must be imported before transformers)
 from transformers import Qwen2Config  # noqa: E402
-from nexus.models.rl import (  # noqa: E402
+from spartan_agent.models.rl import (  # noqa: E402
     _grpo_hidden_states_wrap_target,
     _install_grpo_hidden_states_forward_wrapper,
     _module_returns_logits,

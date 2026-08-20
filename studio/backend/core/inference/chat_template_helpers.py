@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """
@@ -1521,7 +1521,7 @@ def mapped_chat_template(model_info: dict, active_model_name):
     mapped = None
     try:
         from utils.datasets import MODEL_TO_TEMPLATE_MAPPER
-        from nexus.chat_templates import get_chat_template
+        from spartan_agent.chat_templates import get_chat_template
 
         name = (active_model_name or "").lower()
         if name in MODEL_TO_TEMPLATE_MAPPER:

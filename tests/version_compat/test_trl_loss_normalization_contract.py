@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Guard the grad-accumulation loss-normalisation contract across TRL versions.
 
@@ -59,7 +59,7 @@ _spoof.apply()
 # --------------------------------------------------------------------------
 def test_sft_loss_type_default_is_nll_after_unsloth_patch():
     """chunked_nll bypasses the forward (fused CE never runs) and double-divides."""
-    import nexus  # noqa: F401  must precede trl
+    import spartan_agent  # noqa: F401  must precede trl
     import trl
 
     if not hasattr(trl.SFTConfig, "loss_type"):
@@ -76,7 +76,7 @@ def test_sft_loss_type_default_is_nll_after_unsloth_patch():
 
 def test_loss_type_replacement_did_not_leak_to_other_trainers():
     """loss_type is an unrelated field in DPO/KTO/GRPO; the global dict hits all."""
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     import trl
 
     expected = {"DPOConfig": ["sigmoid"], "KTOConfig": "kto", "GRPOConfig": "bnpo"}
@@ -93,7 +93,7 @@ def test_loss_type_replacement_did_not_leak_to_other_trainers():
 
 def test_explicit_loss_type_still_wins():
     """Pinning a default must not take the choice away from the user."""
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     import trl
 
     if not hasattr(trl.SFTConfig, "loss_type"):
@@ -117,13 +117,13 @@ def _pristine_sft_config_cls():
 
 
 def test_pristine_trl_sft_config_default_is_nll_too():
-    """`from trl import SFTConfig` before `import nexus` keeps TRL's own class.
+    """`from trl import SFTConfig` before `import spartan_agent` keeps TRL's own class.
 
     Patching only rebinds the module aliases, so that caller never sees the
     generated subclass and would still build a chunked_nll config and hand it to
     the patched trainer. The same ordering is covered by the padding-free tests.
     """
-    import nexus  # noqa: F401  must precede trl
+    import spartan_agent  # noqa: F401  must precede trl
 
     pristine = _pristine_sft_config_cls()
     if not hasattr(pristine, "loss_type"):
@@ -140,7 +140,7 @@ def test_pristine_trl_sft_config_default_is_nll_too():
 
 def test_pristine_trl_sft_config_keeps_an_explicit_loss_type():
     """Pinning the pristine default must not take the choice away either."""
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
 
     pristine = _pristine_sft_config_cls()
     if not hasattr(pristine, "loss_type"):
@@ -161,7 +161,7 @@ def test_dataclass_field_default_is_nll_for_hfargumentparser():
     """
     import dataclasses
 
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
 
     pristine = _pristine_sft_config_cls()
     if not hasattr(pristine, "loss_type"):
@@ -282,7 +282,7 @@ def test_unsloth_get_batch_samples_is_installed_and_shaped_as_expected():
 # --------------------------------------------------------------------------
 def test_rl_py_scopes_loss_type_to_sft_trainer():
     """AST guard: no loss_type replacement outside an `if trainer_file ==` branch."""
-    from nexus.models import rl
+    from spartan_agent.models import rl
 
     source = inspect.getsource(rl)
     tree = ast.parse(source)

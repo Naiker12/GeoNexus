@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """A text model should not die on an audio library it never asked for.
@@ -191,7 +191,7 @@ def test_the_check_itself_is_never_patched_out():
     import inspect
     import textwrap
 
-    from nexus import import_fixes
+    from spartan_agent import import_fixes
 
     func = import_fixes.disable_torchaudio_if_cuda_mismatched
     tree = ast.parse(textwrap.dedent(inspect.getsource(func)))
@@ -225,7 +225,7 @@ def test_it_runs_before_the_torchcodec_repair_because_it_has_to():
 
 
 def import_fixes_dir():
-    import nexus
+    import spartan_agent
     from pathlib import Path
     return Path(unsloth.__file__).parent
 

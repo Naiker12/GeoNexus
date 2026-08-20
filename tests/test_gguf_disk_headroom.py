@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """A GGUF export that holds three copies of the model at once.
@@ -47,7 +47,7 @@ def _is_merge_shard(name):
 
 @pytest.fixture
 def save_mod():
-    import nexus.save as save
+    import spartan_agent.save as save
     return save
 
 

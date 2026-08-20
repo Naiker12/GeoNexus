@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """CPU-only routing tests for the single-pass GGUF export and parallel quantization.
@@ -20,7 +20,7 @@ import time
 
 import pytest
 
-import nexus.save as save_mod
+import spartan_agent.save as save_mod
 
 
 # -- _choose_first_conversion (pure planning logic) ----------------------------------------

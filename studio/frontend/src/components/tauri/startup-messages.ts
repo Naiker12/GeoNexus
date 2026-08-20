@@ -1,4 +1,4 @@
-export const INITIAL_STARTUP_MESSAGE = "Starting Spartan Agents...";
+export const INITIAL_STARTUP_MESSAGE = "Starting Spartan Agent...";
 export const MODELS_STARTUP_MESSAGE = "Loading models...";
 export const SERVER_STARTUP_MESSAGE = "Nearly done...";
 export const STATUS_MESSAGE_ROTATION_MS = 5_000;
@@ -18,7 +18,7 @@ const INSTALL_PHASE_MESSAGES: readonly InstallProgressMessage[] = [
     subtitle: "Creating your local environment.",
   },
   {
-    title: "Installing Spartan Agents...",
+    title: "Installing Spartan Agent...",
     subtitle: "Setting up local AI tools...",
   },
   {

@@ -1,4 +1,4 @@
-﻿# Unsloth - 2x faster, 70% less memory LLM finetuning
+# Unsloth - 2x faster, 70% less memory LLM finetuning
 # Tests for the `finetune_last_n_layers` parity knob (translation helper only,
 # no CUDA / real checkpoint); mirrors unsloth-zoo's MLX layers_to_transform path.
 
@@ -8,7 +8,7 @@ import pytest
 
 
 def test_get_total_transformer_layers_reads_num_hidden_layers():
-    from nexus.models.vision import _get_total_transformer_layers
+    from spartan_agent.models.vision import _get_total_transformer_layers
 
     class FakeConfig:
         num_hidden_layers = 18
@@ -20,7 +20,7 @@ def test_get_total_transformer_layers_reads_num_hidden_layers():
 
 
 def test_get_total_transformer_layers_reads_text_config():
-    from nexus.models.vision import _get_total_transformer_layers
+    from spartan_agent.models.vision import _get_total_transformer_layers
 
     class TextConfig:
         num_hidden_layers = 24
@@ -36,7 +36,7 @@ def test_get_total_transformer_layers_reads_text_config():
 
 
 def test_get_total_transformer_layers_handles_alternative_attr_names():
-    from nexus.models.vision import _get_total_transformer_layers
+    from spartan_agent.models.vision import _get_total_transformer_layers
     for attr in ("n_layer", "n_layers", "num_layers"):
         cfg = type("Cfg", (), {attr: 12})()
         model = type("M", (), {"config": cfg})()
@@ -44,7 +44,7 @@ def test_get_total_transformer_layers_handles_alternative_attr_names():
 
 
 def test_get_total_transformer_layers_returns_none_when_unknown():
-    from nexus.models.vision import _get_total_transformer_layers
+    from spartan_agent.models.vision import _get_total_transformer_layers
 
     class FakeConfig:
         pass
@@ -56,7 +56,7 @@ def test_get_total_transformer_layers_returns_none_when_unknown():
 
 
 def test_get_total_transformer_layers_returns_none_for_missing_config():
-    from nexus.models.vision import _get_total_transformer_layers
+    from spartan_agent.models.vision import _get_total_transformer_layers
     class FakeModel:
         pass
 
@@ -66,8 +66,8 @@ def test_get_total_transformer_layers_returns_none_for_missing_config():
 def test_finetune_last_n_layers_signature_present_on_llama_and_vision():
     """Both entry points expose finetune_last_n_layers with default None."""
     import inspect
-    from nexus.models.llama import FastLlamaModel
-    from nexus.models.vision import FastBaseModel
+    from spartan_agent.models.llama import FastLlamaModel
+    from spartan_agent.models.vision import FastBaseModel
 
     for cls in (FastLlamaModel, FastBaseModel):
         sig = inspect.signature(cls.get_peft_model)

@@ -1,4 +1,4 @@
-﻿"""Tests for check_dataset_for_missing_videos (issue #5085).
+"""Tests for check_dataset_for_missing_videos (issue #5085).
 
 Fixtures AST-extract the function from vision.py so logic tests run without
 the full unsloth import chain (triton/CUDA kernels).
@@ -52,7 +52,7 @@ def _extract_fn_via_ast(
 def check_dataset_for_missing_videos():
     """Direct import when possible, else AST extraction from vision.py."""
     try:
-        from nexus.models.vision import check_dataset_for_missing_videos as fn
+        from spartan_agent.models.vision import check_dataset_for_missing_videos as fn
         return fn
     except Exception:
         pass
@@ -483,7 +483,7 @@ def test_duplicate_missing_deduped_in_warn_mode(check_dataset_for_missing_videos
 @pytest.fixture(scope = "session")
 def real_collator_classes():
     try:
-        from nexus.trainer import UnslothVisionDataCollator
+        from spartan_agent.trainer import UnslothVisionDataCollator
         from unsloth_zoo.vision_utils import (
             UnslothVisionDataCollator as ZooBase,
         )

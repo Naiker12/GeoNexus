@@ -1,4 +1,4 @@
-﻿# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
+# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -25,11 +25,11 @@ from __future__ import annotations
 
 import warnings
 
-import nexus  # noqa: F401  (installs the unsloth patches the functions live behind)
+import spartan_agent  # noqa: F401  (installs the unsloth patches the functions live behind)
 
 import torch
 
-from nexus.models._utils import (
+from spartan_agent.models._utils import (
     _unsloth_install_pretrain_detector,
     _unsloth_reset_stray_compile_cache,
 )
@@ -44,7 +44,7 @@ def test_reset_helper_is_importable_and_exported():
     # string (exec'd into a generated trainer module), so importing it from a real module raised
     # ImportError and every non-RL consumer (SFT trainer.py, the plain-Trainer loop, the RL
     # template's own delegation) silently no-op'd. Pin it as an exported module-level symbol.
-    from nexus.models import _utils
+    from spartan_agent.models import _utils
     assert callable(_utils._unsloth_reset_stray_compile_cache)
     assert "_unsloth_reset_stray_compile_cache" in _utils.__all__
 

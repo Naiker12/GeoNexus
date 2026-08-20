@@ -209,7 +209,7 @@ export const Route = createRootRoute({
 const HIDDEN_NAVBAR_ROUTES = ["/login", "/change-password"];
 
 // Fallback when no matched route declares a `staticData.title`.
-const DEFAULT_DOCUMENT_TITLE = "Spartan Agents";
+const DEFAULT_DOCUMENT_TITLE = "Spartan Agent";
 
 function RootLayout() {
   const t = useT();

@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""`import nexus` must survive a torchao wanting an aten op this torch lacks.
+"""`import spartan_agent` must survive a torchao wanting an aten op this torch lacks.
 
 torchao 0.18 does `@implements([aten._grouped_mm.default])` at module scope,
 and that op arrived in torch 2.8, so older torch raises AttributeError on the
 lookup. transformers imports torchao from `modeling_utils`, so this kills
-`import transformers` and therefore `import nexus`. Seen on Colab in
+`import transformers` and therefore `import spartan_agent`. Seen on Colab in
 Granite4.0, which pins torch 2.7.1 via uv against a current torchao.
 
 Sibling of the `ScalingType` skew in test_torchao_subprocess_fix.py, but not
@@ -40,7 +40,7 @@ sys.path.insert(0, str(ROOT))
 
 import torch  # noqa: E402
 
-from nexus import import_fixes as IF  # noqa: E402
+from spartan_agent import import_fixes as IF  # noqa: E402
 
 
 # ---- the guard ----------------------------------------------------------

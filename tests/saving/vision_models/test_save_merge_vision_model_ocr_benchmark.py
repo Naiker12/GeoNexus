@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # tests/saving scripts run their whole body at import, so plain pytest
 # collection would download checkpoints and train. Skip unless opted in.
 import sys as _sys
@@ -13,7 +13,7 @@ _require_opt_in(
 )
 
 
-from nexus import FastVisionModel
+from spartan_agent import FastVisionModel
 
 import torch
 from qwen_vl_utils import process_vision_info
@@ -118,8 +118,8 @@ model = FastVisionModel.get_peft_model(
     loftq_config = None,  # And LoftQ
 )
 
-from nexus import is_bf16_supported
-from nexus.trainer import UnslothVisionDataCollator
+from spartan_agent import is_bf16_supported
+from spartan_agent.trainer import UnslothVisionDataCollator
 
 FastVisionModel.for_training(model)  # Enable for training!
 model.config.use_cache = False

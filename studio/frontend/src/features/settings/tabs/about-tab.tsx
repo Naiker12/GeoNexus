@@ -196,19 +196,19 @@ export function AboutTab() {
       <SettingsSection title={t("settings.about.help")}>
         <SettingsRow label={t("settings.about.documentation")}>
           <a
-            href="https://github.com/Naiker12/GeoNexus"
+            href="https://github.com/Naiker12/Spartan-Agent"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
           >
             <HugeiconsIcon icon={Book03Icon} className="size-3.5" />
-            github.com/Naiker12/GeoNexus
+            github.com/Naiker12/Spartan-Agent
             <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3" />
           </a>
         </SettingsRow>
         <SettingsRow label={t("settings.about.releaseNotes")}>
           <a
-            href="https://github.com/Naiker12/GeoNexus/releases"
+            href="https://github.com/Naiker12/Spartan-Agent/releases"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -220,7 +220,7 @@ export function AboutTab() {
         </SettingsRow>
         <SettingsRow label={t("settings.about.feedback")}>
           <a
-            href="https://github.com/Naiker12/GeoNexus/issues"
+            href="https://github.com/Naiker12/Spartan-Agent/issues"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -241,7 +241,7 @@ export function AboutTab() {
           description={t("settings.about.license.studioDescription")}
         >
           <a
-            href="https://github.com/Naiker12/GeoNexus/blob/main/LICENSE"
+            href="https://github.com/Naiker12/Spartan-Agent/blob/main/LICENSE"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-mono text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -255,7 +255,7 @@ export function AboutTab() {
           description={t("settings.about.license.libraryDescription")}
         >
           <a
-            href="https://github.com/Naiker12/GeoNexus/blob/main/LICENSE"
+            href="https://github.com/Naiker12/Spartan-Agent/blob/main/LICENSE"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-mono text-xs font-medium text-muted-foreground hover:text-foreground"

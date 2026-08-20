@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """What the installers SAY when an AMD GPU is detected and ROCm does not cover it.
@@ -658,7 +658,7 @@ class TestAdviceIsNotEmittedForRdna1:
         )
         assert "runs on CPU on this GPU" not in window, (
             f"{path.name}:{hits[0] + 1}: promises CPU training, which raises "
-            f"NotImplementedError at `import nexus` on a host with no CUDA/XPU "
+            f"NotImplementedError at `import spartan_agent` on a host with no CUDA/XPU "
             f"accelerator:\n{window}"
         )
         assert "training and GPU inference are unavailable" in window, (

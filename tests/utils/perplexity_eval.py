@@ -1,9 +1,9 @@
-﻿from tqdm import tqdm
+from tqdm import tqdm
 import torch
 import pandas as pd
 
 # DEVICE_TYPE_TORCH, not DEVICE_TYPE: the latter can be "hip"/"mlx", which .to() rejects.
-from nexus.device_type import DEVICE_TYPE_TORCH
+from spartan_agent.device_type import DEVICE_TYPE_TORCH
 
 model_comparison_results = {}
 

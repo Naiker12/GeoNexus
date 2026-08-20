@@ -16,7 +16,7 @@ export function useEffectiveProfile() {
   const addressName = nickname.trim() || dn.split(/\s+/)[0] || sessionSub || "";
   return {
     sessionSub,
-    displayTitle: dn || "Spartan Agents",
+    displayTitle: dn || "Spartan Agent",
     addressName,
     avatarDataUrl,
   };

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Export backend - exports models in various formats."""
@@ -16,7 +16,7 @@ from typing import Optional, Tuple, List
 # unsloth imports torch on non-MLX hosts, so a --no-torch install raises here. Stay importable
 # (null the classes) so exports return a clean "PyTorch is not installed" error.
 try:
-    from nexus import FastLanguageModel, FastVisionModel, _IS_MLX
+    from spartan_agent import FastLanguageModel, FastVisionModel, _IS_MLX
     _UNSLOTH_IMPORT_ERROR = None
 except Exception as _unsloth_exc:  # ImportError (e.g. missing torch) or a broken native load
     FastLanguageModel = None
@@ -268,7 +268,7 @@ def _folded(path):
 def _compressed_export_supported():
     """True if the installed unsloth build can do FP8/NVFP4 compressed-tensors export."""
     try:
-        import nexus.save as _us
+        import spartan_agent.save as _us
         return hasattr(_us, "_normalize_compressed_method")
     except Exception:
         return False
@@ -277,7 +277,7 @@ def _compressed_export_supported():
 def _torchao_export_supported():
     """True if the installed unsloth build has the portable torchao FP8/INT8 export path."""
     try:
-        import nexus.save as _us
+        import spartan_agent.save as _us
         return hasattr(_us, "_normalize_torchao_method")
     except Exception:
         return False
@@ -321,7 +321,7 @@ def _hf_offline(timeout = 3):
 
 # Reuse Unsloth's lock-guarded forced-offline context; no-op fallback if it moves.
 try:
-    from nexus.models.loader_utils import _force_hf_offline
+    from spartan_agent.models.loader_utils import _force_hf_offline
 except Exception:
     import contextlib as _contextlib
 
@@ -495,7 +495,7 @@ class ExportBackend:
                 )
 
             if self._audio_type == "csm":
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 from transformers import CsmForConditionalGeneration
 
                 logger.info("Loading as CSM audio model...")
@@ -512,7 +512,7 @@ class ExportBackend:
                 )
 
             elif self._audio_type == "whisper":
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 from transformers import WhisperForConditionalGeneration
 
                 logger.info("Loading as Whisper audio model...")
@@ -541,7 +541,7 @@ class ExportBackend:
                 )
 
             elif self._audio_type == "bicodec":
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 logger.info("Loading as BiCodec (Spark-TTS) audio model...")
                 model, tokenizer = FastModel.from_pretrained(
                     model_name = checkpoint_path,
@@ -555,7 +555,7 @@ class ExportBackend:
                 )
 
             elif self._audio_type == "dac":
-                from nexus import FastModel
+                from spartan_agent import FastModel
                 logger.info("Loading as DAC (OuteTTS) audio model...")
                 model, tokenizer = FastModel.from_pretrained(
                     model_name = checkpoint_path,
@@ -730,7 +730,7 @@ class ExportBackend:
         torchao_info = None
         if compressed_alias and _torchao_export_supported():
             try:
-                import nexus.save as _us_t
+                import spartan_agent.save as _us_t
                 torchao_info = _us_t._normalize_torchao_method(compressed_alias)
             except Exception:
                 torchao_info = None
@@ -765,7 +765,7 @@ class ExportBackend:
                         "compressed-tensors support. Upgrade unsloth, or choose 16-bit.",
                         None,
                     )
-                import nexus.save as _us
+                import spartan_agent.save as _us
 
                 # Prefer the llm-compressor-main shadow (transformers 5.x): it quantizes newer models
                 # (Qwen3.5, Gemma-4, ...) the shipped 0.10.x cannot. Route all compressed exports

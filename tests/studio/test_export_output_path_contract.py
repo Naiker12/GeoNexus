@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 
 import ast
 from pathlib import Path
@@ -112,7 +112,7 @@ def test_mlx_hub_only_uses_temp_directory():
 
 def test_is_mlx_imported_from_unsloth():
     src = EXPORT.read_text(encoding = "utf-8")
-    assert "from nexus import" in src
+    assert "from spartan_agent import" in src
     head = src.split("class ExportBackend")[0]
     assert "_IS_MLX" in head
     assert "_IS_MLX = platform.system()" not in src

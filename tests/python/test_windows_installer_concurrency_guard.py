@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 from __future__ import annotations
@@ -734,7 +734,7 @@ $names | ForEach-Object {{ Write-Output $_ }}
 @pytest.mark.skipif(os.name != "nt" or not POWERSHELLS, reason = "Windows PowerShell is required")
 @pytest.mark.parametrize("shell", POWERSHELLS)
 def test_unicode_custom_root_mutex_name_matches_python(tmp_path: Path, shell: str):
-    from nexus_cli import _studio_runtime_gate as gate
+    from spartan_agent_cli import _studio_runtime_gate as gate
 
     source = INSTALL_PS1.read_text(encoding = "utf-8")
     helpers = _mutex_helpers(source)
@@ -754,7 +754,7 @@ Write-Output (Get-StudioRuntimeMutexNameForPath -Path $env:TEST_STUDIO_HOME)
 @pytest.mark.skipif(os.name != "nt" or not POWERSHELLS, reason = "Windows PowerShell is required")
 @pytest.mark.parametrize("shell", POWERSHELLS)
 def test_drive_root_identity_and_mutex_names_match_python(shell: str):
-    from nexus_cli import _studio_runtime_gate as gate
+    from spartan_agent_cli import _studio_runtime_gate as gate
 
     source = INSTALL_PS1.read_text(encoding = "utf-8")
     helpers = _mutex_helpers(source)

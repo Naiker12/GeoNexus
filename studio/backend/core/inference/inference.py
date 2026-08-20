@@ -1,10 +1,10 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Core inference backend."""
 
-from nexus import FastLanguageModel, FastVisionModel
-from nexus.chat_templates import get_chat_template
+from spartan_agent import FastLanguageModel, FastVisionModel
+from spartan_agent.chat_templates import get_chat_template
 from transformers import TextIteratorStreamer, TextStreamer
 from peft import PeftModel, PeftModelForCausalLM
 
@@ -396,7 +396,7 @@ class InferenceBackend:
                 log_gpu_memory(f"Before loading {model_name}")
 
                 if audio_type == "csm":
-                    from nexus import FastModel
+                    from spartan_agent import FastModel
                     from transformers import CsmForConditionalGeneration
 
                     model, processor = FastModel.from_pretrained(
@@ -413,7 +413,7 @@ class InferenceBackend:
                     self.models[model_name]["processor"] = processor
                 elif audio_type == "bicodec":
                     import os
-                    from nexus import FastModel
+                    from spartan_agent import FastModel
 
                     if config.is_lora and config.base_model:
                         # LoRA adapter: base_model is .../Spark-TTS-0.5B/LLM;
@@ -517,7 +517,7 @@ class InferenceBackend:
                     self.models[model_name]["model_repo_path"] = abs_repo_path
                 elif audio_type == "dac":
                     # OuteTTS uses FastModel (not FastLanguageModel)
-                    from nexus import FastModel
+                    from spartan_agent import FastModel
 
                     model, tokenizer = FastModel.from_pretrained(
                         config.path,
@@ -532,7 +532,7 @@ class InferenceBackend:
                     self.models[model_name]["tokenizer"] = tokenizer
                 elif audio_type == "whisper":
                     # Whisper ASR — uses FastModel with WhisperForConditionalGeneration
-                    from nexus import FastModel
+                    from spartan_agent import FastModel
                     from transformers import WhisperForConditionalGeneration
 
                     model, tokenizer = FastModel.from_pretrained(

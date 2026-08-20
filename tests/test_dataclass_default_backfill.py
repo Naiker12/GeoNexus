@@ -1,8 +1,8 @@
-﻿"""_backfill_dataclass_defaults must not shadow an inherited default.
+"""_backfill_dataclass_defaults must not shadow an inherited default.
 
 Deciding "no default yet" with `name not in cls.__dict__` was wrong: a subclass
 re-annotating an inherited field already has one, via the MRO. import_fixes.py
-is loaded by file spec because `import nexus.import_fixes` would run
+is loaded by file spec because `import spartan_agent.import_fixes` would run
 unsloth/__init__.py first, pulling in torch, numpy and unsloth_zoo.
 """
 

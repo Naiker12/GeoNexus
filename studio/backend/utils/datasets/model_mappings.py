@@ -404,7 +404,7 @@ TEMPLATE_TO_MODEL_MAPPER = {
     "starling": (
         "unsloth/Starling-LM-7B-beta-bnb-4bit",
         "unsloth/Starling-LM-7B-beta",
-        "Nexusflow/Starling-LM-7B-beta",
+        "Spartan Agentflow/Starling-LM-7B-beta",
     ),
     "yi-chat": (
         "unsloth/yi-34b-chat-bnb-4bit",

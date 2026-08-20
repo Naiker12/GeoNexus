@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Opt-in: fetch a GGUF a /v1 request names but this server doesn't have.
@@ -665,7 +665,7 @@ async def _admit_and_start(
             code = "model_not_supported",
             message = (
                 f"'{repo_id}' has no GGUF weights. Automatic download serves GGUF only; "
-                "load other formats from nexus Studio."
+                "load other formats from spartan_agent Studio."
             ),
         )
 

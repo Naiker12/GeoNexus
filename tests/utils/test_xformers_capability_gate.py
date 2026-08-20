@@ -1,13 +1,13 @@
-﻿"""Regression test for unslothai/unsloth#4631: xformers must not be blanket-disabled
+"""Regression test for unslothai/unsloth#4631: xformers must not be blanket-disabled
 on sm_120 GPUs where its kernel actually runs (a ~57% attention-memory saving over the
 SDPA packed-mask fallback). The gate now probes the real op instead of guessing by the
 compute-capability major version."""
 
 import pytest
 import torch
-import nexus  # noqa: F401
+import spartan_agent  # noqa: F401
 
-from nexus.utils import attention_dispatch as ad
+from spartan_agent.utils import attention_dispatch as ad
 
 
 @pytest.mark.parametrize(

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """``patch_psutil_cpu_freq`` -- Apple Silicon M4+ CPU frequency units (#8519).
@@ -18,7 +18,7 @@ import types
 
 import pytest
 
-from nexus import import_fixes as IF
+from spartan_agent import import_fixes as IF
 
 
 def _table(raw_freqs):

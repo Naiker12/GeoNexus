@@ -1,11 +1,11 @@
-﻿"""Config arguments the installed TRL retired must not crash trainer construction.
+"""Config arguments the installed TRL retired must not crash trainer construction.
 
 The `**kwargs` catch-all in the generated `Unsloth<X>Config.__init__` used to be
 splatted raw into `super().__init__()`, so a pinned notebook setting
 `GRPOConfig.max_prompt_length` (removed in TRL 0.28.0) died with a `TypeError`
 on upgrade. `filter_config_init_kwargs` is what absorbs that.
 
-The module is loaded by file spec because `import nexus.models.rl_config_compat`
+The module is loaded by file spec because `import spartan_agent.models.rl_config_compat`
 would run `unsloth/__init__.py` first and drag in torch, numpy and unsloth_zoo.
 """
 
@@ -223,7 +223,7 @@ def test_the_generated_config_routes_super_through_the_filter():
 
 def test_the_generated_file_imports_the_filter_with_a_safe_fallback():
     assert (
-        "from nexus.models.rl_config_compat import filter_config_init_kwargs"
+        "from spartan_agent.models.rl_config_compat import filter_config_init_kwargs"
         " as _unsloth_filter_config_init_kwargs"
     ) in RL_SOURCE
     # An import failure must degrade to the historical passthrough, never to a

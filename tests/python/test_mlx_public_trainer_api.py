@@ -1,4 +1,4 @@
-﻿"""Tests for the MLX public trainer compatibility surface."""
+"""Tests for the MLX public trainer compatibility surface."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ _MLX_SKIP_REASON = "MLX public trainer API is only active on the MLX backend"
 
 
 def _import_mlx_unsloth():
-    """import nexus and skip when the current platform is not using MLX."""
+    """import spartan_agent and skip when the current platform is not using MLX."""
     # Skip before importing unsloth so non-MLX hosts missing optional GPU deps
     # (e.g. bitsandbytes) skip cleanly instead of erroring at collection.
     if not (
@@ -48,7 +48,7 @@ class _DummyVLMModel(_DummyModel):
 def test_mlx_exports_unsloth_trainer_api():
     """MLX imports should expose the public Unsloth trainer API."""
     unsloth = _import_mlx_unsloth()
-    from nexus import (
+    from spartan_agent import (
         RawTextDataLoader,
         TextPreprocessor,
         UnslothTrainer,
@@ -1026,7 +1026,7 @@ def test_mlx_rl_trainers_stub_with_clear_error(monkeypatch):
 def test_mlx_rl_trainer_stub_is_lazy_import_safe(monkeypatch):
     """Stubbing unsupported trl trainers must not resolve them: trl lazy-imports
     pull torch, so on a torch-free MLX install a getattr probe would crash
-    `import nexus`. The shim reads __all__/vars metadata and never triggers
+    `import spartan_agent`. The shim reads __all__/vars metadata and never triggers
     trl's __getattr__ for a trainer it is about to replace."""
     unsloth = _import_mlx_unsloth()
     trl = types.ModuleType("trl")
@@ -1166,7 +1166,7 @@ def test_mlx_train_on_responses_only_returns_shared_mask_function():
 def test_mlx_get_chat_template_uses_light_tokenizer_patch(monkeypatch):
     """MLX notebooks should not import CUDA-heavy tokenizer/save helpers."""
     _import_mlx_unsloth()
-    from nexus.chat_templates import get_chat_template
+    from spartan_agent.chat_templates import get_chat_template
     import unsloth_zoo.tokenizer_utils as tokenizer_utils
 
     class Tokenizer:

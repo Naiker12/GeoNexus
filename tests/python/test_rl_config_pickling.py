@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Regression: `torch.save(trainer.args, ...)` must keep working once Unsloth has
@@ -29,7 +29,7 @@ pytest.importorskip("trl")
 
 @pytest.fixture(scope = "module")
 def patched():
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
     import trl.trainer.sft_config as config_module
     return config_module.SFTConfig
 
@@ -170,7 +170,7 @@ def test_training_arguments_conversion_keeps_unsloth_fields(patched, tmp_path):
 def test_every_patched_config_pickles_portably(tmp_path):
     """Sweep: no patched config may pickle under a compiled-cache module."""
     import trl
-    import nexus  # noqa: F401
+    import spartan_agent  # noqa: F401
 
     checked = 0
     for name in sorted(x for x in dir(trl) if x.endswith("Config")):
@@ -205,7 +205,7 @@ def test_reducer_registration_is_idempotent(patched, tmp_path):
     """Patching can run more than once; it must not stack reducers or recurse."""
     import copyreg
 
-    from nexus.models.rl import _patch_trl_rl_trainers
+    from spartan_agent.models.rl import _patch_trl_rl_trainers
     import trl.trainer.sft_config as config_module
 
     before = len(copyreg.dispatch_table)
@@ -229,7 +229,7 @@ def test_a_displaced_sibling_wrapper_is_covered(patched, tmp_path):
     """
     import copyreg
 
-    from nexus.models.rl import (
+    from spartan_agent.models.rl import (
         _UNSLOTH_CONFIG_PICKLE_TARGET,
         _register_config_pickle_fallback,
     )
@@ -264,7 +264,7 @@ def test_an_unrelated_class_is_not_reduced_through_the_patched_one(patched):
     """
     import copyreg
 
-    from nexus.models.rl import _register_config_pickle_fallback
+    from spartan_agent.models.rl import _register_config_pickle_fallback
 
     class _Unrelated:
         pass
@@ -289,8 +289,8 @@ import trl.trainer.sft_config as config_module
 result = {"captured_pristine": config_module.SFTConfig is pristine}
 config = pristine(output_dir = "unused", bf16 = False, fp16 = False, use_cpu = True)
 
-import nexus
-from nexus import FastLanguageModel
+import spartan_agent
+from spartan_agent import FastLanguageModel
 import torch
 
 result["rebound"] = config_module.SFTConfig is not pristine

@@ -1,4 +1,4 @@
-﻿"""FP8 block-quant linear must handle tiny / non-tileable weights and e8m0 scales.
+"""FP8 block-quant linear must handle tiny / non-tileable weights and e8m0 scales.
 
 Two things break the triton block path:
   * a hidden dim not divisible by the activation block size (tiny test models),
@@ -28,7 +28,7 @@ def _reference(X, weight, scale, block):
 
 
 def test_tiny_non_tileable_forward_backward_matches_reference():
-    from nexus.kernels.fp8 import FP8BlockQuantLinear
+    from spartan_agent.kernels.fp8 import FP8BlockQuantLinear
 
     torch.manual_seed(0)
     block = [128, 128]
@@ -48,7 +48,7 @@ def test_tiny_non_tileable_forward_backward_matches_reference():
 
 
 def test_e8m0_scale_is_upcast_and_runs():
-    from nexus.kernels.fp8 import FP8BlockQuantLinear
+    from spartan_agent.kernels.fp8 import FP8BlockQuantLinear
 
     if not hasattr(torch, "float8_e8m0fnu"):
         pytest.skip("torch build lacks float8_e8m0fnu")
@@ -69,7 +69,7 @@ def test_rectangular_block_dequant_matches_reference():
     # route through the triton weight_dequant kernel, which uses a single BLOCK_SIZE
     # for both axes and mis-indexes the column scale. Verify the torch expansion path
     # now matches the reference for a 64x256 weight with block [64, 128] (scale 1x2).
-    from nexus.kernels.fp8 import _blockwise_weight_dequant_any_shape
+    from spartan_agent.kernels.fp8 import _blockwise_weight_dequant_any_shape
 
     torch.manual_seed(0)
     block = [64, 128]
@@ -89,7 +89,7 @@ def test_e8m0_scale_preserves_non_default_block_size_attr():
     # An e8m0 scale carrying a non-default block_size attribute must keep it across
     # the float32 upcast in forward; otherwise the lookup falls back to [128, 128]
     # and a compatible layout is wrongly rejected as incompatible.
-    from nexus.kernels.fp8 import FP8BlockQuantLinear
+    from spartan_agent.kernels.fp8 import FP8BlockQuantLinear
 
     if not hasattr(torch, "float8_e8m0fnu"):
         pytest.skip("torch build lacks float8_e8m0fnu")

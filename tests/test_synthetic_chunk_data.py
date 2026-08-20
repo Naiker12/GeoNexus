@@ -1,11 +1,11 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Regression tests for SyntheticDataKit.chunk_data: short-document handling and overlap validation."""
 
 import os
 import tempfile
 from types import SimpleNamespace
 
-from nexus.dataprep.synthetic import SyntheticDataKit
+from spartan_agent.dataprep.synthetic import SyntheticDataKit
 
 
 class _MockTokenizer:

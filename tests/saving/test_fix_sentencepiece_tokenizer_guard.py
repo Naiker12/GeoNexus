@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 import gc
 import os
 
@@ -15,7 +15,7 @@ from transformers.convert_slow_tokenizer import import_protobuf
 
 sentencepiece_model_pb2 = import_protobuf()
 
-from nexus.tokenizer_utils import fix_sentencepiece_tokenizer
+from spartan_agent.tokenizer_utils import fix_sentencepiece_tokenizer
 
 
 NORMAL, CONTROL = 1, 3

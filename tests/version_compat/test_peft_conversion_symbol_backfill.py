@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """transformers can keep a module and drop the names peft imports from it.
 
@@ -25,7 +25,7 @@ import pytest
 
 
 def _load_import_fixes():
-    """By file path, not `from nexus import ...`.
+    """By file path, not `from spartan_agent import ...`.
 
     `version-compat-ci.yml`'s `daily-fresh-fetch` job collects this whole
     directory with pytest as its only dependency, and importing the package

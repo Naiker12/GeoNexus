@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Chat template utilities for dataset processing.
@@ -56,7 +56,7 @@ def get_tokenizer_chat_template(tokenizer, model_name):
         tokenizer with the chat template applied
     """
     try:
-        from nexus.chat_templates import get_chat_template
+        from spartan_agent.chat_templates import get_chat_template
     except ImportError:
         return tokenizer
 
@@ -265,7 +265,7 @@ def apply_chat_template_to_dataset(
         # Set alpaca chat template (if unset) so it's saved for inference.
         if not (hasattr(tokenizer, 'chat_template') and tokenizer.chat_template):
             try:
-                from nexus.chat_templates import get_chat_template
+                from spartan_agent.chat_templates import get_chat_template
                 tokenizer = get_chat_template(
                     tokenizer,
                     chat_template = "alpaca",

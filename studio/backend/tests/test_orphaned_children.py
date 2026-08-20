@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """No child outlives the Studio that spawned it.
@@ -115,7 +115,7 @@ def test_tool_kill_takes_the_shell_payload_with_it(tmp_path):
 # ---------------------------------------------------------------------------
 @pytest.mark.skipif(not IS_WINDOWS, reason = "the update gate is Windows-only")
 def test_update_gate_blocks_on_a_single_orphan(tmp_path):
-    from nexus_cli import _studio_runtime_gate
+    from spartan_agent_cli import _studio_runtime_gate
 
     studio_home = tmp_path / "studio_home"
     venv = studio_home / "unsloth_studio"
@@ -141,7 +141,7 @@ def test_update_gate_blocks_on_a_single_orphan(tmp_path):
 @pytest.mark.skipif(IS_WINDOWS, reason = "contrast case for POSIX")
 def test_update_gate_is_a_noop_on_posix(tmp_path):
     """On Linux/macOS nothing checks for a running Studio before an update."""
-    from nexus_cli import _studio_runtime_gate
+    from spartan_agent_cli import _studio_runtime_gate
     _studio_runtime_gate.ensure_managed_environment_is_idle(tmp_path / "anything")
 
 

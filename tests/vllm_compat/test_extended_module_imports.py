@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Extended import-smoke + API surface checks for unsloth + unsloth-zoo
 modules under the CUDA spoof harness.
@@ -131,7 +131,7 @@ def test_unsloth_zoo_module_imports_under_spoof(modname: str):
 def test_unsloth_is_mlx_false_under_spoof():
     """CUDA spoof must not flip _IS_MLX on non-Apple-Silicon hosts."""
     sys.modules.pop("unsloth", None)
-    import nexus
+    import spartan_agent
 
     assert unsloth._IS_MLX is False, (
         f"_IS_MLX activated on a non-Apple-Silicon runner under CUDA spoof; "
@@ -139,7 +139,7 @@ def test_unsloth_is_mlx_false_under_spoof():
     )
 
 
-# unsloth.models.* — core surfaces loaded transitively by `from nexus import FastLanguageModel`.
+# unsloth.models.* — core surfaces loaded transitively by `from spartan_agent import FastLanguageModel`.
 
 
 _UNSLOTH_CORE_MODULES = [
@@ -157,11 +157,11 @@ _UNSLOTH_CORE_MODULES = [
 @pytest.mark.parametrize("modname", _UNSLOTH_CORE_MODULES)
 def test_unsloth_core_module_imports_under_spoof(modname: str):
     """Core unsloth modules must import under spoof (module-top symbol drift
-    crashes here). Bootstraps `import nexus` first for its _gpu_init side effects."""
+    crashes here). Bootstraps `import spartan_agent` first for its _gpu_init side effects."""
     try:
-        import nexus  # noqa: F401  -- triggers _gpu_init side effects
+        import spartan_agent  # noqa: F401  -- triggers _gpu_init side effects
     except Exception as e:
-        pytest.skip(f"`import nexus` failed under spoof: {e}")
+        pytest.skip(f"`import spartan_agent` failed under spoof: {e}")
     sys.modules.pop(modname, None)
     try:
         importlib.import_module(modname)
@@ -182,7 +182,7 @@ def test_unsloth_core_module_imports_under_spoof(modname: str):
 @pytest.mark.skipif(not _has_unsloth(), reason = "unsloth not installed")
 def test_fast_model_class_surface_under_spoof():
     sys.modules.pop("unsloth", None)
-    import nexus
+    import spartan_agent
 
     found_at_least_one = False
     for cls_name in ("FastLanguageModel", "FastVisionModel", "FastModel"):
@@ -210,9 +210,9 @@ def test_fast_model_class_surface_under_spoof():
 @pytest.mark.skipif(not _has_unsloth(), reason = "unsloth not installed")
 def test_unsloth_rl_replacements_dispatch_populated():
     try:
-        import nexus  # noqa: F401  -- _gpu_init bootstrap
+        import spartan_agent  # noqa: F401  -- _gpu_init bootstrap
     except Exception as e:
-        pytest.skip(f"`import nexus` failed under spoof: {e}")
+        pytest.skip(f"`import spartan_agent` failed under spoof: {e}")
     sys.modules.pop("unsloth.models.rl_replacements", None)
     try:
         rl = importlib.import_module("unsloth.models.rl_replacements")
@@ -253,7 +253,7 @@ def test_zoo_compiler_apply_fused_lm_head_callable():
 @pytest.mark.skipif(not _has_unsloth(), reason = "unsloth not installed")
 def test_fast_model_from_pretrained_kwargs_under_spoof():
     sys.modules.pop("unsloth", None)
-    import nexus
+    import spartan_agent
 
     cls = getattr(unsloth, "FastLanguageModel", None) or getattr(unsloth, "FastModel", None)
     if cls is None:

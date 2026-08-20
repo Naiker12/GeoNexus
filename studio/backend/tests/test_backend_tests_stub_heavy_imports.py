@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """No test module in this tree may import a backend module that needs unsloth without stubbing first.
@@ -13,7 +13,7 @@ An unstubbed module fails COLLECTION, which takes the entire job down on all fou
 versions, as ``test_trainer_stdout_quiet.py`` and then ``test_audio_type_inconclusive.py`` did.
 
 The earlier version of this guard hardcoded ``core.training.trainer``, so a test reaching the
-same ``import nexus`` through any other backend module was invisible to it. The set is now
+same ``import spartan_agent`` through any other backend module was invisible to it. The set is now
 derived from the backend sources: every module importing a heavy package at module scope, closed
 transitively over the backend's own module-scope imports. Source check rather than runtime,
 because where the real packages ARE installed the import succeeds and proves nothing.

@@ -1,11 +1,11 @@
-﻿"""Tests _backfill_missing_peft_symbols in import_fixes.py.
+"""Tests _backfill_missing_peft_symbols in import_fixes.py.
 
 peft's ``transformers_weight_conversion`` imports 3 names from
 ``transformers.conversion_mapping`` and 8 from ``core_model_loading`` at module
 top level. Unsloth stubs those submodules when absent, but an importable one can
 still lack individual symbols: transformers 5.0.0.dev0 ships
 ``conversion_mapping`` WITHOUT ``_MODEL_TO_CONVERSION_PATTERN``, whose
-ImportError took down `import nexus` in Ministral_3_(3B)_Reinforcement_Learning.
+ImportError took down `import spartan_agent` in Ministral_3_(3B)_Reinforcement_Learning.
 The old guard only asked whether the submodule imported. Backfilling must be
 strictly additive: never replace a real module, never overwrite a real symbol.
 """

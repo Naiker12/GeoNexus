@@ -1,4 +1,4 @@
-﻿# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
+# Unsloth - 2x faster, 60% less VRAM LLM training and finetuning
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -77,7 +77,7 @@ def _fake_vllm(
 ):
     """Install a synthetic lazy vLLM, restoring VLLM_BROKEN, find_spec,
     meta_path, and the vllm* sys.modules entries on exit."""
-    from nexus import import_fixes
+    from spartan_agent import import_fixes
 
     submodules = import_fixes._VLLM_COMPILED_EXTENSIONS
     saved_meta_path = list(sys.meta_path)

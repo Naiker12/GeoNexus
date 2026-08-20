@@ -3,7 +3,7 @@ requires = ["setuptools==80.9.0", "setuptools-scm==9.2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nexus"
+name = "spartan-agent"
 dynamic = ["version"]
 description = "2-5X faster training, reinforcement learning & finetuning"
 readme = "README.md"
@@ -11,10 +11,10 @@ requires-python = ">=3.9,<3.15"
 license = "Apache-2.0"
 keywords = ["ai", "llm", "reinforcement learning", "machine learning", "artificial intelligence", "pytorch"]
 authors = [
-    {name = "Nexus AI team"},
+    {name = "Spartan Agent AI team"},
 ]
 maintainers = [
-    {name = "Nexus AI team"},
+    {name = "Spartan Agent AI team"},
 ]
 classifiers = [
     "Programming Language :: Python",
@@ -37,21 +37,18 @@ dependencies = [
 ]
 
 [project.scripts]
-spartan = "nexus_cli:app"
-"spartan-agent" = "nexus_cli:app"
-"spartan-agents" = "nexus_cli:app"
-nexus = "nexus_cli:app"
-geonexus = "nexus_cli:app"
-unsloth = "nexus_cli:app"
+spartan = "spartan_agent_cli:app"
+"spartan-agent" = "spartan_agent_cli:app"
+unsloth = "spartan_agent_cli:app"
 
 [tool.setuptools.dynamic]
-version = {attr = "nexus._version.__version__"}
+version = {attr = "spartan_agent._version.__version__"}
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.package-data]
-nexus_cli = ["codex_fallback_prompt.md", "pi_subagent.ts"]
+spartan_agent_cli = ["codex_fallback_prompt.md", "pi_subagent.ts"]
 studio = [
     "*.sh",
     "*.ps1",
@@ -80,7 +77,7 @@ studio = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["nexus*", "nexus_cli*", "studio", "studio.backend*"]
+include = ["spartan_agent*", "spartan_agent_cli*", "studio", "studio.backend*"]
 exclude = [
     "images*",
     "tests*",

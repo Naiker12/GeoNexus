@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Unsloth Studio, end to end, on a real CUDA GPU.
@@ -430,7 +430,7 @@ class Payload:
                 head = [str(candidate)]
                 break
         else:
-            head = [sys.executable, "-c", "from nexus_cli import app; app()"]
+            head = [sys.executable, "-c", "from spartan_agent_cli import app; app()"]
         return head + ["studio", "-H", "127.0.0.1", "-p", str(self.args.port)]
 
     def start_server(self) -> bool:

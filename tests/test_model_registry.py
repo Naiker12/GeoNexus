@@ -1,4 +1,4 @@
-﻿"""Register each model set and check the registered ids exist on the HF Hub."""
+"""Register each model set and check the registered ids exist on the HF Hub."""
 
 import os
 import subprocess
@@ -9,14 +9,14 @@ import pytest
 from huggingface_hub import HfApi
 from huggingface_hub.errors import HfHubHTTPError, RepositoryNotFoundError
 
-from nexus.registry import register_models, search_models
-from nexus.registry._deepseek import register_deepseek_models
-from nexus.registry._gemma import register_gemma_models
-from nexus.registry._llama import register_llama_models
-from nexus.registry._mistral import register_mistral_models
-from nexus.registry._phi import register_phi_models
-from nexus.registry._qwen import register_qwen_models
-from nexus.registry.registry import MODEL_REGISTRY, QUANT_TAG_MAP, QuantType
+from spartan_agent.registry import register_models, search_models
+from spartan_agent.registry._deepseek import register_deepseek_models
+from spartan_agent.registry._gemma import register_gemma_models
+from spartan_agent.registry._llama import register_llama_models
+from spartan_agent.registry._mistral import register_mistral_models
+from spartan_agent.registry._phi import register_phi_models
+from spartan_agent.registry._qwen import register_qwen_models
+from spartan_agent.registry.registry import MODEL_REGISTRY, QUANT_TAG_MAP, QuantType
 
 MODEL_NAMES = [
     "llama",
@@ -115,7 +115,7 @@ def _run_registry_child(body: str) -> subprocess.CompletedProcess:
     """Run ``body`` in a fresh interpreter that first imports this directory's
     ``conftest`` so it inherits the same GPU-free harness the pytest session
     uses (device_type stubs plus torch.cuda probe patches). Without it,
-    ``import nexus.registry`` raises ``NotImplementedError`` from
+    ``import spartan_agent.registry`` raises ``NotImplementedError`` from
     ``unsloth_zoo.device_type`` on no-accelerator CI runners, so the child
     would exit non-zero and the test would fail even though the registry code
     is correct. A fresh process also keeps each check independent of any
@@ -146,8 +146,8 @@ def test_importing_registry_does_not_register_models():
     demand.
     """
     result = _run_registry_child(
-        "import nexus.registry\n"
-        "from nexus.registry.registry import MODEL_REGISTRY\n"
+        "import spartan_agent.registry\n"
+        "from spartan_agent.registry.registry import MODEL_REGISTRY\n"
         "print('REGISTRY_SIZE', len(MODEL_REGISTRY))"
     )
     assert result.returncode == 0, (
@@ -172,9 +172,9 @@ def test_register_models_registers_no_upstream_originals():
     independent of other tests' registry mutations.
     """
     result = _run_registry_child(
-        "import nexus.registry\n"
-        "from nexus.registry import register_models\n"
-        "from nexus.registry.registry import MODEL_REGISTRY\n"
+        "import spartan_agent.registry\n"
+        "from spartan_agent.registry import register_models\n"
+        "from spartan_agent.registry.registry import MODEL_REGISTRY\n"
         "register_models()\n"
         "orgs = sorted({m.org for m in MODEL_REGISTRY.values()})\n"
         "deepseek = [k for k in MODEL_REGISTRY if 'deepseek' in k.lower()]\n"

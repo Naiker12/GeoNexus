@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Regression tests for the System32 working-directory guards: elevated PowerShell starts in System32, so
@@ -1070,7 +1070,7 @@ def test_cli_guard_runs_before_the_command_modules_are_imported():
     the callback would come too late for a relative UNSLOTH_STUDIO_HOME."""
     source = CLI_INIT.read_text(encoding = "utf-8")
     guard_call = source.index("_check_working_directory(_sys.argv[1:]")
-    first_command_import = source.index("from nexus_cli.commands.")
+    first_command_import = source.index("from spartan_agent_cli.commands.")
     assert guard_call < first_command_import
     assert source.index("import typer") > guard_call
 
@@ -1424,7 +1424,7 @@ def test_cli_guard_reads_the_invocation_not_the_hosts_argv():
     from a host whose own argv says `train --dataset .\\d.json`, and the reverse."""
     from typer.testing import CliRunner
 
-    import nexus_cli
+    import spartan_agent_cli
 
     seen: list[list[str]] = []
     original = unsloth_cli._check_working_directory

@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """Offline GGUF export must not probe the Hub for VLM tokenizer metadata (issue #7481).
@@ -13,7 +13,7 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from nexus.models import loader_utils as L
+from spartan_agent.models import loader_utils as L
 
 
 _REPO = "llmfan46/gemma-4-E4B-it-ultra-uncensored-heretic"
@@ -110,7 +110,7 @@ def test_hub_repo_or_local_path_keeps_repo_id_online(tmp_path, monkeypatch):
 
 
 def test_has_tokenizer_model_offline_does_not_cache_negative(tmp_path, monkeypatch):
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     snap = _write_gemma4_cache(tmp_path)
     _offline_env(monkeypatch, tmp_path)
@@ -125,7 +125,7 @@ def test_has_tokenizer_model_offline_does_not_cache_negative(tmp_path, monkeypat
 
 
 def test_preserve_sentencepiece_offline_copies_cached_model(tmp_path, monkeypatch):
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _preserve_sentencepiece_tokenizer_assets
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _preserve_sentencepiece_tokenizer_assets
 
     snap = _write_gemma4_cache(tmp_path)
     (snap / "tokenizer.model").write_bytes(b"cached-sp-model")
@@ -170,7 +170,7 @@ def test_load_pretrained_tokenizer_fast_passes_snapshot_not_repo_id(tmp_path, mo
 
 
 def test_has_tokenizer_model_offline_skips_model_info(tmp_path, monkeypatch):
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     _write_gemma4_cache(tmp_path)
     _offline_env(monkeypatch, tmp_path)
@@ -186,7 +186,7 @@ def test_has_tokenizer_model_offline_skips_model_info(tmp_path, monkeypatch):
 
 
 def test_has_tokenizer_model_probes_cache_before_model_info(tmp_path, monkeypatch):
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     snap = _write_gemma4_cache(tmp_path)
     (snap / "tokenizer.model").write_bytes(b"sp-model")
@@ -210,7 +210,7 @@ def test_offline_aware_load_persists_local_only_for_saving(tmp_path, monkeypatch
     ``_offline_aware_load`` restores the offline env vars once the load returns.
     Without the stamp the request is invisible by the time we save.
     """
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     # Snapshot has tokenizer metadata but deliberately no tokenizer.model, so the
     # cache probe misses and only the local-only stamp can stop the Hub request.
@@ -246,7 +246,7 @@ def test_preserve_sentencepiece_after_local_only_load_never_downloads(tmp_path, 
     """The save path inherits the load's local-only mode: no metadata probe, no download."""
     import huggingface_hub
 
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _preserve_sentencepiece_tokenizer_assets
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _preserve_sentencepiece_tokenizer_assets
 
     _write_gemma4_cache(tmp_path)
     monkeypatch.delenv("HF_HUB_OFFLINE", raising = False)
@@ -288,7 +288,7 @@ def test_preserve_sentencepiece_after_local_only_load_never_downloads(tmp_path, 
 
 
 def test_has_tokenizer_model_local_files_only_skips_model_info(tmp_path, monkeypatch):
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     _write_gemma4_cache(tmp_path)
     monkeypatch.delenv("HF_HUB_OFFLINE", raising = False)
@@ -311,7 +311,7 @@ def test_custom_cache_dir_survives_to_saving(tmp_path, monkeypatch):
     at. Saving derives its cache from HF_HUB_CACHE / HF_HOME, so without the
     stamp it probes the wrong place, and the local-only marker then stops it
     falling back to the Hub, silently dropping tokenizer.model."""
-    from nexus.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
+    from spartan_agent.save import _TOKENIZER_MODEL_CACHE, _has_tokenizer_model
 
     custom_cache = tmp_path / "caller_cache"
     custom_cache.mkdir()

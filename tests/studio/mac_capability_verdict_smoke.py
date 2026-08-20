@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Does /api/health ever publish a Mac capability verdict it is about to take back?
@@ -388,7 +388,7 @@ def _write_mlx_block_shim(directory: Path) -> Path:
 
     PathFinder rather than a meta_path finder that raises: unsloth/__init__.py decides
     _IS_MLX with importlib.util.find_spec("mlx") and does not guard it, so a finder that
-    raised would turn `import nexus` into a crash instead of a Mac without MLX.
+    raised would turn `import spartan_agent` into a crash instead of a Mac without MLX.
     Returning None from the path finder is what an uninstalled package genuinely looks
     like -- find_spec answers None, and `import mlx.core` raises ModuleNotFoundError,
     which is the ImportError both _has_mlx() and the stack check already handle.

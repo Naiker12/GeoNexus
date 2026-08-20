@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,9 +29,9 @@ import torch
 from torch import nn
 from safetensors.torch import save_file
 
-# import nexus first to set UNSLOTH_IS_PRESENT env var.
-import nexus
-from nexus.models.loader_utils import _restore_dropped_fp8_scales, _FP8_DTYPES
+# import spartan_agent first to set UNSLOTH_IS_PRESENT env var.
+import spartan_agent
+from spartan_agent.models.loader_utils import _restore_dropped_fp8_scales, _FP8_DTYPES
 
 
 _SHARD = "model-00001-of-00001.safetensors"

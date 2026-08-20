@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
 """A vLLM server that never starts must stop SyntheticDataKit, not be ignored.
@@ -31,7 +31,7 @@ import time
 
 import pytest
 
-from nexus.dataprep.synthetic import SyntheticDataKit
+from spartan_agent.dataprep.synthetic import SyntheticDataKit
 
 
 class _FakeCapture:

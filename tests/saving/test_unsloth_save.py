@@ -1,11 +1,11 @@
-﻿import json
+import json
 import os
 import shutil
 import tempfile
 import pytest
 import importlib
 
-from nexus import FastLanguageModel, FastModel
+from spartan_agent import FastLanguageModel, FastModel
 
 model_to_test = [
     # Text models

@@ -1,11 +1,11 @@
-﻿"""The transformers-5 config fix, demonstrated against a real transformers 5.
+"""The transformers-5 config fix, demonstrated against a real transformers 5.
 
 transformers 5.x turns `PretrainedConfig` subclasses into dataclasses. vLLM's
 `configs/deepseek_vl2.py` declares `vision_config: VisionEncoderConfig` with no
 default, and a dataclass will not accept a non-default field after an inherited
 default one ("TypeError: non-default argument 'vision_config' follows default
 argument"). That fires while importing `vllm.transformers_utils.configs`, taking
-down `import vllm` and with it `import nexus`.
+down `import vllm` and with it `import spartan_agent`.
 
 The other tests for this fix assert on source text; this one reproduces the
 failing shape and checks the outcome, so it catches the fix silently ceasing to
@@ -43,7 +43,7 @@ def _build(tag):
 def unpatched():
     """Remove the patch so the failure can be observed, then restore it.
     Imports unsloth first: run alone, nothing would have installed it yet."""
-    import nexus  # noqa: F401 - installs the patch we are about to remove
+    import spartan_agent  # noqa: F401 - installs the patch we are about to remove
 
     from transformers.configuration_utils import PretrainedConfig
 
@@ -62,7 +62,7 @@ def unpatched():
 
 def test_the_failure_is_real_without_the_fix(unpatched):
     """Guards the premise: if this stops raising, the fix tests nothing."""
-    from nexus.import_fixes import (
+    from spartan_agent.import_fixes import (
         _transformers_configs_are_kw_only,
         _transformers_needs_bare_annotation_fix,
         fix_transformers5_bare_annotation_configs,
@@ -92,7 +92,7 @@ def test_the_failure_is_real_without_the_fix(unpatched):
 def test_the_fix_stands_down_when_transformers_handles_it():
     """kw_only=True fixed this upstream, so patching anyway would be an untested
     monkey patch. >= 5.5.1 covers both branches (5.5.1 on 5.5, 5.6.0 on main)."""
-    from nexus.import_fixes import (
+    from spartan_agent.import_fixes import (
         _transformers_configs_are_kw_only,
         fix_transformers5_bare_annotation_configs,
     )
@@ -112,7 +112,7 @@ def test_the_fix_stands_down_when_transformers_handles_it():
 
 
 def test_the_fix_lets_it_import():
-    from nexus.import_fixes import fix_transformers5_bare_annotation_configs
+    from spartan_agent.import_fixes import fix_transformers5_bare_annotation_configs
 
     fix_transformers5_bare_annotation_configs()
     cls = _build("patched")
@@ -120,7 +120,7 @@ def test_the_fix_lets_it_import():
 
 
 def test_applying_twice_is_a_no_op():
-    from nexus.import_fixes import fix_transformers5_bare_annotation_configs
+    from spartan_agent.import_fixes import fix_transformers5_bare_annotation_configs
     from transformers.configuration_utils import PretrainedConfig
 
     fix_transformers5_bare_annotation_configs()
@@ -131,7 +131,7 @@ def test_applying_twice_is_a_no_op():
 
 def test_ordinary_configs_are_unaffected():
     """The patch runs for EVERY config subclass, so it must disturb none."""
-    from nexus.import_fixes import fix_transformers5_bare_annotation_configs
+    from spartan_agent.import_fixes import fix_transformers5_bare_annotation_configs
     from transformers.configuration_utils import PretrainedConfig
 
     fix_transformers5_bare_annotation_configs()
@@ -153,7 +153,7 @@ def test_ordinary_configs_are_unaffected():
 
 
 def test_a_real_model_config_still_loads():
-    from nexus.import_fixes import fix_transformers5_bare_annotation_configs
+    from spartan_agent.import_fixes import fix_transformers5_bare_annotation_configs
 
     fix_transformers5_bare_annotation_configs()
     from transformers import LlamaConfig

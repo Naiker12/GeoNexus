@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
 """Unit tests for the vetted patch entry point (``diffusion_patch_backend.py``).
@@ -54,7 +54,7 @@ def _modules(
 
 
 def test_retry_skipped_without_a_supported_accelerator(monkeypatch):
-    # A CPU-only or MPS host cannot import nexus, so paying ~940 MB of RSS to find out is pure cost. Ungated this took down a Linux CI runner and a 7 GB macOS one.
+    # A CPU-only or MPS host cannot import spartan_agent, so paying ~940 MB of RSS to find out is pure cost. Ungated this took down a Linux CI runner and a 7 GB macOS one.
     _modules(monkeypatch, torch = _torch())
     assert pb._retry_could_help(_SENTINEL_ERROR) is False
 
@@ -101,7 +101,7 @@ def test_retry_skipped_when_the_device_probe_raises(monkeypatch):
 
 
 def test_helpers_memoises_the_unavailable_result(monkeypatch):
-    # Resolution can import nexus, so it must be attempted at most once per process.
+    # Resolution can import spartan_agent, so it must be attempted at most once per process.
     attempts: list[int] = []
 
     def _boom():

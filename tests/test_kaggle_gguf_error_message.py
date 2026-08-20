@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
 def test_sigkill_is_recognised_from_the_message():
     """subprocess renders it as text, which is all Unsloth re-raises."""
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     exc = RuntimeError("Command '[...]' died with <Signals.SIGKILL: 9>.")
     assert _gguf_child_was_oom_killed(exc)
@@ -173,7 +173,7 @@ def test_sigkill_is_recognised_from_the_message():
 @pytest.mark.parametrize("code", [-9, 137])
 def test_sigkill_is_recognised_from_the_returncode(code):
     """CalledProcessError uses -9; a shell wrapper reports 137."""
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     class _Called(Exception):
         returncode = code
@@ -186,7 +186,7 @@ def test_a_shell_wrapped_137_is_recognised():
     child as exit status 137 and never names the signal. unsloth_zoo then
     re-raises a plain RuntimeError, dropping `returncode`, so the wording is
     the only thing left."""
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     exc = RuntimeError(
         "Failed to quantize model.BF16.gguf to q4_k_m: Command "
@@ -201,7 +201,7 @@ def test_a_chained_cause_is_inspected():
     returncode is a stronger signal than any wording."""
     import subprocess
 
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     cause = subprocess.CalledProcessError(137, "llama-quantize ...")
     outer = RuntimeError("Unsloth: Quantization failed for model.Q4_K_M.gguf")
@@ -213,7 +213,7 @@ def test_an_implicit_context_is_inspected():
     """Layers that re-raise without `from` still leave __context__ behind."""
     import subprocess
 
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     try:
         try:
@@ -234,14 +234,14 @@ def test_the_quantize_wrapper_chains_its_cause():
 
 def test_an_ordinary_converter_failure_is_not_called_an_oom():
     """A converter that fails on its own must keep its own message."""
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
 
     exc = RuntimeError("NotImplementedError: Unknown tensor name audio_tower.x")
     assert not _gguf_child_was_oom_killed(exc)
 
 
 def test_a_disk_failure_is_not_called_an_oom():
-    from nexus.save import _gguf_child_was_oom_killed
+    from spartan_agent.save import _gguf_child_was_oom_killed
     assert not _gguf_child_was_oom_killed(OSError("No space left on device"))
 
 
@@ -249,7 +249,7 @@ def test_the_oom_branch_runs_before_the_kaggle_disk_branch():
     """A SIGKILL on Kaggle with a full-ish disk would otherwise be reported as
     a disk problem, which is the wrong advice."""
     import inspect
-    from nexus import save as _s
+    from spartan_agent import save as _s
 
     src = inspect.getsource(_s.unsloth_save_pretrained_gguf)
     assert src.index("_gguf_child_was_oom_killed(e)") < src.index(
@@ -261,7 +261,7 @@ def test_the_message_says_host_ram_not_gpu_or_disk():
     """The whole point: SIGKILL names no resource, and the user's first guess
     is usually VRAM."""
     import inspect
-    from nexus import save as _s
+    from spartan_agent import save as _s
 
     src = inspect.getsource(_s.unsloth_save_pretrained_gguf)
     i = src.index("_gguf_child_was_oom_killed(e)")
@@ -272,7 +272,7 @@ def test_the_message_says_host_ram_not_gpu_or_disk():
 
 def test_it_chains_the_original():
     import inspect
-    from nexus import save as _s
+    from spartan_agent import save as _s
 
     src = inspect.getsource(_s.unsloth_save_pretrained_gguf)
     i = src.index("_gguf_child_was_oom_killed(e)")

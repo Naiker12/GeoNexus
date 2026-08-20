@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import json
 import os
 
@@ -13,7 +13,7 @@ from transformers.convert_slow_tokenizer import import_protobuf
 
 sentencepiece_model_pb2 = import_protobuf()
 
-from nexus.tokenizer_utils import fix_sentencepiece_gguf
+from spartan_agent.tokenizer_utils import fix_sentencepiece_gguf
 
 
 NORMAL, CONTROL, USER_DEFINED = 1, 3, 4

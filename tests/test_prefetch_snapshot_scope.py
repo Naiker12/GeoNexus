@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import types
 
 import pytest
 
-from nexus.models import _utils as U
+from spartan_agent.models import _utils as U
 
 
 def _filter(names, allow_patterns, ignore_patterns):

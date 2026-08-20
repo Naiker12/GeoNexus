@@ -1,4 +1,4 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 """Escaping tests for the predefined chat templates' {system_message} placeholder.
 
@@ -13,7 +13,7 @@ import jinja2
 import pytest
 from jinja2.sandbox import ImmutableSandboxedEnvironment
 
-from nexus.chat_templates import (
+from spartan_agent.chat_templates import (
     CHAT_TEMPLATES,
     DEFAULT_SYSTEM_MESSAGE,
     _change_system_message,

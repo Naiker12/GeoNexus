@@ -79,8 +79,8 @@ export const ru = {
   },
   shell: {
     beta: "BETA",
-    brand: "nexus",
-    product: "Nexus",
+    brand: "spartan_agent",
+    product: "Spartan Agent",
     accountMenu: "Меню аккаунта {name}",
     updateAvailable: "Доступно обновление",
     resize: {
@@ -1345,7 +1345,7 @@ export const ru = {
       reportIssue: "Сообщить о проблеме",
       license: {
         sectionTitle: "Лицензия",
-        studioLabel: "Nexus",
+        studioLabel: "Spartan Agent",
         studioLicense: "AGPL-3.0",
         studioDescription:
           "Исходный код открыт и распространяется по лицензии GNU AGPL v3.0.",

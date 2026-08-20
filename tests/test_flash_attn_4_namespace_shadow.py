@@ -1,4 +1,4 @@
-﻿# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -40,7 +40,7 @@ _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 def _load_import_fixes():
-    """The module by path, not `from nexus import import_fixes`.
+    """The module by path, not `from spartan_agent import import_fixes`.
 
     Importing the package runs unsloth/__init__.py, which refuses to import without an
     accelerator, so the package form cannot be collected on the CPU-only CI job. This
@@ -141,7 +141,7 @@ _NO_EAGER_IMPORT = textwrap.dedent(
 
 @pytest.mark.parametrize("layout", ["absent", "flash_attn_2", "flash_attn_4_only", "both"])
 def test_classification_never_imports_flash_attn(tmp_path, layout):
-    """`import nexus` must not drag in flash-attn.
+    """`import spartan_agent` must not drag in flash-attn.
 
     `importlib.util.find_spec("flash_attn.flash_attn_interface")` resolves the dotted name by
     IMPORTING the parent first, so classifying that way would execute `flash_attn/__init__.py`

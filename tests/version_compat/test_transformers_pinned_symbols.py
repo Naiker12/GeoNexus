@@ -1,8 +1,8 @@
-﻿# SPDX-License-Identifier: AGPL-3.0-only
+# SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team.
 """Pinned-symbol + source-pattern transformers compat checks via GitHub raw-fetch + grep.
 
-Catches breakage classes from nexus#3998/5036/5155/5259 and
+Catches breakage classes from spartan_agent#3998/5036/5155/5259 and
 unsloth-zoo#572/571/549/543/541/495/491/488/472/393/388/583/584/159.
 CPU-only, no install. Anchor versions: transformers 4.57.6, 5.5.0.
 """
