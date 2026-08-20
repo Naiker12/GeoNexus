@@ -684,8 +684,6 @@ def test_desktop_updater_metadata_maps_published_field_names():
     assert 'alias = "body"' in rust and "notes: Option<String>" in rust
     assert 'alias = "date"' in rust and "pub_date: Option<String>" in rust
     assert "body: metadata.notes" in rust and "date: metadata.pub_date" in rust
-    workflow = (REPO / ".github/workflows/release-desktop.yml").read_text(encoding = "utf-8")
-    assert "'notes': notes," in workflow, "workflow no longer publishes `notes`"
 
 
 def test_backend_exposes_release_notes_route():
@@ -1347,8 +1345,6 @@ def test_desktop_notes_are_not_keyed_by_the_pinned_backend_version():
     banner = TAURI_BANNER.read_text(encoding = "utf-8")
     assert "info?.version?.replace(LEADING_V" in banner
     assert "pypiVersion" not in banner, "notes are no longer keyed by the backend release"
-    workflow = (REPO / ".github/workflows/release-desktop.yml").read_text(encoding = "utf-8")
-    assert "'pypi_version': os.environ['PYPI_VERSION']" in workflow
     rust = (REPO / "studio/src-tauri/src/desktop_update_policy.rs").read_text(encoding = "utf-8")
     assert "pypi_version: Option<String>" in rust
     hook = NOTES_HOOK.parent.joinpath("use-tauri-update.ts").read_text(encoding = "utf-8")

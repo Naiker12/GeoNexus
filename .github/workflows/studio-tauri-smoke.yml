@@ -5,11 +5,10 @@
 # Tauri Linux debug binary, with no codesigning. Catches:
 #   - tauri.conf.json drift
 #   - src-tauri Cargo.toml or rust source breakage
-#   - Tauri CLI version drift (we pin 2.10.1, matching release-desktop.yml)
+#   - Tauri CLI version drift (we pin 2.10.1 for this smoke build)
 #   - frontend output not picked up by Tauri's distDir
 #
-# The build job stays on Linux; signed desktop builds remain in the manual
-# release workflow.
+# The build job stays on Linux and does not publish or sign desktop bundles.
 #
 # A second job covers `#[cfg(windows)]` code, which Linux strips before type
 # checking and cannot cross-compile because `ring` requires MSVC `lib.exe`.
@@ -22,15 +21,15 @@ on:
       - 'studio/spartan-frontend/**'
       - 'studio/src-tauri/**'
       # CLI rename / signature change can break Tauri's spawned
-      # `unsloth studio` -- include unsloth_cli in the trigger set.
-      - 'unsloth_cli/**'
+      # `spartan-agent studio` -- include its CLI package in the trigger set.
+      - 'spartan_agent_cli/**'
       - '.github/workflows/studio-tauri-smoke.yml'
       - '.github/scripts/retry-with-apt-lock.sh'
       # The Linux job installs and runs the Tauri CLI out of the studio/ package
-      # root (`npm install --prefix studio`, `npx --prefix studio`), so these
+      # root (`npm install --prefix studio/spartan-frontend`, `npx --prefix studio/spartan-frontend`), so these
       # manifests decide what it builds with.
-      - 'studio/package.json'
-      - 'studio/package-lock.json'
+      - 'studio/spartan-frontend/package.json'
+      - 'studio/spartan-frontend/package-lock.json'
       # Run as a step of the Linux job.
       - 'scripts/lockfile_supply_chain_audit.py'
   push:
@@ -45,15 +44,15 @@ on:
       - 'studio/spartan-frontend/**'
       - 'studio/src-tauri/**'
       # CLI rename / signature change can break Tauri's spawned
-      # `unsloth studio` -- include unsloth_cli in the trigger set.
-      - 'unsloth_cli/**'
+      # `spartan-agent studio` -- include its CLI package in the trigger set.
+      - 'spartan_agent_cli/**'
       - '.github/workflows/studio-tauri-smoke.yml'
       - '.github/scripts/retry-with-apt-lock.sh'
       # The Linux job installs and runs the Tauri CLI out of the studio/ package
-      # root (`npm install --prefix studio`, `npx --prefix studio`), so these
+      # root (`npm install --prefix studio/spartan-frontend`, `npx --prefix studio/spartan-frontend`), so these
       # manifests decide what it builds with.
-      - 'studio/package.json'
-      - 'studio/package-lock.json'
+      - 'studio/spartan-frontend/package.json'
+      - 'studio/spartan-frontend/package-lock.json'
       # Run as a step of the Linux job.
       - 'scripts/lockfile_supply_chain_audit.py'
 
@@ -111,18 +110,18 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           workspaces: studio/src-tauri -> target
 
-      - name: Install pinned Tauri CLI (matches release-desktop.yml)
+      - name: Install pinned Tauri CLI
         # Lifecycle scripts (esbuild native-binary postinstall, etc.) are
         # required for `vite build`. The pre-install lockfile structural
         # audit (lockfile_supply_chain_audit.py) is the practical defence
         # against the npm postinstall-dropper class -- it fires BEFORE any
         # tarball runs, on the injection pattern itself rather than an
         # advisory-DB lookup.
-        run: npm install --save-dev --prefix studio @tauri-apps/cli@2.10.1 --no-fund --no-audit
+        run: npm install --save-dev --prefix studio/spartan-frontend @tauri-apps/cli@2.10.1 --no-fund --no-audit
 
       - name: Verify pinned Tauri CLI version
         run: |
-          out="$(npx --prefix studio tauri --version)"
+          out="$(npx --prefix studio/spartan-frontend tauri --version)"
           echo "$out"
           [ "$out" = "tauri-cli 2.10.1" ] || { echo "::error::expected tauri-cli 2.10.1, got $out"; exit 1; }
 

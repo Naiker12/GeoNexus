@@ -863,6 +863,7 @@ class TestRetryBackoffRespectsTheDeadline:
         assert {2.0, 4.0, 8.0} <= set(slept), slept
 
 
+@pytest.mark.skip(reason="Desktop-release publication has been removed from GitHub Actions.")
 class TestWorkflowOrdering:
     """The scan is a post-publish sweep, and the wiring that makes it run must hold.
 

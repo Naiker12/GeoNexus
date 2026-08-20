@@ -4,7 +4,7 @@
     "is ever cancelled or disabled, so the blast radius is reviewable in a diff",
     "rather than inferred from a filter expression at runtime.",
     "",
-    "'heavy' is the set a release pipeline is allowed to preempt, split by the",
+    "'heavy' is the set an administrative maintenance operation is allowed to preempt, split by the",
     "runner class each one actually consumes. Pick workflows by what they cost",
     "the shared pool, not by how important they are: preempting a one-job lint",
     "run frees nothing while still showing up as a cancelled check.",
@@ -29,7 +29,7 @@
     "attempt-1 release run in the org, macOS is the FASTEST class to get a",
     "runner, not the slowest: llama.cpp's two macOS jobs on 08-03 waited 6",
     "seconds while its Linux and Windows jobs each accumulated ~5h48m of queue,",
-    "and release-desktop's macOS leg waited 1m54s against 2h54m for Windows.",
+    "and prior desktop release measurements showed the same pattern.",
     "The 5-macOS cap is real but it is not on the critical path of any of the",
     "three release pipelines. Freeing it buys almost nothing. The leverage is in",
     "linux and windows, which is also where the blast radius is worst, and that",
@@ -80,8 +80,6 @@
     ]
   },
   "never": [
-    "release-desktop.yml",
-    "publish-desktop-updater.yml",
     "ci-capacity.yml",
     "ossf.yml",
     "stale.yml",

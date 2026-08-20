@@ -72,9 +72,6 @@ EXEMPT_STEPS = {
     # runtime dependencies. A failure here is the answer, not a transport
     # hiccup. Its apt *preamble* (update + xvfb) does go through the helper.
     ("desktop-app-clean-machine-ci.yml", "Install with NO dev tooling, only runtime libs"),
-    # Greps the documentation for the apt line it tells users to run. It reads an
-    # apt command as data; it never executes one.
-    ("release-desktop.yml", "Verify desktop updater and Linux package config"),
 }
 
 
