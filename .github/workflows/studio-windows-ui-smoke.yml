@@ -8,7 +8,7 @@
 # Windows process-management branches, and the llama.cpp prebuilt's
 # Windows HTTP layer.
 
-name: Windows Unsloth UI CI
+name: Windows Spartan Agent UI CI
 
 on:
   pull_request:
@@ -177,7 +177,7 @@ jobs:
           Set-Content -LiteralPath (Join-Path $appDir 'launch-studio.vbs') -Value 'WScript.Echo "legacy"' -Encoding Unicode
           Write-Host "seeded legacy launch-studio.vbs at $appDir"
 
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         # install.ps1 is the supported Windows installer. install.sh
         # has no Windows branch (apt-get / brew calls). The PS1
         # script's `Install-UnslothStudio @args` line at the bottom
@@ -248,7 +248,7 @@ jobs:
           echo "install.ps1 installed the Windows prebuilt llama.cpp:"
           cat "$INFO"
 
-      - name: Assert Unsloth launcher chain (no VBS, hidden PowerShell shortcut)
+      - name: Assert Spartan Agent launcher chain (no VBS, hidden PowerShell shortcut)
         # The shortcut launch path is otherwise untested here (the steps below
         # boot `unsloth studio` directly). Guard against re-introducing the VBS
         # that tripped Kaspersky HEUR:Trojan.VBS.Agent.gen and against the .lnk
@@ -277,7 +277,7 @@ jobs:
           }
           Write-Host "launcher chain OK (no VBS; hidden powershell over launch-studio.ps1)"
 
-      - name: Launch Unsloth via the shortcut and assert health
+      - name: Launch Spartan Agent via the shortcut and assert health
         # Run the exact command the .lnk stores (hidden PowerShell over
         # launch-studio.ps1) and confirm it brings the backend up. This is the
         # only step that proves the shortcut launch is not silently broken.
@@ -311,7 +311,7 @@ jobs:
           if (-not $foundPort) { throw "Unsloth did not become healthy when launched via the shortcut" }
           Write-Host "Unsloth healthy on port $foundPort (launched via the shortcut)"
 
-      - name: Add Unsloth shim to GITHUB_PATH
+      - name: Add Spartan Agent shim to GITHUB_PATH
         # install.ps1 puts unsloth.exe at $StudioHome\bin\unsloth.exe
         # and adds that dir to the User PATH via the Windows registry.
         # Registry-level PATH updates don't propagate to a running
@@ -337,7 +337,7 @@ jobs:
           python -m pip install 'playwright>=1.45'
           python -m playwright install chromium
 
-      - name: Reset auth + boot Unsloth
+      - name: Reset auth + boot Spartan Agent
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
           bash .github/scripts/boot-studio-api-only.sh --port "$STUDIO_PORT"
@@ -373,7 +373,7 @@ jobs:
           mkdir -p logs/playwright
           python tests/studio/playwright_chat_ui.py
 
-      - name: Stop Unsloth (chat-ui ends with Shutdown click; this is belt-and-suspenders)
+      - name: Stop Spartan Agent (chat-ui ends with Shutdown click; this is belt-and-suspenders)
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -388,7 +388,7 @@ jobs:
         run: |
           bash .github/scripts/run-studio-indicator-browser.sh 18899 chromium msedge
 
-      - name: Reset auth + boot Unsloth for extra UI tests (port 18897)
+      - name: Reset auth + boot Spartan Agent for extra UI tests (port 18897)
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
             --port 18897 --log logs/studio_extra.log --pid-var STUDIO_EXTRA_PID
@@ -407,7 +407,7 @@ jobs:
           echo "STUDIO_EXTRA_OLD_PW=$OLD" >> "$GITHUB_ENV"
           echo "STUDIO_EXTRA_NEW_PW=$NEW" >> "$GITHUB_ENV"
 
-      - name: Drive Compare/Recipes/Export/Unsloth/Settings with Playwright
+      - name: Drive Compare/Recipes/Export/Spartan Agent/Settings with Playwright
         env:
           BASE_URL: http://127.0.0.1:18897
           STUDIO_OLD_PW: ${{ env.STUDIO_EXTRA_OLD_PW }}
@@ -435,7 +435,7 @@ jobs:
           mkdir -p logs/playwright_update_banner
           python tests/studio/playwright_update_banner_layout.py
 
-      - name: Stop second Unsloth
+      - name: Stop second Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_EXTRA_PID}" 2>/dev/null || true

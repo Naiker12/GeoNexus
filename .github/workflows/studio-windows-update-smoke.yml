@@ -17,7 +17,7 @@
 #   3. The installed Unsloth still boots and /api/health returns
 #      healthy after the update path.
 
-name: Windows Unsloth Update CI
+name: Windows Spartan Agent Update CI
 
 on:
   pull_request:
@@ -53,7 +53,7 @@ permissions:
 
 jobs:
   update-idempotency:
-    name: Unsloth Updating Tests
+    name: Spartan Agent Updating Tests
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -162,7 +162,7 @@ jobs:
             }
           }
 
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -216,7 +216,7 @@ jobs:
           echo "install.ps1 installed the Windows prebuilt llama.cpp:"
           cat "$INFO"
 
-      - name: Add Unsloth shim to GITHUB_PATH
+      - name: Add Spartan Agent shim to GITHUB_PATH
         run: |
           SHIM_DIR=~/.unsloth/studio/bin
           if [ ! -f "$SHIM_DIR/unsloth.exe" ]; then
@@ -305,7 +305,7 @@ jobs:
           grep -qE "prebuilt up to date and validated|prebuilt installed and validated" logs/update2.log
           echo "second update was clean"
 
-      - name: Boot Unsloth briefly to confirm the install is still usable
+      - name: Boot Spartan Agent briefly to confirm the install is still usable
         run: |
           mkdir -p logs
           UNSLOTH_API_ONLY=1 unsloth studio -H 127.0.0.1 -p 18891 \

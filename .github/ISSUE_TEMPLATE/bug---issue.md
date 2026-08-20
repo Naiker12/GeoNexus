@@ -8,8 +8,8 @@ assignees: ''
 ---
 
 ---
-name: Unsloth Studio Bug
-about: Report a problem with the Unsloth Studio desktop app or web UI
+name: Spartan Agent Bug
+about: Report a problem with the Spartan Agent desktop app or web UI
 title: "[Studio Bug] "
 labels: bug
 assignees: ""

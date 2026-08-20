@@ -43,7 +43,7 @@ on:
       - '.github/scripts/wait-for-health.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
       # The absorbed update phase round-trips scripts/uninstall.sh, which none
       # of the entries above cover.
       - 'scripts/uninstall.sh'
@@ -83,7 +83,7 @@ on:
       - '.github/scripts/wait-for-health.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
       # The absorbed update phase round-trips scripts/uninstall.sh, which none
       # of the entries above cover.
       - 'scripts/uninstall.sh'
@@ -218,10 +218,10 @@ jobs:
           key: hf-${{ env.GGUF_REPO }}-${{ env.GGUF_VARIANT }}-v3
           enableCrossOsArchive: true
 
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         id: install_unsloth
         if: ${{ !cancelled() }}
-        uses: ./.github/actions/install-unsloth-local
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.
@@ -281,7 +281,7 @@ jobs:
               print(f"pipeTransport.js: patched JSON.parse calls in {path}")
           PY
 
-      - name: Reset auth + boot Unsloth
+      - name: Reset auth + boot Spartan Agent
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
           bash .github/scripts/boot-studio-api-only.sh --port "$STUDIO_PORT"
@@ -367,7 +367,7 @@ jobs:
             exit "$rc"
           done
 
-      - name: Stop Unsloth (chat-ui ends with Shutdown click; this is belt-and-suspenders)
+      - name: Stop Spartan Agent (chat-ui ends with Shutdown click; this is belt-and-suspenders)
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -384,7 +384,7 @@ jobs:
         run: |
           bash .github/scripts/run-studio-indicator-browser.sh 18899 webkit
 
-      - name: Reset auth + boot Unsloth for extra UI tests (port 18897)
+      - name: Reset auth + boot Spartan Agent for extra UI tests (port 18897)
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
             --port 18897 --log logs/studio_extra.log --pid-var STUDIO_EXTRA_PID
@@ -403,7 +403,7 @@ jobs:
           echo "STUDIO_EXTRA_OLD_PW=$OLD" >> "$GITHUB_ENV"
           echo "STUDIO_EXTRA_NEW_PW=$NEW" >> "$GITHUB_ENV"
 
-      - name: Drive Compare/Recipes/Export/Unsloth/Settings with Playwright
+      - name: Drive Compare/Recipes/Export/Spartan Agent/Settings with Playwright
         env:
           BASE_URL: http://127.0.0.1:18897
           STUDIO_OLD_PW: ${{ env.STUDIO_EXTRA_OLD_PW }}
@@ -480,7 +480,7 @@ jobs:
           mkdir -p logs/playwright_update_banner
           python tests/studio/playwright_update_banner_layout.py
 
-      - name: Stop second Unsloth
+      - name: Stop second Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_EXTRA_PID}" 2>/dev/null || true
@@ -507,7 +507,7 @@ jobs:
       # still sampled when it happens to still be running, and still fails on a real
       # grey-out, but nothing is required of it.
       # ---------------------------------------------------------------
-      - name: Reset auth + boot Unsloth for the tab-capability smoke (port 18893)
+      - name: Reset auth + boot Spartan Agent for the tab-capability smoke (port 18893)
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
             --port 18893 --log logs/studio_tabs.log --pid-var STUDIO_TABS_PID
@@ -541,7 +541,7 @@ jobs:
           mkdir -p logs/playwright_mac_tabs
           python tests/studio/playwright_mac_tab_capabilities.py
 
-      - name: Stop tab-capability Unsloth
+      - name: Stop tab-capability Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_TABS_PID}" 2>/dev/null || true
@@ -556,7 +556,7 @@ jobs:
       - name: Install pyjwt for the JWT-expiry forge test
         run: pip install 'pyjwt>=2.6'
 
-      - name: Reset auth + boot Unsloth (API-only, port 18894)
+      - name: Reset auth + boot Spartan Agent (API-only, port 18894)
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
           bash .github/scripts/boot-studio-api-only.sh \
@@ -579,13 +579,13 @@ jobs:
           echo "STUDIO_NEW_PW=$NEW"  >> "$GITHUB_ENV"
           echo "STUDIO_NEW2_PW=$NEW2" >> "$GITHUB_ENV"
 
-      - name: Run Unsloth API & Auth tests
+      - name: Run Spartan Agent API & Auth tests
         env:
           BASE_URL: http://127.0.0.1:18894
           STUDIO_AUTH_DIR: /Users/runner/.unsloth/studio/auth
         run: python tests/studio/studio_api_smoke.py
 
-      - name: Stop API-phase Unsloth
+      - name: Stop API-phase Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_API_PID}" 2>/dev/null || true
@@ -639,7 +639,7 @@ jobs:
         timeout-minutes: 5
         run: pip install 'openai>=1.50' 'anthropic>=0.40'
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         id: boot-chat
         if: ${{ !cancelled() && steps.assert_llama.outcome == 'success' }}
         timeout-minutes: 2
@@ -710,7 +710,7 @@ jobs:
         run: |
           python3 .github/scripts/studio_smoke/multi_turn_chat.py
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_CHAT_PID}" 2>/dev/null || true
@@ -803,7 +803,7 @@ jobs:
           key: gguf-unsloth/Qwen3.5-2B-GGUF-Qwen3.5-2B-UD-Q4_K_XL.gguf-v3
           enableCrossOsArchive: true
 
-      - name: Reset auth + boot Unsloth (API-only, default tool policy)
+      - name: Reset auth + boot Spartan Agent (API-only, default tool policy)
         id: boot-tools
         # Phase-local prerequisite on top of the shared gate. The phase stays
         # independent of EARLIER phases, which is what the shared assert-llama
@@ -1167,7 +1167,7 @@ jobs:
           print(f"[tools] PASS thinking on/off (on={len(on_text)} chars, off={len(off_text)} chars)")
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -1267,7 +1267,7 @@ jobs:
         timeout-minutes: 5
         run: pip install 'openai>=1.50' 'anthropic>=0.40'
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         id: boot-vision
         # Same phase-local prerequisite as phase 2. The SDK clause is here and
         # not in phase 2 because only this phase imports openai/anthropic.
@@ -1564,7 +1564,7 @@ jobs:
               )
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -1644,7 +1644,7 @@ jobs:
           grep -qE "prebuilt up to date and validated|prebuilt installed and validated" logs/update2.log
           echo "second update was clean"
 
-      - name: Boot Unsloth briefly to confirm the install is still usable
+      - name: Boot Spartan Agent briefly to confirm the install is still usable
         if: ${{ !cancelled() && steps.update_second.outcome == 'success' }}
         run: |
           mkdir -p logs

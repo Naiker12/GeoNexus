@@ -357,7 +357,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       # npm: Unsloth frontend
       # ─────────────────────────────────────────────────────────────
-      - name: npm audit (Unsloth frontend)
+      - name: npm audit (Spartan Agent frontend)
         # `npm audit` resolves the lockfile through the npmjs.com
         # advisory DB. `--audit-level=high` filters the noise floor
         # to only HIGH and CRITICAL. We do NOT pass --omit=dev: a
@@ -381,7 +381,7 @@ jobs:
       # ─────────────────────────────────────────────────────────────
       # cargo: Unsloth Tauri shell
       # ─────────────────────────────────────────────────────────────
-      - name: cargo audit (Unsloth Tauri)
+      - name: cargo audit (Spartan Agent Tauri)
         # `--deny warnings` would make the job fail on any advisory.
         # Keep non-blocking initially; drop continue-on-error after
         # the baseline closes.
@@ -992,7 +992,7 @@ jobs:
     # documented at scripts/scan_npm_packages.py top-of-file. The
     # script is stdlib-only so adding it does not increase the
     # transitive supply-chain surface.
-    name: npm scan-packages (Unsloth frontend tarballs)
+    name: npm scan-packages (Spartan Agent frontend tarballs)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: []
@@ -1155,7 +1155,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Unsloth frontend deps (--ignore-scripts)
+      - name: Install Spartan Agent frontend deps (--ignore-scripts)
         # `npm audit signatures` requires node_modules to be populated.
         # `--ignore-scripts` is mandatory: this is exactly the lever the
         # new-install-script gate below protects against, and we must

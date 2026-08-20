@@ -9,7 +9,7 @@
 # This catches regressions in setup.sh's update path that the existing
 # GGUF / wheel jobs would miss because they only invoke install.sh once.
 
-name: Unsloth Update CI
+name: Spartan Agent Update CI
 
 on:
   pull_request:
@@ -28,7 +28,7 @@ on:
       - '.github/scripts/retry-with-apt-lock.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
   push:
     branches: [main]
   workflow_dispatch:
@@ -46,7 +46,7 @@ permissions:
 
 jobs:
   update-idempotency:
-    name: Unsloth Updating Tests
+    name: Spartan Agent Updating Tests
     runs-on: ubuntu-latest
     # Sized for the apt step's bounded worst case (15m) plus the smoke itself.
     timeout-minutes: 25
@@ -86,8 +86,8 @@ jobs:
           # post-step then fatal-errors with "Cache folder path is
           # retrieved for pip but doesn't exist on disk".
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.
@@ -137,7 +137,7 @@ jobs:
           grep -qE "prebuilt up to date and validated|prebuilt installed and validated" logs/update2.log
           echo "second update was clean"
 
-      - name: Boot Unsloth briefly to confirm the install is still usable
+      - name: Boot Spartan Agent briefly to confirm the install is still usable
         # If `update --local` accidentally broke the venv or wiped the
         # llama-server binary, the server would fail to start here.
         run: |

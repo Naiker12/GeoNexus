@@ -10,7 +10,7 @@
 # (Section 6) is Linux-only and short-circuits on non-POSIX; the rest
 # is platform-portable.
 
-name: Windows Unsloth API CI
+name: Windows Spartan Agent API CI
 
 on:
   pull_request:
@@ -44,7 +44,7 @@ permissions:
 
 jobs:
   api-smoke:
-    name: Unsloth API & Auth Tests
+    name: Spartan Agent API & Auth Tests
     runs-on: windows-latest
     timeout-minutes: 30
     defaults:
@@ -149,7 +149,7 @@ jobs:
             }
           }
 
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -203,7 +203,7 @@ jobs:
           echo "install.ps1 installed the Windows prebuilt llama.cpp:"
           cat "$INFO"
 
-      - name: Add Unsloth shim to GITHUB_PATH
+      - name: Add Spartan Agent shim to GITHUB_PATH
         # install.ps1's User-PATH update doesn't propagate to a
         # running Git Bash session; export the shim dir so the
         # next `unsloth ...` invocation finds it.
@@ -219,7 +219,7 @@ jobs:
       - name: Install pyjwt for the JWT-expiry forge test
         run: python -m pip install 'pyjwt>=2.6'
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
           bash .github/scripts/boot-studio-api-only.sh --port "$STUDIO_PORT"
@@ -240,7 +240,7 @@ jobs:
           echo "STUDIO_NEW_PW=$NEW"  >> "$GITHUB_ENV"
           echo "STUDIO_NEW2_PW=$NEW2" >> "$GITHUB_ENV"
 
-      - name: Run Unsloth API & Auth tests
+      - name: Run Spartan Agent API & Auth tests
         # Do NOT pin STUDIO_AUTH_DIR here. The Mac/Linux mirrors
         # hardcode runner-specific paths (/Users/runner/...,
         # /home/runner/...), but on Windows the path is
@@ -252,7 +252,7 @@ jobs:
           BASE_URL: http://127.0.0.1:18895
         run: python tests/studio/studio_api_smoke.py
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true

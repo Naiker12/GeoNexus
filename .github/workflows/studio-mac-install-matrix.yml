@@ -18,7 +18,7 @@ on:
       - '.github/workflows/studio-mac-install-matrix.yml'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
       # Reached transitively by the install this workflow asserts on:
       # install.sh selects studio/setup.sh, which runs install_python_stack.py
       # (setup.sh:1444), and install_llama_prebuilt.py imports prebuilt_core
@@ -49,7 +49,7 @@ on:
       - '.github/workflows/studio-mac-install-matrix.yml'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
       # Reached transitively by the install this workflow asserts on:
       # install.sh selects studio/setup.sh, which runs install_python_stack.py
       # (setup.sh:1444), and install_llama_prebuilt.py imports prebuilt_core
@@ -128,8 +128,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.

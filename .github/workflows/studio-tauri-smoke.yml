@@ -14,7 +14,7 @@
 # A second job covers `#[cfg(windows)]` code, which Linux strips before type
 # checking and cannot cross-compile because `ring` requires MSVC `lib.exe`.
 
-name: Unsloth Tauri CI
+name: Spartan Agent Tauri CI
 
 on:
   pull_request:

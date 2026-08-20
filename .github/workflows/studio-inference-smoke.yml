@@ -30,7 +30,7 @@
 # so a phase-1 failure still lets phases 2 and 3 report. That is what the three
 # separate jobs gave for free and what the bundle has to reproduce by hand.
 
-name: Unsloth GGUF CI
+name: Spartan Agent GGUF CI
 
 on:
   pull_request:
@@ -49,7 +49,7 @@ on:
       - '.github/scripts/wait-for-health.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
   push:
     branches: [main]
   # Manual trigger for pre-warming HF_HOME caches on main, or re-running
@@ -173,10 +173,10 @@ jobs:
       # Deliberately NO `if:`, so this rides the implicit success() and a failed
       # preamble still stops the job here, exactly as it did when this was three
       # jobs. Every phase below gates on this step's outcome.
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         id: install
         timeout-minutes: 25
-        uses: ./.github/actions/install-unsloth-local
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.
@@ -253,7 +253,7 @@ jobs:
           enableCrossOsArchive: true
 
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         id: boot-api
         timeout-minutes: 5
         if: ${{ !cancelled() && steps.sdks.outcome == 'success' && steps.prime-hf.outcome != 'failure' }}
@@ -323,7 +323,7 @@ jobs:
         run: |
           python3 .github/scripts/studio_smoke/multi_turn_chat.py
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -389,7 +389,7 @@ jobs:
           enableCrossOsArchive: true
 
 
-      - name: Reset auth + boot Unsloth (API-only, default tool policy)
+      - name: Reset auth + boot Spartan Agent (API-only, default tool policy)
         id: boot-tools
         timeout-minutes: 5
         if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.download-gguf.outcome != 'failure' }}
@@ -896,7 +896,7 @@ jobs:
           print(f"[tools] PASS thinking on/off (on={len(on_text)} chars, off={len(off_text)} chars)")
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -970,7 +970,7 @@ jobs:
           path: hf-cache-vision
           key: ${{ runner.os }}-hf-${{ env.GGUF_REPO }}-${{ env.GGUF_VARIANT }}-${{ env.MMPROJ_FILE }}-v3
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         id: boot-vision
         timeout-minutes: 5
         if: ${{ !cancelled() && steps.sdks.outcome == 'success' && steps.prime-hf-vision.outcome != 'failure' }}
@@ -1198,7 +1198,7 @@ jobs:
           print("[image/anthropic] PASS source/base64 accepted, non-empty response")
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true

@@ -19,7 +19,7 @@
 # The phases run in sequence on one runner. They used to be three parallel
 # jobs, each repeating a ~7 min Windows install to run ~4 min of tests.
 
-name: Windows Unsloth GGUF CI
+name: Windows Spartan Agent GGUF CI
 
 on:
   pull_request:
@@ -191,7 +191,7 @@ jobs:
       # jobs. Gating it on `!cancelled()` would install onto a runner whose
       # pinned Python or Node never materialised, and every phase below gates on
       # assert-prebuilt, which would then pass and hide the real failure.
-      - name: Install Unsloth (--local, --no-torch)
+      - name: Install Spartan Agent (--local, --no-torch)
         id: install
         timeout-minutes: 25
         shell: pwsh
@@ -254,7 +254,7 @@ jobs:
       # assert-prebuilt succeeded, so `steps.shim.outcome == 'success'` implies
       # the assertion passed and additionally catches a missing shim, which
       # would otherwise let all three phases boot a Studio that is not on PATH.
-      - name: Add Unsloth shim to GITHUB_PATH
+      - name: Add Spartan Agent shim to GITHUB_PATH
         id: shim
         if: ${{ !cancelled() && steps.assert-prebuilt.outcome == 'success' }}
         run: |
@@ -353,7 +353,7 @@ jobs:
           key: hf-unsloth/gemma-3-270m-it-GGUF-UD-Q4_K_XL-v3
           enableCrossOsArchive: true
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         timeout-minutes: 2
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
@@ -424,7 +424,7 @@ jobs:
         run: |
           python .github/scripts/studio_smoke/multi_turn_chat.py
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         # NOT via Git Bash: bash on windows-latest has been observed to exit
         # 143 (SIGTERM) from any inline kill/sleep block, masking a green test
@@ -570,7 +570,7 @@ jobs:
           key: gguf-unsloth/Qwen3.5-2B-GGUF-Qwen3.5-2B-UD-Q4_K_XL.gguf-v3
           enableCrossOsArchive: true
 
-      - name: Reset auth + boot Unsloth (API-only, default tool policy)
+      - name: Reset auth + boot Spartan Agent (API-only, default tool policy)
         id: boot-tools
         # Phase-local prerequisite on top of the shared gate. The phase stays
         # independent of EARLIER phases, which is what the shared assert-prebuilt
@@ -916,7 +916,7 @@ jobs:
           print(f"[tools] PASS thinking on/off (on={len(on_text)} chars, off={len(off_text)} chars)")
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         # NOT via Git Bash: bash on windows-latest has been observed to exit
         # 143 (SIGTERM) from any inline kill/sleep block, masking a green test
@@ -1052,7 +1052,7 @@ jobs:
           path: hf-cache-vision
           key: ${{ runner.os }}-hf-unsloth/Qwen3-VL-2B-Instruct-GGUF-UD-IQ2_XXS-mmproj-F16.gguf-v3
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         id: boot-vision
         # Same phase-local prerequisite as phase 2, for the same reason.
         if: ${{ !cancelled() && steps.shim.outcome == 'success' && steps.sdks.outcome == 'success' && steps.prime-hf-vision.outcome != 'failure' }}
@@ -1305,7 +1305,7 @@ jobs:
               )
           PY
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         # NOT via Git Bash: bash on windows-latest has been observed to exit
         # 143 (SIGTERM) from any inline kill/sleep block, masking a green test
@@ -1391,7 +1391,7 @@ jobs:
 
   # ── folded from studio-windows-no-vs-smoke.yml: install + run with no Visual Studio ──
   no-vs-cpu:
-    name: Unsloth install + inference without Visual Studio
+    name: Spartan Agent install + inference without Visual Studio
     runs-on: windows-latest
     timeout-minutes: 35
     defaults:
@@ -1550,7 +1550,7 @@ jobs:
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
           python -c "import torch; print('torch', torch.__version__, 'cuda?', torch.cuda.is_available())"
 
-      - name: Install Unsloth (--local, --no-torch) with no build tools present
+      - name: Install Spartan Agent (--local, --no-torch) with no build tools present
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1605,13 +1605,13 @@ jobs:
           echo "Prebuilt installed with no build tools:"
           cat "$INFO"
 
-      - name: Add Unsloth shim to GITHUB_PATH
+      - name: Add Spartan Agent shim to GITHUB_PATH
         run: |
           SHIM_DIR=~/.unsloth/studio/bin
           [ -f "$SHIM_DIR/unsloth.exe" ] || { echo "::error::unsloth.exe shim not found"; ls -la ~/.unsloth/studio/ || true; exit 1; }
           cygpath -w "$SHIM_DIR" >> "$GITHUB_PATH"
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         run: |
           bash .github/scripts/boot-studio-api-only.sh --port "$STUDIO_PORT"
 
@@ -1676,7 +1676,7 @@ jobs:
           }
           Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         shell: cmd
         run: echo Stop Unsloth (no-op; runner reclaims STUDIO_PID=%STUDIO_PID% at job end)

@@ -34,7 +34,7 @@
 #    stderr, so a `>` without `2>&1` produces an empty log on exactly the failure
 #    a reader needs it for.
 #
-# NOT for `unsloth run`: that is serve-unsloth-run.sh, which boots a different
+# NOT for `unsloth run`: that is serve-spartan-run.sh, which boots a different
 # command with a different contract (banner API key, /v1/models resolution) and
 # has nothing to share with this beyond the word "boot".
 #

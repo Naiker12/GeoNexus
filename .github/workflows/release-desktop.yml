@@ -337,7 +337,7 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: Verify PyPI package and Unsloth stamp
+      - name: Verify PyPI package and Spartan Agent stamp
         shell: bash
         env:
           STUDIO_VERSION: ${{ steps.prepare.outputs.studio_version }}

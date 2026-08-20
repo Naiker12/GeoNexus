@@ -170,7 +170,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Built bundle must not contain Unsloth's unstable_Provider call site
+      - name: Built bundle must not contain Spartan Agent's unstable_Provider call site
         run: |
           set -e
           JS=$(ls dist/assets/index-*.js | head -1)

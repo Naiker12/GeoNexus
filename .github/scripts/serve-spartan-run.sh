@@ -9,7 +9,7 @@
 # the failure-isolation logic lives in one shellcheck-clean place.
 #
 # Usage:
-#   serve-unsloth-run.sh --model REPO --gguf-variant VAR --port PORT \
+#   serve-spartan-run.sh --model REPO --gguf-variant VAR --port PORT \
 #       [--gguf-file PATH] [--extra "--seed 3407 --temp 0"] \
 #       [--log-dir logs] [--health-timeout 300]
 #
@@ -54,13 +54,13 @@ while [ "$#" -gt 0 ]; do
     --extra)          EXTRA="$2"; shift 2 ;;
     --log-dir)        LOG_DIR="$2"; shift 2 ;;
     --health-timeout) HEALTH_TIMEOUT="$2"; shift 2 ;;
-    *) echo "serve-unsloth-run.sh: unknown arg '$1'" >&2; exit 2 ;;
+    *) echo "serve-spartan-run.sh: unknown arg '$1'" >&2; exit 2 ;;
   esac
 done
 
-[ -n "$PORT" ] || { echo "serve-unsloth-run.sh: --port is required" >&2; exit 2; }
+[ -n "$PORT" ] || { echo "serve-spartan-run.sh: --port is required" >&2; exit 2; }
 if [ -z "$MODEL" ] && [ -z "$GGUF_FILE" ]; then
-  echo "serve-unsloth-run.sh: one of --model or --gguf-file is required" >&2
+  echo "serve-spartan-run.sh: one of --model or --gguf-file is required" >&2
   exit 2
 fi
 

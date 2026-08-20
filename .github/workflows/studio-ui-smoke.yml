@@ -14,7 +14,7 @@
 # frontend-only CI happily pass while the actual user-visible UI is
 # broken (cf. the 2026.5.1 chat-history release).
 
-name: Unsloth UI CI
+name: Spartan Agent UI CI
 
 on:
   pull_request:
@@ -40,7 +40,7 @@ on:
       - '.github/scripts/retry-with-apt-lock.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
   push:
     branches: [main]
   workflow_dispatch:
@@ -229,8 +229,8 @@ jobs:
           key: hf-${{ env.GGUF_REPO }}-${{ env.GGUF_VARIANT }}-v3
           enableCrossOsArchive: true
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.
@@ -435,7 +435,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ms-playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ matrix.engine_key }}-v2
 
-      - name: Reset auth + boot Unsloth
+      - name: Reset auth + boot Spartan Agent
         if: matrix.shard == 'chat'
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
@@ -491,7 +491,7 @@ jobs:
           mkdir -p logs/playwright
           python tests/studio/playwright_chat_ui.py
 
-      - name: Stop Unsloth (chat-ui ends with Shutdown click; this is belt-and-suspenders)
+      - name: Stop Spartan Agent (chat-ui ends with Shutdown click; this is belt-and-suspenders)
         if: (always()) && (matrix.shard == 'chat')
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true
@@ -509,7 +509,7 @@ jobs:
       # Export / Unsloth / Settings) needs a fresh Unsloth, so we boot a
       # second one on a different port. Boot is fast (~3-5s on the
       # warm install we already did) so this adds little wall time.
-      - name: Reset auth + boot Unsloth for extra UI tests (port 18894)
+      - name: Reset auth + boot Spartan Agent for extra UI tests (port 18894)
         if: matrix.shard == 'extra' || matrix.shard == 'banner'
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
@@ -531,7 +531,7 @@ jobs:
           echo "STUDIO_EXTRA_OLD_PW=$OLD" >> "$GITHUB_ENV"
           echo "STUDIO_EXTRA_NEW_PW=$NEW" >> "$GITHUB_ENV"
 
-      - name: Drive Compare/Recipes/Export/Unsloth/Settings with Playwright
+      - name: Drive Compare/Recipes/Export/Spartan Agent/Settings with Playwright
         if: matrix.shard == 'extra'
         env:
           BASE_URL: http://127.0.0.1:18894
@@ -629,7 +629,7 @@ jobs:
           mkdir -p logs/playwright_image_cancel_retry_cold
           python tests/studio/playwright_image_download_cancel_retry.py
 
-      - name: Stop second Unsloth
+      - name: Stop second Spartan Agent
         if: (always()) && (matrix.shard == 'extra' || matrix.shard == 'banner')
         run: |
           kill "${STUDIO_EXTRA_PID}" 2>/dev/null || true
@@ -640,7 +640,7 @@ jobs:
       # picker's run-settings surface: Context Length persists across a reload,
       # Reset clears the stored override (never pins it), and the infra models
       # (RAG embedder + llama.cpp probe) stay hidden from the picker.
-      - name: Reset auth + boot Unsloth for model-config tests (port 18898)
+      - name: Reset auth + boot Spartan Agent for model-config tests (port 18898)
         if: matrix.shard == 'picker'
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
@@ -673,7 +673,7 @@ jobs:
           mkdir -p logs/playwright_modelcfg
           python tests/studio/playwright_model_config.py
 
-      - name: Stop fourth Unsloth
+      - name: Stop fourth Spartan Agent
         if: (always()) && (matrix.shard == 'picker')
         run: |
           kill "${STUDIO_MODELCFG_PID}" 2>/dev/null || true
@@ -682,7 +682,7 @@ jobs:
       # IME + multilingual paste regression (issue #5318 / PR #5327).
       # Third Unsloth on its own port so a hang here cannot poison the
       # earlier UI tests. No GGUF -- the bug surface is the composer.
-      - name: Reset auth + boot Unsloth for IME / i18n tests (port 18896)
+      - name: Reset auth + boot Spartan Agent for IME / i18n tests (port 18896)
         if: matrix.shard == 'picker'
         run: |
           bash .github/scripts/boot-studio-api-only.sh \
@@ -715,7 +715,7 @@ jobs:
           mkdir -p logs/playwright_ime
           python tests/studio/playwright_chat_ime_i18n.py
 
-      - name: Stop third Unsloth
+      - name: Stop third Spartan Agent
         if: (always()) && (matrix.shard == 'picker')
         run: |
           kill "${STUDIO_IME_PID}" 2>/dev/null || true
@@ -829,8 +829,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code.

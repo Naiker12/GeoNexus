@@ -490,7 +490,7 @@ jobs:
       # untrusted binary runs only in the final smoke step, after every HF_TOKEN step,
       # leaving no token-bearing step or shared workspace for a tampered prebuilt to
       # corrupt. GH_TOKEN: releases API; HF_TOKEN (withheld on PR): probe + GGUF fetch.
-      - name: Unsloth prebuilt llama.cpp install + GGUF download (Mac M1)
+      - name: Spartan Agent prebuilt llama.cpp install + GGUF download (Mac M1)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -511,7 +511,7 @@ jobs:
 
       # Final step: runs the downloaded binaries with no secrets present, and clears
       # the GitHub Actions command files so a tampered prebuilt cannot influence the job.
-      - name: Unsloth prebuilt llama.cpp GGUF inference smoke (Mac M1)
+      - name: Spartan Agent prebuilt llama.cpp GGUF inference smoke (Mac M1)
         run: |
           set -euo pipefail
           unset GITHUB_ENV GITHUB_PATH GITHUB_OUTPUT GITHUB_STEP_SUMMARY

@@ -15,7 +15,7 @@
 # Reuses the GGUF cache key from studio-ui-smoke.yml so the model
 # download is one cache-hit on the second job.
 
-name: Unsloth API CI
+name: Spartan Agent API CI
 
 on:
   pull_request:
@@ -35,7 +35,7 @@ on:
       - '.github/scripts/wait-for-health.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
+      - '.github/actions/install-spartan-local/action.yml'
   push:
     branches: [main]
   workflow_dispatch:
@@ -53,7 +53,7 @@ permissions:
 
 jobs:
   api-smoke:
-    name: Unsloth API & Auth Tests
+    name: Spartan Agent API & Auth Tests
     runs-on: ubuntu-latest
     # Sized for the apt step's bounded worst case (13m) plus the smoke itself.
     # Raised from 12, where the job budget was smaller than the retries the step
@@ -143,8 +143,8 @@ jobs:
           key: hf-${{ env.GGUF_REPO }}-${{ env.GGUF_VARIANT }}-v3
           enableCrossOsArchive: true
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Withheld on PR: this step runs checked-out PR code; public GGUF still downloads.
@@ -153,7 +153,7 @@ jobs:
       - name: Install pyjwt for the JWT-expiry forge test
         run: pip install 'pyjwt>=2.6'
 
-      - name: Reset auth + boot Unsloth (API-only)
+      - name: Reset auth + boot Spartan Agent (API-only)
         run: |
           # Wipe (not reset-password): the boot below must re-seed a fresh .bootstrap_password.
           bash .github/scripts/boot-studio-api-only.sh --port "$STUDIO_PORT"
@@ -177,7 +177,7 @@ jobs:
           echo "STUDIO_NEW_PW=$NEW"  >> "$GITHUB_ENV"
           echo "STUDIO_NEW2_PW=$NEW2" >> "$GITHUB_ENV"
 
-      - name: Run Unsloth API & Auth tests
+      - name: Run Spartan Agent API & Auth tests
         # The script is named WITHOUT a `test_` prefix so it isn't
         # auto-collected by pytest in Backend CI's `tests/` walk
         # (which doesn't set BASE_URL and would crash at import).
@@ -186,7 +186,7 @@ jobs:
           STUDIO_AUTH_DIR: /home/runner/.unsloth/studio/auth
         run: python tests/studio/studio_api_smoke.py
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           kill "${STUDIO_PID}" 2>/dev/null || true

@@ -14,7 +14,7 @@
 # danielhanchen/unsloth-staging-2 (Ubuntu / macOS / Windows all
 # green at PR time).
 
-name: Unsloth load-orchestrator CI
+name: Spartan Agent load-orchestrator CI
 
 # Per-commit runs are gone: this suite now runs as a background lane inside Lint CI,
 # which already occupies a runner on every commit, so it costs a slot there instead of

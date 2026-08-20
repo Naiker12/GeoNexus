@@ -119,7 +119,7 @@ jobs:
               sys.exit(0 if all(checks.values()) else 1)
           PY
 
-      - name: Unsloth backend import smoke
+      - name: Spartan Agent backend import smoke
         # Imports `studio.spartan_backend.main:app` from the freshly-installed wheel in
         # a clean venv. This catches the class of bug that 2026.5.1 shipped with:
         # frontend dist missing, package-lock.json missing, or the wheel's Python

@@ -24,7 +24,7 @@
 # gating in the caller keeps working unchanged; the caller sees this action as a
 # single step and cannot inspect the steps inside it.
 
-name: Install Unsloth (--local, --no-torch)
+name: Install Spartan Agent (--local, --no-torch)
 description: >-
   Run the checked-out install.sh in --local --no-torch mode, teeing the
   installer output to logs/install.log. Requires actions/checkout to have run.
@@ -93,7 +93,7 @@ runs:
         restore-keys: |
           uv-${{ runner.os }}-
 
-    - name: Install Unsloth (--local, --no-torch)
+    - name: Install Spartan Agent (--local, --no-torch)
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.gh-token }}

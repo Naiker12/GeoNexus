@@ -57,8 +57,8 @@ on:
       - '.github/scripts/retry-with-apt-lock.sh'
       # The install step in this workflow is `uses:` on that composite action,
       # so an edit to the action changes what this workflow actually runs.
-      - '.github/actions/install-unsloth-local/action.yml'
-      - '.github/scripts/serve-unsloth-run.sh'
+      - '.github/actions/install-spartan-local/action.yml'
+      - '.github/scripts/serve-spartan-run.sh'
       - '.github/scripts/assert-prompt-cache.sh'
       - '.github/scripts/agent-guides-install.sh'
       - '.github/scripts/agent-guides-drive.sh'
@@ -77,8 +77,8 @@ on:
       - 'install.sh'
       - '.github/workflows/local-agent-guides-ci.yml'
       - '.github/scripts/retry-with-apt-lock.sh'
-      - '.github/actions/install-unsloth-local/action.yml'
-      - '.github/scripts/serve-unsloth-run.sh'
+      - '.github/actions/install-spartan-local/action.yml'
+      - '.github/scripts/serve-spartan-run.sh'
       - '.github/scripts/assert-prompt-cache.sh'
       - '.github/scripts/agent-guides-install.sh'
       - '.github/scripts/agent-guides-drive.sh'
@@ -216,8 +216,8 @@ jobs:
           path: gguf-cache
           key: ${{ runner.os }}-gguf-${{ env.GGUF_REPO }}-${{ env.GGUF_FILE }}-v1
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Gated off PR (see note above); public GGUF still downloads.
@@ -229,7 +229,7 @@ jobs:
           # Wipe, not reset-password: since #7573 the reset rotates in place and
           # prints the new passphrase, which would land unmasked in the job log.
           rm -rf ~/.unsloth/studio/auth
-          bash .github/scripts/serve-unsloth-run.sh \
+          bash .github/scripts/serve-spartan-run.sh \
             --gguf-file "$GITHUB_WORKSPACE/gguf-cache/${GGUF_FILE}" \
             --port "$STUDIO_PORT" --log-dir logs \
             --extra "--seed $UNSLOTH_SEED --temp 0" \
@@ -305,7 +305,7 @@ jobs:
           mkdir -p logs/studio-logs
           cp -r "$HOME/.unsloth/studio/logs/." logs/studio-logs/ 2>/dev/null || true
           # Redact the key across the WHOLE logs/ tree, not just studio-logs:
-          # serve-unsloth-run.sh records the `unsloth run` banner (which prints
+          # serve-spartan-run.sh records the `unsloth run` banner (which prints
           # `API Key: <key>`) into logs/unsloth-run-<port>.log, and the upload
           # step publishes all of logs/, so scrubbing only studio-logs would leak
           # the bearer token in the retained artifact.
@@ -317,7 +317,7 @@ jobs:
             done
           fi
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           # Guard the PID: an unset/zero UNSLOTH_SERVER_PID would make
@@ -438,8 +438,8 @@ jobs:
           path: gguf-cache
           key: ${{ runner.os }}-gguf-${{ env.GGUF_REPO }}-${{ env.GGUF_FILE }}-v1
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Gated off PR (see note above); public GGUF still downloads.
@@ -448,7 +448,7 @@ jobs:
       - name: Serve unsloth run --disable-tools (gemma-4-E4B)
         run: |
           rm -rf ~/.unsloth/studio/auth
-          bash .github/scripts/serve-unsloth-run.sh \
+          bash .github/scripts/serve-spartan-run.sh \
             --gguf-file "$GITHUB_WORKSPACE/gguf-cache/${GGUF_FILE}" \
             --port "$STUDIO_PORT" --log-dir logs \
             --extra "--seed $UNSLOTH_SEED --temp 0" \
@@ -512,7 +512,7 @@ jobs:
           mkdir -p logs/studio-logs
           cp -r "$HOME/.unsloth/studio/logs/." logs/studio-logs/ 2>/dev/null || true
           # Redact the key across the WHOLE logs/ tree, not just studio-logs:
-          # serve-unsloth-run.sh records the `unsloth run` banner (which prints
+          # serve-spartan-run.sh records the `unsloth run` banner (which prints
           # `API Key: <key>`) into logs/unsloth-run-<port>.log, and the upload
           # step publishes all of logs/, so scrubbing only studio-logs would leak
           # the bearer token in the retained artifact.
@@ -524,7 +524,7 @@ jobs:
             done
           fi
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           # Guard the PID: an unset/zero UNSLOTH_SERVER_PID would make
@@ -630,8 +630,8 @@ jobs:
           path: gguf-cache
           key: ${{ runner.os }}-gguf-${{ env.GGUF_REPO }}-${{ env.GGUF_FILE }}-v1
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           hf-token: ${{ secrets.HF_TOKEN }}
@@ -639,7 +639,7 @@ jobs:
       - name: Serve unsloth run --disable-tools (gemma-4-E4B)
         run: |
           rm -rf ~/.unsloth/studio/auth
-          bash .github/scripts/serve-unsloth-run.sh \
+          bash .github/scripts/serve-spartan-run.sh \
             --gguf-file "$GITHUB_WORKSPACE/gguf-cache/${GGUF_FILE}" \
             --port "$STUDIO_PORT" --log-dir logs \
             --extra "--seed $UNSLOTH_SEED --temp 0" \
@@ -704,7 +704,7 @@ jobs:
             done
           fi
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           if [ -n "${UNSLOTH_SERVER_PID:-}" ] && [ "${UNSLOTH_SERVER_PID}" != "0" ]; then
@@ -806,8 +806,8 @@ jobs:
           key: hf-${{ env.GGUF_REPO }}-${{ env.GGUF_VARIANT }}-v3
           enableCrossOsArchive: true
 
-      - name: Install Unsloth (--local, --no-torch)
-        uses: ./.github/actions/install-unsloth-local
+      - name: Install Spartan Agent (--local, --no-torch)
+        uses: ./.github/actions/install-spartan-local
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           # Gated off PR (see note above); public GGUF still downloads.
@@ -816,7 +816,7 @@ jobs:
       - name: Serve unsloth run --disable-tools (gemma-3-270m)
         run: |
           rm -rf ~/.unsloth/studio/auth
-          bash .github/scripts/serve-unsloth-run.sh \
+          bash .github/scripts/serve-spartan-run.sh \
             --model "$GGUF_REPO" --gguf-variant "$GGUF_VARIANT" \
             --port "$STUDIO_PORT" --log-dir logs \
             --extra "--seed $UNSLOTH_SEED --temp 0"
@@ -849,7 +849,7 @@ jobs:
           mkdir -p logs/studio-logs
           cp -r "$HOME/.unsloth/studio/logs/." logs/studio-logs/ 2>/dev/null || true
           # Redact the key across the WHOLE logs/ tree, not just studio-logs:
-          # serve-unsloth-run.sh records the `unsloth run` banner (which prints
+          # serve-spartan-run.sh records the `unsloth run` banner (which prints
           # `API Key: <key>`) into logs/unsloth-run-<port>.log, and the upload
           # step publishes all of logs/, so scrubbing only studio-logs would leak
           # the bearer token in the retained artifact.
@@ -861,7 +861,7 @@ jobs:
             done
           fi
 
-      - name: Stop Unsloth
+      - name: Stop Spartan Agent
         if: always()
         run: |
           # Guard the PID: an unset/zero UNSLOTH_SERVER_PID would make
