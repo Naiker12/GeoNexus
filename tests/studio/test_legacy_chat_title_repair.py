@@ -13,8 +13,8 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend/src/features/chat"
-BACKEND = REPO / "studio/backend"
+FRONTEND = REPO / "studio/spartan-frontend/src/features/chat"
+BACKEND = REPO / "studio/spartan_backend"
 REPAIR = FRONTEND / "utils/repair-legacy-chat-titles.ts"
 HOOK = FRONTEND / "hooks/use-chat-sidebar-items.ts"
 STORAGE = FRONTEND / "utils/chat-history-storage.ts"

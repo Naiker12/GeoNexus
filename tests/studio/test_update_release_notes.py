@@ -23,8 +23,8 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-BACKEND = REPO / "studio/backend"
-FRONTEND = REPO / "studio/frontend/src"
+BACKEND = REPO / "studio/spartan_backend"
+FRONTEND = REPO / "studio/spartan-frontend/src"
 MODULE = BACKEND / "utils/release_notes.py"
 BODIES = Path(__file__).parent / "fixtures/release_bodies"
 PANEL = FRONTEND / "components/update/release-notes-panel.tsx"
@@ -1300,7 +1300,7 @@ def _overlay_stacks(provider: str) -> int:
 def test_the_overlay_stack_fits_the_viewport():
     """The card's own cap does not account for a download list stacked beneath
     it. The cap is `stackGeometry` now, checked numerically in
-    studio/frontend/tests/monitor-stack-inset.test.ts; here the stack must read it."""
+    studio/spartan-frontend/tests/monitor-stack-inset.test.ts; here the stack must read it."""
     provider = (FRONTEND / "app/provider.tsx").read_text(encoding = "utf-8")
     # Counted by the layer they sit on, not by a literal z-index: the
     # overlay rail reads its depth from Z_LAYER now.
@@ -1334,7 +1334,7 @@ def test_the_desktop_stack_is_capped_like_the_browser_one():
 def test_the_stack_geometry_is_checked_numerically():
     """The cap is arithmetic now, so the node test owns it. Named here so
     deleting that test does not quietly leave the cap unchecked."""
-    geometry = REPO / "studio/frontend/tests/monitor-stack-inset.test.ts"
+    geometry = REPO / "studio/spartan-frontend/tests/monitor-stack-inset.test.ts"
     src = geometry.read_text(encoding = "utf-8")
     assert (
         "stackGeometry(null, W, H).maxHeight, H - 32" in src

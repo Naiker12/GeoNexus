@@ -9,7 +9,7 @@ That shape says the cost is per-message renderer work, so the thing to measure i
 absolute number but a curve: the same four interactions repeated at N in {10, 50, 200, 500}.
 
 Four scripted actions per N, under 6x CDP CPU throttling, against the real Thread mounted by
-studio/frontend/smoke-thread-weight.html:
+studio/spartan-frontend/smoke-thread-weight.html:
 
     keystroke  - one character into the composer, measured to the frame that paints it.
     scroll     - one scroll gesture up through the thread; long-task ms is the lag a user feels.

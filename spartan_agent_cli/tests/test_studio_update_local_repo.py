@@ -153,7 +153,7 @@ def test_the_override_runs_that_checkouts_setup_script(monkeypatch, tmp_path):
 
     setup.sh/setup.ps1 build the frontend under their own $SCRIPT_DIR, and the
     editable install of the checkout removes the installed tree the installed
-    copy's script would have built into. studio/frontend/dist is gitignored, so
+    copy's script would have built into. studio/spartan-frontend/dist is gitignored, so
     running the installed script against a fresh checkout leaves Studio with no
     frontend at all.
     """

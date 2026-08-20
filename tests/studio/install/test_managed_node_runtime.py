@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
-"""Tests for the runtime managed-Node resolver (studio/backend/utils/node_runtime.py).
+"""Tests for the runtime managed-Node resolver (studio/spartan_backend/utils/node_runtime.py).
 
 The Unsloth frontend installer may provision an isolated Node under
 ``<UNSLOTH_HOME>/node`` that is never added to the user's PATH. The backend OXC
@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 # node_runtime imports sibling backend packages by top-level name, so put
-# studio/backend on sys.path before importing it.
+# studio/spartan_backend on sys.path before importing it.
 _BACKEND = Path(__file__).resolve().parents[3] / "studio" / "backend"
 if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))

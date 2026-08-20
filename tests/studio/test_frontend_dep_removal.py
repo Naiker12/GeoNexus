@@ -19,8 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-HEAD_PKG = REPO / "studio/frontend/package.json"
-HEAD_LOCK = REPO / "studio/frontend/package-lock.json"
+HEAD_PKG = REPO / "studio/spartan-frontend/package.json"
+HEAD_LOCK = REPO / "studio/spartan-frontend/package-lock.json"
 SCRIPT = REPO / "scripts/check_frontend_dep_removal.py"
 
 
@@ -729,7 +729,7 @@ def run_classify_unit_tests() -> int:
 # Adversarial end-to-end cases: drop a synthetic file into src/, run the
 # checker, clean up. Catches regressions in the full grep+classify pipeline.
 
-ADVERSARIAL_TMP_DIR = REPO / "studio/frontend/src/__dep_check_adversarial__"
+ADVERSARIAL_TMP_DIR = REPO / "studio/spartan-frontend/src/__dep_check_adversarial__"
 
 
 @dataclass

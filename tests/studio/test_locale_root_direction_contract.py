@@ -4,9 +4,9 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-LOCALE_STORE = REPO / "studio/frontend/src/i18n/locale-store.ts"
-MESSAGES = REPO / "studio/frontend/src/i18n/messages.ts"
-SONNER = REPO / "studio/frontend/src/components/ui/sonner.tsx"
+LOCALE_STORE = REPO / "studio/spartan-frontend/src/i18n/locale-store.ts"
+MESSAGES = REPO / "studio/spartan-frontend/src/i18n/messages.ts"
+SONNER = REPO / "studio/spartan-frontend/src/components/ui/sonner.tsx"
 
 
 def test_locale_changes_do_not_force_document_direction():

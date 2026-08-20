@@ -54,7 +54,7 @@ on:
       # The overlay exists so a constraints or requirements change is exercised here
       # (see the header). update-smoke cannot stand in: it starts from a preinstalled
       # Python and full developer tooling.
-      - 'studio/backend/requirements/**'
+      - 'studio/spartan_backend/requirements/**'
       # The overlay builds pyproject.toml and then reaches setup.sh / setup.ps1 through
       # unsloth_cli/commands/studio.py (install.sh:4254, install.ps1:2801), so a change
       # to either decides whether these legs install at all. No toolchain-equipped
@@ -81,7 +81,7 @@ on:
       - 'studio/install_*_prebuilt.py'
       - 'studio/prebuilt_core.py'
       - 'studio/node_prebuilt_pins.json'
-      - 'studio/backend/requirements/**'
+      - 'studio/spartan_backend/requirements/**'
       - 'pyproject.toml'
       - 'unsloth_cli/commands/studio.py'
       - '.github/scripts/clean-machine-*.sh'

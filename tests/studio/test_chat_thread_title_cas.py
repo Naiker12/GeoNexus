@@ -5,7 +5,7 @@
 beats a background rewrite.
 
 studio_db imports its siblings by bare name (utils.paths), so the functional
-checks run in a subprocess with studio/backend on PYTHONPATH rather than
+checks run in a subprocess with studio/spartan_backend on PYTHONPATH rather than
 putting those names on this session's sys.path.
 """
 

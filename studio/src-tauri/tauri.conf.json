@@ -3,14 +3,14 @@
   "identifier": "com.spartanagent.studio",
   "build": {
     "beforeDevCommand": {
-      "cwd": "../frontend",
+      "cwd": "../spartan-frontend",
       "script": "npm run dev -- --port 5173 --strictPort"
     },
     "beforeBuildCommand": {
-      "cwd": "../frontend",
+      "cwd": "../spartan-frontend",
       "script": "npm run build"
     },
-    "frontendDist": "../frontend/dist",
+    "frontendDist": "../spartan-frontend/dist",
     "devUrl": "http://localhost:5173"
   },
   "app": {

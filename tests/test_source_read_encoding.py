@@ -9,7 +9,7 @@ that reads a repo file that way passes in CI and raises UnicodeDecodeError for a
 Windows contributor as soon as that file gains a non-ASCII byte, which the
 source-scanning tests do constantly:
 
-    studio/backend/routes/inference.py carries the DeepSeek tool-call token
+    studio/spartan_backend/routes/inference.py carries the DeepSeek tool-call token
     regexes, so it holds U+FF5C and U+2581. Reading it as cp1252 dies on
     "byte 0x81", taking test_cancel_atomicity.py and test_cancel_id_wiring.py
     out at collection time.
@@ -65,7 +65,7 @@ TESTS = Path(__file__).resolve().parent
 REPO = TESTS.parent
 # Both trees ship to Windows contributors, and separate CI jobs collect them
 # (repo-cpu-tests and the studio-backend matrix), so the rule covers both.
-# Not a hand-written list: studio/backend/hub/tests and unsloth/kernels/moe/tests
+# Not a hand-written list: studio/spartan_backend/hub/tests and unsloth/kernels/moe/tests
 # are already here, and the next one has to be covered the day it lands.
 SKIP_DIRS = {".git", ".venv", "build", "dist", "frontend", "node_modules", "site-packages"}
 

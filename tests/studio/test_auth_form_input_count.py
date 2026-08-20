@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend/src"
+FRONTEND = REPO / "studio/spartan-frontend/src"
 AUTH_FORM = FRONTEND / "features/auth/components/auth-form.tsx"
 AUTH_API = FRONTEND / "features/auth/api.ts"
 
@@ -50,7 +50,7 @@ def _conditional_extent(src: str) -> tuple[int, int]:
 
 def test_hasbootstrappassword_constant_is_derived_from_bootstrap_window_value():
     """The guard must read from window.__UNSLOTH_BOOTSTRAP__, matching the backend's
-    bootstrap-injection contract in studio/backend/main.py::_inject_bootstrap."""
+    bootstrap-injection contract in studio/spartan_backend/main.py::_inject_bootstrap."""
     src = AUTH_FORM.read_text(encoding = "utf-8")
     assert "const hasBootstrapPassword = Boolean(window.__UNSLOTH_BOOTSTRAP__?.password);" in src, (
         "hasBootstrapPassword constant missing or its derivation drifted; "

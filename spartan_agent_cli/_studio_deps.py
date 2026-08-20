@@ -3,7 +3,7 @@
 
 """Studio dependency checks shared by the CLI commands.
 
-The wheel ships studio/ and studio.backend*, so train / export / chat /
+The wheel ships studio/ and studio.spartan_backend*, so train / export / chat /
 inference / studio all work after a plain `pip install unsloth` right up to the
 point they import the backend. studio_backend_imports() turns the resulting
 traceback into one sentence and the two commands that fix it.
@@ -46,7 +46,7 @@ def _manifest_candidates(extra_roots: Sequence[Path] = ()) -> Iterable[Path]:
 def load_install_manifest_module(extra_roots: Sequence[Path] = ()):
     """Load studio/install_manifest.py by file path, or None if unavailable.
 
-    By path for the same reason as studio.backend.run: a partial
+    By path for the same reason as studio.spartan_backend.run: a partial
     site-packages/studio/ tree can shadow an editable install, which is exactly
     what this check exists to detect.
     """
@@ -152,7 +152,7 @@ def _distributions_in(root: Path) -> Optional[Dict[str, str]]:
 
 def _requirements_root_in(root: Path) -> Optional[Path]:
     for path in _venv_site_packages(root):
-        reqs = path / "studio" / "backend" / "requirements"
+        reqs = path / "studio" / "spartan_backend" / "requirements"
         if reqs.is_dir():
             return reqs
     return None

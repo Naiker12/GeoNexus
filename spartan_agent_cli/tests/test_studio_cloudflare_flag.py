@@ -72,7 +72,7 @@ def _install_run_reexec_capture(monkeypatch, *, platform = "linux"):
     # A built frontend dist is present so the public-launch UI check passes
     # deterministically (independent of whether the repo dist was built).
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     fake_bin = fake_venv / "bin" / "unsloth"
     real_is_file = Path.is_file
@@ -128,7 +128,7 @@ def test_run_reexec_forwards_cloudflare_polarity(
 ):
     studio_mod = _studio()
     assert f'_CLOUDFLARE_INTENT_ENV = "{studio_mod._CLOUDFLARE_INTENT_ENV}"' in (
-        _REPO_ROOT / "studio/backend/run.py"
+        _REPO_ROOT / "studio/spartan_backend/run.py"
     ).read_text(encoding = "utf-8")
     monkeypatch.delenv(studio_mod._CLOUDFLARE_INTENT_ENV, raising = False)
     captured = _invoke_run(monkeypatch, _BASE + extra_flags)
@@ -162,7 +162,7 @@ def _invoke_studio_default(
     # A built frontend dist is present so the public-launch UI check passes; this
     # suite exercises flag forwarding, not the missing-dist lockout guard.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     monkeypatch.setattr(sys, "platform", platform)
 
@@ -241,7 +241,7 @@ def test_run_in_venv_passes_cloudflare_to_run_server(monkeypatch, user_flag, exp
         raise _RunServerCaptured(kwargs)
 
     fake_backend_run = sys.modules.setdefault(
-        "studio.backend.run", types.ModuleType("studio.backend.run")
+        "studio.spartan_backend.run", types.ModuleType("studio.spartan_backend.run")
     )
     fake_backend_run.run_server = fake_run_server
     fake_backend_run._resolve_external_ip = lambda: "127.0.0.1"
@@ -341,7 +341,7 @@ def test_run_silent_emits_cloudflare_notice_for_external_bind(monkeypatch):
             cloudflare_url = "https://x.trycloudflare.com"
 
     calls = []
-    backend = types.ModuleType("studio.backend.run")
+    backend = types.ModuleType("studio.spartan_backend.run")
     backend.run_server = lambda **_kwargs: _App()
     backend._resolve_external_ip = lambda: "198.51.100.7"
     backend._verify_global_reachability = lambda host, port: calls.append(("verify", host, port))
@@ -349,7 +349,7 @@ def test_run_silent_emits_cloudflare_notice_for_external_bind(monkeypatch):
     backend._server = object()
     backend._shutdown_event = _ShutdownEvent()
     backend._graceful_shutdown = lambda server: calls.append(("shutdown", server))
-    monkeypatch.setitem(sys.modules, "studio.backend.run", backend)
+    monkeypatch.setitem(sys.modules, "studio.spartan_backend.run", backend)
     monkeypatch.setattr(studio_mod, "_RUN_MODULE", backend)
 
     state_mod = types.ModuleType("state")
@@ -427,7 +427,7 @@ def test_run_in_venv_shuts_down_on_startup_abort(monkeypatch):
             server_port = 8888
 
     shutdown_calls = []
-    backend = sys.modules.setdefault("studio.backend.run", types.ModuleType("studio.backend.run"))
+    backend = sys.modules.setdefault("studio.spartan_backend.run", types.ModuleType("studio.spartan_backend.run"))
     backend.run_server = lambda **k: _App()
     backend._resolve_external_ip = lambda: "1.2.3.4"
     backend._server = object()
@@ -485,13 +485,13 @@ def test_run_in_venv_sets_tool_policy_before_server_start(monkeypatch):
         calls.append(("run_server", None))
         return _App()
 
-    backend = types.ModuleType("studio.backend.run")
+    backend = types.ModuleType("studio.spartan_backend.run")
     backend.run_server = _run_server
     backend._resolve_external_ip = lambda: "1.2.3.4"
     backend._server = object()
     backend._shutdown_event = None
     backend._graceful_shutdown = lambda server: calls.append(("shutdown", server))
-    monkeypatch.setitem(sys.modules, "studio.backend.run", backend)
+    monkeypatch.setitem(sys.modules, "studio.spartan_backend.run", backend)
     monkeypatch.setattr(studio_mod, "_RUN_MODULE", backend)
 
     state_mod = types.ModuleType("state")

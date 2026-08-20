@@ -19,17 +19,17 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 RECIPE_PATH = (
-    REPO / "studio/frontend/src/features/data-recipes/learning-recipes/pdf-grounded-qa.json"
+    REPO / "studio/spartan-frontend/src/features/data-recipes/learning-recipes/pdf-grounded-qa.json"
 )
-TRAINING_START_PATH = REPO / "studio/frontend/src/features/training/lib/start-fresh-training-run.ts"
+TRAINING_START_PATH = REPO / "studio/spartan-frontend/src/features/training/lib/start-fresh-training-run.ts"
 SEED_BUILDER_PATH = (
-    REPO / "studio/frontend/src/features/recipe-studio/utils/payload/builders-seed.ts"
+    REPO / "studio/spartan-frontend/src/features/recipe-studio/utils/payload/builders-seed.ts"
 )
-RECIPE_IMPORTER_PATH = REPO / "studio/frontend/src/features/recipe-studio/utils/import/importer.ts"
+RECIPE_IMPORTER_PATH = REPO / "studio/spartan-frontend/src/features/recipe-studio/utils/import/importer.ts"
 SEED_PARSER_PATH = (
-    REPO / "studio/frontend/src/features/recipe-studio/utils/import/parsers/seed-config-parser.ts"
+    REPO / "studio/spartan-frontend/src/features/recipe-studio/utils/import/parsers/seed-config-parser.ts"
 )
-FORMAT_DETECTION_PATH = REPO / "studio/backend/utils/datasets/format_detection.py"
+FORMAT_DETECTION_PATH = REPO / "studio/spartan_backend/utils/datasets/format_detection.py"
 
 
 def _load_payload() -> dict:
@@ -200,7 +200,7 @@ def test_pdf_qa_recipe_runs_with_pinned_data_designer(tmp_path, monkeypatch):
     if os.environ.get("UNSLOTH_PDF_QA_MANAGED_INTEGRATION") != "1":
         pytest.skip("set UNSLOTH_PDF_QA_MANAGED_INTEGRATION=1 to run this integration")
 
-    backend = REPO / "studio/backend"
+    backend = REPO / "studio/spartan_backend"
     sys.path.insert(0, str(backend))
     pytest.importorskip("data_designer")
     pytest.importorskip("data_designer_unstructured_seed")

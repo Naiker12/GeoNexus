@@ -1496,14 +1496,14 @@ LAUNCHER_EOF
     _css_found_icon=""
     _css_venv_dir=$(dirname "$(dirname "$_css_exe")")
     # Check site-packages
-    for _sp in "$_css_venv_dir"/lib/python*/site-packages/unsloth/studio/frontend/public; do
+    for _sp in "$_css_venv_dir"/lib/python*/site-packages/unsloth/studio/spartan-frontend/public; do
         if [ -f "$_sp/rounded-512.png" ]; then
             _css_found_icon="$_sp/rounded-512.png"
         fi
     done
     # Check local repo (when running from clone)
-    if [ -z "$_css_found_icon" ] && [ -n "$_css_script_dir" ] && [ -f "$_css_script_dir/studio/frontend/public/rounded-512.png" ]; then
-        _css_found_icon="$_css_script_dir/studio/frontend/public/rounded-512.png"
+    if [ -z "$_css_found_icon" ] && [ -n "$_css_script_dir" ] && [ -f "$_css_script_dir/studio/spartan-frontend/public/rounded-512.png" ]; then
+        _css_found_icon="$_css_script_dir/studio/spartan-frontend/public/rounded-512.png"
     fi
 
     # Copy or download rounded-512.png (used for both Linux icon and macOS icns)
@@ -1511,7 +1511,7 @@ LAUNCHER_EOF
         cp "$_css_found_icon" "$_css_icon_png" 2>/dev/null || true
         cp "$_css_found_icon" "$_css_gem_png" 2>/dev/null || true
     else
-        download "https://raw.githubusercontent.com/unslothai/unsloth/main/studio/frontend/public/rounded-512.png" "$_css_icon_png" 2>/dev/null || true
+        download "https://raw.githubusercontent.com/unslothai/unsloth/main/studio/spartan-frontend/public/rounded-512.png" "$_css_icon_png" 2>/dev/null || true
         cp "$_css_icon_png" "$_css_gem_png" 2>/dev/null || true
     fi
 
@@ -1780,7 +1780,7 @@ if (Test-Path -LiteralPath \$iconPath) {
 if (-not (Test-Path -LiteralPath \$iconPath)) {
     try {
         New-Item -ItemType Directory -Force -Path \$iconDir | Out-Null
-        Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/unslothai/unsloth/main/studio/frontend/public/unsloth.ico' -OutFile \$iconPath -UseBasicParsing -ErrorAction Stop
+        Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/unslothai/unsloth/main/studio/spartan-frontend/public/unsloth.ico' -OutFile \$iconPath -UseBasicParsing -ErrorAction Stop
     } catch {}
 }
 \$hasIcon = \$false
@@ -1943,7 +1943,7 @@ fi
 
 # Apple Silicon: override mlx-vlm / mlx-lm's transformers pin (see overrides file).
 if [ "$OS" = "macos" ] && [ "$_ARCH" = "arm64" ]; then
-    _OVERRIDES_FILE="$(cd "$(dirname "$0" 2>/dev/null || echo ".")" && pwd)/studio/backend/requirements/single-env/overrides-darwin-arm64.txt"
+    _OVERRIDES_FILE="$(cd "$(dirname "$0" 2>/dev/null || echo ".")" && pwd)/studio/spartan_backend/requirements/single-env/overrides-darwin-arm64.txt"
     if [ -f "$_OVERRIDES_FILE" ]; then
         # uv splits UV_OVERRIDE on whitespace, so a repo path with whitespace
         # truncates it and aborts every later uv call (issue #6503). Hand uv a copy.
@@ -3055,12 +3055,12 @@ esac
 # ── Helper: find no-torch-runtime.txt (local repo or site-packages) ──
 _find_no_torch_runtime() {
     # Check local repo first (for --local installs)
-    if [ -f "$_REPO_ROOT/studio/backend/requirements/no-torch-runtime.txt" ]; then
-        echo "$_REPO_ROOT/studio/backend/requirements/no-torch-runtime.txt"
+    if [ -f "$_REPO_ROOT/studio/spartan_backend/requirements/no-torch-runtime.txt" ]; then
+        echo "$_REPO_ROOT/studio/spartan_backend/requirements/no-torch-runtime.txt"
         return
     fi
     # Check inside installed package
-    _rt=$(find "$VENV_DIR" -path "*/studio/backend/requirements/no-torch-runtime.txt" -print -quit 2>/dev/null || echo "")
+    _rt=$(find "$VENV_DIR" -path "*/studio/spartan_backend/requirements/no-torch-runtime.txt" -print -quit 2>/dev/null || echo "")
     if [ -n "$_rt" ]; then
         echo "$_rt"
         return
@@ -4872,7 +4872,7 @@ _bootstrap_packaged_mlx_override() {
 
     _PACKAGED_MLX_OVERRIDES=$("$_VENV_PY" -I -c "
 import importlib.resources
-path = importlib.resources.files('studio') / 'backend' / 'requirements' / 'single-env' / 'overrides-darwin-arm64.txt'
+path = importlib.resources.files('studio') / 'spartan_backend' / 'requirements' / 'single-env' / 'overrides-darwin-arm64.txt'
 print(path if path.is_file() else '')
 " 2>/dev/null || true)
     if [ ! -f "$_PACKAGED_MLX_OVERRIDES" ]; then

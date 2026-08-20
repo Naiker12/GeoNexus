@@ -779,7 +779,7 @@ def test_in_venv_path_passes_parallel_to_run_server(monkeypatch, value, stub_too
         raise _RunServerCaptured(kwargs)
 
     fake_backend_run = sys.modules.setdefault(
-        "studio.backend.run", _types_module("studio.backend.run")
+        "studio.spartan_backend.run", _types_module("studio.spartan_backend.run")
     )
     fake_backend_run.run_server = fake_run_server
     fake_backend_run._resolve_external_ip = lambda: "127.0.0.1"
@@ -872,7 +872,7 @@ def test_in_venv_path_passes_api_only_to_run_server(
         raise _RunServerCaptured(kwargs)
 
     fake_backend_run = sys.modules.setdefault(
-        "studio.backend.run", _types_module("studio.backend.run")
+        "studio.spartan_backend.run", _types_module("studio.spartan_backend.run")
     )
     fake_backend_run.run_server = fake_run_server
     fake_backend_run._resolve_external_ip = lambda: "127.0.0.1"

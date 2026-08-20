@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-RUNTIME_TSX = REPO / "studio/frontend/src/features/chat/runtime-provider.tsx"
+RUNTIME_TSX = REPO / "studio/spartan-frontend/src/features/chat/runtime-provider.tsx"
 
 
 def _source_until(src: str, anchor: str, end_anchor: str) -> str:

@@ -29,7 +29,7 @@ def _source_path(relative_path: str) -> Path:
     return WORKDIR / "unsloth_repo" / relative_path
 
 
-ADAPTER = _source_path("studio/frontend/src/features/chat/api/chat-adapter.ts")
+ADAPTER = _source_path("studio/spartan-frontend/src/features/chat/api/chat-adapter.ts")
 TEMP = WORKDIR / "temp" / "chat_autoload_failure_gate"
 DEFAULT_MODEL = "unsloth/gemma-4-E2B-it-GGUF"
 GEMMA_REPO = "unsloth/gemma-4-26B-A4B-it-qat-GGUF"
@@ -186,7 +186,7 @@ function mlxRuntimeStateFrom(resp: any) {
 // not assert on toast copy, but a stub that ignored its arguments would let a call site
 // stop passing one of the two reasons without anything here noticing, which is the bug
 // this helper was introduced to fix. The exact wording lives in mmproj-fallback.ts and
-// is tested in studio/frontend/tests/mmproj-fallback.test.ts.
+// is tested in studio/spartan-frontend/tests/mmproj-fallback.test.ts.
 function loadFallbackNotice(
   baseTitle: string,
   cpuFallbackReason: any,
@@ -1244,7 +1244,7 @@ def test_a_download_that_survives_a_failed_cancel_is_not_loaded():
 def test_a_failed_cancel_does_not_latch_the_toast_action_off():
     """The retry latch must clear once the request settles, or every later
     Cancel click is swallowed."""
-    src = (WORKDIR / "studio/frontend/src/features/chat/api/chat-adapter.ts").read_text(
+    src = (WORKDIR / "studio/spartan-frontend/src/features/chat/api/chat-adapter.ts").read_text(
         encoding = "utf-8"
     )
     helper = src.split("async function ensureDefaultModelDownloaded", 1)[1]

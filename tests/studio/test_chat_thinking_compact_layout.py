@@ -4,9 +4,9 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-THREAD_TSX = REPO / "studio/frontend/src/components/assistant-ui/thread.tsx"
-SHARED_TSX = REPO / "studio/frontend/src/features/chat/shared-composer.tsx"
-INDEX_CSS = REPO / "studio/frontend/src/index.css"
+THREAD_TSX = REPO / "studio/spartan-frontend/src/components/assistant-ui/thread.tsx"
+SHARED_TSX = REPO / "studio/spartan-frontend/src/features/chat/shared-composer.tsx"
+INDEX_CSS = REPO / "studio/spartan-frontend/src/index.css"
 
 
 def test_thinking_control_has_compact_hooks_in_both_composers():

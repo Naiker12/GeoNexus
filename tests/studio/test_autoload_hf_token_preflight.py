@@ -38,7 +38,7 @@ def _source_path(relative_path: str) -> Path:
     return WORKDIR / "unsloth_repo" / relative_path
 
 
-ADAPTER = _source_path("studio/frontend/src/features/chat/api/chat-adapter.ts")
+ADAPTER = _source_path("studio/spartan-frontend/src/features/chat/api/chat-adapter.ts")
 TEMP = WORKDIR / "temp" / "autoload_hf_token_preflight"
 
 

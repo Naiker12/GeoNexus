@@ -27,7 +27,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPT = REPO / "tests/studio/playwright_mac_tab_capabilities.py"
-APPEARANCE_STORE = REPO / "studio/frontend/src/features/settings/stores/appearance-custom-store.ts"
+APPEARANCE_STORE = REPO / "studio/spartan-frontend/src/features/settings/stores/appearance-custom-store.ts"
 
 BASE = "http://127.0.0.1:18893"
 # A settled reply: no hardware_detecting at all. This is the state the runner is in by

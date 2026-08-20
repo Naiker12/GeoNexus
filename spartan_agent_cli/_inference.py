@@ -62,7 +62,7 @@ def urlopen_no_redirect(request, timeout):
 
 # /api/inference/load and /unload pad their body so a proxy cannot time a slow load
 # out, committing the 200 before the work finishes. A failure found after that travels
-# only in-band under this key (studio/backend/routes/inference.py), so a client that
+# only in-band under this key (studio/spartan_backend/routes/inference.py), so a client that
 # treats any 200 as success reports a failed load as a successful one.
 _DEFERRED_ERROR_KEY = "_deferred_error"
 
@@ -104,7 +104,7 @@ def require_completed_padded_body(url: str, body):
     accepting it reports an unfinished load or unload as completed. Only the two padded
     routes commit their status that early, so only they require a payload; ``{}`` is
     rejected too, since that is what a blank body decodes to here. Mirrored by
-    ``assertCompletedPaddedBody`` in studio/frontend/src/features/chat/api/padded-response.ts.
+    ``assertCompletedPaddedBody`` in studio/spartan-frontend/src/features/chat/api/padded-response.ts.
     """
     if isinstance(body, dict) and body:
         return body
@@ -133,7 +133,7 @@ def read_json_checking_deferred_error(url: str, response):
 
 
 def ensure_studio_backend_path() -> None:
-    backend_dir = str(Path(__file__).resolve().parents[1] / "studio" / "backend")
+    backend_dir = str(Path(__file__).resolve().parents[1] / "studio" / "spartan_backend")
     if backend_dir not in sys.path:
         sys.path.insert(0, backend_dir)
 
@@ -665,8 +665,8 @@ def verify_studio_identity(base: str, timeout: float = 3.0) -> bool:
     from urllib.parse import urlparse
 
     try:
-        import studio.backend.core  # noqa: F401  puts studio/backend on sys.path
-        from studio.backend.auth import storage
+        import studio.spartan_backend.core  # noqa: F401  puts studio/spartan_backend on sys.path
+        from studio.spartan_backend.auth import storage
     except Exception:
         return False
 
@@ -708,10 +708,10 @@ def _studio_token() -> Optional[str]:
     """Self-issue a JWT: the CLI runs as the same OS user as the server, so it
     signs with the same stored secret the server validates against."""
     try:
-        import studio.backend.core  # noqa: F401  puts studio/backend on sys.path
+        import studio.spartan_backend.core  # noqa: F401  puts studio/spartan_backend on sys.path
 
-        from studio.backend.auth import storage
-        from studio.backend.auth.authentication import create_access_token
+        from studio.spartan_backend.auth import storage
+        from studio.spartan_backend.auth.authentication import create_access_token
 
         row = storage.get_connection().execute("SELECT username FROM auth_user LIMIT 1").fetchone()
         return create_access_token(row[0], desktop = True) if row else None
@@ -923,4 +923,3 @@ def connect_studio_server(
         llama_extra_args = llama_extra_args,
     )
     return backend
-

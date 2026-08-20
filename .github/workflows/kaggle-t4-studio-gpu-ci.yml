@@ -178,7 +178,7 @@ on:
     # takes effect on the next unrelated push.
     types: [opened, synchronize, reopened, labeled]
     paths:
-      - 'studio/backend/**'
+      - 'studio/spartan_backend/**'
       - 'studio/setup.sh'
       - 'studio/install_llama_prebuilt.py'
       - 'studio/prebuilt_core.py'
@@ -194,7 +194,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'studio/backend/**'
+      - 'studio/spartan_backend/**'
       - 'studio/setup.sh'
       - 'studio/install_llama_prebuilt.py'
       - 'studio/prebuilt_core.py'

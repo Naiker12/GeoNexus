@@ -53,7 +53,7 @@ def _pytest_commands(text: str) -> list[str]:
 
 # Two different trees are run in parallel now, and the isolation below belongs to exactly
 # one of them. The repo-root job runs `tests/` from the checkout; the matrix job runs the
-# backend's own suite with `working-directory: studio/backend`, so `tests/studio/...` is
+# backend's own suite with `working-directory: studio/spartan_backend`, so `tests/studio/...` is
 # not a path that exists for it and demanding those ignores would be nonsense.
 #
 # Told apart by what they ignore, because that is the thing both the ignores and this
@@ -572,7 +572,7 @@ def _assigned_into_sys_modules(tree: ast.AST) -> set:
 
 
 def _is_repo_module(name: str) -> bool:
-    """Whether studio/backend itself provides this name.
+    """Whether studio/spartan_backend itself provides this name.
 
     `loggers`, `utils`, `routes` and friends are the backend's OWN modules. A test that
     stands one of them up as a stub is not shadowing a third-party library, which is what
@@ -586,9 +586,9 @@ def _is_installed(name: str) -> bool:
 
     Asked of the REPO first, and that ordering is the whole fix. The previous version
     asked importlib alone and reasoned that an in-repo name resolves only with
-    studio/backend on sys.path, "which this test does not have and should not add". That
+    studio/spartan_backend on sys.path, "which this test does not have and should not add". That
     was simply untrue in the job that runs it: under `pytest tests/ -n 4` from the repo
-    root, studio/backend does end up on sys.path, `loggers` resolved, and the guard
+    root, studio/spartan_backend does end up on sys.path, `loggers` resolved, and the guard
     failed on main for a stub that shadows nothing. It passed locally, where the path
     happens to differ, which is the worst shape a CI-only assertion can have.
 

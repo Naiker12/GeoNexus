@@ -16,7 +16,7 @@ The Windows UI smoke does exactly that drag-and-resize and then clicks Close, so
 it catches a regression here for real. It takes about twenty minutes and needs a
 Windows runner. These read the numbers straight out of the source instead.
 
-The numbers themselves live in one place now, studio/frontend/src/lib/z-layers.ts.
+The numbers themselves live in one place now, studio/spartan-frontend/src/lib/z-layers.ts.
 These tests compare them rather than pinning any one of them, so renumbering a
 layer does not break them -- what breaks them is a surface leaving the named scale
 or two layers swapping places.
@@ -30,7 +30,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend/src"
+FRONTEND = REPO / "studio/spartan-frontend/src"
 Z_LAYERS = FRONTEND / "lib/z-layers.ts"
 MONITOR = FRONTEND / "components/floating-monitor.tsx"
 API_PANEL = FRONTEND / "features/api-monitor/api-monitor-overlay.tsx"

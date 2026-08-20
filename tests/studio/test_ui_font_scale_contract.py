@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-SRC = REPO / "studio/frontend/src"
+SRC = REPO / "studio/spartan-frontend/src"
 INDEX_CSS = (SRC / "index.css").read_text(encoding = "utf-8")
 STORE = (SRC / "features/settings/stores/appearance-custom-store.ts").read_text(encoding = "utf-8")
 SELECT = (SRC / "components/ui/select.tsx").read_text(encoding = "utf-8")

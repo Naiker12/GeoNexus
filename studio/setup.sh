@@ -115,7 +115,7 @@ _remove_agent_instruction_files() {
 }
 
 # ── Corporate-mirror / proxy escape hatch for the frontend npm/bun install (#6491) ──
-# studio/frontend/.npmrc pins registry=https://registry.npmjs.org/ as a supply-chain
+# studio/spartan-frontend/.npmrc pins registry=https://registry.npmjs.org/ as a supply-chain
 # lock. A project-level pin overrides a corporate user's ~/.npmrc proxy, so the install
 # hits npmjs.org directly and a firewall returns 403. UNSLOTH_NPM_REGISTRY is a
 # deliberate opt-in: when set we thread it as `--registry <url>` into every npm/bun
@@ -146,7 +146,7 @@ _suggest_npm_registry() {
     # Best-effort: surface a mirror the user already configured (env or ~/.npmrc).
     # Read npm config from / (a dir with no project .npmrc) so the frontend's pinned
     # registry= does not mask the user's ~/.npmrc / global mirror -- the caller is
-    # still inside studio/frontend when this runs.
+    # still inside studio/spartan-frontend when this runs.
     local _mirror="${NPM_CONFIG_REGISTRY:-${npm_config_registry:-}}"
     if [ -z "$_mirror" ] && command -v npm >/dev/null 2>&1; then
         _mirror="$( (cd / 2>/dev/null && npm config get registry) 2>/dev/null || true )"
@@ -831,7 +831,7 @@ if [ "${STUDIO_LOCAL_INSTALL:-0}" = "1" ]; then
 fi
 # ── Clean up stale caches ──
 rm -rf "$REPO_ROOT/unsloth_compiled_cache"
-rm -rf "$SCRIPT_DIR/backend/unsloth_compiled_cache"
+rm -rf "$SCRIPT_DIR/spartan_backend/unsloth_compiled_cache"
 rm -rf "$SCRIPT_DIR/tmp/unsloth_compiled_cache"
 
 # WebView caches keyed by the bundle id can keep serving the previous frontend
@@ -1087,7 +1087,7 @@ _packaged_frontend_available() {
     # next to studio/ means source tree -- keep the mtime rebuild there.
     [ "${STUDIO_LOCAL_INSTALL:-}" = "0" ] &&
         [ ! -f "$REPO_ROOT/pyproject.toml" ] &&
-        [ -f "$SCRIPT_DIR/frontend/dist/index.html" ]
+        [ -f "$SCRIPT_DIR/spartan-frontend/dist/index.html" ]
 }
 
 if [ "$_LLAMA_ONLY" != "1" ]; then
@@ -1102,13 +1102,13 @@ elif _packaged_frontend_available; then
     step "frontend" "bundled (pip install)"
 else
 _NEED_FRONTEND_BUILD=true
-if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-    _changed=$(find "$SCRIPT_DIR/frontend" -maxdepth 1 -type f \
+if [ -d "$SCRIPT_DIR/spartan-frontend/dist" ]; then
+    _changed=$(find "$SCRIPT_DIR/spartan-frontend" -maxdepth 1 -type f \
         ! -name 'bun.lock' \
-        -newer "$SCRIPT_DIR/frontend/dist" -print -quit 2>/dev/null)
+        -newer "$SCRIPT_DIR/spartan-frontend/dist" -print -quit 2>/dev/null)
     if [ -z "$_changed" ]; then
-        _changed=$(find "$SCRIPT_DIR/frontend/src" "$SCRIPT_DIR/frontend/public" \
-            -type f -newer "$SCRIPT_DIR/frontend/dist" -print -quit 2>/dev/null) || true
+        _changed=$(find "$SCRIPT_DIR/spartan-frontend/src" "$SCRIPT_DIR/spartan-frontend/public" \
+            -type f -newer "$SCRIPT_DIR/spartan-frontend/dist" -print -quit 2>/dev/null) || true
     fi
     [ -z "$_changed" ] && _NEED_FRONTEND_BUILD=false
 fi
@@ -1116,7 +1116,7 @@ fi  # end packaged/Tauri guard
 
 # OXC validator runtime (below) needs node/npm whenever its dir exists, regardless
 # of dist staleness; provision Node when the frontend builds OR the OXC dir exists.
-_OXC_DIR="$SCRIPT_DIR/backend/core/data_recipe/oxc-validator"
+_OXC_DIR="$SCRIPT_DIR/spartan_backend/core/data_recipe/oxc-validator"
 if [ "$_NEED_FRONTEND_BUILD" = false ] && [ ! -d "$_OXC_DIR" ]; then
     step "frontend" "up to date"
     verbose_substep "frontend dist is newer than source inputs"
@@ -1263,7 +1263,7 @@ fi
 
 # ── Build frontend ──
 substep "building frontend..."
-cd "$SCRIPT_DIR/frontend"
+cd "$SCRIPT_DIR/spartan-frontend"
 _HIDDEN_GITIGNORES=()
 _dir="$(pwd)"
 while [ "$_dir" != "/" ]; do
@@ -1355,7 +1355,7 @@ run_quiet "npm run build" npm run build
 _restore_gitignores
 trap - EXIT
 
-_MAX_CSS=$(find "$SCRIPT_DIR/frontend/dist/assets" -name '*.css' -exec wc -c {} + 2>/dev/null | sort -n | tail -1 | awk '{print $1}')
+_MAX_CSS=$(find "$SCRIPT_DIR/spartan-frontend/dist/assets" -name '*.css' -exec wc -c {} + 2>/dev/null | sort -n | tail -1 | awk '{print $1}')
 if [ -z "$_MAX_CSS" ]; then
     step "frontend" "built (warning: no CSS emitted)" "$C_WARN"
 elif [ "$_MAX_CSS" -lt 100000 ]; then
@@ -1396,7 +1396,7 @@ elif [ -d "$_OXC_DIR" ] && [ "${NODE_SOURCE:-}" != skip ]; then
 fi
 
 _remove_agent_instruction_files \
-    "$SCRIPT_DIR/frontend/node_modules" \
+    "$SCRIPT_DIR/spartan-frontend/node_modules" \
     "$_OXC_DIR/node_modules"
 
 # ── Python venv + deps ──
@@ -1417,7 +1417,7 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
         # in genuinely missing ones (structlog, fastapi, etc.).
         substep "Colab detected, installing Unsloth backend dependencies..."
         _COLAB_REQS_TMP="$(mktemp)"
-        sed 's/[><=!~;].*//' "$SCRIPT_DIR/backend/requirements/studio.txt" \
+        sed 's/[><=!~;].*//' "$SCRIPT_DIR/spartan_backend/requirements/studio.txt" \
             | grep -v '^#' | grep -v '^$' > "$_COLAB_REQS_TMP"
         if [ -s "$_COLAB_REQS_TMP" ]; then
             if ! run_quiet_no_exit "install Colab backend deps" pip install -q -r "$_COLAB_REQS_TMP"; then

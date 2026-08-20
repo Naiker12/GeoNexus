@@ -3,7 +3,7 @@
 
 """Masked terminal password prompt for the first-exposure password change.
 
-Mirror of ``studio/backend/auth/terminal_prompt.py`` -- keep the two in sync.
+Mirror of ``studio/spartan_backend/auth/terminal_prompt.py`` -- keep the two in sync.
 The CLI parent cannot import the backend package outside the studio venv, so the
 reader is duplicated here (like the auth mirroring in ``commands/studio.py``).
 
@@ -17,12 +17,12 @@ import os
 import sys
 from typing import Callable, TextIO
 
-# Keep in sync with studio/backend/models/auth.py ChangePasswordRequest
-# (new_password min_length) and studio/backend/auth/storage.py.
+# Keep in sync with studio/spartan_backend/models/auth.py ChangePasswordRequest
+# (new_password min_length) and studio/spartan_backend/auth/storage.py.
 MIN_PASSWORD_LENGTH = 8
 
 # Env var that supplies the initial admin password non-interactively (mirror in
-# studio/backend/auth/terminal_prompt.py). Keep the name in sync.
+# studio/spartan_backend/auth/terminal_prompt.py). Keep the name in sync.
 SUPPLIED_PASSWORD_ENV = "UNSLOTH_STUDIO_PASSWORD"
 
 _BACKSPACE_CHARS = ("\x7f", "\x08")

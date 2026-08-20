@@ -19,7 +19,7 @@ name: Unsloth Tauri CI
 on:
   pull_request:
     paths:
-      - 'studio/frontend/**'
+      - 'studio/spartan-frontend/**'
       - 'studio/src-tauri/**'
       # CLI rename / signature change can break Tauri's spawned
       # `unsloth studio` -- include unsloth_cli in the trigger set.
@@ -42,7 +42,7 @@ on:
     # this workflow tests has nothing here to back up.
     # clean-machine-install-ci.yml and mlx-ci.yml already do exactly this.
     paths:
-      - 'studio/frontend/**'
+      - 'studio/spartan-frontend/**'
       - 'studio/src-tauri/**'
       # CLI rename / signature change can break Tauri's spawned
       # `unsloth studio` -- include unsloth_cli in the trigger set.
@@ -130,7 +130,7 @@ jobs:
         run: python3 scripts/lockfile_supply_chain_audit.py
 
       - name: Frontend build (npm ci, vite)
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         # Lifecycle scripts (esbuild native-binary postinstall, etc.) are
         # required for `vite build`. The pre-install lockfile structural
         # audit (lockfile_supply_chain_audit.py) is the practical defence
@@ -303,7 +303,7 @@ jobs:
           name: tauri-debug-build
           path: |
             studio/src-tauri/target/debug/unsloth-studio
-            studio/frontend/dist
+            studio/spartan-frontend/dist
           # The build can fail before the binary exists; still upload the
           # frontend dist rather than failing the upload itself.
           if-no-files-found: warn
@@ -350,7 +350,7 @@ jobs:
       # tauri-build resolves frontendDist at compile time, so dist/ must exist
       # before cargo test, exactly as in the Linux job.
       - name: Frontend build (npm ci, vite)
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         run: |
           npm ci --no-fund --no-audit
           npm run build
@@ -428,7 +428,7 @@ jobs:
       # tauri-build resolves frontendDist at compile time, so dist/ must exist
       # before cargo test, exactly as in the Linux and Windows jobs.
       - name: Frontend build (npm ci, vite)
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         run: |
           npm ci --no-fund --no-audit
           npm run build

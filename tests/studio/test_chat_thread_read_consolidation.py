@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-ADAPTER = REPO / "studio/frontend/src/features/chat/api/chat-adapter.ts"
+ADAPTER = REPO / "studio/spartan-frontend/src/features/chat/api/chat-adapter.ts"
 
 
 def squash(text: str) -> str:

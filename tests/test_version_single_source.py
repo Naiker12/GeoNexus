@@ -110,7 +110,7 @@ def test_setuptools_resolves_the_version_without_importing_torch():
 
 
 def _get_unsloth_version_with_metadata_missing(main_py_path):
-    """Run studio/backend/main.py::get_unsloth_version with the distribution metadata
+    """Run studio/spartan_backend/main.py::get_unsloth_version with the distribution metadata
     forced absent, which is the source-checkout case its file scan exists for.
 
     The function body is exec'd rather than imported because importing main.py starts the

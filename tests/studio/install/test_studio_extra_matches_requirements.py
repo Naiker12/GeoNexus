@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
-"""The studio extra must mirror studio/backend/requirements/studio.txt.
+"""The studio extra must mirror studio/spartan_backend/requirements/studio.txt.
 
 Nothing else keeps them in sync, and drift reintroduces #4701 / #5260 / #7147.
 """
@@ -18,7 +18,7 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 STUDIO_TXT = REPO_ROOT / "studio" / "backend" / "requirements" / "studio.txt"
 
 # Imported at module scope by the chain every CLI command walks: structlog via
-# studio.backend, click via unsloth_cli/commands/start.py.
+# studio.spartan_backend, click via unsloth_cli/commands/start.py.
 CORE_RUNTIME_PACKAGES = ("structlog", "click")
 
 
@@ -53,7 +53,7 @@ def test_studio_extra_exists():
     extras = _load_pyproject()["project"]["optional-dependencies"]
     assert "studio" in extras, (
         "pyproject.toml has no `studio` extra. The wheel ships studio/ and "
-        "studio.backend*, so their dependencies need a pip-installable home."
+        "studio.spartan_backend*, so their dependencies need a pip-installable home."
     )
 
 
@@ -135,7 +135,7 @@ def test_studio_extra_matches_requirement_versions():
 def test_cli_runtime_packages_are_core_dependencies(package):
     core = [_normalise(entry) for entry in _load_pyproject()["project"]["dependencies"]]
     assert _normalise(package) in core, (
-        f"{package} is imported at module scope by the studio.backend chain "
+        f"{package} is imported at module scope by the studio.spartan_backend chain "
         f"`unsloth train` / `unsloth export` walk, so a plain `pip install "
         f"unsloth` must provide it or they die with ModuleNotFoundError."
     )

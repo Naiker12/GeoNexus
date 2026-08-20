@@ -7,15 +7,15 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend/src"
+FRONTEND = REPO / "studio/spartan-frontend/src"
 PROVIDERS_API = FRONTEND / "features/chat/api/providers-api.ts"
 SYNC_PROVIDERS = FRONTEND / "features/chat/sync-external-providers.ts"
 CHAT_PAGE = FRONTEND / "features/chat/chat-page.tsx"
 RECONCILIATION = FRONTEND / "features/credentials/reconciliation.ts"
 CREDENTIAL_BOOTSTRAP = FRONTEND / "features/credentials/bootstrap.ts"
 ROOT_ROUTE = FRONTEND / "app/routes/__root.tsx"
-PROVIDERS_DB = REPO / "studio/backend/storage/providers_db.py"
-PROVIDERS_MODELS = REPO / "studio/backend/models/providers.py"
+PROVIDERS_DB = REPO / "studio/spartan_backend/storage/providers_db.py"
+PROVIDERS_MODELS = REPO / "studio/spartan_backend/models/providers.py"
 
 
 def test_providers_db_stores_model_json_columns():

@@ -18,7 +18,7 @@ except ModuleNotFoundError:
 
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend"
+FRONTEND = REPO / "studio/spartan-frontend"
 TAURI = REPO / "studio/src-tauri"
 PARSER = FRONTEND / "src/features/deep-links/parse-deep-link.ts"
 INTENT_GATE = FRONTEND / "src/features/deep-links/deep-link-intent.ts"

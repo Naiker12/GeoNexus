@@ -52,7 +52,7 @@ SCANNED_SCRIPTS = ENTRY_POINTS + (
     "studio/install_sd_cpp_prebuilt.py",
     "studio/install_whisper_prebuilt.py",
     # install_python_stack runs this one with sys.executable.
-    "studio/backend/requirements/single-env/patch_metadata.py",
+    "studio/spartan_backend/requirements/single-env/patch_metadata.py",
 )
 
 # Every question these scripts may ask, keyed by (script, normalised

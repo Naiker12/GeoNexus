@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
-# Runs the existing studio/backend/tests/ suite (~860 tests, all CPU-friendly)
+# Runs the existing studio/spartan_backend/tests/ suite (~860 tests, all CPU-friendly)
 # on every PR that touches the backend or unsloth library. Until this lands,
 # none of those tests run automatically. Verified locally on Python 3.13 with
 # the surgical exclusions below: 861 pass, 4 skipped.
@@ -13,7 +13,7 @@
 #     not appropriate for CPU-only runners.
 #
 # Two jobs:
-#   - pytest on 3.13 over studio/backend/tests, with the floor checked statically
+#   - pytest on 3.13 over studio/spartan_backend/tests, with the floor checked statically
 #   - repo-cpu-tests: auto-discovered tests/ + state-isolated spoof files
 #
 # Whole-repo Python lint (syntax + ruff + debugger-leftover scan)
@@ -153,13 +153,13 @@ jobs:
         with:
           key-files: |
             pyproject.toml
-            studio/backend/requirements/*.txt
+            studio/spartan_backend/requirements/*.txt
 
       - name: Install backend test dependencies (CPU only)
         run: |
           python -m pip install --upgrade pip
           # Unsloth's declared backend deps:
-          pip install -r studio/backend/requirements/studio.txt
+          pip install -r studio/spartan_backend/requirements/studio.txt
           # Extras that studio.txt does not list but the import chain needs
           # (python-multipart for FastAPI form/file uploads, sqlalchemy/cryptography
           #  for the auth DB, yaml/jinja2 for utils.models.model_config, psutil for
@@ -191,7 +191,7 @@ jobs:
           # export subprocess), and an unconstrained install takes the newest release,
           # so this job would test against a peft production never ships and no other
           # job installs. Read out of the file so the two cannot drift apart.
-          pip install "$(grep -m1 -E '^peft==' studio/backend/requirements/extras-no-deps.txt)"
+          pip install "$(grep -m1 -E '^peft==' studio/spartan_backend/requirements/extras-no-deps.txt)"
           # torchao: the pre-quant allowlist is built by importing the torchao tensor
           # constructors a checkpoint names, and registration refuses unless at least one of
           # them resolves. Without it every pre-quant load returns None and 21 tests across
@@ -202,7 +202,7 @@ jobs:
 
       - name: Backend tests
         if: matrix.scope == 'full'
-        working-directory: studio/backend
+        working-directory: studio/spartan_backend
         # Locally validated against this dep set: 831 passed, 5 skipped, 35 deselected.
         # Deselections (all environment-specific, would never pass on a GPU-less
         # `ubuntu-latest` runner regardless of code correctness):
@@ -258,7 +258,7 @@ jobs:
 
       - name: Backend tests that cannot share a worker
         if: matrix.scope == 'full'
-        working-directory: studio/backend
+        working-directory: studio/spartan_backend
         # Relative timing against a reference measured in the same process. Serial, so the
         # comparison is between two implementations rather than between two schedulings.
         run: |
@@ -277,7 +277,7 @@ jobs:
 
       - name: Pre-3.12 branches, on the newest interpreter that takes them
         if: matrix.scope == 'floor-spot-check'
-        working-directory: studio/backend
+        working-directory: studio/spartan_backend
         # Not a second copy of the suite. Seven backend files carry a sys.version_info
         # branch, at 3.10, 3.12 and 3.14. The 3.10 ones were never straddled even by the
         # old four-leg matrix, whose oldest leg WAS 3.10, so every leg took the same side
@@ -330,7 +330,7 @@ jobs:
         with:
           key-files: |
             pyproject.toml
-            studio/backend/requirements/*.txt
+            studio/spartan_backend/requirements/*.txt
 
       # node + uv unlock ~60 tests that previously skipped on CI:
       #   - 9 tests in test_chat_preset_builtin_invariants.py need node to
@@ -347,7 +347,7 @@ jobs:
       - name: Install deps (shared shape with backend pytest job)
         run: |
           python -m pip install --upgrade pip
-          pip install -r studio/backend/requirements/studio.txt
+          pip install -r studio/spartan_backend/requirements/studio.txt
           pip install \
             python-multipart aiofiles sqlalchemy cryptography psutil \
             pyyaml jinja2 mammoth unpdf requests typer \

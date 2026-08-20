@@ -77,7 +77,7 @@ def guarded_floor(init_path):
 def floor_guarded_dirs(root):
     """Package directories that refuse to import below a floor above ours.
 
-    `studio/backend/vendor/truststore` is vendored third-party code whose
+    `studio/spartan_backend/vendor/truststore` is vendored third-party code whose
     `__init__.py` raises on anything under 3.10, so the PEP 604 type aliases in
     its `_api.py` can never evaluate on our 3.9 floor: the package is gone
     before that module is reached, and its one caller wraps `import truststore`
@@ -401,7 +401,7 @@ def test_the_truststore_guard_is_what_exempts_it():
     """Not the path. If upstream drops the version guard, the files come back
     into the scan and this gate goes red again -- which is correct, because at
     that point `import truststore` really can reach `_api.py` on 3.9."""
-    init = REPO_ROOT / "studio/backend/vendor/truststore/__init__.py"
+    init = REPO_ROOT / "studio/spartan_backend/vendor/truststore/__init__.py"
     if not init.exists():
         pytest.skip("truststore is not vendored in this checkout")
     assert guarded_floor(init) == (3, 10)

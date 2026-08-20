@@ -5,7 +5,7 @@
 #
 # Reported failure: quitting the app mid-install kills the installer process GROUP
 # (main.rs cleanup_child_processes -> install.rs:798-807) mid "studio deps", the step
-# installing studio/backend/requirements/studio.txt where structlog is declared. On
+# installing studio/spartan_backend/requirements/studio.txt where structlog is declared. On
 # relaunch preflight probes `unsloth -h` and `studio desktop-capabilities --json`; both
 # succeed because the CLI's own deps (typer/click/rich) are core, so the app reports
 # ManagedReady with can_auto_repair=false while the backend dies on `import structlog`
@@ -39,7 +39,7 @@ on:
       # The requirement files are the phases: studio.txt declares structlog, whose absence
       # IS the reported false-ready bug, so moving a package between them changes every
       # interrupted state.
-      - 'studio/backend/requirements/**'
+      - 'studio/spartan_backend/requirements/**'
       # `interrupt*-install*` would match the .sh / .ps1 but NOT the underscored probe
       # (`*` never matches `/`, and a literal `-install` follows), so list all three.
       - '.github/scripts/interrupt-install.sh'

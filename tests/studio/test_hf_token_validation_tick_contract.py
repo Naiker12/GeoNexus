@@ -4,35 +4,35 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-GENERAL_TAB = REPO / "studio/frontend/src/features/settings/tabs/general-tab.tsx"
-VALIDATION_HOOK = REPO / "studio/frontend/src/hooks/use-hf-token-validation.ts"
-TOKEN_INDICATOR = REPO / "studio/frontend/src/features/hub/components/hf-token-indicator.tsx"
-EN_LOCALE = REPO / "studio/frontend/src/i18n/locales/en.ts"
-RUN_PREVIEW = REPO / "studio/frontend/src/features/studio/wizard/run-preview-card.tsx"
-TRAINING_READINESS = REPO / "studio/frontend/src/features/training/hooks/use-training-readiness.ts"
-START_TRAINING_CTA = REPO / "studio/frontend/src/features/studio/wizard/start-training-cta.tsx"
+GENERAL_TAB = REPO / "studio/spartan-frontend/src/features/settings/tabs/general-tab.tsx"
+VALIDATION_HOOK = REPO / "studio/spartan-frontend/src/hooks/use-hf-token-validation.ts"
+TOKEN_INDICATOR = REPO / "studio/spartan-frontend/src/features/hub/components/hf-token-indicator.tsx"
+EN_LOCALE = REPO / "studio/spartan-frontend/src/i18n/locales/en.ts"
+RUN_PREVIEW = REPO / "studio/spartan-frontend/src/features/studio/wizard/run-preview-card.tsx"
+TRAINING_READINESS = REPO / "studio/spartan-frontend/src/features/training/hooks/use-training-readiness.ts"
+START_TRAINING_CTA = REPO / "studio/spartan-frontend/src/features/studio/wizard/start-training-cta.tsx"
 TRAINING_CONFIG_STORE = (
-    REPO / "studio/frontend/src/features/training/stores/training-config-store.ts"
+    REPO / "studio/spartan-frontend/src/features/training/stores/training-config-store.ts"
 )
-STUDIO_NAVIGATION = REPO / "studio/frontend/src/features/studio/use-studio-navigation.ts"
-TRAIN_SUBNAV = REPO / "studio/frontend/src/features/studio/studio-navigation.tsx"
-TRAINING_ACTIONS = REPO / "studio/frontend/src/features/training/hooks/use-training-actions.ts"
+STUDIO_NAVIGATION = REPO / "studio/spartan-frontend/src/features/studio/use-studio-navigation.ts"
+TRAIN_SUBNAV = REPO / "studio/spartan-frontend/src/features/studio/studio-navigation.tsx"
+TRAINING_ACTIONS = REPO / "studio/spartan-frontend/src/features/training/hooks/use-training-actions.ts"
 FRESH_TRAINING_START = (
-    REPO / "studio/frontend/src/features/training/lib/start-fresh-training-run.ts"
+    REPO / "studio/spartan-frontend/src/features/training/lib/start-fresh-training-run.ts"
 )
-TRAINING_START_INPUTS = REPO / "studio/frontend/src/features/training/lib/training-start-inputs.ts"
-RESUME_TRAINING_START = REPO / "studio/frontend/src/features/training/lib/resume-training-run.ts"
+TRAINING_START_INPUTS = REPO / "studio/spartan-frontend/src/features/training/lib/training-start-inputs.ts"
+RESUME_TRAINING_START = REPO / "studio/spartan-frontend/src/features/training/lib/resume-training-run.ts"
 TRAINING_RUNTIME_STORE = (
-    REPO / "studio/frontend/src/features/training/stores/training-runtime-store.ts"
+    REPO / "studio/spartan-frontend/src/features/training/stores/training-runtime-store.ts"
 )
 TRAINING_RUNTIME_LIFECYCLE = (
-    REPO / "studio/frontend/src/features/training/hooks/use-training-runtime-lifecycle.ts"
+    REPO / "studio/spartan-frontend/src/features/training/hooks/use-training-runtime-lifecycle.ts"
 )
 TRAINING_START_RUNTIME = (
-    REPO / "studio/frontend/src/features/training/lib/training-start-runtime.ts"
+    REPO / "studio/spartan-frontend/src/features/training/lib/training-start-runtime.ts"
 )
-CONFIRM_TOKEN = REPO / "studio/frontend/src/features/hf-auth/confirm-token.ts"
-TRAIN_API = REPO / "studio/frontend/src/features/training/api/train-api.ts"
+CONFIRM_TOKEN = REPO / "studio/spartan-frontend/src/features/hf-auth/confirm-token.ts"
+TRAIN_API = REPO / "studio/spartan-frontend/src/features/training/api/train-api.ts"
 
 
 def test_success_tick_requires_the_current_token_to_be_validated():
@@ -204,21 +204,21 @@ def test_accepted_training_start_stays_locked_during_preparation():
     cta = START_TRAINING_CTA.read_text(encoding = "utf-8")
     navigation = STUDIO_NAVIGATION.read_text(encoding = "utf-8")
     subnav = TRAIN_SUBNAV.read_text(encoding = "utf-8")
-    history_grid = (REPO / "studio/frontend/src/features/studio/history-card-grid.tsx").read_text(
+    history_grid = (REPO / "studio/spartan-frontend/src/features/studio/history-card-grid.tsx").read_text(
         encoding = "utf-8"
     )
     history_view = (
-        REPO / "studio/frontend/src/features/studio/historical-training-view.tsx"
+        REPO / "studio/spartan-frontend/src/features/studio/historical-training-view.tsx"
     ).read_text(encoding = "utf-8")
     dataset_preview = (
-        REPO / "studio/frontend/src/features/studio/sections/dataset-preview-dialog.tsx"
+        REPO / "studio/spartan-frontend/src/features/studio/sections/dataset-preview-dialog.tsx"
     ).read_text(encoding = "utf-8")
-    sidebar = (REPO / "studio/frontend/src/components/app-sidebar.tsx").read_text(encoding = "utf-8")
+    sidebar = (REPO / "studio/spartan-frontend/src/components/app-sidebar.tsx").read_text(encoding = "utf-8")
     completion_watch = (
-        REPO / "studio/frontend/src/features/training/hooks/use-training-completion-watch.ts"
+        REPO / "studio/spartan-frontend/src/features/training/hooks/use-training-completion-watch.ts"
     ).read_text(encoding = "utf-8")
     unload_guard = (
-        REPO / "studio/frontend/src/features/training/hooks/use-training-unload-guard.ts"
+        REPO / "studio/spartan-frontend/src/features/training/hooks/use-training-unload-guard.ts"
     ).read_text(encoding = "utf-8")
 
     for phase in (
@@ -274,10 +274,10 @@ def test_accepted_training_start_stays_locked_during_preparation():
 
 def test_async_training_views_scope_results_to_the_current_request():
     history_view = (
-        REPO / "studio/frontend/src/features/studio/historical-training-view.tsx"
+        REPO / "studio/spartan-frontend/src/features/studio/historical-training-view.tsx"
     ).read_text(encoding = "utf-8")
     dataset_preview = (
-        REPO / "studio/frontend/src/features/studio/sections/dataset-preview-dialog.tsx"
+        REPO / "studio/spartan-frontend/src/features/studio/sections/dataset-preview-dialog.tsx"
     ).read_text(encoding = "utf-8")
 
     assert "result?.runId === runId" in history_view

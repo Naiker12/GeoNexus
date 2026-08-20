@@ -950,7 +950,7 @@ def patch_datasets():
 # giampaolo/psutil#2824, merged and unreleased; its heuristics are mirrored here.
 #
 # Studio's backend keeps the same correction in
-# studio/backend/utils/hardware/hardware.py, since the API server never imports
+# studio/spartan_backend/utils/hardware/hardware.py, since the API server never imports
 # unsloth. Keep both in sync; delete both once a fixed psutil is our floor.
 #
 # Apple clocks are 0.6-4.6 GHz, so a raw Hz entry sits above 1e8 and kHz below.

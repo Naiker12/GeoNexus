@@ -36,8 +36,8 @@ from _node_harness import (
     source_path,
 )
 
-RECONCILIATION = source_path("studio/frontend/src/features/credentials/reconciliation.ts")
-SYNC_PROVIDERS = source_path("studio/frontend/src/features/chat/sync-external-providers.ts")
+RECONCILIATION = source_path("studio/spartan-frontend/src/features/credentials/reconciliation.ts")
+SYNC_PROVIDERS = source_path("studio/spartan-frontend/src/features/chat/sync-external-providers.ts")
 
 SOURCES = (RECONCILIATION, SYNC_PROVIDERS)
 

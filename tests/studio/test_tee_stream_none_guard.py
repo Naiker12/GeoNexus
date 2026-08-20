@@ -9,7 +9,7 @@ starts with sys.stdout / sys.stderr / sys.stdin as None.
 _TeeStream guards keep a direct `_TeeStream(None, ...)` from crashing.
 
 Source contract only. The behaviour is pinned at runtime in
-studio/backend/tests/test_server_disk_logging.py, which CI runs on Python
+studio/spartan_backend/tests/test_server_disk_logging.py, which CI runs on Python
 3.10-3.13 rather than 3.12 alone.
 """
 
@@ -29,14 +29,14 @@ def _tee_stream_cls() -> ast.ClassDef:
     for node in _module().body:
         if isinstance(node, ast.ClassDef) and node.name == "_TeeStream":
             return node
-    raise AssertionError("no _TeeStream class in studio/backend/run.py")
+    raise AssertionError("no _TeeStream class in studio/spartan_backend/run.py")
 
 
 def _top_level_fn(name: str) -> ast.FunctionDef:
     for node in _module().body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node
-    raise AssertionError(f"no {name} in studio/backend/run.py")
+    raise AssertionError(f"no {name} in studio/spartan_backend/run.py")
 
 
 def _guards_target(fn: ast.FunctionDef, target: str) -> bool:

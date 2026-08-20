@@ -79,7 +79,7 @@ pub struct NativePathLeaseResponse {
 }
 
 /// Lockstep with `_MIN_LEASE_SECRET_BYTES` in
-/// `studio/backend/utils/native_path_leases.py`: a shorter secret is refused
+/// `studio/spartan_backend/utils/native_path_leases.py`: a shorter secret is refused
 /// there, so a shorter one here would advertise leases the backend rejects.
 pub const MIN_LEASE_SECRET_BYTES: usize = 32;
 

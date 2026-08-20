@@ -12,10 +12,10 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-HARDWARE = REPO / "studio/backend/utils/hardware/hardware.py"
-HOOK = REPO / "studio/frontend/src/hooks/use-hardware-info.ts"
-ABOUT = REPO / "studio/frontend/src/features/settings/tabs/about-tab.tsx"
-LOCALES = REPO / "studio/frontend/src/i18n/locales"
+HARDWARE = REPO / "studio/spartan_backend/utils/hardware/hardware.py"
+HOOK = REPO / "studio/spartan-frontend/src/hooks/use-hardware-info.ts"
+ABOUT = REPO / "studio/spartan-frontend/src/features/settings/tabs/about-tab.tsx"
+LOCALES = REPO / "studio/spartan-frontend/src/i18n/locales"
 
 
 def test_backend_still_emits_an_xpu_version():

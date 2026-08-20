@@ -8,7 +8,7 @@ is testable without building the app.
 
 The reported bug: quitting the app during the dependency pass SIGTERMs the installer
 (install.rs stop_install), and landing in "studio deps" drops
-studio/backend/requirements/studio.txt, where structlog is declared. Preflight probes
+studio/spartan_backend/requirements/studio.txt, where structlog is declared. Preflight probes
 `unsloth -h` (managed.rs:419) and `studio desktop-capabilities` (managed.rs:318); both
 SUCCEED because typer/click/rich are core, so the app reports ManagedReady with
 can_auto_repair=false while the backend dies on `import structlog`.

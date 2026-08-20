@@ -138,8 +138,8 @@ graph TD
 
 | Carpeta / Archivo | Función Principal |
 | :--- | :--- |
-| `studio/frontend/` | Aplicación visual de usuario en React + Vite + TypeScript |
-| `studio/backend/` | Servidor API FastAPI, routers de inferencia, herramientas y servicios locales |
+| `studio/spartan-frontend/` | Aplicación visual de usuario en React + Vite + TypeScript |
+| `studio/spartan_backend/` | Servidor API FastAPI, routers de inferencia, herramientas y servicios locales |
 | `studio/src-tauri/` | Envoltorio de escritorio en Rust con configuración nativa |
 | `spartan-cli.py` / `cli.py` | Interfaz de línea de comandos para control terminal |
 | `install.ps1` / `install.sh` | Scripts de instalación automatizada para Windows y Linux/macOS |

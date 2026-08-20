@@ -479,7 +479,7 @@ def boot(port: int, log: Path, env: dict) -> int | None:
     """Run the repo's boot script and return the server pid.
 
     --api-only because mlx-ci.yml boots on a bare `pip install -e .` with no built
-    studio/frontend/dist, and without the flag the server prints "Unsloth frontend build
+    studio/spartan-frontend/dist, and without the flag the server prints "Unsloth frontend build
     not found" and exits before it binds. The workflows that run install.sh do have a
     dist and deliberately serve it, which is why the flag is theirs to pass, not the
     script's to assume.
@@ -699,7 +699,7 @@ def scenario_real_mlx(port: int, log: Path) -> None:
     # Preflight in this process, with the product's own criterion. On a host where the
     # stack is genuinely broken the boot below would take the chat-only path, quietly
     # test nothing this scenario claims, and set a real 15-minute reinstall going.
-    sys.path.insert(0, str(REPO / "studio" / "backend"))
+    sys.path.insert(0, str(REPO / "studio" / "spartan_backend"))
     from utils.mlx_repair import mlx_stack_available  # noqa: PLC0415
 
     if not mlx_stack_available():
@@ -946,4 +946,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

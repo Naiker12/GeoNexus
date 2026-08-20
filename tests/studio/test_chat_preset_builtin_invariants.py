@@ -19,8 +19,8 @@ def _source_path(relative_path: str) -> Path:
     return WORKDIR / "unsloth_repo" / relative_path
 
 
-PRESET_POLICY = _source_path("studio/frontend/src/features/chat/presets/preset-policy.ts")
-RUNTIME_TYPES = _source_path("studio/frontend/src/features/chat/types/runtime.ts")
+PRESET_POLICY = _source_path("studio/spartan-frontend/src/features/chat/presets/preset-policy.ts")
+RUNTIME_TYPES = _source_path("studio/spartan-frontend/src/features/chat/types/runtime.ts")
 TEMP = WORKDIR / "temp" / "chat_preset_builtin_invariants"
 
 

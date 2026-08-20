@@ -12,7 +12,7 @@ fixture is the mix the report names rather than one paragraph repeated:
     long prose, several large code fences, tool calls with collapsible output, an HTML artifact,
     a code-execution result pane, an HTML canvas artifact and inline images.
 
-studio/frontend/smoke-heavy-thread.html mounts the REAL Thread with that content, so what is
+studio/spartan-frontend/smoke-heavy-thread.html mounts the REAL Thread with that content, so what is
 timed is the app's own renderer.
 
 WHAT IS MEASURED, AND WHY THESE METRICS

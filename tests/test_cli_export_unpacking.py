@@ -41,13 +41,13 @@ class _FakeExportBackend:
 
 
 def _install_fake_studio_backend(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Inject a fake studio.backend.core.export into sys.modules so the CLI's lazy import binds to it; parent packages stubbed to skip the structlog-dependent tree."""
-    for name in ("studio", "studio.backend", "studio.backend.core"):
+    """Inject a fake studio.spartan_backend.core.export into sys.modules so the CLI's lazy import binds to it; parent packages stubbed to skip the structlog-dependent tree."""
+    for name in ("studio", "studio.spartan_backend", "studio.spartan_backend.core"):
         monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
 
-    fake_mod = types.ModuleType("studio.backend.core.export")
+    fake_mod = types.ModuleType("studio.spartan_backend.core.export")
     fake_mod.ExportBackend = _FakeExportBackend
-    monkeypatch.setitem(sys.modules, "studio.backend.core.export", fake_mod)
+    monkeypatch.setitem(sys.modules, "studio.spartan_backend.core.export", fake_mod)
 
     # Drop the cached CLI module so its deferred import re-resolves the fake.
     monkeypatch.delitem(sys.modules, "unsloth_cli.commands.export", raising = False)

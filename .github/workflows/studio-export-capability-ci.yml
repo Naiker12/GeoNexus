@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
-# Runs studio/backend/tests/test_export_capability.py on Linux, Windows and macOS.
+# Runs studio/spartan_backend/tests/test_export_capability.py on Linux, Windows and macOS.
 #
 # export_capability() is per-OS (is_apple_silicon() and the PyTorch-import probe differ per
 # platform) and the export backend must import without PyTorch, so this confirms the gating and
@@ -14,11 +14,11 @@ name: Unsloth export capability
 on:
   pull_request:
     paths:
-      - 'studio/backend/utils/hardware/hardware.py'
-      - 'studio/backend/core/export/export.py'
-      - 'studio/backend/routes/export.py'
-      - 'studio/backend/main.py'
-      - 'studio/backend/tests/test_export_capability.py'
+      - 'studio/spartan_backend/utils/hardware/hardware.py'
+      - 'studio/spartan_backend/core/export/export.py'
+      - 'studio/spartan_backend/routes/export.py'
+      - 'studio/spartan_backend/main.py'
+      - 'studio/spartan_backend/tests/test_export_capability.py'
       - '.github/workflows/studio-export-capability-ci.yml'
   push:
     branches: [main]
@@ -88,7 +88,7 @@ jobs:
           sentencepiece protobuf fastapi starlette structlog psutil
           python-multipart pydantic httpx "numpy<3" pytest
       - name: Export capability + import-safety tests
-        working-directory: studio/backend
+        working-directory: studio/spartan_backend
         run: python -m pytest tests/test_export_capability.py -q
 
       - name: Save the pip cache

@@ -147,7 +147,7 @@ jobs:
         with:
           key-files: |
             pyproject.toml
-            studio/backend/requirements/*.txt
+            studio/spartan_backend/requirements/*.txt
 
       # Node 22 unblocks tests/studio/test_chat_preset_builtin_invariants.py's
       # `node --experimental-strip-types` subprocess. Cheap to install; keeps
@@ -219,7 +219,7 @@ jobs:
         run: |
           set -euxo pipefail
           python -m pip install --upgrade pip
-          pip install -r studio/backend/requirements/studio.txt
+          pip install -r studio/spartan_backend/requirements/studio.txt
           # CPU torch FIRST, before anything that depends on torch. peft, accelerate and
           # datasets all declare a torch dependency, so installing them first made pip
           # resolve it from PyPI: the default CUDA build, plus 14 nvidia_* wheels and
@@ -417,8 +417,8 @@ jobs:
           python -m pytest -v --tb=short \
             tests/utils/test_dataset_num_proc.py \
             tests/utils/test_train_on_responses_only_num_proc.py
-          PYTHONPATH=studio/backend python -m pytest -v --tb=short \
-            studio/backend/tests/test_dataset_map_num_proc.py
+          PYTHONPATH=studio/spartan_backend python -m pytest -v --tb=short \
+            studio/spartan_backend/tests/test_dataset_map_num_proc.py
 
       - name: unsloth Bucket-A — CPU tests not in Repo tests (CPU)
         # CPU tests across 6 files under tests/saving/, tests/utils/, tests/python/
@@ -2367,7 +2367,7 @@ jobs:
         with:
           key-files: |
             pyproject.toml
-            studio/backend/requirements/*.txt
+            studio/spartan_backend/requirements/*.txt
 
       - name: Install runtime deps for unsloth_zoo.llama_cpp
         # unsloth_zoo's `__init__` imports `temporary_patches`, which

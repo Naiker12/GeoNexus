@@ -203,7 +203,7 @@ $_roots_from_conf"
         for _pat in \
             "${_re}/unsloth_studio/bin/[^ ]* studio( |\$|.*-p[ =][0-9])" \
             "${_re}/unsloth_studio/bin/[^ ]* studio.*--port[ =][0-9]" \
-            "${_re}/.*studio/backend/run\.py"
+            "${_re}/.*studio/spartan_backend/run\.py"
         do
             pkill -TERM -f "$_pat" 2>/dev/null || true
         done
@@ -216,7 +216,7 @@ $_roots_from_conf"
         for _pat in \
             "${_re}/unsloth_studio/bin/[^ ]* studio( |\$|.*-p[ =][0-9])" \
             "${_re}/unsloth_studio/bin/[^ ]* studio.*--port[ =][0-9]" \
-            "${_re}/.*studio/backend/run\.py"
+            "${_re}/.*studio/spartan_backend/run\.py"
         do
             pkill -KILL -f "$_pat" 2>/dev/null || true
         done

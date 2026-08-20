@@ -31,10 +31,10 @@ from _node_harness import (
     source_path,
 )
 
-REFRESH = source_path("studio/frontend/src/features/chat/utils/refresh-context-usage.ts")
-PROVIDER = source_path("studio/frontend/src/features/chat/runtime-provider.tsx")
-STORE = source_path("studio/frontend/src/features/chat/stores/chat-runtime-store.ts")
-RUNTIME = source_path("studio/frontend/src/features/chat/hooks/use-chat-model-runtime.ts")
+REFRESH = source_path("studio/spartan-frontend/src/features/chat/utils/refresh-context-usage.ts")
+PROVIDER = source_path("studio/spartan-frontend/src/features/chat/runtime-provider.tsx")
+STORE = source_path("studio/spartan-frontend/src/features/chat/stores/chat-runtime-store.ts")
+RUNTIME = source_path("studio/spartan-frontend/src/features/chat/hooks/use-chat-model-runtime.ts")
 
 TEMP = WORKDIR / "temp" / "new_chat_context_recount"
 
@@ -208,7 +208,7 @@ function getReplayStatePatch(): any {
 // setCheckpoint. No thread-scoped snapshot is ever seeded here -- this file is
 // about the context window, not about which chat pinned a temperature -- so
 // nothing is held and the replay passes through untouched. The real restore is
-// covered by studio/frontend/tests/thread-scoped-pairing-invariants.test.ts.
+// covered by studio/spartan-frontend/tests/thread-scoped-pairing-invariants.test.ts.
 function restoreThreadScopedParams(params: any): any {
   return params;
 }

@@ -100,7 +100,7 @@ def _compare_needs_second_model() -> bool:
     # detect_hardware() would print into the chat (and import torch), so
     # probe its MLX condition quietly: Apple Silicon with mlx installed.
     try:
-        from studio.backend.utils.hardware import hardware as hw
+        from studio.spartan_backend.utils.hardware import hardware as hw
 
         if hw.DEVICE is not None:
             return hw.DEVICE == hw.DeviceType.MLX

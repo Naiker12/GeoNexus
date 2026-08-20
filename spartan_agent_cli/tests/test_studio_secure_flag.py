@@ -77,7 +77,7 @@ def _install_run_reexec_capture(monkeypatch):
     # A built frontend dist is present so the public-launch UI check passes
     # deterministically (independent of whether the repo dist was built).
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     fake_bin = fake_venv / "bin" / "unsloth"
     real_is_file = Path.is_file
@@ -128,7 +128,7 @@ def _invoke_studio_default(monkeypatch, args):
     # A built frontend dist is present so the public-launch UI check passes; this
     # suite exercises flag forwarding, not the missing-dist lockout guard.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     monkeypatch.setattr(sys, "platform", "linux")
 
@@ -264,7 +264,7 @@ def test_run_in_venv_passes_secure_and_forces_host(monkeypatch, tmp_path, stub_t
     # A built dist is not present in a fresh clone, and without it the public
     # launch gate exits before run_server is ever reached.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
 
     from spartan_agent_cli import _tool_policy as _tp_mod
@@ -282,7 +282,7 @@ def test_run_in_venv_passes_secure_and_forces_host(monkeypatch, tmp_path, stub_t
         raise _RunServerCaptured(kwargs)
 
     fake_backend_run = sys.modules.setdefault(
-        "studio.backend.run", types.ModuleType("studio.backend.run")
+        "studio.spartan_backend.run", types.ModuleType("studio.spartan_backend.run")
     )
     fake_backend_run.run_server = fake_run_server
     fake_backend_run._resolve_external_ip = lambda: "127.0.0.1"
@@ -341,7 +341,7 @@ def test_run_secure_resolves_tools_against_loopback(monkeypatch):
     # A built frontend dist is present so the public-launch UI check passes
     # deterministically (independent of whether the repo dist was built).
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     fake_bin = fake_venv / "bin" / "unsloth"
     real_is_file = Path.is_file

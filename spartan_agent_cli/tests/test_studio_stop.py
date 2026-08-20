@@ -169,7 +169,7 @@ def test_stop_signals_a_live_server_whose_pid_has_a_stale_record(monkeypatch, tm
 
 
 def test_a_bare_run_py_command_line_is_not_rejected(monkeypatch):
-    # `cd studio/backend && python run.py --port 8901` has no "studio" or "unsloth"
+    # `cd studio/spartan_backend && python run.py --port 8901` has no "studio" or "unsloth"
     # in argv. Guessing from the command line deleted its record without stopping it.
     studio_mod = _studio()
 

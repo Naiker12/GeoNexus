@@ -82,7 +82,7 @@ TABS = [
 _SIGNED_OUT_PATHS = ("/login", "/change-password")
 
 # Rows the sidebar pins inline by default, per SIDEBAR_NAV_DEFAULT_PINNED in
-# studio/frontend/src/features/settings/stores/appearance-custom-store.ts. Only these
+# studio/spartan-frontend/src/features/settings/stores/appearance-custom-store.ts. Only these
 # carry a data-testid: the overflow rows render as MoreMenuItem inside a dropdown that
 # mounts nothing until it is opened and passes no test id even when it is, so
 # `[data-testid="nav-row-video"]` returns null on every host, every time.
@@ -346,7 +346,7 @@ def sample_natural_warm_window(page) -> None:
     failed importlib.metadata lookup, so the verdict settles inside a second of the port
     binding. Getting an authenticated sidebar in front of that costs a Chromium launch,
     a login and two navigations, one of which spends the frontend's own 5s bounded wait
-    on the verdict (HARDWARE_DETECT_WAIT_MS in studio/frontend/src/config/env.ts). The
+    on the verdict (HARDWARE_DETECT_WAIT_MS in studio/spartan-frontend/src/config/env.ts). The
     window is normally shut before the first sample, on a slow host as much as a fast
     one, so requiring it -- under an env flag or otherwise -- would buy a permanently red
     job rather than a test. The guarantee lives in assert_pending_state_on_forced_verdict
@@ -408,7 +408,7 @@ def assert_pending_state_on_forced_verdict(page) -> None:
 
     What the field report described is then exactly what this reads: with the verdict
     unmeasured, `pending` beats `disabled` in resolveNavRowState
-    (studio/frontend/src/components/nav-row-state.ts), so nav-row-train must render
+    (studio/spartan-frontend/src/components/nav-row-state.ts), so nav-row-train must render
     enabled with data-spinner="true". The regression rendered it disabled with no
     spinner, which fails here on any host, fast or slow, warm window or none.
 

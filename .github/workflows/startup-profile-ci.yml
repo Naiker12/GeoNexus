@@ -38,8 +38,8 @@ on:
     paths:
       # The measured import graph is the whole backend tree: main.py imports auth,
       # core, hub, loggers, models, picker, routes and utils at module scope.
-      - 'studio/backend/**'
-      - '!studio/backend/tests/**'
+      - 'studio/spartan_backend/**'
+      - '!studio/spartan_backend/tests/**'
       # The launch phase spawns `unsloth studio --api-only`, so the CLI counts too.
       - 'unsloth_cli/**'
       - 'studio/src-tauri/src/preflight**'
@@ -50,7 +50,7 @@ on:
       - '.github/workflows/startup-profile-ci.yml'
       # The job profiles whatever `install.sh --local` built: the installers pick the
       # venv's Python and the dependency specs, and pyproject's include list is what
-      # makes --local overlay studio.backend*.
+      # makes --local overlay studio.spartan_backend*.
       - 'install.sh'
       - 'install.ps1'
       - 'pyproject.toml'

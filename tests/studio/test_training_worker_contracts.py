@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-WORKER = REPO / "studio/backend/core/training/worker.py"
+WORKER = REPO / "studio/spartan_backend/core/training/worker.py"
 
 
 class _WorkerScopeVisitor(ast.NodeVisitor):

@@ -17,7 +17,7 @@
 # fact been booting a server that serves the frontend, and the Playwright UI smokes
 # depend on exactly that -- passing --api-only unconditionally would leave them
 # driving a browser at a backend with no UI. Hence opt-in: callers with no built
-# `studio/frontend/dist` (mlx-ci.yml boots on a bare pip install) must ask for it, or
+# `studio/spartan-frontend/dist` (mlx-ci.yml boots on a bare pip install) must ask for it, or
 # the server prints "Unsloth frontend build not found" and exits before it binds.
 #
 # Twenty steps across eight workflows ran this same five-line body, varying only

@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-PANEL_TSX = REPO / "studio/frontend/src/features/images/train/diffusion-train-panel.tsx"
+PANEL_TSX = REPO / "studio/spartan-frontend/src/features/images/train/diffusion-train-panel.tsx"
 
 
 def _source() -> str:

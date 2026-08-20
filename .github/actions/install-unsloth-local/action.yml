@@ -89,7 +89,7 @@ runs:
       continue-on-error: true
       with:
         path: ${{ github.workspace }}/.uv-cache
-        key: uv-${{ runner.os }}-${{ hashFiles('studio/backend/requirements/**', 'pyproject.toml') }}
+        key: uv-${{ runner.os }}-${{ hashFiles('studio/spartan_backend/requirements/**', 'pyproject.toml') }}
         restore-keys: |
           uv-${{ runner.os }}-
 
@@ -152,4 +152,4 @@ runs:
       continue-on-error: true
       with:
         path: ${{ github.workspace }}/.uv-cache
-        key: uv-${{ runner.os }}-${{ hashFiles('studio/backend/requirements/**', 'pyproject.toml') }}
+        key: uv-${{ runner.os }}-${{ hashFiles('studio/spartan_backend/requirements/**', 'pyproject.toml') }}

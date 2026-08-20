@@ -54,7 +54,7 @@ HF_OFFLINE = os.environ.get("STUDIO_UI_HF_OFFLINE", "0") == "1"
 # Voice-picker wheel budget, both halves set by the frontend rather than picked round. The
 # searched rows are up to 15.3s away on a healthy runner: the query is debounced 300ms and the
 # Hugging Face search is then given 15s (HF_SEARCH_TIMEOUT_MS,
-# studio/frontend/src/features/hub/hooks/use-hub-model-search.ts). Waiting 15.5s for them clears
+# studio/spartan-frontend/src/features/hub/hooks/use-hub-model-search.ts). Waiting 15.5s for them clears
 # that, so a slow-but-working Hub is not red, and it also outlives the abort at 15.3s that a
 # blackholed runner's search ends in, so the transport failure that permits the fallback is
 # observed before the wait gives up. Those 200ms of headroom only hold while the debounce fires
@@ -134,7 +134,7 @@ with sync_playwright() as p:
 
     # Evidence that this runner cannot reach the Hub, collected for the whole session because the
     # frontend backs off for 30s after a failed Hub request (REMOTE_OFFLINE_TTL_MS in
-    # studio/frontend/src/features/hub/lib/network.ts) and may not retry inside a later step. Bound
+    # studio/spartan-frontend/src/features/hub/lib/network.ts) and may not retry inside a later step. Bound
     # to the context, not the page, so a replacement page is covered too.
     hf_unreachable: list[str] = []
     # Set while the wheel step owns the picker, so an aborted Hub request can be attributed.
@@ -148,7 +148,7 @@ with sync_playwright() as p:
 
         A substring test also matches datasets-server.huggingface.co, which the training
         split lookup calls. The frontend keys its backoff by exact origin
-        (HUGGING_FACE_ORIGIN in studio/frontend/src/features/hub/lib/network.ts), so a
+        (HUGGING_FACE_ORIGIN in studio/spartan-frontend/src/features/hub/lib/network.ts), so a
         failure at a sibling host says nothing about the picker's search, and counting it
         would let an unrelated lookup hand a real search regression the built-in list.
         """
@@ -204,7 +204,7 @@ with sync_playwright() as p:
                 # A served response proves this runner has a route to the Hub, so the earlier
                 # failures are stale and must stop excusing anything: the frontend drops its own
                 # offline state on exactly this signal (markRemoteNetworkOnline,
-                # studio/frontend/src/features/hub/lib/network.ts). Keeping them would let one
+                # studio/spartan-frontend/src/features/hub/lib/network.ts). Keeping them would let one
                 # transient failure hand a later search-rendering regression the built-in list.
                 info(
                     f"Hugging Face reachable again (HTTP {resp.status}); dropping "
@@ -754,7 +754,7 @@ with sync_playwright() as p:
 
                     Returns the request as well, because the picker searches twice in sequence
                     (unsloth-owned, then general: mergedModelIterator in
-                    studio/frontend/src/features/hub/hooks/use-hub-model-search.ts). A slow but
+                    studio/spartan-frontend/src/features/hub/hooks/use-hub-model-search.ts). A slow but
                     healthy first search can spend the extension, and the second then starts with
                     its own full budget, so the caller has to be able to re-base onto that one
                     rather than treat the step as already extended.

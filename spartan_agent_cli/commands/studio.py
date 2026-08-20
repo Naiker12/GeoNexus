@@ -612,7 +612,7 @@ def _clear_hsa_override_before_launch(silent: bool = False) -> Optional[str]:
 
 
 def _find_run_py() -> Optional[Path]:
-    """Find studio/backend/run.py.
+    """Find studio/spartan_backend/run.py.
 
     No CWD dependency — works from any directory.
     Since studio/ is now a proper package (has __init__.py), it lives in
@@ -624,8 +624,8 @@ def _find_run_py() -> Optional[Path]:
         return run_py
     # 2. Unsloth venv's site-packages (Linux + Windows layouts)
     for pattern in (
-        "lib/python*/site-packages/studio/backend/run.py",
-        "Lib/site-packages/studio/backend/run.py",
+        "lib/python*/site-packages/studio/spartan_backend/run.py",
+        "Lib/site-packages/studio/spartan_backend/run.py",
     ):
         for match in (STUDIO_HOME / "unsloth_studio").glob(pattern):
             return match
@@ -645,11 +645,11 @@ _RUN_MODULE = None
 
 
 def _load_run_module():
-    """Import studio.backend.run without relying on package resolution.
+    """Import studio.spartan_backend.run without relying on package resolution.
 
-    `studio update` can leave a partial ``site-packages/studio/backend/``
+    `studio update` can leave a partial ``site-packages/studio/spartan_backend/``
     tree (plugin build artefacts only). That shadowed tree wins over an
-    editable install and breaks ``from studio.backend.run import ...``.
+    editable install and breaks ``from studio.spartan_backend.run import ...``.
     Loading by file path sidesteps the conflict.
     """
     global _RUN_MODULE
@@ -658,9 +658,9 @@ def _load_run_module():
 
     run_py = _find_run_py()
     if run_py is None:
-        raise ImportError("Could not find studio/backend/run.py. Re-run: unsloth studio setup")
+        raise ImportError("Could not find studio/spartan_backend/run.py. Re-run: unsloth studio setup")
 
-    loaded = sys.modules.get("studio.backend.run")
+    loaded = sys.modules.get("studio.spartan_backend.run")
     if loaded is not None:
         # __file__ can be None for namespace packages from partial trees.
         loaded_path = Path(getattr(loaded, "__file__", None) or "").resolve()
@@ -668,15 +668,15 @@ def _load_run_module():
             _RUN_MODULE = loaded
             return _RUN_MODULE
 
-    spec = importlib.util.spec_from_file_location("studio.backend.run", run_py)
+    spec = importlib.util.spec_from_file_location("studio.spartan_backend.run", run_py)
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load studio backend from {run_py}")
     module = importlib.util.module_from_spec(spec)
-    sys.modules["studio.backend.run"] = module
+    sys.modules["studio.spartan_backend.run"] = module
     try:
         spec.loader.exec_module(module)
     except Exception:
-        sys.modules.pop("studio.backend.run", None)
+        sys.modules.pop("studio.spartan_backend.run", None)
         raise
     _RUN_MODULE = module
     return _RUN_MODULE
@@ -690,7 +690,7 @@ def _find_setup_script(repo_root: Optional[Path] = None) -> Optional[Path]:
     `repo_root` is the explicit --local checkout, when there is one. Its setup
     script has to win: the scripts build the frontend under their own
     $SCRIPT_DIR, and the editable install of `repo_root` removes the installed
-    tree that the installed copy's script would have built into. studio/frontend
+    tree that the installed copy's script would have built into. studio/spartan-frontend
     /dist is gitignored, so a fresh checkout would then have no frontend at all.
     """
     name = "setup.ps1" if platform.system() == "Windows" else "setup.sh"
@@ -715,7 +715,7 @@ def _find_setup_script(repo_root: Optional[Path] = None) -> Optional[Path]:
     return None
 
 
-# Mirror in studio/backend/run.py argparse + backend denylist test;
+# Mirror in studio/spartan_backend/run.py argparse + backend denylist test;
 # bumping the cap in one place only desyncs.
 _PARALLEL_MIN = 1
 _PARALLEL_MAX = 64
@@ -784,7 +784,7 @@ def _iter_editable_studio_source_roots(venv_dir: Path):
 
 
 def _find_frontend_dist() -> Optional[Path]:
-    """Locate a built `studio/frontend/dist` (containing index.html).
+    """Locate a built `studio/spartan-frontend/dist` (containing index.html).
 
     Probes (in order): package-local default, installer venv site-packages,
     editable source roots referenced from the installer venv. Returns None
@@ -798,8 +798,8 @@ def _find_frontend_dist() -> Optional[Path]:
     candidates: List[Path] = [_PACKAGE_ROOT / "studio" / "frontend" / "dist"]
     venv_dir = STUDIO_HOME / "unsloth_studio"
     for pattern in (
-        "lib/python*/site-packages/studio/frontend/dist",
-        "Lib/site-packages/studio/frontend/dist",
+        "lib/python*/site-packages/studio/spartan-frontend/dist",
+        "Lib/site-packages/studio/spartan-frontend/dist",
     ):
         candidates.extend(venv_dir.glob(pattern))
     for repo_root in _iter_editable_studio_source_roots(venv_dir):
@@ -1107,7 +1107,7 @@ def _prompt_streams_interactive() -> bool:
 def _bootstrap_deadline_active() -> bool:
     """Whether the backend's bootstrap shutdown deadline will arm.
 
-    Mirror of studio/backend/auth/bootstrap_timeout.py bootstrap_timeout_seconds:
+    Mirror of studio/spartan_backend/auth/bootstrap_timeout.py bootstrap_timeout_seconds:
     unset/blank/malformed UNSLOTH_STUDIO_BOOTSTRAP_TIMEOUT falls back to the 1h
     default (a typo must not remove protection); 0 or negative disables it.
     """
@@ -1383,7 +1383,7 @@ def _tunnel_binary_confirmed_unavailable() -> bool:
     if not tunnel_py.is_file():
         return False
     # ensure_cloudflared() lazily imports utils.paths.storage_roots to resolve the
-    # Unsloth bin cache. The outer CLI hasn't added studio/backend to sys.path yet,
+    # Unsloth bin cache. The outer CLI hasn't added studio/spartan_backend to sys.path yet,
     # so that import would fail and return None (a false "unavailable" that wrongly
     # refuses --secure). Add the backend dir so the cache path resolves as in the child.
     added_backend_path = False
@@ -1391,7 +1391,7 @@ def _tunnel_binary_confirmed_unavailable() -> bool:
         if str(backend_dir) not in sys.path:
             sys.path.insert(0, str(backend_dir))
             added_backend_path = True
-        spec = importlib.util.spec_from_file_location("studio.backend.cloudflare_tunnel", tunnel_py)
+        spec = importlib.util.spec_from_file_location("studio.spartan_backend.cloudflare_tunnel", tunnel_py)
         if spec is None or spec.loader is None:
             return False
         module = importlib.util.module_from_spec(spec)
@@ -2445,7 +2445,7 @@ def run(
     (--host/--port/--path/--api-prefix/--reuse-port), auth/TLS
     (--api-key/--ssl-*), single-model UI (--ui/--models-*/--webui),
     and parallel slots (use --parallel above). Full denylist in
-    studio/backend/core/inference/llama_server_args.py. Other knobs
+    studio/spartan_backend/core/inference/llama_server_args.py. Other knobs
     (-c, -ngl, --jinja, --flash-attn, -t, ...) pass through and
     last-wins-override Unsloth's auto-set value.
 
@@ -2757,7 +2757,7 @@ def run(
         run_mod = _load_run_module()
     run_server = run_mod.run_server
 
-    # Match the route handlers' import path: run.py adds studio/backend/ to
+    # Match the route handlers' import path: run.py adds studio/spartan_backend/ to
     # sys.path, so they import as `state.tool_policy`. Set this before
     # run_server() starts uvicorn; once sockets are bound, routes can be hit.
     # run_server() applies the same pair; both calls are idempotent.
@@ -2791,7 +2791,7 @@ def run(
     # Steps 3-5 can abort (health timeout, model-load error, or Ctrl+C during the
     # slow load); tear the server and its children (llama-server, cloudflared) down
     # on any abort so they never orphan.
-    from studio.backend.run import _graceful_shutdown, _server
+    from studio.spartan_backend.run import _graceful_shutdown, _server
 
     try:
         # 3. Wait for server health.

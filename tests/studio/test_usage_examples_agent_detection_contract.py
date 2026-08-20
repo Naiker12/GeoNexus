@@ -6,7 +6,7 @@
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-USAGE_EXAMPLES_TSX = REPO / "studio/frontend/src/features/settings/components/usage-examples.tsx"
+USAGE_EXAMPLES_TSX = REPO / "studio/spartan-frontend/src/features/settings/components/usage-examples.tsx"
 
 
 def test_agent_detection_requires_desktop_scope():

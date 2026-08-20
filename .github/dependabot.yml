@@ -19,17 +19,17 @@ updates:
         patterns: ["*"]
 
   # Removed a stray `package-ecosystem: "bun"` entry for
-  # /studio/frontend: that path has no bun.lock / bun.lockb, so
+  # /studio/spartan-frontend: that path has no bun.lock / bun.lockb, so
   # Dependabot's bun ecosystem silently no-ops on it. The actual
-  # lockfile committed at /studio/frontend is package-lock.json
+  # lockfile committed at /studio/spartan-frontend is package-lock.json
   # (npm), and the npm entry further below already catches
   # npm_and_yarn security advisories for that directory. Version
-  # updates for /studio/frontend stay suppressed (open-pull-
+  # updates for /studio/spartan-frontend stay suppressed (open-pull-
   # requests-limit: 0 in that entry) -- security PRs flow through
   # regardless. Add a real bun entry IF and WHEN bun.lock lands.
 
   - package-ecosystem: "npm"
-    directory: "/studio/backend/core/data_recipe/oxc-validator"
+    directory: "/studio/spartan_backend/core/data_recipe/oxc-validator"
     schedule:
       interval: "weekly"
     cooldown:
@@ -86,10 +86,10 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
 
-  # /studio/frontend npm dependencies. Version-update PRs are
+  # /studio/spartan-frontend npm dependencies. Version-update PRs are
   # deliberately suppressed (open-pull-requests-limit: 0) -- the
   # frontend dep tree is large, the lockfile is the authoritative
-  # pin, and `min-release-age=7` in studio/frontend/.npmrc already
+  # pin, and `min-release-age=7` in studio/spartan-frontend/.npmrc already
   # blocks fresh tarballs at install time. Security advisories
   # arrive via GitHub's npm_and_yarn channel and are NOT capped by
   # `open-pull-requests-limit` per Dependabot's documented
@@ -97,7 +97,7 @@ updates:
   # still respect the cooldown below so we never ingest a tarball
   # that was hot-published less than 3 days ago.
   - package-ecosystem: "npm"
-    directory: "/studio/frontend"
+    directory: "/studio/spartan-frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 0

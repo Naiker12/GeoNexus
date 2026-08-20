@@ -74,7 +74,7 @@ jobs:
         # tarball runs, on the injection pattern itself rather than an
         # advisory-DB lookup.
         run: |
-          cd studio/frontend
+          cd studio/spartan-frontend
           npm ci --no-fund --no-audit
           npm run build
 
@@ -96,13 +96,13 @@ jobs:
           with zipfile.ZipFile(w) as z:
               n = z.namelist()
               checks = {
-                "lockfile shipped":      any(s.endswith("studio/frontend/package-lock.json") for s in n),
-                "frontend dist shipped": any(s.endswith("studio/frontend/dist/index.html")    for s in n),
-                "no node_modules":       not any("studio/frontend/node_modules/" in s for s in n),
-                "no bun.lock":           not any(s.endswith("studio/frontend/bun.lock")       for s in n),
+                "lockfile shipped":      any(s.endswith("studio/spartan-frontend/package-lock.json") for s in n),
+                "frontend dist shipped": any(s.endswith("studio/spartan-frontend/dist/index.html")    for s in n),
+                "no node_modules":       not any("studio/spartan-frontend/node_modules/" in s for s in n),
+                "no bun.lock":           not any(s.endswith("studio/spartan-frontend/bun.lock")       for s in n),
               }
               js = [s for s in n
-                    if "studio/frontend/dist/assets/" in s
+                    if "studio/spartan-frontend/dist/assets/" in s
                     and s.endswith(".js")
                     and "/index-" in s]
               if not js:
@@ -120,14 +120,14 @@ jobs:
           PY
 
       - name: Unsloth backend import smoke
-        # Imports `studio.backend.main:app` from the freshly-installed wheel in
+        # Imports `studio.spartan_backend.main:app` from the freshly-installed wheel in
         # a clean venv. This catches the class of bug that 2026.5.1 shipped with:
         # frontend dist missing, package-lock.json missing, or the wheel's Python
         # source tree broken in a way that surfaces only at app construction time.
         run: |
           python -m venv /tmp/v
           /tmp/v/bin/pip install --upgrade pip
-          /tmp/v/bin/pip install -r studio/backend/requirements/studio.txt
+          /tmp/v/bin/pip install -r studio/spartan_backend/requirements/studio.txt
           /tmp/v/bin/pip install \
             python-multipart aiofiles sqlalchemy cryptography \
             pyyaml jinja2 mammoth unpdf requests \
@@ -135,7 +135,7 @@ jobs:
           /tmp/v/bin/pip install --no-deps dist/unsloth-*.whl
           # Run from /tmp so Python imports the installed package, not the source tree.
           cd /tmp
-          /tmp/v/bin/python -c "from studio.backend.main import app; print('Unsloth backend OK:', app.title)"
+          /tmp/v/bin/python -c "from studio.spartan_backend.main import app; print('Unsloth backend OK:', app.title)"
 
       - name: CLI without the Studio stack guides instead of tracebacking
         # The smoke above installs studio.txt first, so it cannot catch a wheel

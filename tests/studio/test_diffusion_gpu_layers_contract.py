@@ -39,7 +39,7 @@ def llama_cpp():
     except Exception as exc:  # missing optional studio dep on a bare checkout
         pytest.skip(f"llama_cpp not importable here: {exc}")
     finally:
-        # Do not leave studio/backend on sys.path: it shadows generic top-level names
+        # Do not leave studio/spartan_backend on sys.path: it shadows generic top-level names
         # (utils, state, models, hub, auth, storage) for every later test.
         if sys.path and sys.path[0] == backend:
             sys.path.pop(0)

@@ -84,7 +84,7 @@ fi
 # indistinguishable from a pass.
 [ -n "$STUDIO_PY" ] || fail "no Unsloth interpreter found under $UNSLOTH_HOME or on PATH; cannot check the launch environment"
 if [ -n "$STUDIO_PY" ]; then
-  if ! PYTHONPATH=studio/backend "$STUDIO_PY" - "$SERVER" <<'PY'
+  if ! PYTHONPATH=studio/spartan_backend "$STUDIO_PY" - "$SERVER" <<'PY'
 import os, sys
 from core.inference.llama_cpp import LlamaCppBackend, _llama_lib_dir
 

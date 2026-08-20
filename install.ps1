@@ -2008,9 +2008,9 @@ public static class UnslothStudioFinalPathV2
             $iconPath = Join-Path $appDir "unsloth.ico"
             $bundledIcon = $null
             if ($PSScriptRoot -and $PSScriptRoot.Trim()) {
-                $bundledIcon = Join-Path $PSScriptRoot "studio\frontend\public\unsloth.ico"
+                $bundledIcon = Join-Path $PSScriptRoot "studio\spartan-frontend\public\unsloth.ico"
             }
-            $iconUrl = "https://raw.githubusercontent.com/unslothai/unsloth/main/studio/frontend/public/unsloth.ico"
+            $iconUrl = "https://raw.githubusercontent.com/unslothai/unsloth/main/studio/spartan-frontend/public/unsloth.ico"
 
             if (-not (Test-Path -LiteralPath $appDir)) {
                 [System.IO.Directory]::CreateDirectory($appDir) | Out-Null
@@ -5163,7 +5163,7 @@ exit 0
     # UNSLOTH_TORCH_INDEX_FAMILY / UNSLOTH_PYTORCH_MIRROR keep working unchanged. Every row
     # below was HEAD-verified live on download.pytorch.org and its xformers/cpp_lib.json read
     # back, e.g. cu130/xformers-0.0.34 reports {"torch": "2.10.0+cu130"}. Keep in step with
-    # _XFORMERS_WHEEL_VERSIONS in studio/backend/utils/wheel_utils.py and the matrix in
+    # _XFORMERS_WHEEL_VERSIONS in studio/spartan_backend/utils/wheel_utils.py and the matrix in
     # tests/python/test_windows_xformers_wheel_match.py.
     #
     # Deliberately NOT a floor-and-let-pip-pick: the cu130 index also serves
@@ -5242,7 +5242,7 @@ exit 0
     # The interpreter tag in the wheel FILENAME: 0.0.31..0.0.34 ship one cp39-abi3 wheel,
     # 0.0.35 switched to py39-none (a packaging change -- the extension never bound the
     # CPython ABI). Unknown releases return $null so a direct URL is never guessed.
-    # Mirrors _XFORMERS_FILENAME_PYTHON_TAGS in studio/backend/utils/wheel_utils.py.
+    # Mirrors _XFORMERS_FILENAME_PYTHON_TAGS in studio/spartan_backend/utils/wheel_utils.py.
     function Get-XformersFilenamePythonTag {
         param([string]$Version)
         $parsed = ConvertTo-TorchReleaseVersion (($Version -split '[^0-9.]', 2)[0].TrimEnd('.'))
@@ -5460,8 +5460,8 @@ exit 0
     #
     # ── Helper: find no-torch-runtime.txt ──
     function Find-NoTorchRuntimeFile {
-        if ($StudioLocalInstall -and (Test-Path (Join-Path $RepoRoot "studio\backend\requirements\no-torch-runtime.txt"))) {
-            return Join-Path $RepoRoot "studio\backend\requirements\no-torch-runtime.txt"
+        if ($StudioLocalInstall -and (Test-Path (Join-Path $RepoRoot "studio\spartan_backend\requirements\no-torch-runtime.txt"))) {
+            return Join-Path $RepoRoot "studio\spartan_backend\requirements\no-torch-runtime.txt"
         }
         $installed = Get-ChildItem -LiteralPath $VenvDir -Recurse -Filter "no-torch-runtime.txt" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -like "*studio*backend*requirements*no-torch-runtime.txt" } |

@@ -616,7 +616,7 @@ def test_an_installer_rewritten_lockfile_is_not_damage(site):
     # Reported as `package-lock.json is 27225 bytes, expected 28473`.
     # setup.ps1/setup.sh run `npm install` inside the installed tree, and npm
     # dedupes hoisted entries under legacy-peer-deps, shrinking the file.
-    lock = "studio/backend/core/data_recipe/oxc-validator/package-lock.json"
+    lock = "studio/spartan_backend/core/data_recipe/oxc-validator/package-lock.json"
     _make_dist(
         site,
         "unsloth",
@@ -629,7 +629,7 @@ def test_an_installer_rewritten_lockfile_is_not_damage(site):
 def test_a_deleted_installer_rewritten_file_is_still_damage(site):
     # Only the SIZE of these drifts, because npm rewrites the lockfile in place.
     # It never deletes it, so a missing one is real damage and must be reported.
-    lock = "studio/backend/core/data_recipe/oxc-validator/package-lock.json"
+    lock = "studio/spartan_backend/core/data_recipe/oxc-validator/package-lock.json"
     _make_dist(site, "unsloth", {"unsloth/__init__.py": b"u\n", lock: b"L" * 100})
     (site / lock).unlink()
     found = _deps().damaged_installed_files()
@@ -665,7 +665,7 @@ def test_a_top_level_module_named_like_a_test_root_is_still_checked(site):
 
 def test_runtime_damage_still_fails_when_ignored_rows_are_present(site):
     # The exemption must not blind the scan to a torn runtime module.
-    lock = "studio/backend/core/data_recipe/oxc-validator/package-lock.json"
+    lock = "studio/spartan_backend/core/data_recipe/oxc-validator/package-lock.json"
     _make_dist(
         site,
         "unsloth",

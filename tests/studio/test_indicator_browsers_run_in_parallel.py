@@ -24,7 +24,7 @@ variable selects a DATA root:
 
   * `unsloth` on PATH still resolves the installed venv, so no reinstall.
   * the frontend is served from a PACKAGE-relative path (`_DEFAULT_FRONTEND_PATH` in
-    `studio/backend/run.py` is `<pkg>/../frontend/dist`), NOT from `studio_root()`, so no
+    `studio/spartan_backend/run.py` is `<pkg>/../frontend/dist`), NOT from `studio_root()`, so no
     per-engine frontend build.
   * the suite is `UNSLOTH_API_ONLY` with the four /status endpoints stubbed via
     `page.route`, so a fresh home needs no model, no GPU and no llama.cpp build.

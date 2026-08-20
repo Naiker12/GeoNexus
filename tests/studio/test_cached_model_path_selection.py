@@ -35,7 +35,7 @@ def _find_repo_root() -> Path | None:
 _REPO_ROOT = _find_repo_root()
 if _REPO_ROOT is None:
     pytest.skip(
-        "Could not locate studio/backend. Set UNSLOTH_REPO_ROOT or run from "
+        "Could not locate studio/spartan_backend. Set UNSLOTH_REPO_ROOT or run from "
         "the repository checkout.",
         allow_module_level = True,
     )

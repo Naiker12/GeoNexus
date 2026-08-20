@@ -11,7 +11,7 @@ from typing import Callable, Optional
 import typer
 
 # Loopback aliases; any other bind address is treated as network-reachable.
-# Mirrored in studio/backend/utils/host_policy.py (kept separate because the
+# Mirrored in studio/spartan_backend/utils/host_policy.py (kept separate because the
 # backend is self-contained); keep the two in sync.
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 

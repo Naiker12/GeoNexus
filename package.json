@@ -3,9 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "npm run dev --prefix studio/frontend",
-    "build": "npm run build --prefix studio/frontend",
-    "preview": "npm run preview --prefix studio/frontend",
+    "dev": "npm run dev --prefix studio/spartan-frontend",
+    "build": "npm run build --prefix studio/spartan-frontend",
+    "preview": "npm run preview --prefix studio/spartan-frontend",
     "tauri:dev": "npx @tauri-apps/cli dev --config studio/src-tauri/tauri.conf.json",
     "tauri:build": "npx @tauri-apps/cli build --config studio/src-tauri/tauri.conf.json",
     "tauri": "npx @tauri-apps/cli"

@@ -147,8 +147,8 @@ def test_is_mlx_gate_false_on_non_apple_silicon():
 
 
 def _import_studio_hardware():
-    """Lazy import of the Unsloth hardware module (studio/backend on sys.path)."""
-    studio_backend = REPO_ROOT / "studio" / "backend"
+    """Lazy import of the Unsloth hardware module (studio/spartan_backend on sys.path)."""
+    studio_backend = REPO_ROOT / "studio" / "spartan_backend"
     if str(studio_backend) not in sys.path:
         sys.path.insert(0, str(studio_backend))
     from utils.hardware import hardware as hw  # type: ignore

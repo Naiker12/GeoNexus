@@ -142,7 +142,7 @@ $DefaultLlamaTag = "latest"
 $DefaultLlamaForceCompileRef = "master"
 
 # Corporate-mirror / proxy escape hatch for the frontend npm/bun install (#6491).
-# studio/frontend/.npmrc pins registry=https://registry.npmjs.org/ as a supply-chain
+# studio/spartan-frontend/.npmrc pins registry=https://registry.npmjs.org/ as a supply-chain
 # lock, which overrides a corporate user's ~/.npmrc proxy and causes 403s behind a
 # firewall. UNSLOTH_NPM_REGISTRY is a deliberate opt-in: when set we splat it as
 # `--registry <url>` into every npm/bun install. `--registry` is the highest-precedence
@@ -190,8 +190,8 @@ function Exit-SetupFailure {
 }
 
 # Detect if running from pip install (no frontend/ dir in studio)
-$FrontendDir = Join-Path $ScriptDir "frontend"
-$OxcValidatorDir = Join-Path $ScriptDir "backend\core\data_recipe\oxc-validator"
+$FrontendDir = Join-Path $ScriptDir "spartan-frontend"
+$OxcValidatorDir = Join-Path $ScriptDir "spartan_backend\core\data_recipe\oxc-validator"
 $IsPipInstall = -not (Test-Path $FrontendDir)
 
 # ─────────────────────────────────────────────

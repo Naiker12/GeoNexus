@@ -262,7 +262,7 @@ def _load_active_generations():
 
     Loaded straight off disk rather than imported, so the extracted class runs
     against the genuine module without pulling in the whole route package (and
-    without putting studio/backend on sys.path for the rest of the session).
+    without putting studio/spartan_backend on sys.path for the rest of the session).
     """
     path = SOURCE_PATH.parents[1] / "state" / "active_generations.py"
     spec = importlib.util.spec_from_file_location("studio_active_generations", path)

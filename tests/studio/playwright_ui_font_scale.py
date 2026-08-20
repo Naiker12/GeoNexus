@@ -34,7 +34,7 @@ ART.mkdir(parents = True, exist_ok = True)
 # (16 -> 15), which is exactly what a pinned copy here fails on.
 _STORE = (
     Path(__file__).resolve().parents[2]
-    / "studio/frontend/src/features/settings/stores/appearance-custom-store.ts"
+    / "studio/spartan-frontend/src/features/settings/stores/appearance-custom-store.ts"
 ).read_text(encoding = "utf-8")
 _RANGE = re.search(
     r"UI_FONT_SIZE_RANGE\s*=\s*\{\s*min:\s*(\d+),\s*max:\s*(\d+),\s*default:\s*(\d+)",

@@ -39,7 +39,7 @@ def _find_repo_root() -> Path | None:
 _REPO_ROOT = _find_repo_root()
 if _REPO_ROOT is None:
     pytest.skip(
-        "Could not locate studio/backend. Set UNSLOTH_REPO_ROOT or run from "
+        "Could not locate studio/spartan_backend. Set UNSLOTH_REPO_ROOT or run from "
         "the repository checkout.",
         allow_module_level = True,
     )
@@ -47,9 +47,9 @@ if _REPO_ROOT is None:
 # Every module that fetches a Spark-TTS repo: TTS inference, the GGUF BiCodec decoder
 # and the trainer.
 _AUDIO_SOURCES = (
-    "studio/backend/core/inference/inference.py",
-    "studio/backend/core/inference/llama_cpp.py",
-    "studio/backend/core/training/trainer.py",
+    "studio/spartan_backend/core/inference/inference.py",
+    "studio/spartan_backend/core/inference/llama_cpp.py",
+    "studio/spartan_backend/core/training/trainer.py",
 )
 
 

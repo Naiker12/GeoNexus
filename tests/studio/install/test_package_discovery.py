@@ -56,7 +56,7 @@ def _discovered_packages():
         if any(fnmatchcase(name, pat) for pat in exclude):
             continue
         packages.add(name)
-    assert "studio.backend" in packages, "studio.backend should always be packaged"
+    assert "studio.spartan_backend" in packages, "studio.spartan_backend should always be packaged"
     return packages
 
 
@@ -100,24 +100,24 @@ def _wheel_payload():
 def test_generated_compiled_caches_are_excluded():
     patterns = _finder_patterns("exclude")
 
-    for package in ("unsloth_compiled_cache", "studio.backend.unsloth_compiled_cache"):
+    for package in ("unsloth_compiled_cache", "studio.spartan_backend.unsloth_compiled_cache"):
         assert any(fnmatchcase(package, pattern) for pattern in patterns)
 
 
 def test_backend_test_suites_stay_out_of_the_wheel():
     # Dropping them from packages.find is not enough on its own: with
-    # include-package-data they return as package data of studio.backend.
+    # include-package-data they return as package data of studio.spartan_backend.
     leaked = [
         path
         for path in _wheel_payload()
-        if path.startswith("studio/backend/") and "/tests/" in path
+        if path.startswith("studio/spartan_backend/") and "/tests/" in path
     ]
     assert not leaked, f"{len(leaked)} backend test files would ship, e.g. {leaked[:3]}"
 
 
 def test_backend_runtime_still_ships():
     shipped = set(_wheel_payload())
-    for path in ("studio/backend/main.py", "studio/backend/hub/__init__.py"):
+    for path in ("studio/spartan_backend/main.py", "studio/spartan_backend/hub/__init__.py"):
         assert path in shipped, f"{path} must stay in the wheel"
 
 
@@ -127,5 +127,5 @@ def test_built_wheel_has_no_backend_tests():
     if not wheels:
         pytest.skip("no built wheel in dist/, run `python -m build --wheel` first")
     names = zipfile.ZipFile(wheels[-1]).namelist()
-    leaked = [n for n in names if n.startswith("studio/backend/") and "/tests/" in n]
+    leaked = [n for n in names if n.startswith("studio/spartan_backend/") and "/tests/" in n]
     assert not leaked, f"{wheels[-1].name} ships {len(leaked)} backend test files"

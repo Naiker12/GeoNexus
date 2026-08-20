@@ -9,7 +9,7 @@ set -euo pipefail
 # artifacts include the display-only Unsloth release version.
 
 # 1. Build frontend (Vite outputs to dist/)
-cd studio/frontend
+cd studio/spartan-frontend
 
 # Clean stale dist to force a full rebuild
 rm -rf dist
@@ -62,7 +62,7 @@ if [ "$_install_ok" != "true" ]; then
         exit 1
     fi
 fi
-npm run build       # outputs to studio/frontend/dist/
+npm run build       # outputs to studio/spartan-frontend/dist/
 
 _restore_gitignores
 trap - EXIT
@@ -88,7 +88,7 @@ cd ../..
 rm -rf build dist *.egg-info
 
 # 3. Stamp display-only Unsloth release metadata for packaged builds.
-_STUDIO_BUILD_INFO="studio/backend/utils/_studio_release_build.py"
+_STUDIO_BUILD_INFO="studio/spartan_backend/utils/_studio_release_build.py"
 _STUDIO_BUILD_INFO_BACKUP="$(mktemp)"
 cp "$_STUDIO_BUILD_INFO" "$_STUDIO_BUILD_INFO_BACKUP"
 _restore_studio_build_info() {

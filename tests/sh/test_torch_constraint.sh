@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_SH="$SCRIPT_DIR/../../install.sh"
 INSTALL_PS1="$SCRIPT_DIR/../../install.ps1"
-NO_TORCH_RT="$SCRIPT_DIR/../../studio/backend/requirements/no-torch-runtime.txt"
+NO_TORCH_RT="$SCRIPT_DIR/../../studio/spartan_backend/requirements/no-torch-runtime.txt"
 PASS=0
 FAIL=0
 

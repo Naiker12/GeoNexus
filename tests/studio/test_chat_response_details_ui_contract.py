@@ -9,19 +9,19 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-THREAD_TSX = REPO / "studio/frontend/src/components/assistant-ui/thread.tsx"
+THREAD_TSX = REPO / "studio/spartan-frontend/src/components/assistant-ui/thread.tsx"
 DETAILS_TSX = (
-    REPO / "studio/frontend/src/components/assistant-ui/message-response-details-sheet.tsx"
+    REPO / "studio/spartan-frontend/src/components/assistant-ui/message-response-details-sheet.tsx"
 )
 DOCUMENT_PREVIEW_TSX = (
-    REPO / "studio/frontend/src/features/rag/components/document-preview-sheet.tsx"
+    REPO / "studio/spartan-frontend/src/features/rag/components/document-preview-sheet.tsx"
 )
-SHEET_TSX = REPO / "studio/frontend/src/components/ui/sheet.tsx"
-REASONING_TSX = REPO / "studio/frontend/src/components/assistant-ui/reasoning.tsx"
-ADAPTER_TS = REPO / "studio/frontend/src/features/chat/api/chat-adapter.ts"
-CHAT_PREFS_TS = REPO / "studio/frontend/src/features/chat/stores/chat-preferences-store.ts"
-CHAT_TAB_TSX = REPO / "studio/frontend/src/features/settings/tabs/chat-tab.tsx"
-EN_LOCALE_TS = REPO / "studio/frontend/src/i18n/locales/en.ts"
+SHEET_TSX = REPO / "studio/spartan-frontend/src/components/ui/sheet.tsx"
+REASONING_TSX = REPO / "studio/spartan-frontend/src/components/assistant-ui/reasoning.tsx"
+ADAPTER_TS = REPO / "studio/spartan-frontend/src/features/chat/api/chat-adapter.ts"
+CHAT_PREFS_TS = REPO / "studio/spartan-frontend/src/features/chat/stores/chat-preferences-store.ts"
+CHAT_TAB_TSX = REPO / "studio/spartan-frontend/src/features/settings/tabs/chat-tab.tsx"
+EN_LOCALE_TS = REPO / "studio/spartan-frontend/src/i18n/locales/en.ts"
 
 
 def test_assistant_more_menu_exposes_response_details_action():

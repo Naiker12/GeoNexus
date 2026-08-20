@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 # Terminal phases of GET /api/train/status. From
-# studio/backend/models/training.py: the field is `phase`, not `status`, and
+# studio/spartan_backend/models/training.py: the field is `phase`, not `status`, and
 # `completed` is the only one of the three that means the adapter exists.
 TRAINING_TERMINAL = frozenset({"completed", "error", "stopped"})
 TRAINING_OK = "completed"

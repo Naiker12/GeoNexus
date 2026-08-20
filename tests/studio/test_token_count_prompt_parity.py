@@ -30,8 +30,8 @@ from _node_harness import (
     source_path,
 )
 
-ADAPTER = source_path("studio/frontend/src/features/chat/api/chat-adapter.ts")
-CAPABILITIES = source_path("studio/frontend/src/features/chat/provider-capabilities.ts")
+ADAPTER = source_path("studio/spartan-frontend/src/features/chat/api/chat-adapter.ts")
+CAPABILITIES = source_path("studio/spartan-frontend/src/features/chat/provider-capabilities.ts")
 
 TEMP = WORKDIR / "temp" / "token_count_prompt_parity"
 
@@ -90,7 +90,7 @@ def _instruction(name: str) -> str:
 HARNESS = """
 // @ts-nocheck
 // Fixtures the sliced builder reads through. Everything below the PRELUDE marker is
-// copied verbatim out of studio/frontend/src/features/chat/api/chat-adapter.ts.
+// copied verbatim out of studio/spartan-frontend/src/features/chat/api/chat-adapter.ts.
 const state: any = {
   params: { systemPrompt: "", systemVariables: "" },
   artifactsEnabled: false,

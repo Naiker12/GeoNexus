@@ -627,7 +627,7 @@ jobs:
         run: npm install --save-dev --prefix studio @tauri-apps/cli@2.10.1 --no-fund --no-audit
 
       - name: Install frontend dependencies
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         run: npm ci --strict-allow-scripts --no-fund --no-audit
 
       - name: Pin complete AppImage toolchain

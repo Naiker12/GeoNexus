@@ -36,12 +36,12 @@ def _find_repo_root() -> Path | None:
 
 _REPO_ROOT = _find_repo_root()
 if _REPO_ROOT is None:
-    pytest.skip("Could not locate studio/backend.", allow_module_level = True)
+    pytest.skip("Could not locate studio/spartan_backend.", allow_module_level = True)
 
 
 def _helper():
     """Exec just the helper: importing trainer.py pulls in the whole torch stack."""
-    src = (_REPO_ROOT / "studio/backend/core/training/trainer.py").read_text(encoding = "utf-8")
+    src = (_REPO_ROOT / "studio/spartan_backend/core/training/trainer.py").read_text(encoding = "utf-8")
     start = src.index("def _spark_tts_tokenizer_kwargs")
     end = src.index("class UnslothTrainer:")
     namespace: dict = {"os": os, "Optional": typing.Optional}

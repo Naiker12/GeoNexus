@@ -3207,7 +3207,7 @@ def test_verify_studio_identity_end_to_end(tmp_path, monkeypatch):
 
     inference.ensure_studio_backend_path()
     try:
-        from studio.backend.auth import storage
+        from studio.spartan_backend.auth import storage
     except Exception as exc:  # backend not importable here (e.g. missing deps)
         pytest.skip(f"studio backend not importable: {exc}")
 
@@ -3255,7 +3255,7 @@ def test_verify_studio_identity_rejects_redirect(tmp_path, monkeypatch):
 
     inference.ensure_studio_backend_path()
     try:
-        from studio.backend.auth import storage
+        from studio.spartan_backend.auth import storage
     except Exception as exc:
         pytest.skip(f"studio backend not importable: {exc}")
 
@@ -3282,7 +3282,7 @@ def test_verify_studio_identity_rejects_relayed_proof(tmp_path, monkeypatch):
 
     inference.ensure_studio_backend_path()
     try:
-        from studio.backend.auth import storage
+        from studio.spartan_backend.auth import storage
     except Exception as exc:
         pytest.skip(f"studio backend not importable: {exc}")
 

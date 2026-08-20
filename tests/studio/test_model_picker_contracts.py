@@ -179,7 +179,7 @@ def test_chat_autoload_toast_is_persistent_and_dismissible():
     #
     # So this no longer describes the conditional at all. It requires the call site to
     # delegate, and the composition itself is tested where it lives, in
-    # studio/frontend/tests/mmproj-fallback.test.ts, against both reasons together.
+    # studio/spartan-frontend/tests/mmproj-fallback.test.ts, against both reasons together.
     # Sliced to the end of the helper body, not to the first `};`. That earlier bound
     # stopped at the `options` object literal, so anything declared after it -- the
     # toast severity, which is the half that decides whether a degraded load looks
@@ -371,7 +371,7 @@ def test_gpu_picker_round_trips_requested_pool_not_fitted_subset():
 def test_compare_load_uses_each_models_gpu_config():
     src = _read("features/chat/shared-composer.tsx")
     # The mode/layer rule now lives in lib/gpu-placement.ts (behaviour covered by
-    # studio/frontend/tests/gpu-placement.test.ts): assert the delegation here.
+    # studio/spartan-frontend/tests/gpu-placement.test.ts): assert the delegation here.
     assert "} = resolveComparePlacement(" in src
     assert "shouldPinDiffusionPlacement(" in src
     placement = " ".join(_read("features/chat/lib/gpu-placement.ts").split())
@@ -2826,7 +2826,7 @@ def test_monitor_unload_clears_only_the_model_it_freed():
     advertised repo id.
 
     The read/unload/recheck sequence itself is pinned behaviourally by
-    studio/frontend/tests/api-monitor-unload-resident.test.ts; this only holds the page to
+    studio/spartan-frontend/tests/api-monitor-unload-resident.test.ts; this only holds the page to
     delegating it, since a single-pass unload reports success over a model an API
     auto-switch loaded under the click."""
     page = " ".join(_read("features/api-monitor/api-monitor-page.tsx").split())

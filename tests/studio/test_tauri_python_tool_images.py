@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-PYTHON_TOOL_UI = REPO / "studio/frontend/src/components/assistant-ui/tool-ui-python.tsx"
+PYTHON_TOOL_UI = REPO / "studio/spartan-frontend/src/components/assistant-ui/tool-ui-python.tsx"
 TAURI_CONFIG = REPO / "studio/src-tauri/tauri.conf.json"
 PLAYWRIGHT_TEST = REPO / "tests/studio/playwright_tauri_python_tool_images.py"
 

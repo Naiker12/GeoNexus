@@ -326,8 +326,8 @@ def test_every_advertised_module_route_is_isolated():
     case and offers the -c bootstrap instead, so it is not held to this rule.
     """
     advertised = {
-        "studio/backend/routes/auth.py",
-        "studio/backend/run.py",
+        "studio/spartan_backend/routes/auth.py",
+        "studio/spartan_backend/run.py",
         "install.ps1",
     }
     for name in sorted(advertised):

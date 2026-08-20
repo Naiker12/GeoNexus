@@ -55,8 +55,8 @@ name: Security audit
 on:
   # PRs run this only when they touch something it actually reads. Every job here is a
   # function of the dependency manifests, the lockfiles, or the scanner sources: the pip
-  # shards build their input entirely from pyproject.toml + studio/backend/requirements/**,
-  # the npm jobs read studio/frontend/package*.json, and advisory-audit adds
+  # shards build their input entirely from pyproject.toml + studio/spartan_backend/requirements/**,
+  # the npm jobs read studio/spartan-frontend/package*.json, and advisory-audit adds
   # studio/src-tauri/Cargo.lock. A PR touching none of those cannot change any verdict, and
   # over a 198 PR sample only 3.5% touched them, so the other 96.5% were re-scanning an
   # unchanged dependency tree for roughly 40 minutes each.
@@ -69,9 +69,9 @@ on:
   pull_request:
     paths:
       - 'pyproject.toml'
-      - 'studio/backend/requirements/**'
-      - 'studio/frontend/package.json'
-      - 'studio/frontend/package-lock.json'
+      - 'studio/spartan_backend/requirements/**'
+      - 'studio/spartan-frontend/package.json'
+      - 'studio/spartan-frontend/package-lock.json'
       - 'studio/src-tauri/Cargo.lock'
       - 'studio/src-tauri/Cargo.toml'
       - 'scripts/scan_packages.py'
@@ -238,7 +238,7 @@ jobs:
         #       accelerate / trl / datasets / diffusers /
         #       sentence-transformers / huggingface_hub / hf_transfer /
         #       etc.).
-        #   (2) Copy each studio/backend/requirements/*.txt into
+        #   (2) Copy each studio/spartan_backend/requirements/*.txt into
         #       audit-reqs/ with `git+` lines stripped. pip-audit's `-r`
         #       mode does a dry-run resolve against PyPI metadata; a
         #       `git+https://...` spec forces it to clone, which is
@@ -266,7 +266,7 @@ jobs:
           for f in studio.txt extras.txt extras-no-deps.txt \
                    no-torch-runtime.txt overrides.txt triton-kernels.txt; do
             python <<PY > "audit-reqs/$f"
-          src = "studio/backend/requirements/$f"
+          src = "studio/spartan_backend/requirements/$f"
           with open(src) as fh:
               for line in fh:
                   stripped = line.strip()
@@ -324,7 +324,7 @@ jobs:
             echo
             echo '### Coverage'
             echo '- unsloth core + `huggingfacenotorch` extras (pyproject.toml)'
-            echo '- studio/backend/requirements/{studio,extras,extras-no-deps,no-torch-runtime,overrides,triton-kernels}.txt'
+            echo '- studio/spartan_backend/requirements/{studio,extras,extras-no-deps,no-torch-runtime,overrides,triton-kernels}.txt'
             echo '- `git+` specs are stripped before audit (out of scope: we audit PyPI archives)'
             echo
             echo '### Findings'
@@ -349,7 +349,7 @@ jobs:
           {
             echo "## Lockfile supply-chain audit"
             echo
-            echo "Scanned: studio/frontend/package-lock.json + studio/src-tauri/Cargo.lock"
+            echo "Scanned: studio/spartan-frontend/package-lock.json + studio/src-tauri/Cargo.lock"
             echo
             echo "No structural anomalies or known IOC strings."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -364,7 +364,7 @@ jobs:
         # malicious dev-only dep can still steal secrets from a CI
         # runner, so dev deps need to be in the audit surface.
         continue-on-error: true
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         run: |
           set +e
           npm audit --audit-level=high | tee ../../logs-npm-audit.txt
@@ -445,7 +445,7 @@ jobs:
             echo "osv-scanner unavailable this run; skipping scan" | tee logs-osv-scanner.txt
           else
             /tmp/osv-scanner scan source \
-              --lockfile=studio/frontend/package-lock.json \
+              --lockfile=studio/spartan-frontend/package-lock.json \
               --lockfile=studio/src-tauri/Cargo.lock \
               --lockfile=requirements.txt:audit-reqs/unsloth-deps.txt \
               --lockfile=requirements.txt:audit-reqs/studio.txt \
@@ -484,7 +484,7 @@ jobs:
             --severity ERROR --severity WARNING \
             --metrics off \
             --timeout 120 \
-            studio/backend unsloth scripts \
+            studio/spartan_backend unsloth scripts \
             2>&1 | tee logs-semgrep.txt
           {
             echo "## Semgrep (supply-chain + python + javascript rules)"
@@ -515,7 +515,7 @@ jobs:
           GIT_OR_URL = re.compile(r"^\s*[A-Za-z0-9_.\-]+\s*@\s*(?:git\+|https?://)")
 
           unpinned = []
-          for f in sorted(Path("studio/backend/requirements").glob("*.txt")):
+          for f in sorted(Path("studio/spartan_backend/requirements").glob("*.txt")):
               for i, raw in enumerate(f.read_text().splitlines(), 1):
                   line = raw.strip()
                   if not line or line.startswith("#") or line.startswith("-"):
@@ -700,7 +700,7 @@ jobs:
           HASH_LINE = re.compile(r"--hash=sha256:[0-9a-f]{64}")
           total_pinned = 0
           with_hash = 0
-          for f in sorted(Path("studio/backend/requirements").glob("*.txt")):
+          for f in sorted(Path("studio/spartan_backend/requirements").glob("*.txt")):
               text = f.read_text()
               for raw in text.splitlines():
                   line = raw.strip()
@@ -858,7 +858,7 @@ jobs:
           for f in studio.txt extras.txt extras-no-deps.txt \
                    no-torch-runtime.txt overrides.txt triton-kernels.txt; do
             python <<PY > "audit-reqs/$f"
-          src = "studio/backend/requirements/$f"
+          src = "studio/spartan_backend/requirements/$f"
           with open(src) as fh:
               for line in fh:
                   stripped = line.strip()
@@ -968,7 +968,7 @@ jobs:
   # ─────────────────────────────────────────────────────────────────────
   npm-scan-packages:
     # Counterpart to pip-scan-packages for the npm side. Reads
-    # studio/frontend/package-lock.json, downloads each resolved
+    # studio/spartan-frontend/package-lock.json, downloads each resolved
     # tarball DIRECTLY from registry.npmjs.org (never via `npm
     # install` -- no lifecycle scripts ever run), verifies the
     # lockfile integrity hash, unpacks each tarball into a sandboxed
@@ -1143,7 +1143,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           # Need the base commit accessible for `git show
-          # <base-sha>:studio/frontend/package-lock.json` below.
+          # <base-sha>:studio/spartan-frontend/package-lock.json` below.
           fetch-depth: 0
           persist-credentials: false
 
@@ -1160,7 +1160,7 @@ jobs:
         # `--ignore-scripts` is mandatory: this is exactly the lever the
         # new-install-script gate below protects against, and we must
         # not run any third-party hook to set up the audit.
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         run: |
           retry() {  # retry <max-attempts> <command...> with exponential backoff
             local max="$1"; shift
@@ -1184,7 +1184,7 @@ jobs:
         # transparency log. continue-on-error during baseline-build
         # phase; promote to hard gate once the lockfile is fully
         # signed (most major maintainers signed by mid-2025).
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         continue-on-error: true
         run: |
           set -o pipefail
@@ -1203,7 +1203,7 @@ jobs:
         run: |
           set -e
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          git show "$BASE_SHA:studio/frontend/package-lock.json" \
+          git show "$BASE_SHA:studio/spartan-frontend/package-lock.json" \
             > /tmp/base-package-lock.json
 
       - name: Diff for newly-added install-script deps
@@ -1211,7 +1211,7 @@ jobs:
         run: |
           python3 scripts/check_new_install_scripts.py \
             --base /tmp/base-package-lock.json \
-            --head studio/frontend/package-lock.json
+            --head studio/spartan-frontend/package-lock.json
 
       - name: Skip install-script diff (non-PR trigger)
         if: github.event_name != 'pull_request'
@@ -1223,6 +1223,6 @@ jobs:
         if: always()
         with:
           name: npm-audit-signatures-log
-          path: studio/frontend/logs-audit-signatures.txt
+          path: studio/spartan-frontend/logs-audit-signatures.txt
           if-no-files-found: ignore
           retention-days: 30

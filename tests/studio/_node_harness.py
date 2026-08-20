@@ -3,7 +3,7 @@
 
 """Shared plumbing for the ``node --experimental-strip-types`` source harnesses.
 
-``studio/frontend`` carries no JS test runner, so frontend behaviours are pinned by slicing
+``studio/spartan-frontend`` carries no JS test runner, so frontend behaviours are pinned by slicing
 the real source VERBATIM into a harness module and running it under node; only the fixtures
 the sliced code reads through are hand-written. Harness and runner go into a per-invocation
 ``mkdtemp(prefix = "run")``, so concurrent tests share no file.

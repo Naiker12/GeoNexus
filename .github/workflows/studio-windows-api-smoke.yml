@@ -131,15 +131,15 @@ jobs:
           Write-Host "npm version after upgrade: $(npm -v)"
           # NOTE: do NOT pre-create these directories. See
           # studio-windows-update-smoke.yml for the full rationale --
-          # creating an empty studio/frontend/dist trips setup.ps1's
+          # creating an empty studio/spartan-frontend/dist trips setup.ps1's
           # mtime-based staleness check into "frontend up to date, skip
           # rebuild" and Unsloth boots with an empty dist directory.
           # Add-MpPreference accepts paths that do not yet exist.
           foreach ($p in @(
             "$env:USERPROFILE\.unsloth",
             "$env:USERPROFILE\AppData\Local\uv",
-            "$env:GITHUB_WORKSPACE\studio\frontend\node_modules",
-            "$env:GITHUB_WORKSPACE\studio\frontend\dist"
+            "$env:GITHUB_WORKSPACE\studio\spartan-frontend\node_modules",
+            "$env:GITHUB_WORKSPACE\studio\spartan-frontend\dist"
           )) {
             try {
               Add-MpPreference -ExclusionPath $p -ErrorAction Stop

@@ -14,7 +14,7 @@ name: Frontend CI
 on:
   pull_request:
     paths:
-      - 'studio/frontend/**'
+      - 'studio/spartan-frontend/**'
       - 'scripts/check_frontend_dep_removal.py'
       - 'tests/studio/test_frontend_dep_removal.py'
 
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 40
     defaults:
       run:
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -76,8 +76,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           set -e
-          if grep -nE '"(@assistant-ui/[a-z-]+|assistant-stream)":[[:space:]]*"[\^~]' studio/frontend/package.json; then
-            echo "::error file=studio/frontend/package.json::These packages must be pinned to exact versions until they leave 0.x. Drop the leading ^ or ~."
+          if grep -nE '"(@assistant-ui/[a-z-]+|assistant-stream)":[[:space:]]*"[\^~]' studio/spartan-frontend/package.json; then
+            echo "::error file=studio/spartan-frontend/package.json::These packages must be pinned to exact versions until they leave 0.x. Drop the leading ^ or ~."
             exit 1
           fi
           echo "All assistant-ui packages are pinned exactly."
@@ -128,9 +128,9 @@ jobs:
       - name: npm ci must not have modified the working tree
         working-directory: ${{ github.workspace }}
         run: |
-          if ! git diff --quiet -- studio/frontend; then
+          if ! git diff --quiet -- studio/spartan-frontend; then
             echo "::error::npm ci modified files; commit the updated lockfile"
-            git status -- studio/frontend
+            git status -- studio/spartan-frontend
             exit 1
           fi
 
@@ -178,7 +178,7 @@ jobs:
           echo "main bundle: $JS"
           echo "unstable_Provider: hits=$HITS (assistant-ui internals contribute up to 3)"
           if [ "$HITS" -gt 3 ]; then
-            echo "::error file=studio/frontend/src/features/chat/runtime-provider.tsx::Unsloth bundle still passes unstable_Provider through useRemoteThreadListRuntime; this is the 2026.5.1 chat-history regression. Pass adapters directly into useLocalRuntime instead."
+            echo "::error file=studio/spartan-frontend/src/features/chat/runtime-provider.tsx::Unsloth bundle still passes unstable_Provider through useRemoteThreadListRuntime; this is the 2026.5.1 chat-history regression. Pass adapters directly into useLocalRuntime instead."
             exit 1
           fi
 
@@ -188,7 +188,7 @@ jobs:
           BUDGET=$((75 * 1024 * 1024))
           echo "dist size: $SIZE bytes ($((SIZE/1024/1024)) MB), budget: $BUDGET bytes (75 MB)"
           if [ "$SIZE" -gt "$BUDGET" ]; then
-            echo "::error::studio/frontend/dist/ exceeded the 75 MB budget. Drop dead deps (e.g. the unused next dep) or split chunks."
+            echo "::error::studio/spartan-frontend/dist/ exceeded the 75 MB budget. Drop dead deps (e.g. the unused next dep) or split chunks."
             exit 1
           fi
 
@@ -327,7 +327,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: studio-frontend-dist
-          path: studio/frontend/dist
+          path: studio/spartan-frontend/dist
           retention-days: 1
 
   # The suite reads its own sources off disk, resolves modules by URL and walks
@@ -346,7 +346,7 @@ jobs:
   # Windows measured ~132s.
   #
   # Line endings need no special handling here: .gitattributes pins
-  # `studio/frontend/** text=auto eol=lf`, so the tree checks out LF whatever the
+  # `studio/spartan-frontend/** text=auto eol=lf`, so the tree checks out LF whatever the
   # runner's core.autocrlf says, and the assertions that match on exact source
   # substrings see the bytes in the repo.
   windows:
@@ -356,7 +356,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

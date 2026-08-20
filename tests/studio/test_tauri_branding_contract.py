@@ -12,7 +12,7 @@ import pytest
 
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend"
+FRONTEND = REPO / "studio/spartan-frontend"
 TAURI = REPO / "studio/src-tauri"
 
 

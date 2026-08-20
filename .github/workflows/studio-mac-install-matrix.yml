@@ -24,7 +24,7 @@ on:
       # (setup.sh:1444), and install_llama_prebuilt.py imports prebuilt_core
       # (install_llama_prebuilt.py:55).
       #
-      # Deliberately NOT studio/backend/requirements/** or pyproject.toml, which
+      # Deliberately NOT studio/spartan_backend/requirements/** or pyproject.toml, which
       # install_python_stack.py also consumes: generic install breakage on macOS is
       # clean-machine-install-ci's job and it lists both on either trigger with 7
       # macOS legs. Duplicating them here would re-spend the slots this filter saves.
@@ -55,7 +55,7 @@ on:
       # (setup.sh:1444), and install_llama_prebuilt.py imports prebuilt_core
       # (install_llama_prebuilt.py:55).
       #
-      # Deliberately NOT studio/backend/requirements/** or pyproject.toml, which
+      # Deliberately NOT studio/spartan_backend/requirements/** or pyproject.toml, which
       # install_python_stack.py also consumes: generic install breakage on macOS is
       # clean-machine-install-ci's job and it lists both on either trigger with 7
       # macOS legs. Duplicating them here would re-spend the slots this filter saves.

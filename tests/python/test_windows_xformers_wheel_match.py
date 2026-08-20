@@ -37,7 +37,7 @@ WHEEL_INDEX_BASE = "https://download.pytorch.org/whl"
 #     cu128 -> {"cuda": 1208, "torch": "2.10.0+cu128"}
 #     cu130 -> {"cuda": 1300, "torch": "2.10.0+cu130"}
 # Keep this in step with _XFORMERS_WHEEL_VERSIONS in
-# studio/backend/utils/wheel_utils.py and $script:XformersWheelVersions in
+# studio/spartan_backend/utils/wheel_utils.py and $script:XformersWheelVersions in
 # install.ps1 -- test_xformers_matrix_agrees_with_wheel_utils below enforces it.
 XFORMERS_WHEEL_MATRIX: dict[tuple[str, str], str] = {
     ("cu126", "290"): "0.0.33.post1",

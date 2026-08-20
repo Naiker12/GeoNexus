@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-FRONTEND = REPO / "studio/frontend/src"
+FRONTEND = REPO / "studio/spartan-frontend/src"
 NATIVE_FILES = FRONTEND / "lib/native-files.ts"
 CHAT_EXPORT = FRONTEND / "features/chat/utils/export-chat-history.ts"
 DATA_TAB = FRONTEND / "features/settings/tabs/data-tab.tsx"

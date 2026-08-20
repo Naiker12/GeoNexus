@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-THREAD_TSX = REPO / "studio/frontend/src/components/assistant-ui/thread.tsx"
-SHARED_TSX = REPO / "studio/frontend/src/features/chat/shared-composer.tsx"
+THREAD_TSX = REPO / "studio/spartan-frontend/src/components/assistant-ui/thread.tsx"
+SHARED_TSX = REPO / "studio/spartan-frontend/src/features/chat/shared-composer.tsx"
 WORKFLOW_YML = REPO / ".github/workflows/studio-ui-smoke.yml"
 IME_PY = REPO / "tests/studio/playwright_chat_ime_i18n.py"
 

@@ -28,7 +28,7 @@ dependencies = [
     "pydantic",
     "pyyaml",
     "nest-asyncio",
-    # Every CLI command imports studio.backend.*, which reaches structlog at
+    # Every CLI command imports studio.spartan_backend.*, which reaches structlog at
     # module level. The rest of the server stack lives in the studio extra.
     "structlog>=24.1.0",
     # unsloth_cli/__init__.py reaches click via commands/start.py, so every
@@ -77,12 +77,12 @@ studio = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["spartan_agent*", "spartan_agent_cli*", "studio", "studio.backend*"]
+include = ["spartan_agent*", "spartan_agent_cli*", "studio", "studio.spartan_backend*"]
 exclude = [
     "images*",
     "tests*",
-    "studio.backend.tests*",
-    "studio.backend.*.tests*",
+    "studio.spartan_backend.tests*",
+    "studio.spartan_backend.*.tests*",
     "unsloth_compiled_cache*",
     "*.unsloth_compiled_cache*",
     "*.node_modules",
@@ -91,16 +91,16 @@ exclude = [
 
 # packages.find only decides what is importable. include-package-data then hands
 # every tracked file to the nearest parent package that survived, so dropping
-# studio.backend.tests above just re-shipped the same 505 files as data of
-# studio.backend (pypa/setuptools#3260). exclude-package-data has the highest
+# studio.spartan_backend.tests above just re-shipped the same 505 files as data of
+# studio.spartan_backend (pypa/setuptools#3260). exclude-package-data has the highest
 # precedence of the file selection options, so the veto has to be repeated here.
 # Source layout, not the wheel, so the sdist keeps the suites either way.
 [tool.setuptools.exclude-package-data]
-"studio.backend" = ["tests/*"]
-"studio.backend.hub" = ["tests/*"]
+"studio.spartan_backend" = ["tests/*"]
+"studio.spartan_backend.hub" = ["tests/*"]
 
 [project.optional-dependencies]
-# Studio's server stack, mirroring studio/backend/requirements/studio.txt.
+# Studio's server stack, mirroring studio/spartan_backend/requirements/studio.txt.
 # test_studio_extra_matches_requirements.py catches drift.
 studio = [
     "typer==0.27.1 ; python_version >= '3.10'",
@@ -1456,7 +1456,7 @@ extend-exclude = [
     "*_auto_install.py",
     "*mapper.py",
     # Vendored upstream source: reformatting it would break the digest test.
-    "studio/backend/vendor/",
+    "studio/spartan_backend/vendor/",
 ]
 
 [tool.ruff.lint]

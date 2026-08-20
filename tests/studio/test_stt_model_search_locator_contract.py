@@ -14,10 +14,10 @@ import pytest
 
 
 REPO = Path(__file__).resolve().parents[2]
-VOICE_TAB = REPO / "studio/frontend/src/features/settings/tabs/voice-tab.tsx"
-SETTINGS_DIALOG = REPO / "studio/frontend/src/features/settings/settings-dialog.tsx"
+VOICE_TAB = REPO / "studio/spartan-frontend/src/features/settings/tabs/voice-tab.tsx"
+SETTINGS_DIALOG = REPO / "studio/spartan-frontend/src/features/settings/settings-dialog.tsx"
 EXTRA_UI = REPO / "tests/studio/playwright_extra_ui.py"
-EN_LOCALE = REPO / "studio/frontend/src/i18n/locales/en.ts"
+EN_LOCALE = REPO / "studio/spartan-frontend/src/i18n/locales/en.ts"
 
 # Every element the dictation step drives, and the i18n key it replaced.
 TEST_IDS = {

@@ -30,7 +30,7 @@ def _plain_cli_output(monkeypatch):
 def stub_tool_policy_state(monkeypatch):
     """Stub the backend's `state.tool_policy`, which run() imports in-venv.
 
-    It lives under studio/backend, so it only imports once something has put
+    It lives under studio/spartan_backend, so it only imports once something has put
     that directory on sys.path. Tests that reach the in-venv branch of run()
     used to get that for free from whichever file ran earlier and did it as a
     side effect, which made them pass only in a full-directory run.

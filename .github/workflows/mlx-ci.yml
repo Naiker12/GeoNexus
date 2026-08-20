@@ -49,7 +49,7 @@
 #
 # Dispatch test files documented in tests/studio/README.md:
 #   - test_mlx_training_worker_behaviors.py  AST contract checks on
-#                                            studio/backend/core/training/worker.py
+#                                            studio/spartan_backend/core/training/worker.py
 #     Run here because no other workflow claims it.
 #
 # test_hardware_dispatch_matrix.py and test_is_mlx_dispatch_gate.py are NOT run
@@ -63,7 +63,7 @@
 #
 # Security audit footprint: every package this workflow installs is
 # already covered by .github/workflows/security-audit.yml -- the deps
-# come from studio/backend/requirements/studio.txt and unsloth-zoo's
+# come from studio/spartan_backend/requirements/studio.txt and unsloth-zoo's
 # pyproject (resolved transitively). The git+ install of unsloth-zoo
 # is intentionally skipped by the audit (pip-audit cannot resolve a
 # git URL through PyPI metadata; the audit comment in security-audit.yml
@@ -76,16 +76,16 @@ on:
     paths:
       - 'unsloth/__init__.py'
       - 'unsloth/_gpu_init.py'
-      - 'studio/backend/utils/hardware/**'
-      - 'studio/backend/core/training/worker.py'
-      - 'studio/backend/core/inference/mlx_inference.py'
+      - 'studio/spartan_backend/utils/hardware/**'
+      - 'studio/spartan_backend/core/training/worker.py'
+      - 'studio/spartan_backend/core/inference/mlx_inference.py'
       # The capability verdict is decided across these three: hardware/** measures it,
       # mlx_repair.py says whether a self-heal can still overturn it, and main.py holds
       # it back while one can. main.py is the studio's front door and is edited often,
       # so listing it does cost macOS slots on PRs that never touch the verdict -- but a
       # gate that cannot be triggered by the file the logic lives in is not a gate.
-      - 'studio/backend/main.py'
-      - 'studio/backend/utils/mlx_repair.py'
+      - 'studio/spartan_backend/main.py'
+      - 'studio/spartan_backend/utils/mlx_repair.py'
       # test_hardware_dispatch_matrix.py and test_is_mlx_dispatch_gate.py are
       # deliberately absent: this workflow no longer runs them (see the AST
       # contract step below), so booting a macOS runner when only those files
@@ -106,11 +106,11 @@ on:
     paths:
       - 'unsloth/__init__.py'
       - 'unsloth/_gpu_init.py'
-      - 'studio/backend/utils/hardware/**'
-      - 'studio/backend/core/training/worker.py'
-      - 'studio/backend/core/inference/mlx_inference.py'
-      - 'studio/backend/main.py'
-      - 'studio/backend/utils/mlx_repair.py'
+      - 'studio/spartan_backend/utils/hardware/**'
+      - 'studio/spartan_backend/core/training/worker.py'
+      - 'studio/spartan_backend/core/inference/mlx_inference.py'
+      - 'studio/spartan_backend/main.py'
+      - 'studio/spartan_backend/utils/mlx_repair.py'
       - 'tests/studio/test_mlx_training_worker_behaviors.py'
       - 'tests/studio/run_real_mlx_smoke.py'
       - 'tests/studio/mac_capability_verdict_smoke.py'
@@ -192,13 +192,13 @@ jobs:
         with:
           key-files: |
             pyproject.toml
-            studio/backend/requirements/*.txt
+            studio/spartan_backend/requirements/*.txt
 
       # macOS install ladder, validated locally against a Linux
       # mac-sim venv (platform spoofed + mlx_simulation shim + real
       # datasets/transformers/structlog).
       #
-      # 1. studio/backend/requirements/studio.txt brings structlog,
+      # 1. studio/spartan_backend/requirements/studio.txt brings structlog,
       #    fastapi, etc. The hardware probe imports structlog at
       #    module top level.
       # 2. Same pytest / numpy / httpx stack the rest of the repo CI
@@ -233,7 +233,7 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r studio/backend/requirements/studio.txt
+          pip install -r studio/spartan_backend/requirements/studio.txt
           pip install \
             'python-multipart==0.0.27' \
             'aiofiles==25.1.0' \

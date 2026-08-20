@@ -4,12 +4,12 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-SETTINGS_DIALOG = REPO / "studio/frontend/src/features/settings/settings-dialog.tsx"
+SETTINGS_DIALOG = REPO / "studio/spartan-frontend/src/features/settings/settings-dialog.tsx"
 # The monitor has its own page and Settings links to it; the shrink contract covers both.
-API_MONITOR_PAGE = REPO / "studio/frontend/src/features/api-monitor/api-monitor-page.tsx"
-MONITOR_LINK = REPO / "studio/frontend/src/features/settings/components/monitor-link.tsx"
-REMOTE_ACCESS = REPO / "studio/frontend/src/features/settings/components/remote-access-section.tsx"
-GENERAL_TAB = REPO / "studio/frontend/src/features/settings/tabs/general-tab.tsx"
+API_MONITOR_PAGE = REPO / "studio/spartan-frontend/src/features/api-monitor/api-monitor-page.tsx"
+MONITOR_LINK = REPO / "studio/spartan-frontend/src/features/settings/components/monitor-link.tsx"
+REMOTE_ACCESS = REPO / "studio/spartan-frontend/src/features/settings/components/remote-access-section.tsx"
+GENERAL_TAB = REPO / "studio/spartan-frontend/src/features/settings/tabs/general-tab.tsx"
 
 
 def test_dialog_content_can_shrink_inside_the_dialog_grid():

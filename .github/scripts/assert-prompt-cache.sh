@@ -10,7 +10,7 @@
 #                on turn 2. This is the OpenAI-dialect server cache sanity.
 #                WHY this works on chat completions: the chat path forwards
 #                llama-server's real cached_tokens through
-#                studio/backend/routes/inference.py:482-489 (_prompt_tokens_details)
+#                studio/spartan_backend/routes/inference.py:482-489 (_prompt_tokens_details)
 #                into prompt_tokens_details (inference.py:519).
 #
 #   mode=log     Read the llama-server log and decide HIT vs MISS from the
@@ -19,13 +19,13 @@
 #                input_tokens=..., output_tokens=...) at inference.py:8787-8790
 #                / :8829-8832 and NEVER sets cache_read_input_tokens, which
 #                therefore stays at its model default of 0
-#                (studio/backend/models/inference.py:1655). So an Anthropic-path
+#                (studio/spartan_backend/models/inference.py:1655). So an Anthropic-path
 #                client (Claude Code, OpenClaw is openai-completions but Claude
 #                Code is the canonical Anthropic agent) can get a real KV-cache
 #                hit that the API usage field reports as 0. The only ground
 #                truth for the Anthropic path is the llama-server log.
 #
-# Log location (verified): studio/backend/core/inference/llama_cpp.py:4363-4365
+# Log location (verified): studio/spartan_backend/core/inference/llama_cpp.py:4363-4365
 #   _swa_cache_path().parent/"logs"/"llama-server"/llama-<ts>[label]-port-<P>[-try<N>].log
 #   _swa_cache_path() => $UNSLOTH_STUDIO_HOME|$STUDIO_HOME or ~/.unsloth/studio
 #   (llama_cpp.py:337-340). So default: ~/.unsloth/studio/logs/llama-server/.
@@ -150,7 +150,7 @@ case "$MODE" in
     echo "[cache/api] turn-2 usage: prompt_tokens=${PROMPT_TOK} cached_tokens=${CACHED}"
 
     if [ -z "$CACHED" ] || ! [ "$CACHED" -gt 0 ] 2>/dev/null; then
-      echo "::error::[cache/api] turn-2 usage.prompt_tokens_details.cached_tokens=${CACHED}, expected > 0. The server is not surfacing llama.cpp KV-cache hits on /v1/chat/completions. Check studio/backend/routes/inference.py:482-489 (_prompt_tokens_details) and :519. Full turn-2 usage:"
+      echo "::error::[cache/api] turn-2 usage.prompt_tokens_details.cached_tokens=${CACHED}, expected > 0. The server is not surfacing llama.cpp KV-cache hits on /v1/chat/completions. Check studio/spartan_backend/routes/inference.py:482-489 (_prompt_tokens_details) and :519. Full turn-2 usage:"
       echo "$R2" | jq -c '.usage' 2>/dev/null || echo "$R2"
       exit 1
     fi
@@ -168,7 +168,7 @@ case "$MODE" in
 
     log="$(_newest_log || true)"
     if [ -z "$log" ] || [ ! -f "$log" ]; then
-      echo "::error::[cache/log] no llama-server log under ${LLAMA_LOG_DIR:-$(_default_log_dir)}. Cannot read KV-cache trace. (Path contract: studio/backend/core/inference/llama_cpp.py:4363-4365.)"
+      echo "::error::[cache/log] no llama-server log under ${LLAMA_LOG_DIR:-$(_default_log_dir)}. Cannot read KV-cache trace. (Path contract: studio/spartan_backend/core/inference/llama_cpp.py:4363-4365.)"
       exit 1
     fi
     echo "[cache/log] reading $log from byte $FROM"

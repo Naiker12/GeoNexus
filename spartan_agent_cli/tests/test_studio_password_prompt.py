@@ -157,7 +157,7 @@ def _install_studio_default_reexec(monkeypatch, events):
     # A built frontend dist is present by default so the public-launch UI check
     # passes; the no-dist lockout guard has its own dedicated test.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     monkeypatch.setattr(sys, "platform", "linux")
 
@@ -177,7 +177,7 @@ def _install_run_reexec(monkeypatch, events):
     # passes deterministically (independent of whether the repo dist was built);
     # the missing-dist lockout guard has its own dedicated test.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     fake_bin = fake_venv / "bin" / "unsloth"
     real_is_file = Path.is_file
@@ -555,7 +555,7 @@ def test_studio_default_bad_frontend_path_exits_before_stripping_bootstrap(monke
     # Auto-resolution would find a dist, but the user forced an empty one (no
     # index.html): the guard must reject it rather than trust it.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
     empty_dir = tmp_path / "empty_frontend"
     empty_dir.mkdir()
@@ -630,7 +630,7 @@ def test_studio_default_in_venv_broken_backend_exits_before_stripping_bootstrap(
     # runs first and has its own test below; stub it so this one reaches the
     # backend check it is actually about.
     monkeypatch.setattr(
-        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/frontend/dist")
+        studio_mod, "_find_frontend_dist", lambda: Path("/fake/studio/spartan-frontend/dist")
     )
 
     def _boom():
@@ -738,7 +738,7 @@ def test_studio_default_wildcard_cloudflare_strips_even_if_tunnel_unavailable(
 
 def test_tunnel_probe_adds_backend_to_syspath(monkeypatch, tmp_path):
     # Regression (Codex 3572165922): ensure_cloudflared -> _cache_path lazily
-    # imports utils.paths.storage_roots, which only resolves when studio/backend is
+    # imports utils.paths.storage_roots, which only resolves when studio/spartan_backend is
     # on sys.path. From the outer CLI it is not, so the probe must add it or it
     # false-reports "unavailable" and wrongly refuses --secure. Model that with a
     # cloudflare_tunnel whose ensure_cloudflared resolves ONLY when backend is on
@@ -958,13 +958,13 @@ def test_run_reexec_forwards_resolved_frontend_on_public_launch(monkeypatch, tmp
     events = _install_prompt_env(monkeypatch, tmp_path, interactive = True)
     _seed_auth(studio_mod, must_change = False)  # gate is a no-op -> straight to re-exec
 
-    # _install_run_reexec resolves _find_frontend_dist -> /fake/studio/frontend/dist.
+    # _install_run_reexec resolves _find_frontend_dist -> /fake/studio/spartan-frontend/dist.
     _invoke_run(monkeypatch, events, _BASE + ["--secure"])  # no user --frontend
 
     exec_argv = [argv for kind, argv in events if kind == "exec"][0]
     assert "--frontend" in exec_argv, exec_argv
     # str(Path(...)), not the literal: Windows renders it with backslashes.
-    expected_dist = str(Path("/fake/studio/frontend/dist"))
+    expected_dist = str(Path("/fake/studio/spartan-frontend/dist"))
     assert exec_argv[exec_argv.index("--frontend") + 1] == expected_dist, exec_argv
 
 

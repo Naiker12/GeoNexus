@@ -685,7 +685,7 @@ jobs:
           JS
 
       - name: Install frontend dependencies
-        working-directory: studio/frontend
+        working-directory: studio/spartan-frontend
         # Lifecycle scripts (esbuild native-binary postinstall, etc.) are
         # required for `vite build`. The pre-install lockfile structural
         # audit (lockfile_supply_chain_audit.py) is the practical defence

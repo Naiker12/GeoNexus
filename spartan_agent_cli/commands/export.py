@@ -20,7 +20,7 @@ def list_checkpoints(
 ):
     """List checkpoints detected in the outputs directory."""
     with studio_backend_imports("unsloth list-checkpoints"):
-        from studio.backend.core.export import ExportBackend
+        from studio.spartan_backend.core.export import ExportBackend
 
     backend = ExportBackend()
     checkpoints = backend.scan_checkpoints(outputs_dir = str(outputs_dir))
@@ -76,7 +76,7 @@ def export(
         raise typer.Exit(code = 2)
 
     with studio_backend_imports("unsloth export"):
-        from studio.backend.core.export import ExportBackend
+        from studio.spartan_backend.core.export import ExportBackend
 
     backend = ExportBackend()
 

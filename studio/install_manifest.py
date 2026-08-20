@@ -40,7 +40,7 @@ NO_TORCH_TRUTHY: Tuple[str, ...] = ("1", "true", "yes", "on")
 # the next update, which then tries to delete the venv it is running out of.
 NO_TORCH_MARKER = ".unsloth-no-torch"
 
-# Fingerprinted into the manifest, relative to studio/backend/requirements/.
+# Fingerprinted into the manifest, relative to studio/spartan_backend/requirements/.
 # Editing one (a --local install) invalidates it and forces a dependency pass.
 TRACKED_REQUIREMENT_FILES: Tuple[str, ...] = (
     "studio.txt",
@@ -52,7 +52,7 @@ TRACKED_REQUIREMENT_FILES: Tuple[str, ...] = (
     "single-env/data-designer.txt",
 )
 
-# The import chain studio/backend/run.py walks on startup.
+# The import chain studio/spartan_backend/run.py walks on startup.
 BOOT_REQUIREMENT_FILE = "studio.txt"
 
 
@@ -66,7 +66,7 @@ def manifest_path(root: Optional[Path] = None) -> Path:
 
 
 def requirements_root(script_dir: Optional[Path] = None) -> Path:
-    """studio/backend/requirements/ next to this module (or a given studio/ dir)."""
+    """studio/spartan_backend/requirements/ next to this module (or a given studio/ dir)."""
     return (script_dir or Path(__file__).resolve().parent) / "backend" / "requirements"
 
 

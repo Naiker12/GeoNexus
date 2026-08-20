@@ -7,17 +7,17 @@
 # workflows would miss:
 #
 #   - Python syntax + ruff + leftover debugger calls (across 350+
-#     committed .py files, not just studio/backend).
+#     committed .py files, not just studio/spartan_backend).
 #   - Shell `bash -n` parse for every committed *.sh.
 #   - `yaml.safe_load` and `json.loads` round-trip for every
 #     committed YAML / JSON config.
 #
 # TypeScript and Rust are NOT duplicated here on purpose:
 #   - Unsloth Frontend CI runs `npm run typecheck` (= `tsc --noEmit`)
-#     and `npm run build` (vite/swc) on every studio/frontend/**
+#     and `npm run build` (vite/swc) on every studio/spartan-frontend/**
 #     change, which is a full TS AST + type check.
 #   - Unsloth Tauri CI runs `tauri build --debug --no-bundle` on
-#     every studio/src-tauri/** or studio/frontend/** change, which
+#     every studio/src-tauri/** or studio/spartan-frontend/** change, which
 #     compiles the Rust crate (= cargo check + cargo build).
 # Each is a stricter check than a parse-only step would be, so a
 # fast-fail duplicate here would only burn cache; the dedicated
@@ -459,7 +459,7 @@ jobs:
         continue-on-error: true
         run: |
           codespell \
-            --skip='*.lock,*.lockb,*.json,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff*,*.ttf,*.eot,*.zip,*.gz,*.gguf,*.safetensors,*.bin,node_modules,.git,build,dist,unsloth_compiled_cache,unsloth.egg-info,target,studio/frontend/dist,*.pyc,*-licenses.txt,LICENSE*' \
+            --skip='*.lock,*.lockb,*.json,*.svg,*.png,*.jpg,*.jpeg,*.gif,*.ico,*.woff*,*.ttf,*.eot,*.zip,*.gz,*.gguf,*.safetensors,*.bin,node_modules,.git,build,dist,unsloth_compiled_cache,unsloth.egg-info,target,studio/spartan-frontend/dist,*.pyc,*-licenses.txt,LICENSE*' \
             --ignore-words-list='ans,bu,hel,fo,te,ot,hist,ned,sav,recurser,datas,nin,parm,parms,checkin,nd,fr,inout,donot,uint' \
             --quiet-level=2
 

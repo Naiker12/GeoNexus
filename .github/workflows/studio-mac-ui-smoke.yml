@@ -150,7 +150,7 @@ jobs:
       # a phase added later inherits it too instead of failing mysteriously.
       #
       # This removes no coverage of the guard itself, which is tested in
-      # studio/backend/tests/test_host_offload_ram_guard.py and test_llama_cpp_placement.py.
+      # studio/spartan_backend/tests/test_host_offload_ram_guard.py and test_llama_cpp_placement.py.
       UNSLOTH_ALLOW_HOST_OFFLOAD: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1

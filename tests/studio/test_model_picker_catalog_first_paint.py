@@ -14,7 +14,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 PICKERS_TSX = (
-    REPO / "studio/frontend/src/features/model-picker/components/model-selector/pickers.tsx"
+    REPO / "studio/spartan-frontend/src/features/model-picker/components/model-selector/pickers.tsx"
 )
 
 

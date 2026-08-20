@@ -13,7 +13,7 @@ It landed as two hand-copied helpers, one in the installer (validation-time) and
 one in the serve-time launcher:
 
   studio/install_llama_prebuilt.py  _bundled_hip_present / _native_linux_system_rocm_lib_dirs
-  studio/backend/core/inference/llama_cpp.py   same two, "mirrors" comment only
+  studio/spartan_backend/core/inference/llama_cpp.py   same two, "mirrors" comment only
 
 and shipped with no tests at all: the WSL sibling helper added earlier has
 TestWslSystemRocmLibDirs / TestBinaryEnvWslOrdering / TestLlamaCppRuntimeWslOrdering,
@@ -76,7 +76,7 @@ def _impls():
     """The two copies of the helper, by the file they live in."""
     return {
         "studio/install_llama_prebuilt.py": prebuilt_mod._native_linux_system_rocm_lib_dirs,
-        "studio/backend/core/inference/llama_cpp.py": llama_ns[
+        "studio/spartan_backend/core/inference/llama_cpp.py": llama_ns[
             "_native_linux_system_rocm_lib_dirs"
         ],
     }
@@ -138,7 +138,7 @@ class TestBundledHipPresent:
     CPU or CUDA build must be left alone."""
 
     @pytest.mark.parametrize(
-        "where", ["studio/install_llama_prebuilt.py", "studio/backend/core/inference/llama_cpp.py"]
+        "where", ["studio/install_llama_prebuilt.py", "studio/spartan_backend/core/inference/llama_cpp.py"]
     )
     def test_detects_versioned_and_plain_sonames(self, tmp_path, where):
         impl = (

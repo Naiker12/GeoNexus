@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-SETTINGS = REPO / "studio/frontend/src/features/settings"
+SETTINGS = REPO / "studio/spartan-frontend/src/features/settings"
 USAGE_EXAMPLES_TSX = SETTINGS / "components/usage-examples.tsx"
 OPENAI_MODELS_TS = SETTINGS / "api/openai-models.ts"
 API_KEYS_TAB_TSX = SETTINGS / "tabs/api-keys-tab.tsx"
@@ -133,10 +133,10 @@ def test_usage_examples_has_no_duplicate_auto_switch_control():
 
 
 # The monitor moved onto its own page; Settings keeps configuration and links across.
-API_MONITOR_TSX = REPO / "studio/frontend/src/features/api-monitor/api-monitor-page.tsx"
+API_MONITOR_TSX = REPO / "studio/spartan-frontend/src/features/api-monitor/api-monitor-page.tsx"
 # Their own module: the overlay mounts from __root.tsx, so importing from the page
 # pulled it into the eager bundle.
-API_MONITOR_LIFECYCLE_TS = REPO / "studio/frontend/src/features/api-monitor/lifecycle.ts"
+API_MONITOR_LIFECYCLE_TS = REPO / "studio/spartan-frontend/src/features/api-monitor/lifecycle.ts"
 MONITOR_LINK_TSX = SETTINGS / "components/monitor-link.tsx"
 
 
@@ -171,7 +171,7 @@ def test_auto_switch_section_sits_above_the_usage_examples():
 
 
 AUTO_SWITCH_TSX = SETTINGS / "components/model-auto-switch-section.tsx"
-EN_TS = REPO / "studio/frontend/src/i18n/locales/en.ts"
+EN_TS = REPO / "studio/spartan-frontend/src/i18n/locales/en.ts"
 
 
 def test_api_monitor_renders_download_rows():

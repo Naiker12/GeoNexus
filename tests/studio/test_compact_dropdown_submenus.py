@@ -4,8 +4,8 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-DROPDOWN_MENU = REPO / "studio/frontend/src/components/ui/dropdown-menu.tsx"
-FRONTEND_SRC = REPO / "studio/frontend/src"
+DROPDOWN_MENU = REPO / "studio/spartan-frontend/src/components/ui/dropdown-menu.tsx"
+FRONTEND_SRC = REPO / "studio/spartan-frontend/src"
 
 
 def test_shared_submenu_uses_its_layout_width_on_mobile():

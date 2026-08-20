@@ -4,10 +4,10 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[2]
-FILENAME_HELPER = REPO / "studio/frontend/src/features/studio/wizard/training-config-file.ts"
+FILENAME_HELPER = REPO / "studio/spartan-frontend/src/features/studio/wizard/training-config-file.ts"
 NATIVE_FILE_DIALOGS = REPO / "studio/src-tauri/src/native_file_dialogs.rs"
-NATIVE_FILES = REPO / "studio/frontend/src/lib/native-files.ts"
-CONFIG_ACTIONS = REPO / "studio/frontend/src/features/studio/wizard/config-actions.tsx"
+NATIVE_FILES = REPO / "studio/spartan-frontend/src/lib/native-files.ts"
+CONFIG_ACTIONS = REPO / "studio/spartan-frontend/src/features/studio/wizard/config-actions.tsx"
 
 
 def test_training_config_filename_is_bounded_by_utf8_bytes():
