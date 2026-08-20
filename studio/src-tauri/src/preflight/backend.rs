@@ -206,6 +206,7 @@ pub(super) async fn probe_ownerless_spawned_backend(port: u16) -> BackendProbe {
 
     let response = client
         .post(format!("http://127.0.0.1:{port}/api/auth/desktop-login"))
+        .header("x-spartan-desktop-compat-probe", "1")
         .json(&DesktopLoginProbe {
             secret: "desktop-preflight-invalid-secret",
         })
@@ -286,6 +287,7 @@ pub(super) async fn backend_desktop_auth_status(
     let url = format!("http://127.0.0.1:{port}/api/auth/desktop-login");
     let response = client
         .post(url)
+        .header("x-spartan-desktop-compat-probe", "1")
         .json(&DesktopLoginProbe {
             secret: "desktop-preflight-invalid-secret",
         })

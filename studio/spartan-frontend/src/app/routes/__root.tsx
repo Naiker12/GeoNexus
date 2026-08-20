@@ -32,6 +32,7 @@ import {
 import { TransformersUpgradeDialog } from "@/features/transformers-upgrade";
 import { useSidebarPin } from "@/hooks/use-sidebar-pin";
 import { type TranslationKey, useT } from "@/i18n";
+import { isTauri } from "@/lib/api-base";
 import {
   Outlet,
   createRootRoute,
@@ -71,6 +72,28 @@ function RouteFallback() {
       {t("common.loading")}
     </div>
   );
+}
+
+// Credential reconciliation is a convenience migration, not a prerequisite for
+// rendering the desktop. A backend request can be delayed while Torch warms up
+// or a previous process releases the loopback port; never leave the whole app on
+// its loading screen in that case. The underlying reconciliation continues and
+// applies its result when it eventually completes.
+const CREDENTIAL_BOOTSTRAP_TIMEOUT_MS = 12_000;
+
+function waitForCredentialBootstrap(): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let timeout: number | undefined;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      resolve();
+    };
+    timeout = window.setTimeout(finish, CREDENTIAL_BOOTSTRAP_TIMEOUT_MS);
+    void bootstrapPersistedCredentials().finally(finish);
+  });
 }
 
 // ImagesPage is mounted persistently below (not via the /images route) so an in-flight batch survives leaving the tab,
@@ -120,7 +143,7 @@ function CredentialBootstrapGate({ children }: { children: ReactNode }) {
         return;
       }
       setReady(false);
-      void bootstrapPersistedCredentials().finally(() => {
+      void waitForCredentialBootstrap().finally(() => {
         if (
           active &&
           revision === runRevision.current &&
@@ -190,9 +213,11 @@ function isChatOnlyAllowed(pathname: string): boolean {
 
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
-    // Fetch platform info before the chat-only guard. fetchDeviceType caches,
-    // so later navigations are instant.
-    await fetchDeviceType();
+    // Tauri receives its loopback port only after this route is constructed.
+    // TauriWrapper fetches the same verdict once the backend reports a validated
+    // port; querying earlier would route through Vite's not-yet-live dev proxy.
+    // Browser sessions still need the verdict before applying this guard.
+    if (!isTauri) await fetchDeviceType();
     const { isChatOnly, capabilitiesUnknown } = usePlatformStore.getState();
     const unmeasured = capabilitiesUnknown();
     if (
@@ -380,11 +405,22 @@ function RootLayout() {
       {/* At the root, not under /chat: a swap can start from the Hub too. */}
       <StopRunningChatsDialog />
       {hideNavbar ? (
-        <main className="flex-1 pt-[var(--studio-hidden-route-top-inset,0px)] [--studio-titlebar-height:var(--studio-hidden-route-top-inset,0px)]">
-          <Suspense fallback={<RouteFallback />}>
-            <Outlet />
-          </Suspense>
-        </main>
+        // Keep the context available on minimal/auth routes too. Lazy route
+        // boundaries can share shell components (or retain a portal during a
+        // navigation), and those components must never render without the
+        // SidebarProvider that owns `useSidebar`.
+        <SidebarProvider
+          pinned={pinned}
+          setPinned={setPinned}
+          togglePinned={togglePinned}
+          className="!min-h-0 h-[calc(100dvh-var(--studio-titlebar-height,0px))] overflow-hidden"
+        >
+          <main className="flex-1 pt-[var(--studio-hidden-route-top-inset,0px)] [--studio-titlebar-height:var(--studio-hidden-route-top-inset,0px)]">
+            <Suspense fallback={<RouteFallback />}>
+              <Outlet />
+            </Suspense>
+          </main>
+        </SidebarProvider>
       ) : (
         <SidebarProvider
           pinned={pinned}

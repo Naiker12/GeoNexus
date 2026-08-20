@@ -11,6 +11,7 @@ import {
   ZoomInAreaIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@hugeicons/react";
+import type { TranslationKey } from "@/i18n";
 
 export type WorkflowId =
   | "create"
@@ -25,64 +26,64 @@ export type WorkflowId =
  *  workflow id (status.workflows) the loaded model must support; null = always available. */
 export const WORKFLOW_TABS: Array<{
   id: WorkflowId;
-  label: string;
+  labelKey: TranslationKey;
   /** Page heading, when the sidebar's short label would read oddly on its own.
-   *  Falls back to `label`. */
-  heading?: string;
+   *  Falls back to `labelKey`. */
+  headingKey?: TranslationKey;
   requires: string | null;
   icon: IconSvgElement;
-  hint: string;
+  hintKey: TranslationKey;
 }> = [
   {
     id: "create",
-    label: "Create",
+    labelKey: "images.workflows.create.label",
     // The sidebar nests this under Images, so "Create" alone is clear there.
-    heading: "Create images",
+    headingKey: "images.workflows.create.heading",
     requires: null,
     // Not the pencil: that is the sidebar's New chat icon.
     icon: SparklesIcon,
-    hint: "Generate a new image from a prompt",
+    hintKey: "images.workflows.create.hint",
   },
   {
     id: "transform",
-    label: "Transform",
+    labelKey: "images.workflows.transform.label",
     icon: MagicWand01Icon,
     requires: "img2img",
-    hint: "Redraw an image from your prompt",
+    hintKey: "images.workflows.transform.hint",
   },
   {
     id: "inpaint",
-    label: "Inpaint",
+    labelKey: "images.workflows.inpaint.label",
     icon: PaintBrush02Icon,
     requires: "inpaint",
-    hint: "Regenerate a painted region",
+    hintKey: "images.workflows.inpaint.hint",
   },
   {
     id: "extend",
-    label: "Extend",
+    labelKey: "images.workflows.extend.label",
     icon: ArrowExpand01Icon,
     requires: "outpaint",
-    hint: "Grow the canvas and fill the edges",
+    hintKey: "images.workflows.extend.hint",
   },
   {
     id: "upscale",
-    label: "Upscale",
+    labelKey: "images.workflows.upscale.label",
     icon: ZoomInAreaIcon,
     requires: "upscale",
-    hint: "Enlarge and re-detail an image",
+    hintKey: "images.workflows.upscale.hint",
   },
   {
     id: "reference",
-    label: "Reference",
+    labelKey: "images.workflows.reference.label",
     icon: ImageUpload01Icon,
     requires: "reference",
-    hint: "Generate guided by a reference image",
+    hintKey: "images.workflows.reference.hint",
   },
   {
     id: "edit",
-    label: "Edit",
+    labelKey: "images.workflows.edit.label",
     icon: Edit03Icon,
     requires: "edit",
-    hint: "Change an image with an instruction",
+    hintKey: "images.workflows.edit.hint",
   },
 ];

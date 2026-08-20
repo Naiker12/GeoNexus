@@ -393,12 +393,13 @@ function preloadSilently(request: Promise<unknown>): void {
  * opens the hint rather than doing nothing.
  */
 function OpenChatFolderUnavailableItem() {
+  const t = useT();
   const [hintOpen, setHintOpen] = useState(false);
 
   return (
     <DropdownMenuItem
       aria-disabled={true}
-      title="Opening the folder needs the desktop app. In a browser, save a file from the card that created it."
+      title={t("chat.menu.openFolderUnavailable")}
       className="relative opacity-50"
       onSelect={(event) => {
         event.preventDefault();
@@ -410,7 +411,7 @@ function OpenChatFolderUnavailableItem() {
       onBlur={() => setHintOpen(false)}
     >
       <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={1.75} className="size-icon" />
-      <span>Open chat folder</span>
+      <span>{t("chat.menu.openFolder")}</span>
       <Tooltip open={hintOpen}>
         {/* Our wrapper, not the raw primitive: it registers the trigger element,
             without which the tooltip counts itself blocked by the open menu. */}
@@ -421,8 +422,7 @@ function OpenChatFolderUnavailableItem() {
           />
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-[220px]">
-          Opening the folder needs the desktop app. In a browser, save a file
-          from the card that created it.
+          {t("chat.menu.openFolderUnavailable")}
         </TooltipContent>
       </Tooltip>
     </DropdownMenuItem>
@@ -526,8 +526,6 @@ function getSidebarItemThreadIds(item: SidebarItem) {
   return item.threadIds?.length ? item.threadIds : [item.id];
 }
 
-const WORKFLOW_UNAVAILABLE = "The loaded model cannot do this";
-
 // Re-read cadences for the hardware verdict below. An unmeasured verdict holds Train and Video
 // on a spinner, so it is re-read sooner than the background MLX self-heal check, which only
 // pays off after the user has repaired an install. A re-read outstanding longer than the stall
@@ -549,11 +547,12 @@ function WorkflowChoice({
   enabled: boolean;
   onSelect: () => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       disabled={!enabled}
-      title={enabled ? undefined : WORKFLOW_UNAVAILABLE}
+      title={enabled ? undefined : t("images.workflowUnavailable")}
       onClick={onSelect}
       // Weight and colour come from the nav rows above; only the size sets a submenu apart.
       className={cn(
@@ -568,7 +567,7 @@ function WorkflowChoice({
         className="size-4 shrink-0"
       />
       <span className="min-w-0 flex-1 truncate text-ui-13 tracking-nav">
-        {tab.label}
+        {t(tab.labelKey)}
       </span>
     </button>
   );
@@ -576,13 +575,14 @@ function WorkflowChoice({
 
 /** Expands the workflow list on rows that do not list it outright, i.e. off the Images page. */
 function ImagesNavDisclosure() {
+  const t = useT();
   const expanded = useImageWorkflowStore((s) => s.navExpanded);
   const setExpanded = useImageWorkflowStore((s) => s.setNavExpanded);
   return (
     // Row action, so it gets the shared hover circle. Shown on row hover, kept while open.
     <button
       type="button"
-      aria-label={expanded ? "Hide workflows" : "Show workflows"}
+      aria-label={t(expanded ? "images.hideWorkflows" : "images.showWorkflows")}
       aria-expanded={expanded}
       onClick={(e) => {
         e.stopPropagation();
@@ -1816,7 +1816,7 @@ export function AppSidebar() {
         }}
         className="w-full cursor-pointer text-left"
       >
-        You can view archived chats in Settings
+        {t("shell.toast.archivedChats")}
       </button>,
       { closeButton: true },
     );
@@ -1834,7 +1834,7 @@ export function AppSidebar() {
       });
       showArchivedChatsToast();
     } catch (err) {
-      toast.error("Failed to archive chat", {
+      toast.error(t("shell.toast.failedToArchiveChat"), {
         description: err instanceof Error ? err.message : undefined,
       });
     }
@@ -1900,7 +1900,7 @@ export function AppSidebar() {
       try {
         await renameChatProject(target.project.id, renameTrimmed);
       } catch (err) {
-        toast.error("Failed to rename project", {
+        toast.error(t("shell.toast.failedToRenameProject"), {
           description: err instanceof Error ? err.message : undefined,
         });
       }
@@ -1998,7 +1998,7 @@ export function AppSidebar() {
           });
           deletedIds.add(project.id);
         } catch (err) {
-          toast.error("Failed to delete project", {
+          toast.error(t("shell.toast.failedToDeleteProject"), {
             description: err instanceof Error ? err.message : undefined,
           });
         }
@@ -2039,7 +2039,7 @@ export function AppSidebar() {
           navigate({ to: "/chat", search: { new: createNavigationNonce() } });
         }
       } catch (err) {
-        toast.error("Failed to delete project", {
+        toast.error(t("shell.toast.failedToDeleteProject"), {
           description: err instanceof Error ? err.message : undefined,
         });
       }
@@ -2065,7 +2065,7 @@ export function AppSidebar() {
         useChatRuntimeStore.getState().setActiveProjectId(project.id);
       }
     } catch (err) {
-      toast.error("Failed to move chat to the new project", {
+      toast.error(t("shell.toast.failedToMoveChatToNewProject"), {
         description: err instanceof Error ? err.message : undefined,
       });
     }
@@ -2079,7 +2079,7 @@ export function AppSidebar() {
         useChatRuntimeStore.getState().setActiveProjectId(projectId);
       }
     } catch (err) {
-      toast.error("Failed to move chat", {
+      toast.error(t("shell.toast.failedToMoveChat"), {
         description: err instanceof Error ? err.message : undefined,
       });
     }
@@ -2441,7 +2441,7 @@ export function AppSidebar() {
                   e.stopPropagation();
                   togglePinnedChat(item.id);
                 }}
-                aria-label={isPinned ? "Unpin chat" : "Pin chat"}
+                aria-label={t(isPinned ? "chat.menu.unpin" : "chat.menu.pin")}
                 className="sidebar-row-action sidebar-touch-reveal is-unpin-action group-hover/project-chat-item:opacity-100 group-hover/project-chat-item:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
               >
                 <span className="sidebar-row-action-glyph">
@@ -2456,7 +2456,7 @@ export function AppSidebar() {
                   e.stopPropagation();
                   togglePinnedChat(item.id);
                 }}
-                aria-label="Unpin chat"
+                aria-label={t("chat.menu.unpin")}
                 className="sidebar-row-action sidebar-touch-reveal is-unpin-action group-hover/recent-item:opacity-100 group-hover/recent-item:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
               >
                 <span className="sidebar-row-action-glyph">
@@ -2469,7 +2469,7 @@ export function AppSidebar() {
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
-                  aria-label="Chat options"
+                  aria-label={t("chat.menu.options")}
                   className={actionClass}
                 >
                   <span className="sidebar-row-action-glyph">
@@ -2485,11 +2485,11 @@ export function AppSidebar() {
               >
                 <DropdownMenuItem onSelect={() => openRenameChat(item)}>
                   <HugeiconsIcon icon={Edit03Icon} strokeWidth={1.75} className="size-icon" />
-                  <span>Rename</span>
+                  <span>{t("chat.menu.rename")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => togglePinnedChat(item.id)}>
                   <HugeiconsIcon icon={isPinned ? PinOffIcon : PinIcon} strokeWidth={1.75} className="size-icon" />
-                  <span>{isPinned ? "Unpin chat" : "Pin chat"}</span>
+                  <span>{t(isPinned ? "chat.menu.unpin" : "chat.menu.pin")}</span>
                 </DropdownMenuItem>
                 {drag &&
                   renderMoveRowItems(
@@ -2501,7 +2501,7 @@ export function AppSidebar() {
                 {sandboxSessionId ? (
                   isTauri ? (
                     <DropdownMenuItem
-                      title="Open the folder this chat's tool calls read and write"
+                      title={t("chat.menu.openFolderDescription")}
                       onSelect={() => {
                         void (async () => {
                           try {
@@ -2544,15 +2544,14 @@ export function AppSidebar() {
                               distinct = [...new Set(held)];
                             }
                             if (distinct.length > 1) {
-                              toast.error("This chat wrote to more than one folder.", {
-                                description:
-                                  "Its panes ran before it joined this project, so open the folder from a tool card instead.",
+                              toast.error(t("chat.menu.multipleFolders"), {
+                                description: t("chat.menu.multipleFoldersDescription"),
                               });
                               return;
                             }
                             await revealSandbox(distinct[0] ?? sandboxSessionId);
                           } catch (error) {
-                            toast.error("Could not open the chat folder.", {
+                            toast.error(t("chat.menu.openFolderFailed"), {
                               description:
                                 error instanceof Error
                                   ? error.message
@@ -2563,7 +2562,7 @@ export function AppSidebar() {
                       }}
                     >
                       <HugeiconsIcon icon={FolderOpenIcon} strokeWidth={1.75} className="size-icon" />
-                      <span>Open chat folder</span>
+                      <span>{t("chat.menu.openFolder")}</span>
                     </DropdownMenuItem>
                   ) : (
                     <OpenChatFolderUnavailableItem />
@@ -2572,7 +2571,7 @@ export function AppSidebar() {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <HugeiconsIcon icon={FolderExportIcon} strokeWidth={1.75} className="size-icon" />
-                    <span>Move to project</span>
+                    <span>{t("chat.menu.moveToProject")}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent
                     sideOffset={0}
@@ -2586,13 +2585,13 @@ export function AppSidebar() {
                       }}
                     >
                       <HugeiconsIcon icon={FolderAddIcon} strokeWidth={1.75} className="size-icon" />
-                      <span>New project</span>
+                      <span>{t("chat.menu.newProject")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={!item.projectId}
                       onSelect={() => void moveChatToProject(item, null)}
                     >
-                      <span>Recents</span>
+                      <span>{t("chat.menu.recents")}</span>
                     </DropdownMenuItem>
                     {projects.map((project) => (
                       <DropdownMenuItem
@@ -2609,7 +2608,7 @@ export function AppSidebar() {
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <HugeiconsIcon icon={Download01Icon} strokeWidth={1.75} className="size-icon" />
-                    <span>Export</span>
+                    <span>{t("chat.menu.export")}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent sideOffset={8} alignOffset={-4} className="unsloth-plus-menu w-52">
                     {CHAT_EXPORT_OPTIONS.map(({ label, format }) => (
@@ -2625,7 +2624,7 @@ export function AppSidebar() {
                             }
                           } catch (error) {
                             if (!isDownloadCancelled(error)) {
-                              toast.error("Export failed.");
+                              toast.error(t("chat.menu.exportFailed"));
                             }
                           }
                         }}
@@ -2640,18 +2639,18 @@ export function AppSidebar() {
                         useSettingsDialogStore.getState().openDialog("data")
                       }
                     >
-                      Export all chats…
+                      {t("chat.menu.exportAll")}
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <HugeiconsIcon icon={BookOpen01Icon} strokeWidth={1.75} className="size-icon" />
-                    <span>Save to project sources</span>
+                    <span>{t("chat.menu.saveToProjectSources")}</span>
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent sideOffset={8} alignOffset={-4} className="unsloth-plus-menu w-52">
                     {projects.length === 0 && (
-                      <DropdownMenuItem disabled>No projects yet</DropdownMenuItem>
+                      <DropdownMenuItem disabled>{t("chat.menu.noProjectsYet")}</DropdownMenuItem>
                     )}
                     {projects.map((project) => (
                       <DropdownMenuItem
@@ -2660,7 +2659,7 @@ export function AppSidebar() {
                           try {
                             await saveChatToProjectSources(item, project.id);
                           } catch {
-                            toast.error("Failed to save to project sources.");
+                            toast.error(t("chat.menu.saveToProjectSourcesFailed"));
                           }
                         }}
                       >
@@ -2673,7 +2672,7 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => void handleArchiveThread(item)}>
                   <HugeiconsIcon icon={Archive03Icon} strokeWidth={1.75} className="size-icon" />
-                  <span>Archive</span>
+                  <span>{t("chat.menu.archive")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -2686,7 +2685,7 @@ export function AppSidebar() {
                   }
                 >
                   <HugeiconsIcon icon={Delete02Icon} strokeWidth={1.75} className="size-icon" />
-                  <span>Delete</span>
+                  <span>{t("chat.menu.delete")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -3711,7 +3710,7 @@ export function AppSidebar() {
         <DialogHeader>
           <DialogTitle>
             {confirmingDelete?.kind === "project"
-                ? "Delete project"
+                ? t("shell.dialog.project.deleteTitle")
                 : confirmingDelete?.kind === "chats"
                   ? t("shell.selection.deleteTitle")
                   : confirmingDelete?.kind === "projects"
@@ -3734,13 +3733,11 @@ export function AppSidebar() {
                 count: confirmingDelete.projects.length,
               })
             ) : confirmingDelete?.kind === "project" ? (
-              <>
-                Delete{" "}
-                <span className="font-medium text-foreground">
-                  &quot;{confirmingDelete.project.name}&quot;
-                </span>
-                ? Its chats will be permanently deleted.
-              </>
+              renderEmphasizedTranslation(
+                t,
+                "shell.dialog.project.deleteDescription",
+                confirmingDelete.project.name,
+              )
             ) : null}
           </DialogDescription>
         </DialogHeader>
@@ -3753,7 +3750,7 @@ export function AppSidebar() {
               <span className="block break-words text-xs leading-5 text-muted-foreground">
                 {confirmingDelete?.kind === "project"
                   ? (confirmingDelete.project.rootPath ??
-                    "The project workspace folder will be removed from disk.")
+                    t("shell.dialog.project.deleteWorkspaceDescription"))
                   : confirmingDelete?.kind === "projects"
                     ? t("shell.selection.deleteProjectsFilesDescription")
                     : confirmingDelete?.kind === "chats"
@@ -3783,7 +3780,7 @@ export function AppSidebar() {
             onClick={() => void commitDelete()}
           >
             {deleteTargetHasFiles(confirmingDelete) && deleteFilesOnDelete
-              ? "Delete all"
+              ? t("shell.dialog.project.deleteAll")
               : t("common.delete")}
           </Button>
         </DialogFooter>
@@ -3799,7 +3796,7 @@ export function AppSidebar() {
         <DialogHeader>
           <DialogTitle>
             {renamingTarget?.kind === "project"
-                ? "Rename project"
+                ? t("shell.dialog.project.renameTitle")
                 : t("shell.dialog.renameChat.title")}
           </DialogTitle>
         </DialogHeader>
@@ -3816,12 +3813,12 @@ export function AppSidebar() {
           maxLength={120}
           placeholder={
             renamingTarget?.kind === "project"
-                ? "Project name"
+                ? t("shell.dialog.project.namePlaceholder")
                 : t("shell.dialog.renameChat.placeholder")
           }
           aria-label={
             renamingTarget?.kind === "project"
-                ? "Project name"
+                ? t("shell.dialog.project.namePlaceholder")
                 : t("shell.dialog.renameChat.placeholder")
           }
           className="focus-visible:border-input focus-visible:ring-0"
@@ -3851,9 +3848,15 @@ export function AppSidebar() {
         if (!open) setProjectCreateMoveTarget(null);
       }}
       title={
-        projectCreateMoveTarget ? "Move to new project" : "Create project"
+        projectCreateMoveTarget
+          ? t("shell.dialog.project.moveToNewTitle")
+          : t("shell.dialog.project.createTitle")
       }
-      submitLabel={projectCreateMoveTarget ? "Create and move" : "Create project"}
+      submitLabel={
+        projectCreateMoveTarget
+          ? t("shell.dialog.project.createAndMove")
+          : t("shell.dialog.project.createTitle")
+      }
       onCreated={afterCreateProject}
     />
     </>

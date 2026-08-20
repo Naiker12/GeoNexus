@@ -540,7 +540,10 @@ export function StartupScreen({
 function StartupSurface({ children }: { children: ReactNode }) {
   return (
     <div className="relative box-border flex h-full w-full flex-col items-center overflow-y-auto bg-background pb-6 pt-[var(--studio-startup-top-inset,0px)]">
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+      {/* Keep the locale control below desktop window chrome. On narrow Tauri
+          windows the titlebar buttons occupy the upper-right corner and would
+          otherwise cover the trigger, clipping longer translated labels. */}
+      <div className="absolute right-4 top-[calc(var(--studio-desktop-titlebar-height,0px)+0.375rem)] z-50 flex items-center gap-2">
         <LanguageSelect />
       </div>
       <div className="flex min-h-0 flex-1 w-full max-w-md items-center justify-center px-6">

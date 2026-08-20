@@ -69,6 +69,7 @@ import { AdvancedDisclosure } from "@/components/advanced-disclosure";
 import { GalleryItemMenu } from "@/components/gallery-item-menu";
 import { MediaPageLink } from "@/components/media-page-link";
 import { useSettingsDialogStore } from "@/features/settings/stores/settings-dialog-store";
+import { useT } from "@/i18n";
 import {
   type NewRecordProbeBaseline,
   applyPin,
@@ -1161,6 +1162,7 @@ type LoadAdvanced = Pick<
 >;
 
 export function ImagesPage({ active = true }: { active?: boolean }) {
+  const t = useT();
   const { isMobile, pinned } = useSidebar();
   const hostClass = useHostClass();
   const imageModels = useImageModels(hostClass);
@@ -3633,10 +3635,10 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
                     icon={activeWorkflowTab.icon}
                     className="size-[18px] shrink-0"
                   />
-                  {activeWorkflowTab.heading ?? activeWorkflowTab.label}
+                  {t(activeWorkflowTab.headingKey ?? activeWorkflowTab.labelKey)}
                 </h2>
                 <p className="text-xs leading-snug text-muted-foreground">
-                  {activeWorkflowTab.hint}
+                  {t(activeWorkflowTab.hintKey)}
                 </p>
               </div>
 

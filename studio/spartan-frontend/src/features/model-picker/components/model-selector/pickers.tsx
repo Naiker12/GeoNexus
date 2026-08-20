@@ -5928,13 +5928,13 @@ export function HubModelPicker({
                     </ListLabel>
                     {!lmStudioCollapsed &&
                       sortedLmStudio.map((m) => {
-                        const isGgufFile = m.path
-                          .toLowerCase()
-                          .endsWith(".gguf");
                         // LM Studio dirs are GGUF but rarely carry a -GGUF suffix;
                         // use the shared helper (model_format hint) so the row,
-                        // filter, and load path agree.
+                        // filter, and load path agree. Each inventory entry is a
+                        // concrete local installation, not a remote GGUF repo:
+                        // the backend resolves the directory to its GGUF file.
                         const isGguf = localModelIsGguf(m);
+                        const isDirectGguf = isGguf;
                         const optionKey = makeModelOptionKey("lm-studio", m.id);
                         return (
                           <div key={m.id}>
@@ -5952,7 +5952,7 @@ export function HubModelPicker({
                                     loadedModelId,
                                     activeGgufVariant,
                                     m.id,
-                                    isGgufFile
+                                    isDirectGguf
                                       ? "ignore"
                                       : isGguf
                                         ? "required"
@@ -5963,13 +5963,11 @@ export function HubModelPicker({
                                     value === m.id,
                                   )}
                                   onClick={() => {
-                                    if (isGgufFile) {
+                                    if (isDirectGguf) {
                                       onSelect(
                                         m.id,
                                         localDirectGgufMeta(m.task),
                                       );
-                                    } else if (isGguf) {
-                                      toggleGgufExpanded(m.id);
                                     } else {
                                       onSelect(
                                         m.id,
@@ -5977,23 +5975,15 @@ export function HubModelPicker({
                                       );
                                     }
                                   }}
-                                  onArrowDownIntoChildren={
-                                    isGguf &&
-                                    !isGgufFile &&
-                                    isGgufExpanded(m.id)
-                                      ? () => {
-                                          const focused =
-                                            focusFirstChildOption(optionKey);
-                                          return focused;
-                                        }
-                                      : undefined
-                                  }
-                                  alignMeta="device"
+                                  // The section label already identifies LM
+                                  // Studio, so show the model name rather than
+                                  // repeating its publisher in this narrow list.
+                                  hideOwner={true}
                                   vramStatus={null}
                                 />
                               </div>
                               <span className={ROW_ACTIONS_CLASS}>
-                                {isGgufFile && onConfigure && (
+                                {isDirectGguf && onConfigure && (
                                   <ModelLoadSettingsAction
                                     ariaLabel={`Inference settings for ${
                                       m.model_id ?? m.display_name
@@ -6021,27 +6011,6 @@ export function HubModelPicker({
                                 )}
                               </span>
                             </div>
-                            {isGguf && !isGgufFile && isGgufExpanded(m.id) && (
-                              <GgufVariantExpander
-                                repoId={m.id}
-                                onDevice={true}
-                                onSelect={onSelect}
-                                resolveDownloadFootprint={resolveDownloadFootprint}
-                                onConfigure={onConfigure}
-                                parentOptionKey={optionKey}
-                                onNavigatePastStart={() =>
-                                  hubModelList.focusOption(optionKey)
-                                }
-                                onNavigatePastEnd={() =>
-                                  hubModelList.moveFocus(optionKey, "next")
-                                }
-                                gpuGb={expanderGpuGb}
-                                systemRamGb={
-                                  inferenceGpu.systemRamAvailableGb || undefined
-                                }
-                                budgetKnown={inferenceGpu.budgetKnown}
-                              />
-                            )}
                           </div>
                         );
                       })}

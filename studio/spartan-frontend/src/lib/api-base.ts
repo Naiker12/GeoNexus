@@ -13,10 +13,11 @@ function detectTauri(): boolean {
 
 const isTauri = detectTauri()
 
-if (isTauri) {
-  // never connects; real port arrives via server-port
-  apiBase = 'http://127.0.0.1:0'
-}
+// Keep the base relative until Tauri reports a validated server-port. Port zero
+// is deliberately rejected by Chromium as unsafe, which turned early startup
+// probes into noisy `net::ERR_UNSAFE_PORT` errors before the backend was ready.
+// A relative URL works through Vite's development proxy and fails normally (and
+// recoverably) in a packaged webview until the real loopback port arrives.
 
 const initialApiBase = apiBase
 
@@ -25,6 +26,7 @@ export function resetApiBase() {
 }
 
 export function setApiBase(port: number) {
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) return
   apiBase = `http://127.0.0.1:${port}`
 }
 

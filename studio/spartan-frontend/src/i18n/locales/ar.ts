@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const ar = {
   picker: {
+    selectModel: "اختر نموذجًا",
+    invalidModel: "النموذج المحدد غير صالح.",
+    modelLoadFailed: "تعذر تحميل النموذج",
+    modelLoadFailedDescription: "تعذر تحميل النموذج.",
     onDevice: "على الجهاز",
     recommended: "Recommended",
     connected: "Connected",
@@ -2097,4 +2101,3 @@ export const ar = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

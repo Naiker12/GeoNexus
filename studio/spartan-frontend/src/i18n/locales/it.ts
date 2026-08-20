@@ -1392,6 +1392,7 @@ export const it = {
     },
   },
   picker: {
+    selectModel: "Seleziona modello", invalidModel: "Il modello selezionato non è valido.", modelLoadFailed: "Impossibile caricare il modello", modelLoadFailedDescription: "Non è stato possibile caricare il modello.",
     onDevice: "Sul dispositivo",
     recommended: "Recommended",
     connected: "Connected",
@@ -2161,4 +2162,3 @@ export const it = {
     },
   },
 } as const;
-

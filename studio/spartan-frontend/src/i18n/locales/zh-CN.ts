@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const zhCN = {
   picker: {
+    selectModel: "选择模型",
+    invalidModel: "所选模型无效。",
+    modelLoadFailed: "无法加载模型",
+    modelLoadFailedDescription: "无法加载该模型。",
     onDevice: "本机",
     recommended: "Recommended",
     connected: "Connected",
@@ -2022,4 +2026,3 @@ export const zhCN = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

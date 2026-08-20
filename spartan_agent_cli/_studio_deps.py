@@ -152,9 +152,13 @@ def _distributions_in(root: Path) -> Optional[Dict[str, str]]:
 
 def _requirements_root_in(root: Path) -> Optional[Path]:
     for path in _venv_site_packages(root):
-        reqs = path / "studio" / "spartan_backend" / "requirements"
-        if reqs.is_dir():
-            return reqs
+        # Published builds prior to the Spartan rename contain `backend`, while
+        # current source and newer bundles contain `spartan_backend`. The
+        # manifest must be checked against the layout present in the target venv.
+        for package_dir in ("spartan_backend", "backend"):
+            reqs = path / "studio" / package_dir / "requirements"
+            if reqs.is_dir():
+                return reqs
     return None
 
 
@@ -187,12 +191,22 @@ def install_state(extra_roots: Sequence[Path] = ()) -> dict:
     # The requested managed venv is the subject, even though the helper above
     # came from this CLI's own tree.
     root = _managed_root(extra_roots) or _venv_root_for_module(module)
+    if root is None:
+        # An editable CLI may load its manifest from the checkout while it is
+        # itself running inside the managed venv. In that case the checkout has
+        # no pyvenv.cfg to identify, but sys.prefix is still the installation
+        # whose requirements must be checked.
+        running_root = Path(sys.prefix)
+        if (running_root / "pyvenv.cfg").is_file():
+            root = running_root
     foreign = root is not None and _resolved(root) != _resolved(Path(sys.prefix))
     installed = _distributions_in(root) if foreign else None
-    req_root = _requirements_root_in(root) if foreign else None
+    req_root = _requirements_root_in(root) if root is not None else None
     try:
-        if installed is not None and req_root is not None and _supports_foreign_root(module):
-            # That venv's own metadata: unreadable through this interpreter.
+        if req_root is not None and _supports_foreign_root(module):
+            # Use the target venv's bundled requirements. For a foreign venv
+            # its package metadata is unreadable through this interpreter, so
+            # pass the discovered distribution map as well.
             return module.verify_install(root = root, req_root = req_root, installed = installed)
         state = module.verify_install(root = root)
         if foreign and not state["deps_ok"]:

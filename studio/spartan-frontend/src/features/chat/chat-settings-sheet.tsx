@@ -996,12 +996,12 @@ export function ChatSettingsPanel({
       <div className="flex h-[48px] shrink-0 items-start gap-2 bg-panel-surface pl-[18px] pr-[16px] pt-[11px]">
         {isMobile ? (
           <span className="flex h-[34px] flex-1 items-center text-ui-16 font-semibold tracking-[0em] dark:tracking-[0.015em] text-nav-fg">
-            Run settings
+            {t("runSettings.title")}
           </span>
         ) : (
           <>
             <span className="flex h-[34px] flex-1 items-center text-ui-16 font-semibold tracking-[0em] dark:tracking-[0.015em] text-nav-fg">
-              Run settings
+              {t("runSettings.title")}
             </span>
             <Tooltip>
                 <TooltipPrimitive.Trigger asChild={true}>
@@ -1009,7 +1009,7 @@ export function ChatSettingsPanel({
                   type="button"
                   onClick={() => onOpenChange?.(false)}
                   className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full text-nav-icon-idle dark:text-nav-fg-muted transition-colors hover:bg-nav-surface-hover hover:text-black dark:hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="Close run settings"
+                  aria-label={t("runSettings.close")}
                 >
                   <HugeiconsIcon
                     icon={LayoutAlignRightIcon}
@@ -1023,7 +1023,7 @@ export function ChatSettingsPanel({
                 sideOffset={6}
                 className="tooltip-compact"
               >
-                Close run settings
+                {t("runSettings.close")}
               </TooltipContent>
             </Tooltip>
           </>
@@ -1036,7 +1036,7 @@ export function ChatSettingsPanel({
       >
       <div className="px-[18px] pt-3">
         {(hasModelContent || modelConfig) && (
-              <CollapsibleSection label="Model" defaultOpen={true} first={true}>
+              <CollapsibleSection label={t("runSettings.model")} defaultOpen={true} first={true}>
             <div className="flex flex-col gap-3 pt-1">
               {modelConfig}
               {showSpecFallback && (
@@ -1086,7 +1086,7 @@ export function ChatSettingsPanel({
         )}
 
         <CollapsibleSection
-          label="Preset"
+          label={t("runSettings.preset")}
           headerAction={
             <InfoHint>
               Saving a preset also stores current load settings (
@@ -1224,7 +1224,7 @@ export function ChatSettingsPanel({
                     : "No saved override to delete"
                 }
               >
-                Delete
+                {t("runSettings.delete")}
               </Button>
             </div>
           </div>
@@ -1329,7 +1329,7 @@ export function ChatSettingsPanel({
         ) : null}
 
         <CollapsibleSection
-          label="System Prompt"
+          label={t("runSettings.systemPrompt")}
           defaultOpen={true}
           onLabelClick={openSystemPromptEditor}
           headerAction={
@@ -1390,11 +1390,11 @@ export function ChatSettingsPanel({
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection label="Sampling" defaultOpen={true}>
+        <CollapsibleSection label={t("runSettings.sampling")} defaultOpen={true}>
           <div className="flex flex-col gap-5 pt-1">
             {showTemperature ? (
               <ParamSlider
-                label="Temperature"
+                label={t("runSettings.temperature")}
                 value={params.temperature}
                 min={0}
                 max={2}
@@ -1411,7 +1411,7 @@ export function ChatSettingsPanel({
                 max={1}
                 step={0.05}
                 onChange={set("topP")}
-                displayValue={params.topP === 1 ? "Off" : undefined}
+                displayValue={params.topP === 1 ? t("runSettings.off") : undefined}
                 info="Nucleus sampling. Restricts choices to the smallest set of tokens whose cumulative probability reaches this threshold. 1.0 = off."
               />
             ) : null}
@@ -1423,7 +1423,7 @@ export function ChatSettingsPanel({
                 max={100}
                 step={1}
                 onChange={set("topK")}
-                displayValue={params.topK === 0 ? "Off" : undefined}
+                displayValue={params.topK === 0 ? t("runSettings.off") : undefined}
                 info="Limits sampling to the K most likely tokens at each step. 0 = off."
               />
             ) : null}
@@ -1440,14 +1440,14 @@ export function ChatSettingsPanel({
             ) : null}
             {showRepetitionPenalty ? (
               <ParamSlider
-                label="Repetition Penalty"
+                label={t("runSettings.repetitionPenalty")}
                 value={params.repetitionPenalty}
                 min={1}
                 max={2}
                 step={0.05}
                 onChange={set("repetitionPenalty")}
                 displayValue={
-                  params.repetitionPenalty === 1 ? "Off" : undefined
+                  params.repetitionPenalty === 1 ? t("runSettings.off") : undefined
                 }
                 info="Down-weights tokens that have already appeared, reducing repetition. 1.0 = off; higher values penalize more strongly."
               />
@@ -1520,16 +1520,15 @@ export function ChatSettingsPanel({
       >
         <DialogContent className="corner-squircle dialog-soft-surface sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit System Prompt</DialogTitle>
+            <DialogTitle>{t("chat.systemPromptEditor.title")}</DialogTitle>
             <DialogDescription>
-              This prompt is part of the current configuration and saves with
-              the preset.
+              {t("chat.systemPromptEditor.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-0.5 px-0.5">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-ui-11 font-medium">Prompt editor</div>
+                <div className="text-ui-11 font-medium">{t("chat.systemPromptEditor.editor")}</div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -1539,7 +1538,7 @@ export function ChatSettingsPanel({
                   aria-expanded={systemVariablesOpen}
                 >
                   <Braces className="size-3.5" />
-                  Variables
+                  {t("chat.systemPromptEditor.variables")}
                   <ChevronDown
                     className={cn(
                       "size-3.5 transition-transform",
@@ -1549,8 +1548,7 @@ export function ChatSettingsPanel({
                 </Button>
               </div>
               <p className="text-ui-11 text-muted-foreground">
-                Use this for longer edits. Save writes back to the active
-                configuration only. Insert variables with {"{{ env }}"}.
+                {t("chat.systemPromptEditor.editorHelp")}
               </p>
             </div>
             {systemVariablesOpen ? (
@@ -1558,22 +1556,21 @@ export function ChatSettingsPanel({
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="space-y-0.5">
                     <div className="text-ui-11 font-medium">
-                      Prompt variables
+                      {t("chat.systemPromptEditor.variablesTitle")}
                     </div>
                     <p className="text-ui-11 text-muted-foreground">
-                      Define values as JSON below, then use each key in your
-                      prompt, like {"{{ env }}"}.
+                      {t("chat.systemPromptEditor.variablesHelp")}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-ui-10 text-muted-foreground">
-                      Built-in, fill in automatically
+                      {t("chat.systemPromptEditor.builtIn")}
                     </span>
                     <div className="flex flex-wrap justify-end gap-1">
                       {["{{$date}}", "{{$time}}", "{{$now}}"].map((token) => (
                         <span
                           key={token}
-                          title={`${token} is replaced automatically when you send`}
+                          title={t("chat.systemPromptEditor.builtInToken", { token })}
                           className="rounded-full bg-muted px-2 py-0.5 font-mono text-ui-10 text-muted-foreground"
                         >
                           {token}
@@ -1595,7 +1592,7 @@ export function ChatSettingsPanel({
                       "ring-1 ring-destructive focus-visible:ring-destructive",
                   )}
                   rows={5}
-                  aria-label="Prompt variables JSON"
+                  aria-label={t("chat.systemPromptEditor.variablesAria")}
                   aria-invalid={Boolean(systemVariablesError)}
                 />
                 {systemVariablesError ? (
@@ -1604,8 +1601,7 @@ export function ChatSettingsPanel({
                   </p>
                 ) : (
                   <p className="px-1 text-ui-11 text-muted-foreground">
-                    Names you don&apos;t define are left unchanged, so a stray
-                    {" {{ typo }} "}stays visible in the prompt.
+                    {t("chat.systemPromptEditor.undefinedVariableHelp")}
                   </p>
                 )}
               </div>
@@ -1613,7 +1609,7 @@ export function ChatSettingsPanel({
             <Textarea
               value={systemPromptDraft}
               onChange={(event) => setSystemPromptDraft(event.target.value)}
-              placeholder="You are a helpful assistant..."
+              placeholder={t("chat.systemPromptEditor.placeholder")}
               fieldSizing="fixed"
               className="min-h-[20rem] max-h-[48dvh] overflow-y-auto border-0 text-sm leading-6 corner-squircle focus-visible:ring-0"
               rows={14}
@@ -1627,7 +1623,7 @@ export function ChatSettingsPanel({
               disabled={systemPromptDraft.length === 0}
               className="text-muted-foreground"
             >
-              Reset
+              {t("runSettings.reset")}
             </Button>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -1639,7 +1635,7 @@ export function ChatSettingsPanel({
                   setSystemPromptEditorOpen(false);
                 }}
               >
-                Cancel
+              {t("common.cancel")}
               </Button>
               <Button
                 type="button"
@@ -1648,7 +1644,7 @@ export function ChatSettingsPanel({
                   !systemPromptEditorDirty || Boolean(systemVariablesError)
                 }
               >
-                Save
+              {t("runSettings.save")}
               </Button>
             </div>
           </DialogFooter>
@@ -1662,8 +1658,8 @@ export function ChatSettingsPanel({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="right" className="w-[18rem] p-0 font-heading">
           <SheetHeader className="sr-only">
-            <SheetTitle>Run settings</SheetTitle>
-            <SheetDescription>Chat inference settings</SheetDescription>
+            <SheetTitle>{t("runSettings.title")}</SheetTitle>
+            <SheetDescription>{t("chat.systemPromptEditor.settingsDescription")}</SheetDescription>
           </SheetHeader>
           <div data-tour="chat-settings" className="flex h-full flex-col">
             {settingsContent}

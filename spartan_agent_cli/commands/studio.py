@@ -618,17 +618,22 @@ def _find_run_py() -> Optional[Path]:
     Since studio/ is now a proper package (has __init__.py), it lives in
     site-packages after pip install, right next to spartan_agent_cli/.
     """
-    # 1. Relative to __file__ (site-packages or editable repo root)
-    run_py = _PACKAGE_ROOT / "studio" / "backend" / "run.py"
-    if run_py.is_file():
-        return run_py
-    # 2. Unsloth venv's site-packages (Linux + Windows layouts)
-    for pattern in (
-        "lib/python*/site-packages/studio/spartan_backend/run.py",
-        "Lib/site-packages/studio/spartan_backend/run.py",
-    ):
-        for match in (STUDIO_HOME / "unsloth_studio").glob(pattern):
-            return match
+    # 1. Relative to __file__ (site-packages or editable repo root). Prefer
+    # the renamed package so Tauri development launches this checkout rather
+    # than an older managed bundle alongside it.
+    for package_dir in ("spartan_backend", "backend"):
+        run_py = _PACKAGE_ROOT / "studio" / package_dir / "run.py"
+        if run_py.is_file():
+            return run_py
+    # 2. Managed venv's site-packages (Linux + Windows layouts). `backend` is
+    # retained for pre-rename released installations.
+    for package_dir in ("spartan_backend", "backend"):
+        for pattern in (
+            f"lib/python*/site-packages/studio/{package_dir}/run.py",
+            f"Lib/site-packages/studio/{package_dir}/run.py",
+        ):
+            for match in (STUDIO_HOME / "unsloth_studio").glob(pattern):
+                return match
     return None
 
 
@@ -660,7 +665,12 @@ def _load_run_module():
     if run_py is None:
         raise ImportError("Could not find studio/spartan_backend/run.py. Re-run: unsloth studio setup")
 
-    loaded = sys.modules.get("studio.spartan_backend.run")
+    module_name = (
+        "studio.backend.run"
+        if run_py.parent.name == "backend"
+        else "studio.spartan_backend.run"
+    )
+    loaded = sys.modules.get(module_name)
     if loaded is not None:
         # __file__ can be None for namespace packages from partial trees.
         loaded_path = Path(getattr(loaded, "__file__", None) or "").resolve()
@@ -668,15 +678,15 @@ def _load_run_module():
             _RUN_MODULE = loaded
             return _RUN_MODULE
 
-    spec = importlib.util.spec_from_file_location("studio.spartan_backend.run", run_py)
+    spec = importlib.util.spec_from_file_location(module_name, run_py)
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load studio backend from {run_py}")
     module = importlib.util.module_from_spec(spec)
-    sys.modules["studio.spartan_backend.run"] = module
+    sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except Exception:
-        sys.modules.pop("studio.spartan_backend.run", None)
+        sys.modules.pop(module_name, None)
         raise
     _RUN_MODULE = module
     return _RUN_MODULE
@@ -4677,4 +4687,3 @@ def reset_password():
         "Sessions and API keys revoked. A running Unsloth takes it on the next request, "
         "though repeated failed logins can hold the rate limit shut for up to a minute."
     )
-

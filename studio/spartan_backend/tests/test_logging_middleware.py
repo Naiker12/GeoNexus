@@ -167,6 +167,27 @@ def test_mutations_and_errors_are_never_deduped(logs, monkeypatch):
     assert len(logs.events) == 4
 
 
+def test_desktop_compatibility_probe_is_quiet_but_real_login_failures_log(logs):
+    async def send(message):
+        pass
+
+    probe_scope = {
+        **_http_scope("/api/auth/desktop-login", method = "POST"),
+        "headers": [(b"x-spartan-desktop-compat-probe", b"1")],
+    }
+    _run(LoggingMiddleware(_status_app(401))(probe_scope, _noop_receive, send))
+    _run(
+        LoggingMiddleware(_status_app(401))(
+            _http_scope("/api/auth/desktop-login", method = "POST"),
+            _noop_receive,
+            send,
+        )
+    )
+
+    assert len(logs.events) == 1
+    assert logs.events[0][2]["status_code"] == 401
+
+
 def test_quiet_poll_paths_use_longer_heartbeat_window(logs, monkeypatch):
     # Burst dedup off, quiet-poll heartbeat on: only liveness paths collapse.
     monkeypatch.setattr(hmod, "_ACCESS_LOG_DEDUP_MS", 0)

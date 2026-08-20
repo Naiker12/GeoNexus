@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const hi = {
   picker: {
+    selectModel: "मॉडल चुनें",
+    invalidModel: "चुना गया मॉडल मान्य नहीं है।",
+    modelLoadFailed: "मॉडल लोड नहीं हो सका",
+    modelLoadFailedDescription: "मॉडल लोड नहीं किया जा सका।",
     onDevice: "डिवाइस पर",
     recommended: "Recommended",
     connected: "Connected",
@@ -2104,4 +2108,3 @@ export const hi = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

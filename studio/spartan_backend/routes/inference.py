@@ -7319,7 +7319,6 @@ def _guard_chat_load_against_training(
     Other loads raise HTTP 409 when they would not fit beside training.
     """
     from core.training import get_training_backend
-    from routes.training_vram import can_load_chat_during_training
 
     requested_gpu_ids = placement.requested_gpu_ids
     gpu_ids_are_vulkan_ordinals = placement.gpu_ids_are_vulkan_ordinals
@@ -7343,6 +7342,12 @@ def _guard_chat_load_against_training(
                 ),
             )
         return
+
+    # This guard is only needed while a training job is actually resident.  Keep
+    # its optional VRAM-policy dependency off the normal inference-validation
+    # path, otherwise a missing policy module rejects perfectly valid local
+    # GGUF models even when no training is running.
+    from routes.training_vram import can_load_chat_during_training
 
     from core.inference.llama_cpp import _diffusion_manual_ngl, _scale_diffusion_required_gb
 
@@ -24699,4 +24704,3 @@ async def openai_image_generations(
         raise HTTPException(status_code = 500, detail = "Failed to save the generated image.")
 
     return ImageGenerationResponse(created = created, data = data)
-

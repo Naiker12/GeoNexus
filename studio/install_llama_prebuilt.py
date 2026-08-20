@@ -53,7 +53,7 @@ if _STUDIO_DIR not in sys.path:
     sys.path.insert(0, _STUDIO_DIR)
 
 import prebuilt_core as _core  # noqa: E402
-from backend.utils.prebuilt.llama_backend import (  # noqa: E402
+from spartan_backend.utils.prebuilt.llama_backend import (  # noqa: E402
     INSTALL_KIND_BACKENDS,
     REQUESTABLE_BACKENDS,
     backend_for_install_kind,

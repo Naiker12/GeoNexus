@@ -4,6 +4,7 @@
 import { mlxRuntimeStateFrom } from "../lib/mlx-runtime-state";
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/lib/toast";
+import { useT } from "@/i18n";
 import { subscribeModelLifecycle } from "@/lib/model-lifecycle-events";
 import { confirmRemoteCodeIfNeeded } from "@/features/security";
 import { defaultInferenceParams } from "../presets/preset-policy";
@@ -515,6 +516,7 @@ function pickOf(info: {
 }
 
 export function useChatModelRuntime() {
+  const t = useT();
   const params = useChatRuntimeStore((state) => state.params);
   const models = useChatRuntimeStore((state) => state.models);
   const loras = useChatRuntimeStore((state) => state.loras);
@@ -2249,14 +2251,24 @@ export function useChatModelRuntime() {
           }).catch(() => undefined);
         } catch (err) {
           if (!abortCtrl.signal.aborted) {
+            const rawMessage =
+              err instanceof Error
+                ? err.message
+                : t("picker.modelLoadFailedDescription");
+            // The API intentionally keeps unexpected errors generic. Translate
+            // that generic fallback here while leaving actionable backend details
+            // intact in the toast description.
             const message =
-              err instanceof Error ? err.message : "Failed to load model";
+              rawMessage.trim() === "Invalid model"
+                ? t("picker.invalidModel")
+                : rawMessage;
+            const title = t("picker.modelLoadFailed");
             if (loadToastDismissedRef.current) {
-              toast.error(message);
+              toast.error(title, { description: message });
             } else {
-              toast.error(message, {
+              toast.error(title, {
                 id: toastId,
-                description: undefined,
+                description: message,
                 cancel: undefined,
                 classNames: undefined,
                 closeButton: true,
@@ -2266,8 +2278,11 @@ export function useChatModelRuntime() {
             }
             notifyNative({
               key: `model-load-failed:${notificationModelKey}`,
-              title: "Model failed to load",
-              body: sanitizeNotificationBody(message, "The model failed to load."),
+              title,
+              body: sanitizeNotificationBody(
+                message,
+                t("picker.modelLoadFailedDescription"),
+              ),
               requestPermission: false,
             }).catch(() => undefined);
           }
@@ -2283,8 +2298,14 @@ export function useChatModelRuntime() {
         restorePreviousConfig();
         if (abortCtrl.signal.aborted) return; // User cancelled, nothing to report
         resetLoadingUi();
+        const rawMessage =
+          error instanceof Error
+            ? error.message
+            : t("picker.modelLoadFailedDescription");
         const message =
-          error instanceof Error ? error.message : "Failed to load model";
+          rawMessage.trim() === "Invalid model"
+            ? t("picker.invalidModel")
+            : rawMessage;
         setModelsError(message);
         setLastModelLoadError(message); // load-specific failure for the attach gates
         if (throwOnError) {
@@ -2304,6 +2325,7 @@ export function useChatModelRuntime() {
       setModelsError,
       setLastModelLoadError,
       setParams,
+      t,
     ],
   );
 

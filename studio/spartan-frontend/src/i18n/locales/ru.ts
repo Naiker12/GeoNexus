@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const ru = {
   picker: {
+    selectModel: "Выбрать модель",
+    invalidModel: "Выбранная модель недействительна.",
+    modelLoadFailed: "Не удалось загрузить модель",
+    modelLoadFailedDescription: "Не удалось загрузить модель.",
     onDevice: "На устройстве",
     recommended: "Recommended",
     connected: "Connected",
@@ -2123,4 +2127,3 @@ export const ru = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

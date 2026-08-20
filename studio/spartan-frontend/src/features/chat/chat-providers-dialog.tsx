@@ -72,6 +72,7 @@ import {
   toExternalBackendProviderType,
 } from "./external-providers";
 import { useExternalProvidersStore } from "./stores/external-providers-store";
+import { useT } from "@/i18n";
 import {
   pruneProviderModelIds,
   syncExternalProvidersFromBackend,
@@ -281,9 +282,42 @@ export function ChatProvidersSettings({
         ? "Full catalog is not fetched for this connection"
         : missingModelCatalogBaseUrl
           ? "Enter a Base URL before loading models"
-          : missingModelCatalogApiKey
-            ? "Enter an API key before loading models"
-            : undefined;
+            : missingModelCatalogApiKey
+              ? "Enter an API key before loading models"
+              : undefined;
+  const manualTestModelId =
+    parseManualModelIds(manualModelIds)[0] ?? selectedModelIds[0] ?? null;
+  const requiresConnectionTestAction =
+    isCuratedModelList ||
+    (isCustomProvider && !supportsRemoteModelCatalog(providerType)) ||
+    availableModels.length === 0;
+  const testAndPrepareModelsDisabled =
+    modelsLoading ||
+    mutatingProvider ||
+    !providerType ||
+    usesOAuth ||
+    (!isCustomProvider &&
+      !apiKey.trim() &&
+      !(editingProviderHasSavedKey && !clearApiKeyRequested)) ||
+    (isCustomProvider &&
+      (missingModelCatalogBaseUrl ||
+        (!supportsRemoteModelCatalog(providerType) && !manualTestModelId)));
+  const testAndPrepareModelsTitle =
+    !providerType
+      ? "Choose a connection first"
+      : usesOAuth
+        ? "Connect your ChatGPT subscription first"
+        : !isCustomProvider &&
+            !apiKey.trim() &&
+            !(editingProviderHasSavedKey && !clearApiKeyRequested)
+          ? "Enter an API key before testing"
+          : missingModelCatalogBaseUrl
+            ? "Enter a Base URL before testing"
+            : isCustomProvider &&
+                !supportsRemoteModelCatalog(providerType) &&
+                !manualTestModelId
+              ? "Enter a model ID before testing this connection"
+              : undefined;
   const filteredAvailableModels = useMemo(() => {
     const query = modelSearchQuery.trim().toLowerCase();
     if (!query) {
@@ -603,6 +637,73 @@ export function ChatProvidersSettings({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Could not load models: ${message}`);
+    } finally {
+      setModelsLoading(false);
+    }
+  }
+
+  async function testAndPrepareModels() {
+    if (!providerType) {
+      toast.error("Choose a connection first.");
+      return;
+    }
+
+    // A remote model listing proves authentication and endpoint reachability,
+    // so it is the single request for ordinary providers. Calling /test first
+    // would repeat the same catalog request and consume quota unnecessarily.
+    if (
+      !isCuratedModelList &&
+      !(isCustomProvider && !supportsRemoteModelCatalog(providerType))
+    ) {
+      await loadModels();
+      return;
+    }
+
+    if (!isCustomProvider && !apiKey.trim() && !editingProviderHasSavedKey) {
+      toast.error("Add an API key first.");
+      return;
+    }
+    if (isCustomProvider && !manualTestModelId) {
+      toast.error("Add a model ID before testing this connection.");
+      return;
+    }
+
+    setModelsLoading(true);
+    try {
+      const baseUrl = parseBaseUrlForProvider(
+        baseUrlDraft,
+        isCustomProvider,
+        providerType,
+      );
+      const result = await testProviderConnection({
+        providerType:
+          toExternalBackendProviderType(providerType) ?? providerType,
+        providerId: editingProviderId,
+        apiKey: apiKey.trim(),
+        baseUrl,
+        modelId: isCustomProvider ? manualTestModelId : null,
+      });
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      // Curated providers deliberately avoid a full remote listing. Their
+      // registry defaults are the selectable catalog after a successful test.
+      if (isCuratedModelList) {
+        const modelIds = pruneProviderModelIds(
+          providerType,
+          registryByType.get(providerType)?.default_models ?? [],
+        );
+        setAvailableModels(modelIds);
+        setSelectedModelIds((previous) =>
+          previous.filter((id) => modelIds.includes(id)),
+        );
+      }
+      toast.success(result.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Test failed: ${message}`);
     } finally {
       setModelsLoading(false);
     }
@@ -1487,19 +1588,36 @@ export function ChatProvidersSettings({
                         ? "h-7 shrink-0 border-transparent bg-transparent px-2 text-xs text-muted-foreground shadow-none hover:bg-muted/45 hover:text-foreground"
                         : "h-8 shrink-0 px-3"
                     }
-                    disabled={loadModelsDisabled}
-                    title={loadModelsTitle}
-                    onClick={() => void loadModels()}
+                    disabled={
+                      requiresConnectionTestAction
+                        ? testAndPrepareModelsDisabled
+                        : loadModelsDisabled
+                    }
+                    title={
+                      requiresConnectionTestAction
+                        ? testAndPrepareModelsTitle
+                        : loadModelsTitle
+                    }
+                    onClick={() =>
+                      void (
+                        requiresConnectionTestAction
+                          ? testAndPrepareModels()
+                          : loadModels()
+                      )
+                    }
                   >
                     {modelsLoading ? (
                       <>
                         <Spinner className="mr-2 size-3.5" />
                         Loading…
                       </>
-                    ) : availableModels.length > 0 ? (
+                    ) : !requiresConnectionTestAction ? (
                       "Reload models"
+                    ) : isCustomProvider &&
+                      !supportsRemoteModelCatalog(providerType) ? (
+                      "Test connection"
                     ) : (
-                      "Load available models"
+                      "Test and load models"
                     )}
                   </Button>
                 </div>
@@ -1926,6 +2044,7 @@ export function ChatProvidersDialog({
   providers,
   onProvidersChange,
 }: ChatProvidersDialogProps) {
+  const t = useT();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -1933,9 +2052,9 @@ export function ChatProvidersDialog({
         className="flex max-h-[90dvh] w-[96vw] flex-col gap-0 overflow-y-auto p-8 sm:max-w-none md:max-w-[44rem]"
       >
         <DialogHeader className="sr-only">
-          <DialogTitle>Connections</DialogTitle>
+          <DialogTitle>{t("chat.providersDialog.title")}</DialogTitle>
           <DialogDescription>
-            Manage model connections for chat.
+            {t("chat.providersDialog.description")}
           </DialogDescription>
         </DialogHeader>
         <ChatProvidersSettings

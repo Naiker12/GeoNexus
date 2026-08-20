@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const ko = {
   picker: {
+    selectModel: "모델 선택",
+    invalidModel: "선택한 모델이 올바르지 않습니다.",
+    modelLoadFailed: "모델을 불러올 수 없습니다",
+    modelLoadFailedDescription: "모델을 불러오지 못했습니다.",
     onDevice: "기기",
     recommended: "Recommended",
     connected: "Connected",
@@ -2096,4 +2100,3 @@ export const ko = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

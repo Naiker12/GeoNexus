@@ -238,12 +238,14 @@ def ensure_managed_environment_is_idle(studio_home: Path) -> None:
     venv = studio_home / "unsloth_studio"
     protected_root = _canonical_windows_path(venv)
     # Not gated on exists(): a shim renamed out of the way mid-update still runs.
+    # During the Spartan rename, installations may expose any of these console
+    # shims. They all launch this CLI, so each must be recognised as our direct
+    # ancestor; otherwise `spartan studio update` mistakes its own shim for a
+    # live consumer and can never repair an incomplete installation.
     protected_files = {
-        _canonical_windows_path(candidate)
-        for candidate in (
-            venv / "Scripts" / "unsloth.exe",
-            studio_home / "bin" / "unsloth.exe",
-        )
+        _canonical_windows_path(directory / executable)
+        for directory in (venv / "Scripts", studio_home / "bin")
+        for executable in ("unsloth.exe", "spartan.exe", "spartan-agent.exe")
     }
 
     script = (

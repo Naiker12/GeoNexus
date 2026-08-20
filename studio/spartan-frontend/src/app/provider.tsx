@@ -75,6 +75,8 @@ type TauriMonitor = NonNullable<
 
 // Keep in step with MOBILE_BREAKPOINT in hooks/use-mobile.ts.
 const MIN_DESKTOP_LAYOUT_WIDTH = 768;
+const DESKTOP_AUTH_RETRY_DELAY_MS = 500;
+const MAX_DESKTOP_AUTH_NOT_READY_RETRIES = 3;
 
 // Logical px per CSS px: webview zoom above the display scale (Windows text
 // scaling); 1 if none.
@@ -630,8 +632,55 @@ function TauriWrapper({ children }: { children: ReactNode }) {
   }, [status, windowRevealRevision]);
 
   useEffect(() => {
-    setDesktopAuthReady(true);
-  }, []);
+    if (!isTauri) {
+      setDesktopAuthReady(true);
+      return;
+    }
+    if (status !== "running") {
+      setDesktopAuthReady(false);
+      if (desktopAuthRetry !== 0) setDesktopAuthRetry(0);
+      return;
+    }
+
+    let active = true;
+    let retryTimer: number | undefined;
+    setDesktopAuthReady(false);
+    // A desktop restart may have rotated the local credential while browser
+    // storage still holds a JWT from the previous backend. Always exchange the
+    // desktop secret here instead of trusting that cached token; otherwise the
+    // credential bootstrap can wait on requests made with an obsolete session.
+    void tauriAutoAuth({ force: true }).then((authenticated) => {
+      if (!active) return;
+      if (authenticated) {
+        setDesktopAuthReady(true);
+        return;
+      }
+
+      // A validated server normally authenticates immediately. A short retry
+      // covers the small interval between its port handoff and the auth route
+      // becoming usable; after that, surface an actionable error instead of
+      // leaving the startup screen spinning forever.
+      if (!getTauriAuthFailure() && desktopAuthRetry < MAX_DESKTOP_AUTH_NOT_READY_RETRIES) {
+        retryTimer = window.setTimeout(
+          () => setDesktopAuthRetry((attempt) => attempt + 1),
+          DESKTOP_AUTH_RETRY_DELAY_MS,
+        );
+        return;
+      }
+      if (!getTauriAuthFailure()) {
+        window.dispatchEvent(
+          new CustomEvent("tauri-auth-failed", {
+            detail: "Desktop authentication did not become ready. Restart Spartan Agent and try again.",
+          }),
+        );
+      }
+    });
+
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+    };
+  }, [status, desktopAuthRetry]);
 
   useEffect(() => {
     if (!isTauri || status !== "running" || !desktopAuthReady) return;

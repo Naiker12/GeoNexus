@@ -6,6 +6,10 @@ import type { en } from "./en";
 
 export const fr = {
   picker: {
+    selectModel: "Sélectionner un modèle",
+    invalidModel: "Le modèle sélectionné n'est pas valide.",
+    modelLoadFailed: "Impossible de charger le modèle",
+    modelLoadFailedDescription: "Le modèle n'a pas pu être chargé.",
     onDevice: "Sur l'appareil",
     recommended: "Recommended",
     connected: "Connected",
@@ -2172,4 +2176,3 @@ export const fr = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

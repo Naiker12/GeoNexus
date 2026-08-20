@@ -823,7 +823,7 @@ export function ModelSelector({
         triggerLabelClassName={triggerLabelClassName}
         dataTour={triggerDataTour}
         onEject={onEject ? handleEject : undefined}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t("picker.selectModel")}
       />
       <ModelSelectorContent
         open={open}

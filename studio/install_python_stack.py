@@ -26,21 +26,27 @@ import textwrap
 import urllib.request
 from pathlib import Path
 
-_BACKEND_DIR = Path(__file__).resolve().parent / "backend"
+_STUDIO_DIR = Path(__file__).resolve().parent
+if str(_STUDIO_DIR) not in sys.path:
+    sys.path.insert(1, str(_STUDIO_DIR))
+_BACKEND_DIR = _STUDIO_DIR / "spartan_backend"
 if str(_BACKEND_DIR) not in sys.path:
+    # Some backend modules still use their historical top-level `utils.*`
+    # imports. Keep this compatibility path while importing the package by its
+    # renamed public name below.
     sys.path.insert(1, str(_BACKEND_DIR))
 
 # setup.sh/setup.ps1 invoke this by path, so its directory is sys.path[0].
 import install_manifest  # noqa: E402
 
-from backend.utils.wheel_utils import (
+from spartan_backend.utils.wheel_utils import (
     flash_attn_package_version,
     flash_attn_wheel_url,
     install_wheel,
     probe_torch_wheel_env,
     url_exists,
 )
-from backend.utils.uv_path_safety import uv_safe_path as _uv_safe_path
+from spartan_backend.utils.uv_path_safety import uv_safe_path as _uv_safe_path
 
 IS_WINDOWS = sys.platform == "win32"
 IS_MACOS = sys.platform == "darwin"
@@ -3312,7 +3318,7 @@ def _ensure_rocm_torch() -> None:
             )
 
 
-# _uv_safe_path is imported from backend.utils.uv_path_safety (shared with mlx_repair).
+# _uv_safe_path is imported from spartan_backend.utils.uv_path_safety (shared with mlx_repair).
 
 
 def _windows_hidden_subprocess_kwargs() -> dict[str, object]:
@@ -3426,13 +3432,13 @@ _PROGRESS_LINE_ACTIVE: bool = False
 
 # -- Paths --------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-REQ_ROOT = SCRIPT_DIR / "backend" / "requirements"
+REQ_ROOT = SCRIPT_DIR / "spartan_backend" / "requirements"
 SINGLE_ENV = REQ_ROOT / "single-env"
 CONSTRAINTS = SINGLE_ENV / "constraints.txt"
 LOCAL_DD_UNSTRUCTURED_PLUGIN = (
-    SCRIPT_DIR / "backend" / "plugins" / "data-designer-unstructured-seed"
+    SCRIPT_DIR / "spartan_backend" / "plugins" / "data-designer-unstructured-seed"
 )
-LOCAL_DD_GITHUB_PLUGIN = SCRIPT_DIR / "backend" / "plugins" / "data-designer-github-repo-seed"
+LOCAL_DD_GITHUB_PLUGIN = SCRIPT_DIR / "spartan_backend" / "plugins" / "data-designer-github-repo-seed"
 
 # Apple Silicon: override mlx-vlm/mlx-lm's transformers pin (see overrides).
 # _uv_safe_path: uv truncates UV_OVERRIDE at the first space too (issue #6503).

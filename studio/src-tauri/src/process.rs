@@ -1403,6 +1403,23 @@ pub fn find_unsloth_binary() -> Option<std::path::PathBuf> {
 pub(crate) const WINDOWS_CLI_ENTRYPOINT: &str =
     "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())";
 
+/// The local checkout's Windows venv often has an interpreter but no generated
+/// console-script wrapper. In a debug desktop build that is still a valid
+/// backend: the trampoline uses the interpreter beside the expected wrapper and
+/// explicitly imports the checkout, without requiring an editable pip install.
+#[cfg(all(windows, debug_assertions))]
+fn local_dev_repo_root_for_bin(bin: &std::path::Path) -> Option<std::path::PathBuf> {
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let repo_root = manifest_dir.parent()?.parent()?;
+    let dev_bin = repo_root.join(".venv/Scripts/unsloth.exe");
+    let dev_python = repo_root.join(".venv/Scripts/python.exe");
+    if bin == dev_bin && dev_python.is_file() && repo_root.join("spartan_agent_cli").is_dir() {
+        Some(repo_root.to_path_buf())
+    } else {
+        None
+    }
+}
+
 /// The program and argument vector that run the managed CLI without executing
 /// `bin` itself. On non-Windows platforms `bin` is a plain script with a
 /// shebang and stays the program.
@@ -1469,9 +1486,22 @@ pub(crate) fn resolve_managed_cli_invocation_with(
         // console script's.
         // -X utf8 before -I: -I implies -E, which would discard PYTHONUTF8, and the
         // flag form survives it.
+        let mut entrypoint = WINDOWS_CLI_ENTRYPOINT.to_string();
+        #[cfg(all(windows, debug_assertions))]
+        if let Some(repo_root) = local_dev_repo_root_for_bin(bin) {
+            // JSON string syntax is valid Python syntax too, including for paths
+            // with spaces, backslashes, or non-ASCII characters.
+            let source_root = serde_json::to_string(&repo_root.to_string_lossy())
+                .map_err(|error| format!("Could not encode local development path: {error}"))?;
+            entrypoint = entrypoint.replacen(
+                "from spartan_agent_cli",
+                &format!("sys.path.insert(0, {source_root}); from spartan_agent_cli"),
+                1,
+            );
+        }
         let mut argv: Vec<std::ffi::OsString> = match isolation {
-            Isolation::Inherit => vec!["-X", "utf8", "-c", WINDOWS_CLI_ENTRYPOINT],
-            Isolation::Isolated => vec!["-X", "utf8", "-I", "-c", WINDOWS_CLI_ENTRYPOINT],
+            Isolation::Inherit => vec!["-X", "utf8", "-c", entrypoint.as_str()],
+            Isolation::Isolated => vec!["-X", "utf8", "-I", "-c", entrypoint.as_str()],
         }
         .into_iter()
         .map(std::ffi::OsString::from)
@@ -3013,12 +3043,11 @@ pub(crate) fn resolve_backend_binary() -> Result<std::path::PathBuf, String> {
     // In dev mode, check for local repo venv first
     #[cfg(debug_assertions)]
     {
-        // CARGO_MANIFEST_DIR is set at compile time to studio/src-tauri/
-        // Repo root is 2 levels up: studio/src-tauri -> studio -> repo_root
+        // CARGO_MANIFEST_DIR is set at compile time to studio/src-tauri/.
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
         let repo_root = std::path::Path::new(manifest_dir)
-            .parent() // studio/
-            .and_then(|p| p.parent()); // repo_root/
+            .parent()
+            .and_then(|path| path.parent());
 
         if let Some(root) = repo_root {
             #[cfg(unix)]
@@ -3026,9 +3055,23 @@ pub(crate) fn resolve_backend_binary() -> Result<std::path::PathBuf, String> {
             #[cfg(windows)]
             let dev_bin = root.join(".venv/Scripts/unsloth.exe");
 
+            #[cfg(windows)]
+            let dev_python = root.join(".venv/Scripts/python.exe");
+
             if dev_bin.exists() {
                 info!("Dev mode: using local repo backend at {:?}", dev_bin);
                 return Ok(dev_bin.to_path_buf());
+            }
+            #[cfg(windows)]
+            if dev_python.is_file() && root.join("spartan_agent_cli").is_dir() {
+                // resolve_managed_cli_invocation deliberately runs the sibling
+                // interpreter instead of this generated wrapper. Returning its
+                // expected path therefore works even when pip has not created it.
+                info!(
+                    "Dev mode: using local repo backend through {:?}",
+                    dev_python
+                );
+                return Ok(dev_bin);
             }
         }
         info!("Dev mode: no local .venv found, falling back to installed backend");

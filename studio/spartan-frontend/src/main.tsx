@@ -46,4 +46,9 @@ if (typeof localeInitialization !== "string") {
   renderApp();
 }
 
-fetchDeviceType().catch(() => undefined);
+// Tauri receives its loopback port asynchronously. TauriWrapper performs this
+// fetch after the validated `server-port` event, so an eager request here would
+// only hit Vite's proxy before the backend exists during development.
+if (!isTauri) {
+  fetchDeviceType().catch(() => undefined);
+}

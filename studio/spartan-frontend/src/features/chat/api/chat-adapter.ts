@@ -33,6 +33,7 @@ import {
   sandboxSessionIdFor,
 } from "@/components/assistant-ui/sandbox-files";
 import { apiUrl } from "@/lib/api-base";
+import { getLocale } from "@/i18n";
 import { parseParamCountB } from "@/lib/model-size";
 import { createLoadingToastIcon, toast } from "@/lib/toast";
 import { notifyPromptQueueRunFailed } from "../utils/prompt-queue-boundary";
@@ -1588,6 +1589,7 @@ export async function buildOutboundMessagesForTokenCount(
       ? `<project_instructions>\n${projectInstructions}\n</project_instructions>`
       : "",
     safeSystemPrompt.trim(),
+    defaultResponseLanguageInstruction(),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -1790,6 +1792,31 @@ async function resolveProjectInstructions(
   return project.instructions?.trim() ?? "";
 }
 
+const RESPONSE_LANGUAGE_BY_LOCALE = {
+  en: "English",
+  "zh-CN": "Simplified Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  es: "Spanish",
+  "pt-BR": "Brazilian Portuguese",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  ru: "Russian",
+  hi: "Hindi",
+  ar: "Arabic",
+} as const;
+
+/** Keep the model's default answer language aligned with the UI language.
+ * An explicit request in the conversation or a project/system instruction wins. */
+function defaultResponseLanguageInstruction(): string {
+  const language = RESPONSE_LANGUAGE_BY_LOCALE[getLocale()];
+  return [
+    `Default to replying in ${language}.`,
+    "Follow an explicit language requested by the user or existing system/project instructions instead.",
+  ].join(" ");
+}
+
 async function resolveChatInstructions(
   threadId: string | undefined,
   systemPrompt: unknown,
@@ -1807,11 +1834,13 @@ async function resolveChatInstructions(
     threadId,
     readThreadRecord,
   );
+  const responseLanguageInstruction = defaultResponseLanguageInstruction();
   return [
     projectInstructions
       ? `<project_instructions>\n${projectInstructions}\n</project_instructions>`
       : "",
     safeSystemPrompt.trim(),
+    responseLanguageInstruction,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -5493,6 +5522,12 @@ export function createOpenAIStreamAdapter(
             temperature: params.temperature,
             top_p: params.topP,
             max_tokens: params.maxTokens,
+            // A local model can have a large native window but a smaller context
+            // that fits in the current GPU. Keep the conversation usable once it
+            // reaches that real limit: the backend retains the instructions,
+            // task anchor and recent turns, then retries within the window.
+            // This is local-only; external providers keep their own policies.
+            context_overflow: "truncate_middle",
             top_k: params.topK,
             min_p: params.minP,
             repetition_penalty: params.repetitionPenalty,

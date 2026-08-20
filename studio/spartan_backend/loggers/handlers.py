@@ -158,6 +158,8 @@ _QUIET_SUCCESS_PATHS = {
 # The token-refresh route. Its first 2xx means the client has obtained a valid
 # session, so from then on chat 401s are real failures and must stay visible.
 _AUTH_REFRESH_PATH = "/api/auth/refresh"
+_DESKTOP_COMPAT_PROBE_PATH = "/api/auth/desktop-login"
+_DESKTOP_COMPAT_PROBE_HEADER = b"x-spartan-desktop-compat-probe"
 # High-frequency chat list polls; their 2xx is covered by generation/tool-call/stats
 # events. Exact paths only, so detail/message reads (/threads/{id}, .../messages,
 # /projects/{id}) keep their logs. The pre-auth 401 race also fires on these polls.
@@ -195,6 +197,23 @@ def _is_quiet_success(method: str, path: str, status_code: int, pre_auth: bool) 
     if 200 <= status_code < 300:
         return path in _QUIET_SUCCESS_PATHS or path in _CHAT_LIST_PATHS
     return pre_auth and status_code == 401 and path in _CHAT_LIST_PATHS
+
+
+def _is_desktop_compat_probe(scope: Scope) -> bool:
+    """True only for the desktop's intentional invalid-secret compatibility probe.
+
+    The request checks whether a local backend implements desktop authentication;
+    a 401 is its expected success condition. The explicit header means genuine
+    desktop-login failures remain visible in the access log.
+    """
+    return (
+        scope["method"] == "POST"
+        and scope["path"] == _DESKTOP_COMPAT_PROBE_PATH
+        and any(
+            name.lower() == _DESKTOP_COMPAT_PROBE_HEADER and value == b"1"
+            for name, value in scope.get("headers", [])
+        )
+    )
 
 
 # An unhandled request exception is logged twice: once here as a structured
@@ -329,6 +348,7 @@ class LoggingMiddleware:
                 self._auth_refreshed = True
             if (
                 not excluded
+                and not _is_desktop_compat_probe(scope)
                 and not _is_quiet_success(
                     scope["method"], path, status_code, not self._auth_refreshed
                 )

@@ -7,6 +7,10 @@ import type { en } from "./en";
 
 export const ja = {
   picker: {
+    selectModel: "モデルを選択",
+    invalidModel: "選択したモデルは無効です。",
+    modelLoadFailed: "モデルを読み込めませんでした",
+    modelLoadFailedDescription: "モデルを読み込めませんでした。",
     onDevice: "デバイス上",
     recommended: "Recommended",
     connected: "Connected",
@@ -2051,4 +2055,3 @@ export const ja = {
     },
   },
 } satisfies DeepPartialMessageTree<typeof en>;
-

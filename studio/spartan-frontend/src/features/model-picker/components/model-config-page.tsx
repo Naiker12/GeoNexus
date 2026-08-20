@@ -14,6 +14,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { usePlatformStore } from "@/config/env";
+import { useT } from "@/i18n";
 import {
   GPU_LAYERS_AUTO,
   fetchGgufStagedMetadata,
@@ -811,11 +812,12 @@ function AdvancedSettingsToggle({
   checked: boolean;
   onCheckedChange: (next: boolean) => void;
 }) {
+  const t = useT();
   return (
     <div className={ROW_CLASS}>
       <div className="flex min-w-0 items-center gap-1.5">
         <span className="min-w-0 text-ui-13 font-medium leading-[1.25] tracking-nav text-muted-foreground">
-          Advanced settings
+          {t("runSettings.advancedSettings")}
         </span>
         <InfoHint>
           Extra options for how the model loads. Most setups don't need these.
@@ -825,7 +827,7 @@ function AdvancedSettingsToggle({
         className="panel-switch shrink-0"
         checked={checked}
         onCheckedChange={onCheckedChange}
-        aria-label="Show advanced settings"
+        aria-label={t("runSettings.advancedSettings")}
       />
     </div>
   );
@@ -1450,6 +1452,7 @@ export function ModelConfigPage({
   variant = "page",
   showHeader = true,
 }: ModelConfigPageProps) {
+  const t = useT();
   const rememberId = useId();
   const platformDeviceType = usePlatformStore((s) => s.deviceType);
   // Unified memory, not just Darwin: an Intel Mac spills to system RAM like a PC.
@@ -2063,8 +2066,8 @@ export function ModelConfigPage({
       ? "Save settings"
       : "Forget settings"
     : isActiveModel
-      ? "Reload model"
-      : "Load model";
+    ? t("runSettings.reloadModel")
+      : t("runSettings.loadModel");
 
   const handleRun = () => {
     if (budgetSettling) {
@@ -2276,7 +2279,7 @@ export function ModelConfigPage({
             <div className="space-y-3">
               <div className={ROW_CLASS}>
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className={LABEL_CLASS}>Context Length</span>
+                  <span className={LABEL_CLASS}>{t("runSettings.contextLength")}</span>
                   <InfoHint>
                     Tokens of context to allocate. Higher uses more VRAM.
                     {nativeContextLength != null
@@ -2298,7 +2301,7 @@ export function ModelConfigPage({
                       ? "Auto"
                       : undefined
                   }
-                  ariaLabel="Context Length"
+                  ariaLabel={t("runSettings.contextLength")}
                   className={NUMBER_INPUT_CLASS}
                   size={8}
                 />
@@ -2311,7 +2314,7 @@ export function ModelConfigPage({
                   value={[contextValue]}
                   onValueChange={([v]) => setContextLength(v)}
                   className="panel-slider"
-                  aria-label="Context Length"
+                  aria-label={t("runSettings.contextLength")}
                 />
               ) : null}
               <p className="text-ui-11 leading-relaxed text-muted-foreground">
@@ -2411,7 +2414,7 @@ export function ModelConfigPage({
             htmlFor={rememberId}
             className="cursor-pointer select-none truncate text-ui-13 text-nav-fg"
           >
-            Remember for this model
+            {t("runSettings.rememberForModel")}
           </label>
         </div>
         <div
@@ -2437,7 +2440,7 @@ export function ModelConfigPage({
               })
             }
           >
-            Reset
+            {t("runSettings.reset")}
           </Button>
           <Button
             type="button"

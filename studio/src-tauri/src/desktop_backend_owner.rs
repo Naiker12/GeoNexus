@@ -1,4 +1,4 @@
-use log::warn;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
@@ -893,13 +893,21 @@ async fn desktop_login_route_compatible(port: u16, timeout: Duration) -> bool {
     };
     match client
         .post(format!("http://127.0.0.1:{port}/api/auth/desktop-login"))
+        .header("x-spartan-desktop-compat-probe", "1")
         .json(&DesktopLoginPayload {
             secret: "desktop-owner-adoption-invalid-secret",
         })
         .send()
         .await
     {
-        Ok(response) => response.status() == reqwest::StatusCode::UNAUTHORIZED,
+        Ok(response) => {
+            let status = response.status();
+            // Drain the short error body before releasing the connection. On
+            // Windows' Proactor event loop, dropping it immediately can reset
+            // the peer socket and emit a noisy WinError 10054 traceback.
+            let _ = response.bytes().await;
+            status == reqwest::StatusCode::UNAUTHORIZED
+        }
         Err(_) => false,
     }
 }
@@ -961,22 +969,44 @@ pub(crate) async fn probe_owned_backend_state_with_timeout(
         Some(port) => vec![port],
         None => desktop_candidate_ports().collect(),
     };
-    let mut verified = Vec::new();
-    // Set only by a complete, parsed answer that names someone else. A transport error or a
-    // non-success status leaves it alone, so silence never reads as a takeover.
-    let mut answered_with_a_different_owner = false;
+    // Liveness reads are side-effect free. Probe the whole fallback range in
+    // parallel so closed or filtered loopback ports do not add one full timeout
+    // each to desktop startup. Ownership login remains sequential below, and
+    // only runs for a port that returned valid liveness metadata.
+    let mut liveness_tasks = Vec::with_capacity(ports.len());
     for port in ports {
-        let liveness = match fetch_liveness(port, timeout).await {
-            Ok(Some(liveness)) => liveness,
-            Ok(None) => continue,
-            Err(error) => {
+        liveness_tasks.push(tokio::spawn(async move {
+            (port, fetch_liveness(port, timeout).await)
+        }));
+    }
+    let mut live_ports = Vec::new();
+    for task in liveness_tasks {
+        match task.await {
+            Ok((port, Ok(Some(liveness)))) => live_ports.push((port, liveness)),
+            Ok((_port, Ok(None))) => {}
+            Ok((port, Err(error))) if error.is_connect() => {
+                // No listener is the expected state for almost every port in
+                // the desktop fallback range; it is not a warning.
+                debug!("Desktop-owned backend probe found no listener on port {port}");
+            }
+            Ok((port, Err(error))) => {
                 warn!(
                     "Desktop-owned backend probe skipped port {} after liveness error: {}",
                     port, error
                 );
-                continue;
             }
-        };
+            Err(error) => {
+                warn!("Desktop-owned backend liveness task failed: {}", error);
+            }
+        }
+    }
+    live_ports.sort_by_key(|(port, _)| *port);
+
+    let mut verified = Vec::new();
+    // Set only by a complete, parsed answer that names someone else. A transport error or a
+    // non-success status leaves it alone, so silence never reads as a takeover.
+    let mut answered_with_a_different_owner = false;
+    for (port, liveness) in live_ports {
         if !liveness_verifies_metadata(&liveness, &owner.metadata) {
             answered_with_a_different_owner = true;
             continue;

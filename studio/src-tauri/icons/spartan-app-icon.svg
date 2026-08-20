@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Built for 16–48 px: one strong silhouette, no small lettering. -->
+  <rect width="512" height="512" rx="112" fill="#0B1F3A"/>
+  <rect x="22" y="22" width="468" height="468" rx="94" fill="none" stroke="#2B65A8" stroke-width="12"/>
+  <!-- Spartan crest -->
+  <path fill="#EAB54B" d="M150 171c55-64 162-85 235-42-61 1-111 19-152 54-29 24-54 58-73 104-24-39-28-81-10-116Z"/>
+  <path fill="#F7D77D" d="M164 184c64-47 148-61 211-31-69 10-123 35-161 77-22 24-40 54-53 88-14-43-13-92 3-134Z"/>
+  <!-- Helmet and face guard -->
+  <path fill="#F7D77D" d="M136 244c0-63 53-114 120-114 52 0 98 32 115 78l-67 25c-8-17-25-29-46-29-29 0-52 24-52 54 0 26 17 48 41 53v61c-64-5-111-58-111-128Z"/>
+  <path fill="#EAB54B" d="M274 145c49 8 88 45 99 93l-72 27c-6-20-23-36-46-41l19-79Z"/>
+  <path fill="#0B1F3A" d="M216 250h109l-20 28h-89z"/>
+  <path fill="#EAB54B" d="M247 312h80l-31 43h-49z"/>
+  <path fill="#F7D77D" d="M230 371h86l-15 25h-56z"/>
+  <!-- Shield detail keeps the mark centered at small sizes. -->
+  <path fill="none" stroke="#EAB54B" stroke-linecap="round" stroke-width="18" d="M164 410h184"/>
+</svg>

@@ -450,10 +450,22 @@ async def logout(
 
 @router.post("/desktop-login", response_model = Token)
 async def desktop_login(payload: DesktopLoginRequest) -> Token:
-    """Instant desktop authentication."""
+    """Exchange the local desktop secret for a desktop-scoped session."""
+    verified = storage.validate_desktop_secret_with_credential(payload.secret)
+    if verified is None:
+        raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail = "Invalid desktop secret")
+    subject, credential_secret = verified
     return Token(
-        access_token = create_access_token(subject = "spartan_agent", desktop = True),
-        refresh_token = create_refresh_token(subject = "spartan_agent", desktop = True),
+        access_token = create_access_token(
+            subject = subject,
+            desktop = True,
+            secret = credential_secret,
+        ),
+        refresh_token = create_refresh_token(
+            subject = subject,
+            desktop = True,
+            secret = credential_secret,
+        ),
         token_type = "bearer",
         must_change_password = False,
     )
@@ -673,4 +685,3 @@ async def revoke_api_key(key_id: int, current_subject: str = Depends(get_current
             detail = "API key not found",
         )
     return {"detail": "API key revoked"}
-

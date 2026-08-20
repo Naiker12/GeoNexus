@@ -66,8 +66,15 @@ def manifest_path(root: Optional[Path] = None) -> Path:
 
 
 def requirements_root(script_dir: Optional[Path] = None) -> Path:
-    """studio/spartan_backend/requirements/ next to this module (or a given studio/ dir)."""
-    return (script_dir or Path(__file__).resolve().parent) / "backend" / "requirements"
+    """Requirements next to this module, across the backend package rename."""
+    studio_dir = script_dir or Path(__file__).resolve().parent
+    for package_dir in ("spartan_backend", "backend"):
+        reqs = studio_dir / package_dir / "requirements"
+        if reqs.is_dir():
+            return reqs
+    # Keep the current layout as the canonical fallback so callers receive a
+    # useful missing-file result when a partial installation is inspected.
+    return studio_dir / "spartan_backend" / "requirements"
 
 
 def _sha256(path: Path) -> Optional[str]:
@@ -97,9 +104,10 @@ def installed_requirements_root(root: Optional[Path] = None) -> Optional[Path]:
     prefix = root or venv_root()
     for pattern in ("lib/python*/site-packages", "Lib/site-packages"):
         for site in sorted(prefix.glob(pattern)):
-            reqs = site / "studio" / "backend" / "requirements"
-            if reqs.is_dir():
-                return reqs
+            for package_dir in ("spartan_backend", "backend"):
+                reqs = site / "studio" / package_dir / "requirements"
+                if reqs.is_dir():
+                    return reqs
     return None
 
 
