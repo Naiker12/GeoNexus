@@ -1,0 +1,66 @@
+{
+  "productName": "Spartan Agent",
+  "identifier": "com.spartanagent.studio",
+  "build": {
+    "beforeDevCommand": {
+      "cwd": "../spartan-frontend",
+      "script": "npm run dev -- --port 5173 --strictPort"
+    },
+    "beforeBuildCommand": {
+      "cwd": "../spartan-frontend",
+      "script": "npm run build"
+    },
+    "frontendDist": "../spartan-frontend/dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* ws://localhost:* ws://127.0.0.1:* http://127.0.0.1:* https://huggingface.co https://*.huggingface.co https://datasets-server.huggingface.co; img-src 'self' data: blob: https:; media-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' http://localhost:* http://127.0.0.1:*"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "Spartan Agent",
+        "width": 760,
+        "height": 560,
+        "center": true,
+        "visible": false,
+        "resizable": false,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 14, "y": 26 },
+        "hiddenTitle": true
+      }
+    ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["spartan_agent", "spartan-agent"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFBQzA4RjczODM0RjE1QjcKUldTM0ZVK0RjNC9BR2t4R0RVaFR5cTkyUlRVQ1FwaGV0Nk04eWNwWXBhZnlzalJydllmZm1QTS8K",
+      "endpoints": [
+        "https://github.com/Naiker12/Spartan-Agent/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
+  "bundle": {
+    "active": false,
+    "publisher": "Spartan Agent",
+    "homepage": "https://github.com/Naiker12/Spartan-Agent",
+    "copyright": "© 2026 Spartan Agent. All rights reserved.",
+    "license": "AGPL-3.0-only",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ]
+  }
+}
