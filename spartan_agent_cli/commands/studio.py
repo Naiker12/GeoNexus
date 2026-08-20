@@ -176,7 +176,7 @@ def _preserve_cloudflare_intent(cloudflare: Optional[bool], secure: bool) -> Non
     os.environ[_CLOUDFLARE_INTENT_ENV] = intent
 
 
-# __file__ is unsloth_cli/commands/studio.py -- two parents up is the package root
+# __file__ is spartan_agent_cli/commands/studio.py -- two parents up is the package root
 # (either site-packages or the repo root for editable installs).
 _PACKAGE_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -233,7 +233,7 @@ _WINDOWS_CLI_ENTRYPOINT = (
 #
 # `from spartan_agent_cli import app` rather than a find_spec, deliberately. find_spec
 # locates without executing, which sounds like the lighter question and is the
-# wrong one: it answers True for an empty unsloth_cli/ directory (a namespace
+# wrong one: it answers True for an empty spartan_agent_cli/ directory (a namespace
 # package), for a package whose __init__ raises, and for one whose dependencies
 # an interrupted install never fetched. Every one of those is a venv the
 # trampoline cannot start, and this probe gates the headless-public strip of
@@ -374,14 +374,14 @@ def _managed_cli_site_packages_layout(python: Path) -> bool:
     """On-disk hint that the venv holding *python* still carries the CLI.
 
     Weaker than the import probe below and only used when the probe could not be
-    run at all: an empty ``unsloth_cli/`` or an orphaned dist-info left by an
+    run at all: an empty ``spartan_agent_cli/`` or an orphaned dist-info left by an
     interrupted install answers yes here without being importable.
 
     The dist-info is accepted alongside the package directory because an
-    editable install of the checkout leaves a .pth and no unsloth_cli/ here.
+    editable install of the checkout leaves a .pth and no spartan_agent_cli/ here.
     """
     site_packages = python.parent.parent / "Lib" / "site-packages"
-    if (site_packages / "unsloth_cli").is_dir():
+    if (site_packages / "spartan_agent_cli").is_dir():
         return True
     return any(site_packages.glob("unsloth-*.dist-info"))
 
@@ -397,7 +397,7 @@ def _managed_cli_package_present(python: Path) -> bool:
     Asked of the interpreter rather than of site-packages, because the two are
     not the same claim. What Windows launches is the trampoline's
     ``from spartan_agent_cli import app``, so an orphaned ``unsloth-*.dist-info`` (a
-    moved editable checkout, an interrupted install) or an empty ``unsloth_cli/``
+    moved editable checkout, an interrupted install) or an empty ``spartan_agent_cli/``
     directory is metadata, not a runnable CLI. It matters here specifically:
     this gate stands in front of the headless-public strip of
     .bootstrap_password, so passing a venv that then fails to import is the one
@@ -407,7 +407,7 @@ def _managed_cli_package_present(python: Path) -> bool:
     The probe runs the trampoline's own ``from spartan_agent_cli import app`` rather
     than a cheaper spec lookup (see _MANAGED_CLI_IMPORT_PROBE for why the cheaper
     one answers a different question), with the same sys.path[0] scrub applied so
-    an ``unsloth_cli`` directory in the caller's cwd cannot answer for the venv.
+    an ``spartan_agent_cli`` directory in the caller's cwd cannot answer for the venv.
     """
     if platform.system() != "Windows":
         return False
@@ -616,7 +616,7 @@ def _find_run_py() -> Optional[Path]:
 
     No CWD dependency — works from any directory.
     Since studio/ is now a proper package (has __init__.py), it lives in
-    site-packages after pip install, right next to unsloth_cli/.
+    site-packages after pip install, right next to spartan_agent_cli/.
     """
     # 1. Relative to __file__ (site-packages or editable repo root)
     run_py = _PACKAGE_ROOT / "studio" / "backend" / "run.py"

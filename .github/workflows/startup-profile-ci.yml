@@ -41,7 +41,7 @@ on:
       - 'studio/spartan_backend/**'
       - '!studio/spartan_backend/tests/**'
       # The launch phase spawns `unsloth studio --api-only`, so the CLI counts too.
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/src-tauri/src/preflight**'
       # The profiler hardcodes the desktop argv that process.rs::backend_args builds,
       # so a change there must schedule a run or the two silently diverge.

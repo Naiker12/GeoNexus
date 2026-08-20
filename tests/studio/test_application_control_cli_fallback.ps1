@@ -3,7 +3,7 @@
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 # The installer must not depend on the generated unsloth.exe console script (#8490).
 #
-# On Windows, packaging materializes `unsloth = unsloth_cli:app` as an unsigned launcher .exe.
+# On Windows, packaging materializes `unsloth = spartan_agent_cli:app` as an unsigned launcher .exe.
 # AppLocker, WDAC and Smart App Control deny it while the venv's python.exe -- a copy of the
 # signed CPython binary -- still runs, so the install died at "running unsloth studio setup"
 # with no exit code to report and no diagnostic worth reading.
@@ -19,13 +19,13 @@ $repo = (Resolve-Path ([System.IO.Path]::Combine($PSScriptRoot, "..", ".."))).Pa
 $install = Join-Path $repo "install.ps1"
 
 # The one canonical spelling, repeated in install.ps1, studio/src-tauri/src/process.rs and
-# unsloth_cli/commands/studio.py. Written out here rather than read from any of them, so a
+# spartan_agent_cli/commands/studio.py. Written out here rather than read from any of them, so a
 # silent edit on any side fails a check instead of being copied into the expectation. Both
 # halves are load bearing; the rationale is on WINDOWS_CLI_ENTRYPOINT in process.rs.
 # Written out for the same reason as the trampoline: an edit on either side has to fail a
 # check rather than be copied into the expectation. This one gates a recursive delete.
 $ShimMarker = "unsloth-studio-managed-launcher"
-$Trampoline = "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from unsloth_cli import app; sys.exit(app())"
+$Trampoline = "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())"
 
 function Get-FunctionText {
     param([string] $Path, [string] $Name)
@@ -80,7 +80,7 @@ Check "extraction kept the walk-up"        ($relFn -match '\.\.')
 Check "extraction kept the dp0 prefix"     ($contentFn -match '%~dp0')
 Check "extraction kept the compare"        ($writeFn -match 'Compare-Object \$existing \$desired')
 Check "extraction kept the probe start"    ($probeFn -match 'ProcessStartInfo')
-Check "extraction kept the content marker" ($shimFileFn -match 'from unsloth_cli import app')
+Check "extraction kept the content marker" ($shimFileFn -match 'from spartan_agent_cli import app')
 Check "extraction kept the exe test"       ($preferFn -match 'ShimExe')
 
 # The whole point of the classifier: the value it must NOT consult.
@@ -463,7 +463,7 @@ Write-Host "the trampoline is the one the desktop already uses"
 # provisioning, the health probe and the updater. update.rs only calls the builder now.
 $processRs = Join-Path $repo "studio/src-tauri/src/process.rs"
 $rsText = Get-Content -Raw $processRs
-$studioPy = Join-Path $repo "unsloth_cli/commands/studio.py"
+$studioPy = Join-Path $repo "spartan_agent_cli/commands/studio.py"
 # Python splits the literal across source lines to stay inside the line length, so join
 # adjacent string literals back before comparing. Matching the raw text instead would fail
 # the moment someone rewrapped the constant without changing its value.
@@ -479,7 +479,7 @@ Check "nothing still isolates with -I"     (-not ($installText -match '"-X", "ut
 Write-Host "a bare unsloth.cmd does not hand an unrelated directory to the uninstaller"
 $uninstallText = Get-Content -Raw (Join-Path $repo "scripts/uninstall.ps1")
 Check "ownership is content-checked" ($uninstallText -match '_IsUnslothCmdShim \(Join-Path \$Path "bin\\unsloth\.cmd"\)')
-Check "and the marker is the trampoline" ($uninstallText -match 'from unsloth_cli import app')
+Check "and the marker is the trampoline" ($uninstallText -match 'from spartan_agent_cli import app')
 $setupText = Get-Content -Raw (Join-Path $repo "studio/setup.ps1")
 Check "setup.ps1 guards the same way"   ($setupText -match 'Test-UnslothCmdShimFile \(Join-Path \$StudioHome "bin\\unsloth\.cmd"\)')
 Check "install.ps1 guards the same way" ($installText -match 'Test-UnslothCmdShimFile \(Join-Path \$StudioHome "bin\\unsloth\.cmd"\)')
@@ -515,7 +515,7 @@ try {
     # Bounded read: a huge file named unsloth.cmd is not our few-hundred-byte shim, and
     # slurping it to find out would be the wrong trade.
     $huge = Join-Path $ownTmp "huge.cmd"
-    [System.IO.File]::WriteAllText($huge, ("x" * 9000) + "from unsloth_cli import app")
+    [System.IO.File]::WriteAllText($huge, ("x" * 9000) + "from spartan_agent_cli import app")
     Check "an oversized file does not"  (-not (Invoke-ShimFileCheck $huge))
 } finally {
     Remove-Item -LiteralPath $ownTmp -Recurse -Force -ErrorAction SilentlyContinue
@@ -606,7 +606,7 @@ Test-UnslothCmdShimPreferred -ShimExe `$ShimExe -ShimCmd `$ShimCmd
 
 # --- the .cmd ownership marker ---------------------------------------------------------------
 # _IsStudioRoot accepts a bin\unsloth.cmd as proof that a user-named root is ours, and that
-# answer gates a recursive delete. `from unsloth_cli import app` alone is a line anyone could
+# answer gates a recursive delete. `from spartan_agent_cli import app` alone is a line anyone could
 # have in a hand-rolled wrapper, so the generated shim carries a marker nobody writes by
 # accident and every check requires it.
 $markerSb = [scriptblock]::Create(@"
@@ -619,9 +619,9 @@ $markerTmp = Join-Path ([System.IO.Path]::GetTempPath()) ("unsloth-marker-" + [g
 $null = New-Item -ItemType Directory -Path $markerTmp
 try {
     $ours = Join-Path $markerTmp "ours.cmd"
-    [System.IO.File]::WriteAllText($ours, "@echo off`r`nrem unsloth-studio-managed-launcher`r`n... from unsloth_cli import app ...`r`n")
+    [System.IO.File]::WriteAllText($ours, "@echo off`r`nrem unsloth-studio-managed-launcher`r`n... from spartan_agent_cli import app ...`r`n")
     $theirs = Join-Path $markerTmp "theirs.cmd"
-    [System.IO.File]::WriteAllText($theirs, "@echo off`r`npython -c `"from unsloth_cli import app; sys.exit(app())`" %*`r`n")
+    [System.IO.File]::WriteAllText($theirs, "@echo off`r`npython -c `"from spartan_agent_cli import app; sys.exit(app())`" %*`r`n")
 
     Write-Host "only the shim this installer generated proves ownership"
     Check "our shim is recognised"      (& $markerSb $ours)

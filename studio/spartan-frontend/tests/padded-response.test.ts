@@ -71,7 +71,7 @@ test("the Python client agrees", () => {
     );
   } catch {
     cli = readFileSync(
-      new URL("../../../unsloth_cli/_inference.py", import.meta.url),
+      new URL("../../../spartan_agent_cli/_inference.py", import.meta.url),
       "utf8",
     );
   }

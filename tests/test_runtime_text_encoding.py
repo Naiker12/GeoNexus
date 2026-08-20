@@ -42,7 +42,7 @@ REPO = Path(__file__).resolve().parent.parent
 # Everything that ships. `studio/` covers the installers too: install_python_stack.py
 # reads /sys/class/kfd, the same detection path as utils/hardware/hardware.py. Test
 # trees fall under the narrower import-time rule in test_source_read_encoding.py.
-ROOTS = (REPO / "unsloth", REPO / "studio", REPO / "unsloth_cli")
+ROOTS = (REPO / "unsloth", REPO / "studio", REPO / "spartan_agent_cli")
 # The frontend tree is TypeScript; node_modules is vendored third-party code.
 SKIP_DIRS = {"build", "dist", "frontend", "node_modules", "src-tauri", ".venv", "site-packages"}
 GUARDED_METHODS = {"read_text", "write_text"}

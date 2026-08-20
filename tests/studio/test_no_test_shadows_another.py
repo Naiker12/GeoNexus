@@ -24,7 +24,7 @@ import collections
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-ROOTS = ("tests", "studio/spartan_backend/tests", "unsloth_cli/tests")
+ROOTS = ("tests", "studio/spartan_backend/tests", "spartan_agent_cli/tests")
 SKIP_PARTS = ("vendor", "node_modules", "__pycache__", ".venv")
 
 

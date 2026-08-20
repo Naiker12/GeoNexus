@@ -576,6 +576,8 @@ fn write_private_file(path: &Path, body: &[u8]) -> Result<(), String> {
 }
 
 fn set_private_dir_permissions(path: &Path) {
+    #[cfg(not(unix))]
+    let _ = path;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -584,6 +586,8 @@ fn set_private_dir_permissions(path: &Path) {
 }
 
 fn set_private_file_permissions(path: &Path) {
+    #[cfg(not(unix))]
+    let _ = path;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

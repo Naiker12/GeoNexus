@@ -36,7 +36,7 @@ on:
   pull_request:
     paths:
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/**'
       - 'tests/**'
       - 'pyproject.toml'
@@ -46,7 +46,7 @@ on:
     branches: [main]
     paths:
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/**'
       - 'tests/**'
       - 'pyproject.toml'

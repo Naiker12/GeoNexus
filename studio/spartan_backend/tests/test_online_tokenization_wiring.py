@@ -507,7 +507,7 @@ def test_an_mlx_hostfile_scales_the_rows_a_step_consumes(monkeypatch, tmp_path):
 
 def test_an_inline_hosts_payload_scales_the_rows_a_step_consumes(monkeypatch):
     """The same variable also carries the payload inline, in the {"hosts": [...]}
-    object form `unsloth_cli/_inference.py` accepts."""
+    object form `spartan_agent_cli/_inference.py` accepts."""
     payload = json.dumps({"hosts": [f"10.0.0.{i}:9000" for i in range(8)]})
     _eight_ranks(monkeypatch, MLX_HOSTFILE = payload)
 

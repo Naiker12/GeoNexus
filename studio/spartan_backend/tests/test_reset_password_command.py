@@ -48,7 +48,7 @@ def test_a_venv_install_gets_the_isolated_module_route(auth, monkeypatch, window
     """-I is right when the package is inside the interpreter's own prefix.
 
     It drops the working directory from sys.path, so a shell sitting in a
-    directory that happens to hold an unsloth_cli folder cannot shadow the
+    directory that happens to hold an spartan_agent_cli folder cannot shadow the
     managed one.
     """
     monkeypatch.setattr(
@@ -58,7 +58,7 @@ def test_a_venv_install_gets_the_isolated_module_route(auth, monkeypatch, window
 
     command = auth._reset_password_command()
 
-    assert command.endswith("-I -m unsloth_cli studio reset-password")
+    assert command.endswith("-I -m spartan_agent_cli studio reset-password")
     assert "unsloth.exe" not in command
 
 
@@ -66,7 +66,7 @@ def test_a_user_site_install_is_not_told_to_isolate_itself(auth, monkeypatch, wi
     """-I implies -s, which hides the user site the package is installed in.
 
     A `pip install --user` install told to run that command gets
-    `No module named unsloth_cli`, which is worse than useless to someone who is
+    `No module named spartan_agent_cli`, which is worse than useless to someone who is
     already locked out.
     """
     monkeypatch.setattr(auth.sys, "executable", r"C:\Python313\python.exe")
@@ -75,8 +75,8 @@ def test_a_user_site_install_is_not_told_to_isolate_itself(auth, monkeypatch, wi
     command = auth._reset_password_command()
 
     assert " -I " not in command
-    assert "-m unsloth_cli" not in command
-    # The bootstrap unsloth_cli/__main__.py documents for exactly this case.
+    assert "-m spartan_agent_cli" not in command
+    # The bootstrap spartan_agent_cli/__main__.py documents for exactly this case.
     assert auth._CLI_BOOTSTRAP in command
     assert command.endswith(" studio reset-password")
     # One pair of double quotes wraps it for cmd and PowerShell alike, which
@@ -94,7 +94,7 @@ def test_the_bootstrap_matches_the_one_the_cli_uses(auth):
     because the constant there is written as adjacent literals.
     """
     repo_root = _BACKEND.parents[1]
-    studio_py = (repo_root / "unsloth_cli" / "commands" / "studio.py").read_text(encoding = "utf-8")
+    studio_py = (repo_root / "spartan_agent_cli" / "commands" / "studio.py").read_text(encoding = "utf-8")
     canonical = None
     for node in ast.walk(ast.parse(studio_py)):
         if isinstance(node, ast.Assign) and any(
@@ -116,7 +116,7 @@ def test_a_spaced_interpreter_path_still_falls_through_to_the_cmd_shim(auth, mon
 
 def test_the_prefix_check_locates_rather_than_imports(auth, tmp_path, monkeypatch):
     """A package outside the prefix must answer False, and a missing one too."""
-    inside = tmp_path / "venv" / "Lib" / "site-packages" / "unsloth_cli"
+    inside = tmp_path / "venv" / "Lib" / "site-packages" / "spartan_agent_cli"
     inside.mkdir(parents = True)
     (inside / "__init__.py").write_text("", encoding = "utf-8")
 

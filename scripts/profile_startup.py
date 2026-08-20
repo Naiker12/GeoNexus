@@ -121,7 +121,7 @@ def _terminate_tree(proc: subprocess.Popen) -> None:
     the venv python and waits, so terminate() reaps the stub only: the real backend
     keeps the inherited stdout handle, the reader thread never sees EOF, and
     --repeats strands one server per iteration on the shared UNSLOTH_STUDIO_HOME.
-    taskkill /T walks the tree, as unsloth_cli/commands/start.py already does.
+    taskkill /T walks the tree, as spartan_agent_cli/commands/start.py already does.
     """
     if proc.poll() is not None:
         return

@@ -150,7 +150,7 @@ def main(argv: list[str]) -> int:
     # like a false one; a CLI too old to answer is rejected one check earlier on
     # desktop_manageability_version. Leaving "absent" undecided reported HEALTHY on every
     # booting leg and skipped the repair assertion -- the regression
-    # `unsloth_cli/commands/studio.py` sits in the path filter to catch.
+    # `spartan_agent_cli/commands/studio.py` sits in the path filter to catch.
     caps_ready = caps_rc == 0 and install_ok is True
     say("desktop_would_call_install_ok", caps_ready)
 
@@ -252,7 +252,7 @@ def main(argv: list[str]) -> int:
                 pass
         else:
             # On win32 the CLI re-spawns the server as a CHILD and waits on it
-            # (unsloth_cli/commands/studio.py:1543), and CREATE_NEW_PROCESS_GROUP does not
+            # (spartan_agent_cli/commands/studio.py:1543), and CREATE_NEW_PROCESS_GROUP does not
             # make terminate() reach descendants, so killing the wrapper alone leaves the venv
             # locked against the repair. taskkill /T takes the tree.
             run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], timeout = 30)

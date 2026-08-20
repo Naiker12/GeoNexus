@@ -7,8 +7,11 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+#[cfg(target_os = "linux")]
 const MAX_CLIPBOARD_IMAGE_DIMENSION: i32 = 8192;
+#[cfg(target_os = "linux")]
 const MAX_CLIPBOARD_RGBA_BYTES: u64 = 64 * 1024 * 1024;
+#[cfg(target_os = "linux")]
 const MAX_CLIPBOARD_PNG_BYTES: usize = 20 * 1024 * 1024;
 const MAX_CLIPBOARD_SOURCE_BYTES: u64 = 20 * 1024 * 1024;
 const MAX_CLIPBOARD_AUDIO_BYTES: u64 = 25 * 1024 * 1024;
@@ -26,6 +29,7 @@ pub struct NativeClipboardFile {
     base64: String,
 }
 
+#[cfg(target_os = "linux")]
 fn validate_dimensions(width: i32, height: i32) -> Result<(), String> {
     if width <= 0
         || height <= 0

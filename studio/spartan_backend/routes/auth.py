@@ -44,8 +44,8 @@ from auth.authentication import (
 router = APIRouter()
 
 
-# Byte-identical to _WINDOWS_CLI_ENTRYPOINT in unsloth_cli/commands/studio.py and to
-# the bootstrap unsloth_cli/__main__.py documents for user-site installs.
+# Byte-identical to _WINDOWS_CLI_ENTRYPOINT in spartan_agent_cli/commands/studio.py and to
+# the bootstrap spartan_agent_cli/__main__.py documents for user-site installs.
 _CLI_BOOTSTRAP = (
     "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
     "sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())"
@@ -53,14 +53,14 @@ _CLI_BOOTSTRAP = (
 
 
 def _cli_is_inside(prefix: str) -> bool:
-    """Whether unsloth_cli lives under *prefix*, so -I would still find it.
+    """Whether spartan_agent_cli lives under *prefix*, so -I would still find it.
 
     Located rather than imported: this runs in a request handler, and a spec
     lookup answers the only question asked here, which is where the package is
     on disk and not whether it starts.
     """
     try:
-        spec = importlib.util.find_spec("unsloth_cli")
+        spec = importlib.util.find_spec("spartan_agent_cli")
         origin = getattr(spec, "origin", None)
         if not origin:
             # A namespace package, or nothing found. Either way there is no
@@ -93,7 +93,7 @@ def _reset_password_command() -> str:
 
     -I only when the package is inside this interpreter's own prefix. -I implies
     -s, so a ``pip install --user`` install would be told to run a command that
-    cannot find itself; unsloth_cli/__main__.py documents that exception and the
+    cannot find itself; spartan_agent_cli/__main__.py documents that exception and the
     bootstrap to use instead, and this prints that bootstrap. It is safe to show
     to either shell: the trampoline contains single quotes only, so one pair of
     double quotes wraps it identically in cmd and in PowerShell.
@@ -104,7 +104,7 @@ def _reset_password_command() -> str:
             python = os.path.abspath(sys.executable)
             if " " not in python:
                 if _cli_is_inside(sys.prefix):
-                    return f"{python} -I -m unsloth_cli studio reset-password"
+                    return f"{python} -I -m spartan_agent_cli studio reset-password"
                 return f'{python} -X utf8 -c "{_CLI_BOOTSTRAP}" studio reset-password'
             # A spaced interpreter path cannot be written unquoted, so fall
             # through to the PATH form below.

@@ -6,14 +6,14 @@
 # Detects when our local-agent setup recipes drift out of sync with
 # `unsloth run`. Boots a real `unsloth run --disable-tools` server and
 # drives the coding agents end to end through the *exact* recipes defined
-# in unsloth_cli/commands/start.py (the in-repo source of truth -- there
+# in spartan_agent_cli/commands/start.py (the in-repo source of truth -- there
 # is no docs/ tree). Wherever start.py has a recipe we drive the agent
 # via `unsloth start <agent> --no-launch` and execute what it prints, so
 # the test self-updates against start.py and catches silent recipe drift.
 #
 # Source-of-truth files this workflow guards:
-#   unsloth_cli/commands/start.py   the `unsloth start <agent>` recipes
-#   unsloth_cli/commands/studio.py    the `unsloth run` banner (API Key line)
+#   spartan_agent_cli/commands/start.py   the `unsloth start <agent>` recipes
+#   spartan_agent_cli/commands/studio.py    the `unsloth run` banner (API Key line)
 #
 # Failure taxonomy (each surfaced with a distinct ::error:: + the agent name
 # + the start.py location, so a red X is immediately triageable):
@@ -47,7 +47,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/spartan_backend/routes/**'
       - 'studio/spartan_backend/main.py'
       - 'studio/spartan_backend/core/inference/llama_cpp.py'
@@ -66,7 +66,7 @@ on:
       - '.github/scripts/ci-min-system-prompt.txt'
   pull_request:
     paths:
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/spartan_backend/routes/**'
       # Contracts this workflow asserts that live outside routes/**: the
       # /api/health endpoint, the llama-server KV-cache log behavior, and the

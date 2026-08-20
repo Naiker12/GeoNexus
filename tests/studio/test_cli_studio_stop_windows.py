@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-_STUDIO_CMD_PY = Path(__file__).resolve().parents[2] / "unsloth_cli" / "commands" / "studio.py"
+_STUDIO_CMD_PY = Path(__file__).resolve().parents[2] / "spartan_agent_cli" / "commands" / "studio.py"
 _SOURCE = _STUDIO_CMD_PY.read_text(encoding = "utf-8")
 
 
@@ -32,7 +32,7 @@ def _func_source(name: str) -> str:
 
 def _load_pid_alive(platform: str, fake_run = None):
     """Exec just `_pid_alive` with injectable sys/subprocess to drive the win32
-    branch on any host without importing unsloth_cli."""
+    branch on any host without importing spartan_agent_cli."""
     src = _func_source("_pid_alive")
     fake_sys = types.SimpleNamespace(platform = platform)
     fake_sub = types.SimpleNamespace(run = fake_run) if fake_run is not None else subprocess

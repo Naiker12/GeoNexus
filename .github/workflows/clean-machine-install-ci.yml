@@ -56,11 +56,11 @@ on:
       # Python and full developer tooling.
       - 'studio/spartan_backend/requirements/**'
       # The overlay builds pyproject.toml and then reaches setup.sh / setup.ps1 through
-      # unsloth_cli/commands/studio.py (install.sh:4254, install.ps1:2801), so a change
+      # spartan_agent_cli/commands/studio.py (install.sh:4254, install.ps1:2801), so a change
       # to either decides whether these legs install at all. No toolchain-equipped
       # workflow covers that.
       - 'pyproject.toml'
-      - 'unsloth_cli/commands/studio.py'
+      - 'spartan_agent_cli/commands/studio.py'
       - '.github/scripts/clean-machine-*.sh'
       - '.github/scripts/assert-llama-loads.sh'
       # The virgin Windows container lane lives in this workflow too.
@@ -83,7 +83,7 @@ on:
       - 'studio/node_prebuilt_pins.json'
       - 'studio/spartan_backend/requirements/**'
       - 'pyproject.toml'
-      - 'unsloth_cli/commands/studio.py'
+      - 'spartan_agent_cli/commands/studio.py'
       - '.github/scripts/clean-machine-*.sh'
       - '.github/scripts/assert-llama-loads.sh'
       - '.github/scripts/virgin-windows-*.ps1'

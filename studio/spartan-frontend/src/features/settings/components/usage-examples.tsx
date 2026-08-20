@@ -601,7 +601,7 @@ export function UsageExamples({ apiKey }: { apiKey?: string | null }) {
 
   // Single source of truth for the auto-picked agent, re-derived whenever
   // the detected list or the loaded model's GGUF-ness changes -- in either
-  // direction. `codex` needs a GGUF model (unsloth_cli's
+  // direction. `codex` needs a GGUF model (spartan_agent_cli's
   // _require_gguf_for_codex exits otherwise), so it's only preferred once
   // the loaded model actually qualifies; loading a GGUF model *after* a
   // non-GGUF-gated fallback picked something else re-steers back to codex
@@ -632,7 +632,7 @@ export function UsageExamples({ apiKey }: { apiKey?: string | null }) {
       // codex was auto-picked while a GGUF model was active and it's the
       // only detected agent; now that the model isn't GGUF anymore, nothing
       // detected is actually runnable, so fall back to the default instead
-      // of leaving a codex command unsloth_cli will reject.
+      // of leaving a codex command spartan_agent_cli will reject.
       setAgent(DEFAULT_AGENT);
     }
   }, [agent, detectedAgents, activeGgufVariant, activeNativePathToken, ggufContextLength]);

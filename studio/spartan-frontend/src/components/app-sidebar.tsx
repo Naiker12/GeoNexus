@@ -620,12 +620,10 @@ function ImagesWorkflowList({
 }) {
   const workflow = useImageWorkflowStore((s) => s.workflow);
   const supported = useImageWorkflowStore((s) => s.supported);
-  const pageMode = useImageWorkflowStore((s) => s.pageMode);
   const expanded = useImageWorkflowStore((s) => s.navExpanded);
   if (collapsed) return null;
-  if (active ? pageMode === "train" : !expanded) return null;
-  // Nothing here is current unless the page is actually showing a workflow.
-  const current = active && pageMode === "create" ? workflow : null;
+  if (!active && !expanded) return null;
+  const current = active ? workflow : null;
   return (
     <div className="mt-0.5 flex flex-col gap-px pl-5">
       {WORKFLOW_TABS.map((tab) => (
@@ -713,7 +711,6 @@ export function AppSidebar() {
   } = useSidebar();
   const navigate = useNavigate();
   const router = useRouter();
-  const imagesPageMode = useImageWorkflowStore((s) => s.pageMode);
 
   // `webUpdate` is non-null only when the installed (PyPI) version is behind the latest release.
   const { status: webUpdate } = useWebUpdateCheck();
@@ -1581,7 +1578,8 @@ export function AppSidebar() {
     return () => window.removeEventListener("resize", onResize);
   }, [syncScrollState]);
 
-  const chatDisabled = trainingInProgress;
+  const chatDisabled = false;
+  const showTrainingRecents = false;
   const usesDesktopTitlebar = usesCustomTitlebar || usesNativeMacTitlebar;
 
   // One box for every row pill, so a hover pill has the same edges wherever it
@@ -1744,10 +1742,7 @@ export function AppSidebar() {
   const inlineNavIds = sidebarNav
     .filter((item) => item.pinned)
     .map((item) => item.id);
-  // Mirrors ImagesWorkflowList's own test: it decides which row owns the highlight.
-  const imagesWorkflowsListed =
-    sidebarState !== "collapsed" &&
-    !(navRows.images.active && imagesPageMode === "train");
+  const imagesWorkflowsListed = sidebarState !== "collapsed";
 
   const showSidebarBrand = true;
 
@@ -3701,7 +3696,6 @@ export function AppSidebar() {
       <ShutdownDialog
         open={shutdownOpen}
         onOpenChange={setShutdownOpen}
-        onAfterShutdown={removeTrainingUnloadGuard}
       />
     )}
     <Dialog
@@ -3716,9 +3710,7 @@ export function AppSidebar() {
       <DialogContent className="menu-flat-destructive corner-squircle dialog-soft-surface sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {confirmingDelete?.kind === "run"
-              ? t("shell.dialog.deleteRun.title")
-              : confirmingDelete?.kind === "project"
+            {confirmingDelete?.kind === "project"
                 ? "Delete project"
                 : confirmingDelete?.kind === "chats"
                   ? t("shell.selection.deleteTitle")
@@ -3727,13 +3719,7 @@ export function AppSidebar() {
                     : t("shell.dialog.deleteChat.title")}
           </DialogTitle>
           <DialogDescription>
-            {confirmingDelete?.kind === "run" ? (
-              renderEmphasizedTranslation(
-                t,
-                "shell.dialog.deleteRun.description",
-                getTrainingRunDisplayTitle(confirmingDelete.run),
-              )
-            ) : confirmingDelete?.kind === "chat" ? (
+            {confirmingDelete?.kind === "chat" ? (
               renderEmphasizedTranslation(
                 t,
                 "shell.dialog.deleteChat.description",
@@ -3804,7 +3790,7 @@ export function AppSidebar() {
       </DialogContent>
     </Dialog>
     <Dialog
-      open={renamingTarget !== null && renamingTarget.kind !== "chat"}
+      open={renamingTarget?.kind === "project"}
       onOpenChange={(open) => {
         if (!open) setRenamingTarget(null);
       }}
@@ -3812,9 +3798,7 @@ export function AppSidebar() {
       <DialogContent className="corner-squircle dialog-soft-surface sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {renamingTarget?.kind === "run"
-              ? t("shell.dialog.renameRun.title")
-              : renamingTarget?.kind === "project"
+            {renamingTarget?.kind === "project"
                 ? "Rename project"
                 : t("shell.dialog.renameChat.title")}
           </DialogTitle>
@@ -3831,16 +3815,12 @@ export function AppSidebar() {
           autoFocus
           maxLength={120}
           placeholder={
-            renamingTarget?.kind === "run"
-              ? t("shell.dialog.renameRun.placeholder")
-              : renamingTarget?.kind === "project"
+            renamingTarget?.kind === "project"
                 ? "Project name"
                 : t("shell.dialog.renameChat.placeholder")
           }
           aria-label={
-            renamingTarget?.kind === "run"
-              ? t("shell.dialog.renameRun.placeholder")
-              : renamingTarget?.kind === "project"
+            renamingTarget?.kind === "project"
                 ? "Project name"
                 : t("shell.dialog.renameChat.placeholder")
           }

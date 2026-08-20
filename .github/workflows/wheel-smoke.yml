@@ -23,7 +23,7 @@ on:
       - 'pyproject.toml'
       - 'studio/**'
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - '.github/workflows/wheel-smoke.yml'
   push:
     branches: [main]
@@ -31,7 +31,7 @@ on:
       - 'pyproject.toml'
       - 'studio/**'
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - '.github/workflows/wheel-smoke.yml'
 
 concurrency:

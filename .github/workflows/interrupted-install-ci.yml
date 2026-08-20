@@ -27,14 +27,14 @@ on:
       - 'studio/src-tauri/src/install.rs'
       - 'studio/src-tauri/src/preflight.rs'
       - 'studio/src-tauri/src/preflight/**'
-      - 'unsloth_cli/commands/studio.py'
+      - 'spartan_agent_cli/commands/studio.py'
       # Every leg installs the checkout with `--local`, so this file decides the console
       # script and the core deps: `-h` and `desktop-capabilities` only survive a torn
       # install because typer/click/rich are declared here, not in an extra.
       - 'pyproject.toml'
       # studio_install_ok and verify-install, the decisions the probe asserts on, live here,
       # so an install_state() accepting a missing manifest would merge unrun.
-      - 'unsloth_cli/_studio_deps.py'
+      - 'spartan_agent_cli/_studio_deps.py'
       - 'studio/install_manifest.py'
       # The requirement files are the phases: studio.txt declares structlog, whose absence
       # IS the reported false-ready bug, so moving a package between them changes every

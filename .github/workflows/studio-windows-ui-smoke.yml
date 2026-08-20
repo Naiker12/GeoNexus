@@ -15,7 +15,7 @@ on:
     paths:
       - 'studio/**'
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'install.ps1'
       - 'pyproject.toml'
       - 'tests/studio/**'

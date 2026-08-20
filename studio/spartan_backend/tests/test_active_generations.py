@@ -1593,7 +1593,7 @@ def test_cli_and_backend_parallel_defaults_agree():
     backend = _parallel_constants(os.path.join(_backend, "run.py"))
     cli_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(_backend))),
-        "unsloth_cli",
+        "spartan_agent_cli",
         "commands",
         "studio.py",
     )

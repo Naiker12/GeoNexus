@@ -22,7 +22,7 @@ DB_PATH = auth_db_path()
 DEFAULT_ADMIN_USERNAME = "unsloth"
 
 # Single source for the password policy; models/auth.py ChangePasswordRequest
-# and the terminal prompt both enforce it. Keep the unsloth_cli mirror in sync.
+# and the terminal prompt both enforce it. Keep the spartan_agent_cli mirror in sync.
 MIN_PASSWORD_LENGTH = 8
 
 # Plaintext bootstrap password file beside auth.db, deleted on first password

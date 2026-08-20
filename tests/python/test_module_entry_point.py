@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved.
 
-"""`python -m unsloth_cli` must be the console script, byte for byte.
+"""`python -m spartan_agent_cli` must be the console script, byte for byte.
 
 Windows materialises the `unsloth` entry point as a generated, unsigned
 `unsloth.exe`, and an Application Control policy (AppLocker / WDAC / Smart App
@@ -12,13 +12,13 @@ that does not go through that executable (issue #8490).
 Two such routes exist and both must behave exactly like the console script,
 because everything above them assumes the swap is invisible:
 
-  * ``python -X utf8 -m unsloth_cli`` -- the public, documented one.
+  * ``python -X utf8 -m spartan_agent_cli`` -- the public, documented one.
   * ``python -X utf8 -c "<trampoline>"`` -- the internal one, used by
     install.ps1, studio/src-tauri and the `studio run` respawn. It is spelled
     out here rather than imported so a silent edit to the constant on either
     side of the language boundary fails this test.
 
-`sys.argv[0] = 'unsloth'` is what buys that equivalence: unsloth_cli/__init__
+`sys.argv[0] = 'unsloth'` is what buys that equivalence: spartan_agent_cli/__init__
 gates its entry-point behaviour (UTF-8 streams, the `-np<N>` rewrite) on the
 basename of argv[0], and typer/click derive the program name printed in every
 usage and error string from it.
@@ -35,7 +35,7 @@ import pytest
 
 # Byte-identical to WINDOWS_CLI_ENTRYPOINT in studio/src-tauri/src/process.rs,
 # $script:UnslothCliTrampoline in install.ps1, and _WINDOWS_CLI_ENTRYPOINT in
-# unsloth_cli/commands/studio.py. Spelled out rather than imported so an edit on
+# spartan_agent_cli/commands/studio.py. Spelled out rather than imported so an edit on
 # any one side of the language boundary fails this test.
 TRAMPOLINE = (
     "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
@@ -58,7 +58,7 @@ requires_console_script = pytest.mark.skipif(
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_REPO_PACKAGE = _REPO_ROOT / "unsloth_cli"
+_REPO_PACKAGE = _REPO_ROOT / "spartan_agent_cli"
 
 
 def _installed_package_dir() -> Path | None:
@@ -79,7 +79,7 @@ def _installed_package_dir() -> Path | None:
             *INTERPRETER,
             "-c",
             "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; "
-            "import spartan_agent_cli; print(os.path.dirname(unsloth_cli.__file__))",
+            "import spartan_agent_cli; print(os.path.dirname(spartan_agent_cli.__file__))",
         ]
     )
     if probe.returncode != 0:
@@ -110,7 +110,7 @@ requires_this_checkout_installed = pytest.mark.skipif(
 
 
 def _module_argv(*args: str) -> list[str]:
-    return [*INTERPRETER, "-m", "unsloth_cli", *args]
+    return [*INTERPRETER, "-m", "spartan_agent_cli", *args]
 
 
 def _trampoline_argv(*args: str) -> list[str]:
@@ -137,7 +137,7 @@ def test_the_module_entry_point_exists():
     """A missing __main__.py degrades to a confusing "cannot be directly executed"."""
     result = _run(_module_argv("--version"))
     assert result.returncode == 0, (
-        f"`python -m unsloth_cli --version` failed ({result.returncode}):\n"
+        f"`python -m spartan_agent_cli --version` failed ({result.returncode}):\n"
         f"{result.stderr.decode('utf-8', 'replace')}"
     )
     assert result.stdout.startswith(b"unsloth "), result.stdout
@@ -187,7 +187,7 @@ def test_the_attached_np_short_is_still_canonicalised(monkeypatch):
     """`-np8` must reach typer as `-np 8`, not click's `-n -p 8`.
 
     This is the one thing a naive __main__.py silently loses. The gate in
-    unsloth_cli/__init__ keys on argv[0], and `-m` imports the package to find
+    spartan_agent_cli/__init__ keys on argv[0], and `-m` imports the package to find
     __main__, so the gate has already run and seen "-m" before __main__ can fix
     argv[0]. The damage is quiet and severe: click reads `-np8` as `-n -p 8` and
     `-p` is --port, so `unsloth studio run -np8` was observed serving on port 8
@@ -207,21 +207,21 @@ def test_the_attached_np_short_is_still_canonicalised(monkeypatch):
         recorded["argv"] = list(sys.argv)
         recorded["kwargs"] = kwargs
 
-    monkeypatch.setattr(unsloth_cli, "app", fake_app)
+    monkeypatch.setattr(spartan_agent_cli, "app", fake_app)
     # The one-shot guard may already have fired in this interpreter.
-    monkeypatch.setattr(unsloth_cli, "_entry_point_prepared", False)
+    monkeypatch.setattr(spartan_agent_cli, "_entry_point_prepared", False)
     monkeypatch.setattr(sys, "argv", ["-m", "studio", "run", "-np8"])
 
     # SystemExit, because __main__ ends in sys.exit(app()) exactly as the console
     # script does. The fake app returns None, so the status is None: a clean exit.
     with pytest.raises(SystemExit) as exit_info:
-        runpy.run_module("unsloth_cli", run_name = "__main__", alter_sys = True)
+        runpy.run_module("spartan_agent_cli", run_name = "__main__", alter_sys = True)
     assert exit_info.value.code in (None, 0)
 
     assert recorded["argv"] == ["unsloth", "studio", "run", "-np", "8"], (
         "__main__ must apply the console-script argv canonicalisation; got " f"{recorded['argv']}"
     )
-    # Without this click prints `Usage: python -m unsloth_cli`, because it reads
+    # Without this click prints `Usage: python -m spartan_agent_cli`, because it reads
     # __main__.__package__ rather than argv[0].
     assert recorded["kwargs"].get("prog_name") == "unsloth"
 
@@ -238,7 +238,7 @@ def test_help_matches_the_console_script_under_a_narrow_encoding(argv_builder):
 
     -X utf8 is dropped for this case on purpose: it would hand the child a utf
     stream anyway, which is exactly the situation the stream guard in
-    unsloth_cli/__init__ does not need to handle.
+    spartan_agent_cli/__init__ does not need to handle.
     """
     strip = ("-X", "utf8")
     argv = [arg for arg in argv_builder("--help") if arg not in strip]
@@ -278,30 +278,30 @@ def test_the_module_entry_source_keeps_its_two_load_bearing_details():
     # with argv[0] == "-m" and its gate cannot fire; __main__ has to say so.
     assert "_prepare_entry_point()" in source
     # click reads __main__.__package__ rather than argv[0] and would otherwise
-    # print `Usage: python -m unsloth_cli` in every usage and error string.
+    # print `Usage: python -m spartan_agent_cli` in every usage and error string.
     assert 'prog_name = "unsloth"' in source
     # The generated console script is `sys.exit(app())`. Typer raises SystemExit
     # itself today, so both spellings agree, but a returned value has to become
     # the exit status here too or they stop agreeing the moment one exists.
-    assert "sys.exit(unsloth_cli.app(" in source
+    assert "sys.exit(spartan_agent_cli.app(" in source
 
 
 @requires_this_checkout_installed
 def test_the_advertised_module_route_ignores_a_shadowing_directory(tmp_path):
     """`-m` resolves the package before __main__.py runs, so -I is load bearing.
 
-    A shell sitting in a directory that has an `unsloth_cli` folder is not exotic:
+    A shell sitting in a directory that has an `spartan_agent_cli` folder is not exotic:
     it is anyone standing in an unsloth checkout. Without -I that copy wins and the
     printed recovery command drives the wrong install, which nothing inside
     __main__.py can detect or undo.
     """
-    shadow = tmp_path / "unsloth_cli"
+    shadow = tmp_path / "spartan_agent_cli"
     shadow.mkdir()
     (shadow / "__init__.py").write_text("app = None\n", encoding = "utf-8")
     (shadow / "__main__.py").write_text("print('SHADOWED')\n", encoding = "utf-8")
 
     plain = subprocess.run(
-        [sys.executable, "-m", "unsloth_cli", "--version"],
+        [sys.executable, "-m", "spartan_agent_cli", "--version"],
         capture_output = True,
         timeout = 120,
         cwd = tmp_path,
@@ -310,7 +310,7 @@ def test_the_advertised_module_route_ignores_a_shadowing_directory(tmp_path):
         b"SHADOWED" in plain.stdout
     ), "the shadowing fixture did not take effect, so the case below proves nothing"
 
-    isolated = _run([sys.executable, "-X", "utf8", "-I", "-m", "unsloth_cli", "--version"])
+    isolated = _run([sys.executable, "-X", "utf8", "-I", "-m", "spartan_agent_cli", "--version"])
     assert isolated.returncode == 0, isolated.stderr.decode("utf-8", "replace")
     assert isolated.stdout.startswith(b"unsloth "), isolated.stdout
 
@@ -333,20 +333,20 @@ def test_every_advertised_module_route_is_isolated():
     for name in sorted(advertised):
         source = (_REPO_ROOT / name).read_text(encoding = "utf-8")
         for line in source.splitlines():
-            if "-m unsloth_cli" not in line:
+            if "-m spartan_agent_cli" not in line:
                 continue
-            # click prints its own `Usage: python -m unsloth_cli` when prog_name is
+            # click prints its own `Usage: python -m spartan_agent_cli` when prog_name is
             # missing; that is the symptom being described, not a command we offer.
             if "Usage:" in line:
                 continue
-            assert "-I -m unsloth_cli" in line, f"{name}: unisolated module route: {line.strip()}"
+            assert "-I -m spartan_agent_cli" in line, f"{name}: unisolated module route: {line.strip()}"
 
 
 def test_the_module_docstring_documents_the_user_site_exception():
     """-I implies -s, so the advertised form cannot see a --user install.
 
-    Measured: with the package in the user site, `python -m unsloth_cli` runs and
-    `python -I -m unsloth_cli` reports "No module named unsloth_cli". Anyone hitting
+    Measured: with the package in the user site, `python -m spartan_agent_cli` runs and
+    `python -I -m spartan_agent_cli` reports "No module named spartan_agent_cli". Anyone hitting
     that has a launcher under %APPDATA% -- exactly the user-writable location a
     default AppLocker policy denies -- so it is the population this route exists for.
     """
@@ -372,8 +372,8 @@ def test_safe_path_leaves_an_explicit_pythonpath_alone(tmp_path):
     existed: the console script loaded the shadow, the trampoline did not.
     """
     shadow = tmp_path / "shadow"
-    (shadow / "unsloth_cli").mkdir(parents = True)
-    (shadow / "unsloth_cli" / "__init__.py").write_text(
+    (shadow / "spartan_agent_cli").mkdir(parents = True)
+    (shadow / "spartan_agent_cli" / "__init__.py").write_text(
         "raise SystemExit('SHADOWED')\n", encoding = "utf-8"
     )
     env = dict(os.environ)
@@ -393,8 +393,8 @@ def test_safe_path_leaves_an_explicit_pythonpath_alone(tmp_path):
 def test_the_working_directory_is_still_stripped_without_safe_path(tmp_path):
     """The other half: the guard must not disarm the filter it guards."""
     shadow = tmp_path / "shadow"
-    (shadow / "unsloth_cli").mkdir(parents = True)
-    (shadow / "unsloth_cli" / "__init__.py").write_text(
+    (shadow / "spartan_agent_cli").mkdir(parents = True)
+    (shadow / "spartan_agent_cli" / "__init__.py").write_text(
         "raise SystemExit('SHADOWED')\n", encoding = "utf-8"
     )
     env = dict(os.environ)
@@ -430,13 +430,13 @@ def test_the_stream_reconfigure_happens_once_per_process(monkeypatch):
         def reconfigure(self, **kwargs):
             calls.append(kwargs)
 
-    monkeypatch.setattr(unsloth_cli, "_streams_reconfigured", False)
-    monkeypatch.setattr(unsloth_cli._sys, "stdout", _Stream())
-    monkeypatch.setattr(unsloth_cli._sys, "stderr", _Stream())
+    monkeypatch.setattr(spartan_agent_cli, "_streams_reconfigured", False)
+    monkeypatch.setattr(spartan_agent_cli._sys, "stdout", _Stream())
+    monkeypatch.setattr(spartan_agent_cli._sys, "stderr", _Stream())
 
-    unsloth_cli._reconfigure_entry_point_streams()
-    unsloth_cli._reconfigure_entry_point_streams()
-    unsloth_cli._reconfigure_entry_point_streams()
+    spartan_agent_cli._reconfigure_entry_point_streams()
+    spartan_agent_cli._reconfigure_entry_point_streams()
+    spartan_agent_cli._reconfigure_entry_point_streams()
 
     assert len(calls) == 2, f"expected one reconfigure per stream, got {calls}"
 

@@ -456,7 +456,7 @@ def pin_relative_overrides(
 # directory really called "[llama]" or "%data%" is legal on Windows.
 
 # MLX_HOSTFILE holds either a filename or the host list itself, as JSON
-# (`unsloth_cli/_inference.py`, `_json_rank_count_from_env`).
+# (`spartan_agent_cli/_inference.py`, `_json_rank_count_from_env`).
 _INLINE_JSON_ENV = frozenset(("MLX_HOSTFILE", "MLX_IBV_DEVICES"))
 
 # Names whose readers disagree about %VAR% and $VAR: huggingface_hub calls

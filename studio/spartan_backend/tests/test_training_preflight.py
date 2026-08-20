@@ -754,7 +754,7 @@ def test_world_size_comes_from_an_mlx_launch_hostfile(tmp_path, monkeypatch):
     monkeypatch.setenv("MLX_HOSTFILE", str(empty))
     assert world_size_from_env() == 1
 
-    # The payload can also be inline, which is how unsloth_cli/_inference.py's
+    # The payload can also be inline, which is how spartan_agent_cli/_inference.py's
     # _json_rank_count_from_env reads these two, including the {"hosts": [...]} form.
     for inline, expected in (
         (json.dumps([[f"10.0.0.{rank}:5000"] for rank in range(6)]), 6),

@@ -28,7 +28,7 @@ fn build_update_command(bin: &std::path::Path) -> Result<Command, String> {
     #[cfg_attr(not(windows), allow(unused_mut))]
     // Isolated, as this call site shipped. It is the one managed invocation nobody
     // types by hand, and the one that decides which install gets rewritten: a
-    // user-site unsloth_cli must not be able to answer `from unsloth_cli import app`
+    // user-site spartan_agent_cli must not be able to answer `from spartan_agent_cli import app`
     // here. Everything else inherits, because the console script does.
     let mut cmd = crate::process::build_managed_cli_command_with(
         bin,
@@ -39,7 +39,7 @@ fn build_update_command(bin: &std::path::Path) -> Result<Command, String> {
     // Elsewhere inheriting is the point, since the console script honours these. Here
     // the failure is unrecoverable: a foreign PYTHONHOME stops the managed interpreter
     // finding its own site-packages, and a PYTHONPATH pointing at another checkout
-    // makes `from unsloth_cli import app` update the wrong install.
+    // makes `from spartan_agent_cli import app` update the wrong install.
     #[cfg(windows)]
     {
         cmd.env_remove("PYTHONHOME");
@@ -538,7 +538,7 @@ mod tests {
             vec![
                 // -I here and nowhere else. This is the invocation that decides
                 // which install gets rewritten, and it shipped isolated; a
-                // user-site unsloth_cli answering `from unsloth_cli import app`
+                // user-site spartan_agent_cli answering `from spartan_agent_cli import app`
                 // would update the wrong one. Every invocation a user could have
                 // typed instead inherits, because the console script does.
                 OsString::from("-X"),

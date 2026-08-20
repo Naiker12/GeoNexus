@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
-"""Regression tests for unsloth_cli.commands.export: pin the CLI to the export_* 3-tuple contract (was unpacking 2, crashing every `unsloth export`) via a fake ExportBackend in sys.modules."""
+"""Regression tests for spartan_agent_cli.commands.export: pin the CLI to the export_* 3-tuple contract (was unpacking 2, crashing every `unsloth export`) via a fake ExportBackend in sys.modules."""
 
 from __future__ import annotations
 
@@ -50,12 +50,12 @@ def _install_fake_studio_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "studio.spartan_backend.core.export", fake_mod)
 
     # Drop the cached CLI module so its deferred import re-resolves the fake.
-    monkeypatch.delitem(sys.modules, "unsloth_cli.commands.export", raising = False)
+    monkeypatch.delitem(sys.modules, "spartan_agent_cli.commands.export", raising = False)
 
 
 @pytest.fixture
 def cli_app(monkeypatch: pytest.MonkeyPatch) -> typer.Typer:
-    """Typer app wrapping unsloth_cli.commands.export.export."""
+    """Typer app wrapping spartan_agent_cli.commands.export.export."""
     _install_fake_studio_backend(monkeypatch)
     from spartan_agent_cli.commands import export as export_cmd
 

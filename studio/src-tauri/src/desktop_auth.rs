@@ -244,7 +244,6 @@ async fn provision_desktop_auth() -> Result<(), String> {
     cmd.env_remove("STUDIO_HOME");
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         cmd.creation_flags(crate::process::CREATE_NO_WINDOW);
     }
 

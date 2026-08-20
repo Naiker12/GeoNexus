@@ -54,7 +54,7 @@ from spartan_agent_cli._system_dir_guard import check_working_directory as _chec
 # command the folder cannot affect (the ones Unsloth Desktop spawns, issue #8510)
 # moves out of it; everything else stops in the callback below.
 #
-# Before the command imports, since unsloth_cli.commands.studio resolves
+# Before the command imports, since spartan_agent_cli.commands.studio resolves
 # STUDIO_HOME at import time and a relative UNSLOTH_STUDIO_HOME would otherwise
 # be pinned to the folder we are leaving. The message waits for typer to render
 # it. A library import reaches the same check from the callback instead.
@@ -84,8 +84,8 @@ _entry_point_prepared = False
 def _prepare_entry_point():
     """Apply the `unsloth` console-script behaviour to this process.
 
-    Split out for `python -m unsloth_cli`, which cannot use the argv[0] check
-    above: `-m` imports this package in order to find unsloth_cli/__main__.py,
+    Split out for `python -m spartan_agent_cli`, which cannot use the argv[0] check
+    above: `-m` imports this package in order to find spartan_agent_cli/__main__.py,
     so __init__ runs while sys.argv[0] is still "-m" and the gate cannot fire.
     __main__ rewrites argv[0] and calls this instead.
 

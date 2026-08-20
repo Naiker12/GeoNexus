@@ -17,7 +17,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STUDIO_COMMAND = REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
+STUDIO_COMMAND = REPO_ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 ORIGINAL_LAUNCHER = b"MZ-original-launcher"
 REAL_MSVCRT = sys.modules.get("msvcrt")
 
@@ -25,26 +25,26 @@ REAL_MSVCRT = sys.modules.get("msvcrt")
 @pytest.fixture
 def studio(monkeypatch):
     """Load studio.py without importing the heavyweight unsloth package."""
-    package = types.ModuleType("unsloth_cli")
-    package.__path__ = [str(REPO_ROOT / "unsloth_cli")]
-    commands = types.ModuleType("unsloth_cli.commands")
-    commands.__path__ = [str(REPO_ROOT / "unsloth_cli" / "commands")]
-    deps = types.ModuleType("unsloth_cli._studio_deps")
-    inference = types.ModuleType("unsloth_cli._inference")
+    package = types.ModuleType("spartan_agent_cli")
+    package.__path__ = [str(REPO_ROOT / "spartan_agent_cli")]
+    commands = types.ModuleType("spartan_agent_cli.commands")
+    commands.__path__ = [str(REPO_ROOT / "spartan_agent_cli" / "commands")]
+    deps = types.ModuleType("spartan_agent_cli._studio_deps")
+    inference = types.ModuleType("spartan_agent_cli._inference")
     inference.SpeculativeType = str
-    password_prompt = types.ModuleType("unsloth_cli.commands._password_prompt")
+    password_prompt = types.ModuleType("spartan_agent_cli.commands._password_prompt")
     commands._password_prompt = password_prompt
 
     for name, module in (
-        ("unsloth_cli", package),
-        ("unsloth_cli.commands", commands),
-        ("unsloth_cli._studio_deps", deps),
-        ("unsloth_cli._inference", inference),
-        ("unsloth_cli.commands._password_prompt", password_prompt),
+        ("spartan_agent_cli", package),
+        ("spartan_agent_cli.commands", commands),
+        ("spartan_agent_cli._studio_deps", deps),
+        ("spartan_agent_cli._inference", inference),
+        ("spartan_agent_cli.commands._password_prompt", password_prompt),
     ):
         monkeypatch.setitem(sys.modules, name, module)
 
-    module_name = "unsloth_cli.commands.studio_launcher_transaction_test"
+    module_name = "spartan_agent_cli.commands.studio_launcher_transaction_test"
     spec = importlib.util.spec_from_file_location(module_name, STUDIO_COMMAND)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -835,11 +835,11 @@ def test_the_package_answers_for_a_quarantined_console_script(monkeypatch, studi
     monkeypatch.setattr(studio.platform, "system", lambda: "Windows")
     assert not studio._managed_cli_package_present(python)
 
-    (site_packages / "unsloth_cli").mkdir()
+    (site_packages / "spartan_agent_cli").mkdir()
     assert studio._managed_cli_package_present(python)
 
-    # An editable install leaves a .pth and no unsloth_cli/ here.
-    (site_packages / "unsloth_cli").rmdir()
+    # An editable install leaves a .pth and no spartan_agent_cli/ here.
+    (site_packages / "spartan_agent_cli").rmdir()
     (site_packages / "unsloth-2026.8.1.dist-info").mkdir()
     assert studio._managed_cli_package_present(python)
 
@@ -889,7 +889,7 @@ def test_orphaned_install_metadata_is_not_a_runnable_cli(monkeypatch, studio, re
     (windows_layout / "unsloth-2026.8.1.dist-info").mkdir(exist_ok = True)
 
     monkeypatch.setattr(studio.platform, "system", lambda: "Windows")
-    assert not (site_packages / "unsloth_cli").exists(), "the probe venv must start empty"
+    assert not (site_packages / "spartan_agent_cli").exists(), "the probe venv must start empty"
     assert not studio._managed_cli_package_present(python)
 
 
@@ -901,7 +901,7 @@ def test_an_importable_package_still_answers_for_the_quarantined_stub(
     Same venv as above, now with something the interpreter can actually resolve.
     """
     python, site_packages = real_venv
-    package = site_packages / "unsloth_cli"
+    package = site_packages / "spartan_agent_cli"
     package.mkdir(parents = True, exist_ok = True)
     (package / "__init__.py").write_text("app = None\n", encoding = "utf-8")
 
@@ -915,13 +915,13 @@ def test_an_importable_package_still_answers_for_the_quarantined_stub(
 
 @pytest.fixture
 def bare_probe_venv(real_venv):
-    """The module venv with any unsloth_cli left by a neighbouring test removed.
+    """The module venv with any spartan_agent_cli left by a neighbouring test removed.
 
     These cases each install their own shape of broken package, so they cannot
     inherit one, and they must not leave one behind either.
     """
     python, site_packages = real_venv
-    package = site_packages / "unsloth_cli"
+    package = site_packages / "spartan_agent_cli"
     shutil.rmtree(package, ignore_errors = True)
     yield python, site_packages
     shutil.rmtree(package, ignore_errors = True)
@@ -939,7 +939,7 @@ def bare_probe_venv(real_venv):
         # An interrupted install: the package landed, its dependencies did not.
         (
             "a package whose imports are missing",
-            {"__init__.py": "import unsloth_cli_missing_dep\n"},
+            {"__init__.py": "import spartan_agent_cli_missing_dep\n"},
         ),
         # A partially written __init__ that imports but has no app to hand back.
         ("a package with no app attribute", {"__init__.py": "VERSION = '1'\n"}),
@@ -962,7 +962,7 @@ def test_a_package_the_trampoline_cannot_import_is_not_a_runnable_cli(
     runs that exact import rather than a cheaper find_spec.
     """
     python, site_packages = bare_probe_venv
-    package = site_packages / "unsloth_cli"
+    package = site_packages / "spartan_agent_cli"
     package.mkdir(parents = True)
     for name, body in files.items():
         (package / name).write_text(body, encoding = "utf-8")
@@ -990,7 +990,7 @@ def test_a_probe_that_cannot_start_the_interpreter_fails_closed(monkeypatch, stu
     scripts = tmp_path / "Scripts"
     site_packages = tmp_path / "Lib" / "site-packages"
     scripts.mkdir(parents = True)
-    (site_packages / "unsloth_cli").mkdir(parents = True)
+    (site_packages / "spartan_agent_cli").mkdir(parents = True)
     python = scripts / "python.exe"
     python.write_bytes(b"python")
     monkeypatch.setattr(studio.platform, "system", lambda: "Windows")

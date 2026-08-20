@@ -22,7 +22,7 @@ on:
     paths:
       - 'studio/**'
       - 'unsloth/**'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'install.sh'
       - 'pyproject.toml'
       - 'tests/studio/**'

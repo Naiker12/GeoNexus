@@ -1256,9 +1256,9 @@ pub(crate) fn force_kill_process_tree(
 /// could import.
 ///
 /// The dist-info is accepted alongside the package directory, and for the same reason
-/// `_managed_cli_site_packages_layout` in unsloth_cli/commands/studio.py accepts it: a
+/// `_managed_cli_site_packages_layout` in spartan_agent_cli/commands/studio.py accepts it: a
 /// PEP 660 editable install of the checkout leaves a .pth and a `unsloth-*.dist-info`
-/// here and no `unsloth_cli/` at all. Ranking that below an empty new layout would send
+/// here and no `spartan_agent_cli/` at all. Ranking that below an empty new layout would send
 /// every capability probe at the interpreter with nothing to import.
 ///
 /// It cannot prove the package imports, and does not try to. This runs on the launch
@@ -1266,7 +1266,7 @@ pub(crate) fn force_kill_process_tree(
 /// are the ones allowed to spawn an interpreter.
 #[cfg(windows)]
 fn windows_site_packages_carries_the_cli(site_packages: &std::path::Path) -> bool {
-    if site_packages.join("unsloth_cli").exists() {
+    if site_packages.join("spartan_agent_cli").exists() {
         return true;
     }
     let Ok(entries) = std::fs::read_dir(site_packages) else {
@@ -1373,7 +1373,7 @@ pub fn find_unsloth_binary() -> Option<std::path::PathBuf> {
 ///
 /// The leading sys.path edit is what `-I` used to buy, without the rest of it.
 /// `python -c` puts the working directory on sys.path[0] and the console script
-/// never does, so a stray unsloth_cli beside the caller would shadow the managed
+/// never does, so a stray spartan_agent_cli beside the caller would shadow the managed
 /// package; stripping that one entry closes it and leaves alone everything the
 /// console script honours. `-I` implies `-E`, which discarded PYTHONPATH,
 /// PYTHONWARNINGS, PYTHONHASHSEED, PYTHONPROFILEIMPORTTIME and user
@@ -1394,14 +1394,14 @@ pub fn find_unsloth_binary() -> Option<std::path::PathBuf> {
 /// explicit PYTHONUTF8=0 the child therefore runs in UTF-8 mode where the stub
 /// would not have.
 ///
-/// sys.argv[0] is assigned before the import because unsloth_cli decides at
+/// sys.argv[0] is assigned before the import because spartan_agent_cli decides at
 /// import time whether it is the console script, which gates the Windows UTF-8
 /// stream reconfigure and the -np<N> argv rewrite. It also sets Typer's
 /// prog_name to "unsloth"; the stub prints "unsloth.exe", so usage text reads
 /// slightly cleaner here rather than matching byte for byte.
 #[cfg(windows)]
 pub(crate) const WINDOWS_CLI_ENTRYPOINT: &str =
-    "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from unsloth_cli import app; sys.exit(app())";
+    "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())";
 
 /// The program and argument vector that run the managed CLI without executing
 /// `bin` itself. On non-Windows platforms `bin` is a plain script with a
@@ -1438,7 +1438,7 @@ pub(crate) fn resolve_managed_cli_invocation(
 /// Everything the user could equally have typed themselves inherits, because the
 /// console script does and the swap has to be invisible. The desktop updater does
 /// not: it shipped with `-I` before any of this, nobody types it, and it rewrites
-/// the very environment it runs in, so a `pip install --user unsloth_cli` deciding
+/// the very environment it runs in, so a `pip install --user spartan_agent_cli` deciding
 /// which package gets updated is a real hazard rather than a parity question.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Isolation {
@@ -1496,6 +1496,7 @@ pub(crate) fn resolve_managed_cli_invocation_with(
 }
 
 /// Blocking flavour of [`resolve_managed_cli_invocation`].
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn build_managed_cli_command(
     bin: &std::path::Path,
     args: &[&str],
@@ -1713,7 +1714,7 @@ fn windows_roots_from(
 /// Path overrides a relative value makes cwd-dependent, so moving the child
 /// without rewriting them would point them somewhere else. Search lists such as
 /// PATH are absent: they are not single paths. Mirrors `_RELATIVE_PATH_ENV` in
-/// unsloth_cli/_system_dir_guard.py, held identical by a parity test.
+/// spartan_agent_cli/_system_dir_guard.py, held identical by a parity test.
 pub(crate) const RELATIVE_PATH_ENV: &[&str] = &[
     "UNSLOTH_STUDIO_HOME",
     "STUDIO_HOME",
@@ -2020,7 +2021,7 @@ fn expand_windows_vars(value: &str, lookup: &impl Fn(&str) -> Option<String>) ->
 
 /// Whether the working directory is what resolves this variable's value.
 ///
-/// The twin of `_names_a_path` in `unsloth_cli/_system_dir_guard.py`. Each
+/// The twin of `_names_a_path` in `spartan_agent_cli/_system_dir_guard.py`. Each
 /// exemption is scoped to the variables whose reader proves it, because the
 /// syntax is only special there: a directory really called "[llama]" is legal on
 /// Windows, and UNSLOTH_LLAMA_CPP_PATH is read as one.
@@ -2709,7 +2710,7 @@ mod tests {
         );
 
         // The legacy base has the package and the new one does not.
-        fs::create_dir_all(old_base.join("Lib").join("site-packages").join("unsloth_cli")).unwrap();
+        fs::create_dir_all(old_base.join("Lib").join("site-packages").join("spartan_agent_cli")).unwrap();
         assert_eq!(
             find_unsloth_binary_in_studio_dir(&studio),
             Some(old_base.join("Scripts").join("unsloth.exe")),
@@ -2717,7 +2718,7 @@ mod tests {
         );
 
         // Once the new base has it too, layout order takes over again.
-        fs::create_dir_all(new_base.join("Lib").join("site-packages").join("unsloth_cli")).unwrap();
+        fs::create_dir_all(new_base.join("Lib").join("site-packages").join("spartan_agent_cli")).unwrap();
         assert_eq!(
             find_unsloth_binary_in_studio_dir(&studio),
             Some(new_base.join("Scripts").join("unsloth.exe")),
@@ -2735,7 +2736,7 @@ mod tests {
     }
 
     // An editable install of the checkout leaves a .pth and a dist-info in
-    // site-packages and no unsloth_cli/ directory at all, so a package-directory test
+    // site-packages and no spartan_agent_cli/ directory at all, so a package-directory test
     // alone would rank a working legacy venv below an empty new one. The Python side
     // accepts the dist-info for this exact shape; this side has to agree.
     #[cfg(windows)]
@@ -2862,12 +2863,12 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn managed_trampoline_assigns_argv0_before_importing_the_cli() {
-        // The order is the whole point: unsloth_cli decides at import time
+        // The order is the whole point: spartan_agent_cli decides at import time
         // whether it is the console script, which gates the UTF-8 stream
         // reconfigure, the -np<N> rewrite and Typer's prog_name.
         let strip = WINDOWS_CLI_ENTRYPOINT.find("sys.path[:1]");
         let assignment = WINDOWS_CLI_ENTRYPOINT.find("sys.argv[0] = 'unsloth'");
-        let import = WINDOWS_CLI_ENTRYPOINT.find("from unsloth_cli import app");
+        let import = WINDOWS_CLI_ENTRYPOINT.find("from spartan_agent_cli import app");
         assert!(strip.is_some() && assignment.is_some() && import.is_some());
         assert!(assignment < import, "{WINDOWS_CLI_ENTRYPOINT}");
         // The cwd must leave sys.path before the import too, or the entry it
@@ -4829,7 +4830,7 @@ mod managed_cli_working_dir_tests {
         // A name in one list and not the other means the same install places
         // state in two folders, depending on which layer moved the child.
         let guard = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../unsloth_cli/_system_dir_guard.py");
+            .join("../../spartan_agent_cli/_system_dir_guard.py");
         let source = fs::read_to_string(&guard).unwrap();
         let start = source.find("_RELATIVE_PATH_ENV = (").unwrap();
         let block = &source[start..start + source[start..].find("\n)").unwrap()];
@@ -5602,7 +5603,7 @@ mod managed_cli_working_dir_tests {
     #[test]
     fn the_marker_name_matches_the_python_guard() {
         let guard = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../unsloth_cli/_system_dir_guard.py");
+            .join("../../spartan_agent_cli/_system_dir_guard.py");
         let source = fs::read_to_string(&guard).expect("the Python guard must be readable");
         assert!(
             source.contains(&format!("DESKTOP_MANAGED_ENV = \"{DESKTOP_MANAGED_ENV}\"")),

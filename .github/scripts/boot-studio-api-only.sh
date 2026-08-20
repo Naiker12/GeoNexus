@@ -10,7 +10,7 @@
 #                           [--api-only]
 #
 # On the name, and on --api-only being a flag rather than the default. The
-# UNSLOTH_API_ONLY=1 below reads like the switch and is not: nothing in unsloth_cli
+# UNSLOTH_API_ONLY=1 below reads like the switch and is not: nothing in spartan_agent_cli
 # takes it as input. Whether the web UI is served is decided by the CLI's --api-only
 # flag alone, and the backend only ever reads that variable back out (main.py, to pick
 # a CORS profile) after run.py has set it from the flag. So every caller here has in

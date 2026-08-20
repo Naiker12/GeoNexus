@@ -527,11 +527,11 @@ def test_a_python_client_can_recognise_the_late_failure(route):
     assert payload == {"status_code": 507, "detail": "CUDA out of memory"}
 
     # Read as text, not imported: the backend test env need not import the CLI.
-    cli = (_repo_root / "unsloth_cli" / "_inference.py").read_text(encoding = "utf-8")
+    cli = (_repo_root / "spartan_agent_cli" / "_inference.py").read_text(encoding = "utf-8")
     assert f'_DEFERRED_ERROR_KEY = "{route._DEFERRED_ERROR_KEY}"' in cli
     assert 'deferred.get("status_code")' in cli
     assert 'deferred.get("detail")' in cli
-    # unsloth_cli/tests/test_inference_chat.py asserts it actually raises.
+    # spartan_agent_cli/tests/test_inference_chat.py asserts it actually raises.
     assert "def raise_for_deferred_error(" in cli
 
 
@@ -542,7 +542,7 @@ def test_both_clients_reject_a_truncated_padded_body():
     suites (test_inference_chat.py, padded-response.test.ts); this only pins that
     neither side can drop the check.
     """
-    cli = (_repo_root / "unsloth_cli" / "_inference.py").read_text(encoding = "utf-8")
+    cli = (_repo_root / "spartan_agent_cli" / "_inference.py").read_text(encoding = "utf-8")
     assert "def require_completed_padded_body(" in cli
     assert "require_completed_padded_body(url, raise_for_deferred_error(url, body))" in cli
 

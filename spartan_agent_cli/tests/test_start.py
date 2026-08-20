@@ -785,7 +785,7 @@ def test_project_declares_direct_click_dependency():
 
 
 def test_agent_paths_use_cli_studio_home_without_backend_imports(monkeypatch, tmp_path):
-    studio = ModuleType("unsloth_cli.commands.studio")
+    studio = ModuleType("spartan_agent_cli.commands.studio")
     studio.STUDIO_HOME = tmp_path
     monkeypatch.setitem(sys.modules, studio.__name__, studio)
     monkeypatch.setattr(
@@ -4807,7 +4807,7 @@ def test_connect_pi_as_subagent_preserves_cloud_parent(fake_studio, tmp_path, yo
     assert result.exit_code == 0, result.output
     command = _launch_command(result.output)
     assert command[:2] == ["pi", "--extension"]
-    assert command[2].endswith("unsloth_cli/pi_subagent.ts")
+    assert command[2].endswith("spartan_agent_cli/pi_subagent.ts")
     assert ("--approve" in command) is yolo
     assert "--provider" not in command
     assert "--model" not in command

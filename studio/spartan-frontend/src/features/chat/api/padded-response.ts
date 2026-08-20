@@ -8,7 +8,7 @@
  * empty or truncated body; accepting that reports an unfinished load as done. Only
  * these two routes commit that early, so only they require a payload; elsewhere an
  * empty body is by design. Mirrored by `require_completed_padded_body` in
- * unsloth_cli/_inference.py.
+ * spartan_agent_cli/_inference.py.
  */
 export function assertCompletedPaddedBody(body: unknown, label: string): void {
   const complete =

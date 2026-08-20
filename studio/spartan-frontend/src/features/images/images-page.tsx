@@ -16,7 +16,6 @@ import {
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { TestTubeOutlineIcon } from "@/lib/hugeicons-derived";
 
 import { ImageDropzone } from "@/components/image-dropzone";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,6 @@ import { usePersistedChoice } from "@/hooks/use-persisted-choice";
 import { useScrollFades } from "@/hooks/use-scroll-fades";
 import { ModelSelector } from "@/features/model-picker/components/model-selector";
 import { IMAGE_GEN_TASKS } from "@/features/model-picker/components/model-selector/pickers";
-import { PillTabs } from "@/features/model-picker/components/model-selector/pill-tabs";
 import type { HostClass } from "@/features/model-picker/components/model-selector/host-artifact-policy";
 import {
   IMAGE_CATALOG,
@@ -1244,15 +1242,6 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
   // LoRA adapters selected for the next generation (id + weight), plus the list the picker offers.
   const [loras, setLoras] = useState<LoraSpecInput[]>([]);
   const [availableLoras, setAvailableLoras] = useState<DiffusionLoraInfo[]>([]);
-  // Page mode: "create" is the generation workspace, "train" the LoRA training workspace.
-  const pageMode = useImageWorkflowStore((s) => s.pageMode);
-  const setPageMode = useImageWorkflowStore((s) => s.setPageMode);
-  // Train family + base live here so the top bar can pick them, replacing the generation model selector on Train.
-  const [trainFamilies, setTrainFamilies] = useState<TrainFamilyOption[]>([]);
-  const [trainFamilyName, setTrainFamilyName] = useState("flux.1");
-  const [trainBaseChoice, setTrainBaseChoice] = useState("");
-  // Bumped when a training run completes, so the LoRA discovery effect rescans without a model reload.
-  const [loraRefreshKey, setLoraRefreshKey] = useState(0);
   // ControlNet for the next generation: model id, control image, how to derive the map, and the strength.
   const [controlnetId, setControlnetId] = useState<string>("");
   const [controlImage, setControlImage] = useState<string | null>(null);
@@ -1556,7 +1545,7 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [loraCapable, status?.family, loraRefreshKey]);
+  }, [loraCapable, status?.family]);
 
   // A torchao int8/fp8 build takes adapters ONLY at load time. Switching artifact within one family keeps the selection while
   // the new load did not bake it, so drop it once per resident build and say why, rather than 400 on the next Generate.
@@ -3028,42 +3017,6 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
     ],
   );
 
-  // Deploy a freshly-trained adapter from the Train tab: switch to Create, load the base, and queue the adapter for the LoRA discovery effect.
-  const handleDeployAdapter = useCallback(
-    (args: { baseRepo: string; family: string; catalogPath: string; trigger: string }) => {
-      if (busy !== null) {
-        toast.error("Finish the current model load before deploying the adapter.");
-        return;
-      }
-      // The picker keys a local adapter by its filename stem (see diffusion_lora scan).
-      const base = args.catalogPath.replace(/\\/g, "/").split("/").pop() ?? "";
-      const stem = base.replace(/\.(safetensors|gguf)$/i, "");
-      if (!stem) {
-        toast.error("Could not resolve the trained adapter's name.");
-        return;
-      }
-      // The deploy owns the page now: a resolving pick or a staged download would load over the base it is about to.
-      pickGuard.cancel();
-      pendingDeploy.current = { loraId: stem, family: args.family };
-      if (args.trigger.trim()) setPrompt(args.trigger.trim());
-      setPageMode("create");
-      const revert: PickRevert = quantRevert.current ?? { prev: quant, steps, guidance };
-      quantRevert.current = revert;
-      setQuant(null);
-      applyImageModelDefaults(args.baseRepo);
-      void handleLoad(args.baseRepo, { kind: "pipeline" }).then((started) => {
-        if (!started) {
-          pendingDeploy.current = null;
-          if (quantRevert.current === revert) {
-            revertPick(revert);
-            quantRevert.current = null;
-          }
-        }
-      });
-    },
-    [applyImageModelDefaults, busy, handleLoad, pickGuard, quant, revertPick, setPageMode],
-  );
-
   // Resolves true when the backend accepted the unload; handleCancelLoad reports the cancel only then.
   const handleUnload = useCallback(async (): Promise<boolean> => {
     // Ejecting cancels any in-flight replacement load, so tear down its client-side tracking too, or the toast leaks forever.
@@ -3451,12 +3404,11 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
 
   // Keep the active workflow valid for the loaded model: snap to the first supported one when capabilities change.
   useEffect(() => {
-    // Skipped in Train, which has no workflows and must not be snapped back to Create.
-    if (supported === null || pageMode !== "create") return;
+    if (supported === null) return;
     if (!supported.includes(workflow) && supported[0]) {
       setWorkflow(supported[0]);
     }
-  }, [supported, workflow, setWorkflow, pageMode]);
+  }, [supported, workflow, setWorkflow]);
 
   const activeWorkflowTab =
     WORKFLOW_TABS.find((t) => t.id === workflow) ?? WORKFLOW_TABS[0];
@@ -3642,21 +3594,8 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
             )}
           </div>
         </div>
-        <div className="grid h-full min-w-0 grid-cols-[1fr_auto_auto] gap-2 @[50rem]:grid-cols-[1fr_auto_1fr] @[50rem]:gap-0">
-          <div className="pointer-events-auto col-start-2 justify-self-center pt-[var(--studio-chat-header-padding-top,11px)]">
-            <PillTabs
-              ariaLabel="Page mode"
-              value={pageMode}
-              onValueChange={(v) => setPageMode(v as "create" | "train")}
-              fit={true}
-              className="h-[34px] [&>button]:h-[34px] [&>button]:px-3 @[68rem]:[&>button]:px-11"
-              tabs={[
-                { value: "create", label: "Create", icon: <HugeiconsIcon icon={SparklesIcon} className="size-3.5" /> },
-                { value: "train", label: "Train", icon: <HugeiconsIcon icon={TestTubeOutlineIcon} className="size-3.5" /> },
-              ]}
-            />
-          </div>
-          <div className="pointer-events-none col-start-3 flex min-w-0 items-start justify-end pr-2 pt-[var(--studio-chat-header-padding-top,11px)]">
+        <div className="flex h-full min-w-0 items-start justify-end pr-2 pt-[var(--studio-chat-header-padding-top,11px)]">
+          <div className="pointer-events-none flex min-w-0 items-start justify-end">
             <div className="pointer-events-auto flex min-w-0 items-center gap-2">
               <MediaPageLink
                 to="/video"
@@ -3669,27 +3608,9 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
           </div>
         </div>
       </div>
-      {/* Train mode: the full-page training workspace. Unmounted in Create mode so its polling stops; Create's own state is untouched. */}
-      {pageMode === "train" ? (
-        <DiffusionTrainPanel
-          active={active && pageMode === "train"}
-          loadedFamily={status?.family ?? null}
-          loadedBaseRepo={
-            // Prefer base_repo (the full diffusers pipeline) over repo_id: for a GGUF load repo_id is a checkpoint path, not a trainable base.
-            status?.base_repo ?? status?.repo_id ?? null
-          }
-          onTrainingComplete={() => setLoraRefreshKey((k) => k + 1)}
-          onDeploy={handleDeployAdapter}
-          familyName={trainFamilyName}
-          onFamilyNameChange={setTrainFamilyName}
-          baseChoice={trainBaseChoice}
-          onBaseChoiceChange={setTrainBaseChoice}
-          onFamiliesChange={setTrainFamilies}
-        />
-      ) : (
-      /* Settings column + preview canvas. Structural borders stay edge-to-edge;
-         spacing belongs inside each pane. The same 50rem page-container breakpoint
-         drives this body and the header above, regardless of sidebar width. */
+      {/* Settings column + preview canvas. Structural borders stay edge-to-edge;
+          spacing belongs inside each pane. The same 50rem page-container breakpoint
+          drives this body and the header above, regardless of sidebar width. */}
       <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden @[50rem]:flex-row @[50rem]:overflow-hidden">
         <div className="flex w-full shrink-0 flex-col border-b border-border/60 @[50rem]:w-[408px] @[50rem]:overflow-hidden @[50rem]:border-r @[50rem]:border-b-0">
           {/* pl-0.5 keeps focus rings off the scroll container's edge. */}
@@ -4460,7 +4381,6 @@ export function ImagesPage({ active = true }: { active?: boolean }) {
         </div>
 
       </div>
-      )}
     </div>
   );
 }

@@ -1188,7 +1188,7 @@ export function AgentsTab() {
     selectedModel,
   ]);
 
-  // No GGUF warning for `codex` (unsloth_cli's _require_gguf_for_codex): the
+  // No GGUF warning for `codex` (spartan_agent_cli's _require_gguf_for_codex): the
   // picker only ever offers GGUF models.
 
   return (

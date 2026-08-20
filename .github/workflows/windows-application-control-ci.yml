@@ -45,7 +45,7 @@ on:
       - 'install.ps1'
       - 'scripts/uninstall.ps1'
       - 'studio/setup.ps1'
-      - 'unsloth_cli/**'
+      - 'spartan_agent_cli/**'
       - 'studio/src-tauri/src/process.rs'
       - 'studio/src-tauri/src/update.rs'
       - 'studio/src-tauri/src/commands.rs'

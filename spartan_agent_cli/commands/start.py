@@ -97,10 +97,10 @@ _SUBAGENT_PLAN_INSTRUCTIONS = (
     "task with read-only tools, produce a concrete plan or answer, and return a concise result "
     "to the parent agent. Do not modify files."
 )
-_CLAUDE_SUBAGENT_MCP_MODULE = "unsloth_cli.claude_subagent_mcp"
+_CLAUDE_SUBAGENT_MCP_MODULE = "spartan_agent_cli.claude_subagent_mcp"
 _CLAUDE_SUBAGENT_TOOL = "mcp__plugin_unsloth-local-agent_unsloth__unsloth_agent"
 _CLAUDE_SUBAGENT_PLAN_TOOL = "mcp__plugin_unsloth-local-agent_unsloth__unsloth_plan_agent"
-_CODEX_SUBAGENT_MCP_MODULE = "unsloth_cli.codex_subagent_mcp"
+_CODEX_SUBAGENT_MCP_MODULE = "spartan_agent_cli.codex_subagent_mcp"
 _CODEX_SUBAGENT_MCP_SERVER = "unsloth_local_agent"
 _CODEX_SUBAGENT_MCP_TOOL = "spawn_local_agent"
 _CODEX_SUBAGENT_CONFIG_ENV = "UNSLOTH_CODEX_SUBAGENT_CONFIG"
@@ -1035,7 +1035,7 @@ def _start_studio_server(
     # unsloth.cmd would still fail here. sys.executable is the interpreter already
     # running this command, so the child inherits the same environment.
     if sys.platform == "win32":
-        # Local import: unsloth_cli.commands.studio imports at package init after
+        # Local import: spartan_agent_cli.commands.studio imports at package init after
         # this module, so a top-level import would be circular.
         from spartan_agent_cli.commands.studio import _managed_cli_argv
         launch_head = _managed_cli_argv(Path(sys.executable))

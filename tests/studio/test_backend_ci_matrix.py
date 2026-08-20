@@ -335,8 +335,8 @@ def test_the_floor_lint_scans_the_tree_rather_than_a_list_of_packages():
 def test_the_floor_lint_covers_every_tree_the_matrix_legs_run():
     """The lint has to cover what the deleted legs covered, not just the backend.
 
-    studio-backend-ci runs `pytest unsloth_cli/tests` as a step on every leg and lists
-    unsloth_cli/** in its own paths filter, so the old 3.10 leg executed shipped CLI code
+    studio-backend-ci runs `pytest spartan_agent_cli/tests` as a step on every leg and lists
+    spartan_agent_cli/** in its own paths filter, so the old 3.10 leg executed shipped CLI code
     on the floor interpreter. A lint aimed only at studio/spartan_backend replaces part of that
     and reads like it replaces all of it.
     """
@@ -350,7 +350,7 @@ def test_the_floor_lint_covers_every_tree_the_matrix_legs_run():
     workflow = WORKFLOW.read_text(encoding = "utf-8")
     # What it would hand to vermin, not what its source says it aims at.
     scanned = [str(Path(name).relative_to(REPO).as_posix()) for name in module.targets()]
-    for tree in ("studio/spartan_backend", "unsloth_cli"):
+    for tree in ("studio/spartan_backend", "spartan_agent_cli"):
         assert (
             tree in workflow
         ), f"{tree} is no longer run by {WORKFLOW.name}; drop it from the lint's ROOTS too"
@@ -378,7 +378,7 @@ def test_the_floor_lint_covers_test_code_the_matrix_executes():
     spec.loader.exec_module(module)
 
     scanned = {Path(name).relative_to(REPO).as_posix() for name in module.targets()}
-    for tree in ("studio/spartan_backend/tests", "unsloth_cli/tests"):
+    for tree in ("studio/spartan_backend/tests", "spartan_agent_cli/tests"):
         on_disk = {
             path.relative_to(REPO).as_posix()
             for path in (REPO / tree).rglob("*.py")

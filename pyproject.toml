@@ -31,7 +31,7 @@ dependencies = [
     # Every CLI command imports studio.spartan_backend.*, which reaches structlog at
     # module level. The rest of the server stack lives in the studio extra.
     "structlog>=24.1.0",
-    # unsloth_cli/__init__.py reaches click via commands/start.py, so every
+    # spartan_agent_cli/__init__.py reaches click via commands/start.py, so every
     # command needs it. typer supplied it until 0.27 dropped the dependency.
     "click>=8.0",
 ]

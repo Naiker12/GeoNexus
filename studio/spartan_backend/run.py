@@ -2158,7 +2158,7 @@ def _apply_cli_tool_policy(enable_tools: "Optional[bool]") -> None:
     set_tool_policy(enable_tools)
 
 
-# Mirror unsloth_cli/commands/studio.py's _PARALLEL_*: the admission queue caps concurrent
+# Mirror spartan_agent_cli/commands/studio.py's _PARALLEL_*: the admission queue caps concurrent
 # chats at the slot count, so a direct launch matches the CLI (VRAM fit may still cut it
 # back). Defined above run_server() so embedders that omit it do not serialise every chat.
 _PARALLEL_MIN = 1
@@ -2456,7 +2456,7 @@ def run_server(
                     # An Application Control policy can block the generated
                     # unsloth.exe while the signed interpreter beside it still
                     # runs, so name a route that does not go through it.
-                    f"  - or through the interpreter: {sys.executable} -I -m unsloth_cli studio\n"
+                    f"  - or through the interpreter: {sys.executable} -I -m spartan_agent_cli studio\n"
                     if sys.platform == "win32"
                     else ""
                 )

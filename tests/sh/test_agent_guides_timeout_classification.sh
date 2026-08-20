@@ -7,7 +7,7 @@
 #
 # History: every timeout was reported as class-(c) guide drift, "headless-TTY
 # hang -- the recipe likely needs a non-interactive/print flag", blaming the
-# recipe in unsloth_cli/commands/start.py. On 2026-08-03 that fired on
+# recipe in spartan_agent_cli/commands/start.py. On 2026-08-03 that fired on
 # opencode's file-edit turn 2, and the uploaded artifact showed the opposite:
 # the agent had run the tool, printed 'Hello', and then sat idle for the
 # remaining 18 minutes with llama-server serving nothing -- the same two turns

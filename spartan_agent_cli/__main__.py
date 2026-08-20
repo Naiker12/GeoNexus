@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
-"""`python -I -m unsloth_cli` -- reach the CLI without the generated console script.
+"""`python -I -m spartan_agent_cli` -- reach the CLI without the generated console script.
 
 Windows materialises the `unsloth` entry point as a generated, unsigned
 `unsloth.exe`. AppLocker, WDAC and Smart App Control deny that executable while
@@ -11,11 +11,11 @@ https://github.com/unslothai/unsloth/issues/8490). This module is the supported
 way in for those users, and for anyone who would rather not depend on a
 generated launcher:
 
-    python -X utf8 -I -m unsloth_cli studio -p 8888
+    python -X utf8 -I -m spartan_agent_cli studio -p 8888
 
 Use -I when that `python` is the managed Studio interpreter, which is what every
 command Unsloth prints does. `-m` resolves the package before this file runs, so a
-shell standing in a directory that has an `unsloth_cli` folder would otherwise run
+shell standing in a directory that has an `spartan_agent_cli` folder would otherwise run
 that copy, and -I drops the working directory from sys.path first.
 
 A `pip install --user` install is the exception: -I implies -s, so it hides the very
@@ -30,27 +30,26 @@ Output is identical to the console script, which takes three things:
     script would have given it.
   * _prepare_entry_point() applies the rest of the console-script behaviour
     (UTF-8 streams, the `-np<N>` rewrite). The import-time gate in
-    unsloth_cli/__init__ cannot do it here, because `-m` imports the package in
+    spartan_agent_cli/__init__ cannot do it here, because `-m` imports the package in
     order to locate this module: __init__ has already run, with argv[0] still
     "-m", before the first statement below executes.
   * prog_name is passed explicitly. click ignores argv[0] once it sees a
     __main__ with a __package__ (its _detect_program_name treats that as "python
-    -m example") and would print `Usage: python -m unsloth_cli` in every usage
+    -m example") and would print `Usage: python -m spartan_agent_cli` in every usage
     and error message.
 """
 
 import sys
 
-# Before the import, so a direct `python path/to/unsloth_cli/__main__.py` run
+# Before the import, so a direct `python path/to/spartan_agent_cli/__main__.py` run
 # takes the console-script gate in __init__ rather than needing the call below.
-sys.argv[0] = "unsloth"
+sys.argv[0] = "spartan-agent"
 
 import spartan_agent_cli  # noqa: E402
 
-unsloth_cli._prepare_entry_point()
+spartan_agent_cli._prepare_entry_point()
 # sys.exit, like the generated console script's `sys.exit(app())`. Typer raises
 # SystemExit itself in standalone mode, so today both spellings exit the same way,
 # but a returned value has to become the exit status here too or the two routes
 # stop agreeing the moment one exists.
-sys.exit(unsloth_cli.app(prog_name = "unsloth"))
-
+sys.exit(spartan_agent_cli.app(prog_name = "spartan-agent"))

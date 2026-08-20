@@ -20,7 +20,7 @@ import ast
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_STUDIO = _REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
+_STUDIO = _REPO_ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 
 
 def _run_function() -> ast.FunctionDef:
@@ -28,7 +28,7 @@ def _run_function() -> ast.FunctionDef:
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name == "run":
             return node
-    raise AssertionError("no top-level `run` command in unsloth_cli/commands/studio.py")
+    raise AssertionError("no top-level `run` command in spartan_agent_cli/commands/studio.py")
 
 
 def _studio_bin_value() -> ast.expr:
@@ -154,7 +154,7 @@ def test_the_trampoline_is_the_one_the_rust_and_powershell_sides_use():
 def test_the_interpreter_argv_carries_no_isolation_flag_by_default():
     """-I implies -E and drops every PYTHON* variable the console script honours.
 
-    The trampoline's own sys.path[:1] filter is what keeps a stray unsloth_cli in
+    The trampoline's own sys.path[:1] filter is what keeps a stray spartan_agent_cli in
     the working directory from shadowing the managed package, so -I is not needed
     for that either, and paying it would be an observable difference on a machine
     with no policy at all.

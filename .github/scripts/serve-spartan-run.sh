@@ -19,7 +19,7 @@
 #    A failure to come up healthy is class (a) "server/API regression" and
 #    must be reported with a distinct `::error::` BEFORE any agent runs.
 #  * The banner is the documented contract a human copies from. We parse the
-#    exact `API Key:` line printed by unsloth_cli/commands/studio.py
+#    exact `API Key:` line printed by spartan_agent_cli/commands/studio.py
 #    (`  API Key:      <key>` non-silent, `API Key: <key>` silent) so a
 #    silent change to that line is also caught.
 #  * `unsloth run` re-execs into the studio venv ($STUDIO_HOME/unsloth_studio),
@@ -151,7 +151,7 @@ if [ -z "$API_KEY" ]; then
   API_KEY="$(grep -aE 'API Key:' "$SERVER_LOG" 2>/dev/null \
     | sed -E 's/.*API Key:[[:space:]]*//' | head -1 || true)"
 fi
-[ -n "$API_KEY" ] || server_fail "could not parse an API key from the banner (banner-parse fragility -- check the 'API Key:' line in unsloth_cli/commands/studio.py)"
+[ -n "$API_KEY" ] || server_fail "could not parse an API key from the banner (banner-parse fragility -- check the 'API Key:' line in spartan_agent_cli/commands/studio.py)"
 echo "::add-mask::${API_KEY}"
 emit UNSLOTH_API_KEY "$API_KEY"
 

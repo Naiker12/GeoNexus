@@ -1534,7 +1534,10 @@ where
                 )
             }));
             let proceed = result.as_ref().copied().unwrap_or(false);
+            #[cfg(target_os = "macos")]
             let reply_pending = guard.finish();
+            #[cfg(not(target_os = "macos"))]
+            guard.finish();
             #[cfg(target_os = "macos")]
             if reply_pending {
                 reply_to_termination_request(&app, proceed);

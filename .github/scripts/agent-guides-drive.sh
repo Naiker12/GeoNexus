@@ -6,7 +6,7 @@
 # Local Agent Guides CI. All failures from here are failure class (c)
 # "guide drift": the server preflight already passed and the agent CLI
 # already installed, so a failure here means the documented recipe in
-# unsloth_cli/commands/start.py no longer produces a working flow.
+# spartan_agent_cli/commands/start.py no longer produces a working flow.
 #
 # Self-updating: for all six agents (claude, codex, hermes, openclaw,
 # opencode, pi) we obtain the exact env + command from
@@ -70,7 +70,7 @@ REDACTED_DIR="$REPO_ROOT/redacted-configs"
 WORKDIR_BASE="$REPO_ROOT/agent-workdir"
 CACHE_HELPER="$SCRIPT_DIR/assert-prompt-cache.sh"
 mkdir -p "$LOGS_DIR" "$REDACTED_DIR"
-CONNECT_REF="unsloth_cli/commands/start.py"
+CONNECT_REF="spartan_agent_cli/commands/start.py"
 
 # Prefill-shrinking flags for Claude Code. The heavyweight agents send
 # multi-thousand-token system prompts + full tool schemas, which on a CPU-only

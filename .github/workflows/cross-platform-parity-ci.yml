@@ -32,13 +32,13 @@ on:
     paths:
       - 'install.sh'
       - 'install.ps1'
-      - 'unsloth_cli/__init__.py'
+      - 'spartan_agent_cli/__init__.py'
       # The System32 working-directory guard the CLI callback runs; all of that
       # logic lives here now, so an edit to it alone must still run this leg.
-      - 'unsloth_cli/_system_dir_guard.py'
+      - 'spartan_agent_cli/_system_dir_guard.py'
       # test_installer_profile_hardening.py asserts this module directly (unconditional
       # -NoProfile, the proxy handoff), so a change to it has to run here.
-      - 'unsloth_cli/commands/studio.py'
+      - 'spartan_agent_cli/commands/studio.py'
       - 'tests/test_installer_skip_autostart.py'
       - 'tests/test_installer_system32_guard.py'
       - 'tests/test_installer_interactive_prompts.py'
@@ -89,13 +89,13 @@ on:
     paths:
       - 'install.sh'
       - 'install.ps1'
-      - 'unsloth_cli/__init__.py'
+      - 'spartan_agent_cli/__init__.py'
       # The System32 working-directory guard the CLI callback runs; all of that
       # logic lives here now, so an edit to it alone must still run this leg.
-      - 'unsloth_cli/_system_dir_guard.py'
+      - 'spartan_agent_cli/_system_dir_guard.py'
       # test_installer_profile_hardening.py asserts this module directly (unconditional
       # -NoProfile, the proxy handoff), so a change to it has to run here.
-      - 'unsloth_cli/commands/studio.py'
+      - 'spartan_agent_cli/commands/studio.py'
       - 'tests/test_installer_skip_autostart.py'
       - 'tests/test_installer_system32_guard.py'
       - 'tests/test_installer_interactive_prompts.py'
@@ -192,9 +192,9 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.12'
-      # test_installer_profile_hardening.py imports unsloth_cli.commands.studio, which pulls
+      # test_installer_profile_hardening.py imports spartan_agent_cli.commands.studio, which pulls
       # the CLI's import chain; without these the job dies on ModuleNotFoundError before a
-      # single test runs. rich arrives through typer today, but unsloth_cli imports it
+      # single test runs. rich arrives through typer today, but spartan_agent_cli imports it
       # directly, so it is named rather than left to somebody else's dependency list. No
       # torch: UNSLOTH_NO_TORCH keeps the suite off it.
       - run: python -m pip install -U pip pytest typer pyyaml pydantic click rich

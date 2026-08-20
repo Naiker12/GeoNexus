@@ -189,7 +189,7 @@ fn marker_candidates_for_bin(bin: &Path) -> Vec<PathBuf> {
     for site_packages in site_packages_dirs(venv_dir) {
         out.push(
             site_packages
-                .join("unsloth_cli")
+                .join("spartan_agent_cli")
                 .join("commands")
                 .join("studio.py"),
         );
@@ -403,7 +403,6 @@ async fn run_cli_probe(bin: &Path, args: &[&str]) -> Result<bool, String> {
 
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         cmd.creation_flags(crate::process::CREATE_NO_WINDOW);
     }
 
@@ -466,7 +465,6 @@ async fn probe_cli_capability(bin: &Path) -> Result<Option<DesktopCapability>, S
 
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         cmd.creation_flags(crate::process::CREATE_NO_WINDOW);
     }
 
@@ -925,10 +923,10 @@ mod tests {
         } else {
             venv.join("lib").join("python3.11").join("site-packages")
         };
-        fs::create_dir_all(site_packages.join("unsloth_cli").join("commands")).unwrap();
+        fs::create_dir_all(site_packages.join("spartan_agent_cli").join("commands")).unwrap();
         fs::write(
             site_packages
-                .join("unsloth_cli")
+                .join("spartan_agent_cli")
                 .join("commands")
                 .join("studio.py"),
             "# cli\n",

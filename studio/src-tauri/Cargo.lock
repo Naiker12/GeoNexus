@@ -2664,57 +2664,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
-name = "spartan_agent-studio"
-version = "1.0.0"
-dependencies = [
- "arboard",
- "base64 0.23.1",
- "dirs 6.0.0",
- "elevated-command",
- "fix-path-env",
- "gdk",
- "gdk-pixbuf",
- "glib",
- "gtk",
- "hmac",
- "libc",
- "log",
- "objc2",
- "open",
- "process-wrap",
- "rand 0.10.2",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "signal-hook",
- "simplelog",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-deep-link",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tauri-plugin-window-state",
- "tempfile",
- "time",
- "tokio",
- "webkit2gtk",
- "webkit2gtk-sys",
- "webview2-com",
- "windows 0.62.2",
- "windows-core 0.61.2",
- "windows-sys 0.61.2",
- "winreg 0.55.0",
-]
-
-[[package]]
 name = "nix"
 version = "0.31.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4541,6 +4490,57 @@ dependencies = [
  "gobject-sys",
  "libc",
  "system-deps",
+]
+
+[[package]]
+name = "spartan_agent-studio"
+version = "1.0.0"
+dependencies = [
+ "arboard",
+ "base64 0.23.1",
+ "dirs 6.0.0",
+ "elevated-command",
+ "fix-path-env",
+ "gdk",
+ "gdk-pixbuf",
+ "glib",
+ "gtk",
+ "hmac",
+ "libc",
+ "log",
+ "objc2",
+ "open",
+ "process-wrap",
+ "rand 0.10.2",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "signal-hook",
+ "simplelog",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-deep-link",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tauri-plugin-window-state",
+ "tempfile",
+ "time",
+ "tokio",
+ "webkit2gtk",
+ "webkit2gtk-sys",
+ "webview2-com",
+ "windows 0.62.2",
+ "windows-core 0.61.2",
+ "windows-sys 0.61.2",
+ "winreg 0.55.0",
 ]
 
 [[package]]

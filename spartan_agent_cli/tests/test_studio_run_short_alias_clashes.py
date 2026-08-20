@@ -419,7 +419,7 @@ def test_consume_helper_rejects_empty_inline_value():
         helper(["-m="], ("-m",), None, "--model")
 
 
-# Gate isolation: importing unsloth_cli from a third-party script must
+# Gate isolation: importing spartan_agent_cli from a third-party script must
 # leave its sys.argv intact. Pins the narrow basename set.
 
 
@@ -444,8 +444,8 @@ def test_third_party_importers_do_not_trigger_np_rewrite(monkeypatch, third_part
     starting_argv = [third_party_argv0, "subcmd", "-np8", "--input", "foo"]
     monkeypatch.setattr(sys, "argv", list(starting_argv))
     # Force a fresh import so the import-time gate actually runs.
-    monkeypatch.delitem(sys.modules, "unsloth_cli", raising = False)
-    importlib.import_module("unsloth_cli")
+    monkeypatch.delitem(sys.modules, "spartan_agent_cli", raising = False)
+    importlib.import_module("spartan_agent_cli")
     assert sys.argv == starting_argv, (
         f"third-party argv[0]={third_party_argv0!r} triggered the "
         f"unsloth -np canonicaliser; sys.argv was mutated to {sys.argv}"

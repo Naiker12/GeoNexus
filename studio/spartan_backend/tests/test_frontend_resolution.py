@@ -115,7 +115,7 @@ def test_resolver_falls_back_via_editable_pth(tmp_path, monkeypatch):
     finder = sp / "__editable___unsloth_0_0_0_finder.py"
     finder.write_text(
         "MAPPING: dict[str, str] = "
-        f"{{'studio': {str(repo_studio)!r}, 'unsloth': '/x', 'unsloth_cli': '/y'}}\n",
+        f"{{'studio': {str(repo_studio)!r}, 'unsloth': '/x', 'spartan_agent_cli': '/y'}}\n",
         encoding = "utf-8",
     )
     monkeypatch.setenv("UNSLOTH_STUDIO_HOME", str(studio_home))
@@ -162,7 +162,7 @@ def test_resolver_does_not_crash_on_non_dict_mapping_literal(tmp_path, monkeypat
     # Bad finder: set literal, not a dict. literal_eval parses it as a set,
     # so any .get() call on it would raise AttributeError.
     (sp / "__editable___bad_0_0_0_finder.py").write_text(
-        "MAPPING: dict[str, str] = {'studio', 'unsloth', 'unsloth_cli'}\n",
+        "MAPPING: dict[str, str] = {'studio', 'unsloth', 'spartan_agent_cli'}\n",
         encoding = "utf-8",
     )
     # Good finder, still discovered after the bad one is skipped.
@@ -198,7 +198,7 @@ def test_resolver_handles_multiline_mapping_dict(tmp_path, monkeypatch):
         "MAPPING: dict[str, str] = {\n"
         f"    'studio': {str(repo_studio)!r},\n"
         "    'unsloth': '/x',\n"
-        "    'unsloth_cli': '/y',\n"
+        "    'spartan_agent_cli': '/y',\n"
         "}\n",
         encoding = "utf-8",
     )

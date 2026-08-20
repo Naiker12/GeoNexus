@@ -140,7 +140,7 @@ def test_run_py_mirror_matches_shared_bounds():
 
 
 def test_cli_mirror_matches_shared_bounds():
-    cli = Path(_BACKEND_DIR).parent.parent / "unsloth_cli" / "commands" / "studio.py"
+    cli = Path(_BACKEND_DIR).parent.parent / "spartan_agent_cli" / "commands" / "studio.py"
     assert _mirrored_bounds(cli) == (PARALLEL_MIN, PARALLEL_MAX)
 
 

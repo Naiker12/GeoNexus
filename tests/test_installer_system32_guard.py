@@ -21,13 +21,13 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INSTALL_PS1 = REPO_ROOT / "install.ps1"
-CLI_INIT = REPO_ROOT / "unsloth_cli" / "__init__.py"
+CLI_INIT = REPO_ROOT / "spartan_agent_cli" / "__init__.py"
 
 
 def _load_guard_module():
     """Load the guard by path: importing the package would drag in typer and every command."""
-    path = REPO_ROOT / "unsloth_cli" / "_system_dir_guard.py"
-    spec = importlib.util.spec_from_file_location("unsloth_cli_system_dir_guard", path)
+    path = REPO_ROOT / "spartan_agent_cli" / "_system_dir_guard.py"
+    spec = importlib.util.spec_from_file_location("spartan_agent_cli_system_dir_guard", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -317,7 +317,7 @@ def test_relocation_block_fails_fast_when_every_candidate_is_a_system_directory(
     assert "FAILED:" in res.stdout, "must route through Exit-InstallFailure for rollback"
 
 
-# ── unsloth_cli: the message the user actually reads ──
+# ── spartan_agent_cli: the message the user actually reads ──
 
 
 def _expand_windows_user(value: str, environ: dict[str, str]) -> str:
@@ -1066,7 +1066,7 @@ def test_cli_guard_does_nothing_off_windows():
 
 
 def test_cli_guard_runs_before_the_command_modules_are_imported():
-    """unsloth_cli.commands.studio resolves STUDIO_HOME at import time, so a chdir in
+    """spartan_agent_cli.commands.studio resolves STUDIO_HOME at import time, so a chdir in
     the callback would come too late for a relative UNSLOTH_STUDIO_HOME."""
     source = CLI_INIT.read_text(encoding = "utf-8")
     guard_call = source.index("_check_working_directory(_sys.argv[1:]")
@@ -1427,15 +1427,15 @@ def test_cli_guard_reads_the_invocation_not_the_hosts_argv():
     import spartan_agent_cli
 
     seen: list[list[str]] = []
-    original = unsloth_cli._check_working_directory
-    unsloth_cli._check_working_directory = lambda argv, environ, platform, **kw: (
+    original = spartan_agent_cli._check_working_directory
+    spartan_agent_cli._check_working_directory = lambda argv, environ, platform, **kw: (
         seen.append(list(argv)) or (None, None, False)
     )
     try:
-        CliRunner().invoke(unsloth_cli.app, ["studio", "--help"])
-        CliRunner().invoke(unsloth_cli.app, ["train", "--help"])
+        CliRunner().invoke(spartan_agent_cli.app, ["studio", "--help"])
+        CliRunner().invoke(spartan_agent_cli.app, ["train", "--help"])
     finally:
-        unsloth_cli._check_working_directory = original
+        spartan_agent_cli._check_working_directory = original
     assert seen == [["studio", "--help"], ["train", "--help"]]
 
 

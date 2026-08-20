@@ -8,7 +8,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 _RUN_PY = _ROOT / "studio" / "backend" / "run.py"
-_STUDIO_CLI_PY = _ROOT / "unsloth_cli" / "commands" / "studio.py"
+_STUDIO_CLI_PY = _ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 
 
 def _parse(path: Path) -> ast.Module:

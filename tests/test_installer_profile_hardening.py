@@ -26,7 +26,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INSTALL_PS1 = REPO_ROOT / "install.ps1"
-STUDIO_COMMAND = REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
+STUDIO_COMMAND = REPO_ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 
 
 def _framed(record: str, *, banner: str = "") -> str:
@@ -79,7 +79,7 @@ def _extract_prologue() -> str:
 
 def _ps_literal(value: object) -> str:
     """A single-quoted PowerShell literal. Doubling escapes an apostrophe, which a Windows
-    account named O'Brien puts in tmp_path; unsloth_cli/commands/studio.py does the same."""
+    account named O'Brien puts in tmp_path; spartan_agent_cli/commands/studio.py does the same."""
     return "'" + str(value).replace("'", "''") + "'"
 
 
@@ -1316,7 +1316,7 @@ def test_a_stale_alias_does_not_block_a_current_uv_on_path(tmp_path):
 
 
 def test_the_parity_workflow_runs_when_the_studio_command_changes():
-    """The suite asserts unsloth_cli/commands/studio.py's behaviour directly, so a PR touching
+    """The suite asserts spartan_agent_cli/commands/studio.py's behaviour directly, so a PR touching
     only that module has to run it. No other workflow invokes this file."""
     workflow = (
         Path(__file__).resolve().parents[1]
@@ -1325,7 +1325,7 @@ def test_the_parity_workflow_runs_when_the_studio_command_changes():
         / "cross-platform-parity-ci.yml"
     ).read_text(encoding = "utf-8")
     assert (
-        workflow.count("unsloth_cli/commands/studio.py") == 2
+        workflow.count("spartan_agent_cli/commands/studio.py") == 2
     ), "both the pull_request and push path filters need the module"
 
 

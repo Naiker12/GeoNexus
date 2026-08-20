@@ -339,7 +339,7 @@ def _distribution_package_paths(dist: Any) -> list[Path]:
     files = getattr(dist, "files", None) or []
     for file in files:
         text = str(file)
-        if not text.startswith(("unsloth/", "unsloth_cli/", "studio/")):
+        if not text.startswith(("unsloth/", "spartan_agent_cli/", "studio/")):
             continue
         try:
             paths.append(Path(dist.locate_file(file)).resolve())

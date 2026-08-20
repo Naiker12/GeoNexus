@@ -318,10 +318,10 @@ class TestEveryLaunchEntryPointClearsIt:
         assert "HSA_OVERRIDE_GFX_VERSION" not in os.environ
 
     def test_the_top_level_run_alias_is_the_same_function(self):
-        """unsloth_cli/__init__.py binds `unsloth run` to studio_run directly, so the
+        """spartan_agent_cli/__init__.py binds `unsloth run` to studio_run directly, so the
         group callback is skipped there."""
         import spartan_agent_cli
-        assert unsloth_cli.studio_run is studio_cli.run
+        assert spartan_agent_cli.studio_run is studio_cli.run
 
 
 def test_a_rocm_metapackage_orphaned_by_a_switch_to_generic_wheels_arbitrates_nothing(tmp_path):

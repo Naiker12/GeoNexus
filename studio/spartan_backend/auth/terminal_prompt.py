@@ -8,7 +8,7 @@ Masked input echoes one ``*`` per keystroke (unlike ``getpass``). Works on
 Windows (``msvcrt``) and Linux/macOS (``termios``). All output goes to stderr so
 redirected stdout never swallows the prompt.
 
-Mirrored for the CLI at ``unsloth_cli/commands/_password_prompt.py`` (the CLI
+Mirrored for the CLI at ``spartan_agent_cli/commands/_password_prompt.py`` (the CLI
 cannot import the Unsloth backend package); keep the two in sync.
 """
 
@@ -25,7 +25,7 @@ _BACKSPACES = ("\x7f", "\x08")
 _SUBMITS = ("\r", "\n")
 
 # Env var that supplies the initial admin password non-interactively (mirror in
-# unsloth_cli/commands/_password_prompt.py). Keep the name in sync.
+# spartan_agent_cli/commands/_password_prompt.py). Keep the name in sync.
 SUPPLIED_PASSWORD_ENV = "UNSLOTH_STUDIO_PASSWORD"
 
 

@@ -23,7 +23,7 @@ PROCESS_RS = REPO_ROOT / "studio" / "src-tauri" / "src" / "process.rs"
 PREFLIGHT_MANAGED_RS = REPO_ROOT / "studio" / "src-tauri" / "src" / "preflight" / "managed.rs"
 DESKTOP_AUTH_RS = REPO_ROOT / "studio" / "src-tauri" / "src" / "desktop_auth.rs"
 UPDATE_RS = REPO_ROOT / "studio" / "src-tauri" / "src" / "update.rs"
-STUDIO_COMMAND = REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
+STUDIO_COMMAND = REPO_ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 POWERSHELLS = [shell for shell in ("pwsh", "powershell") if shutil.which(shell)]
 
 

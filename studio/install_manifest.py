@@ -83,7 +83,7 @@ def installed_requirements_root(root: Optional[Path] = None) -> Optional[Path]:
     The digests must describe the files `verify_install` will later read, and
     that is always the installed package's copy: at verify time this module is
     imported out of the venv, so `requirements_root()` resolves there, and
-    unsloth_cli/_studio_deps.py looks in the same place for a foreign venv.
+    spartan_agent_cli/_studio_deps.py looks in the same place for a foreign venv.
 
     The installer is a different tree. A desktop bundle carries its own
     `studio/install_python_stack.py`, and its requirements are whatever they were

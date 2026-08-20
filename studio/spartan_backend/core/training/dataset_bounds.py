@@ -88,7 +88,7 @@ def world_size_from_rank_files(environ: Any = None) -> int:
     """Ranks an mlx.launch listed in a hostfile, or 1 when there is no readable one.
 
     Either representation the rest of the repo accepts: the payload inline in the
-    variable, or a path to a file holding it. `unsloth_cli/_inference.py`'s
+    variable, or a path to a file holding it. `spartan_agent_cli/_inference.py`'s
     `_json_rank_count_from_env` reads the same two variables the same way, down to the
     {"hosts": [...]} object form, so the two must not disagree about how many ranks a
     launch has.

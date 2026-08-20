@@ -175,9 +175,9 @@ def test_each_isolated_home_still_reaches_the_installed_studio_venv():
 
 def test_the_cli_still_resolves_the_venv_from_the_studio_home():
     """The symlink is only correct while the CLI looks there. Pin the path it uses."""
-    src = (REPO / "unsloth_cli" / "commands" / "studio.py").read_text(encoding = "utf-8")
+    src = (REPO / "spartan_agent_cli" / "commands" / "studio.py").read_text(encoding = "utf-8")
     assert 'STUDIO_HOME / "unsloth_studio"' in src, (
-        "unsloth_cli no longer resolves the studio venv at STUDIO_HOME/unsloth_studio, so "
+        "spartan_agent_cli no longer resolves the studio venv at STUDIO_HOME/unsloth_studio, so "
         "the symlink the indicator step creates may point at the wrong place; re-check "
         "what the CLI expects before trusting the isolated homes"
     )

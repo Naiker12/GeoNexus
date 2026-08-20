@@ -2062,7 +2062,7 @@ def _sidecar_scan_impl(venv_dir: str, limit: int = 3) -> tuple[list[str], bool]:
     instead. Comparing each RECORD row against the filesystem sees that;
     a package-level check cannot, because the damaged module is still there.
 
-    Deliberately mirrored from ``unsloth_cli/_studio_deps.py``'s
+    Deliberately mirrored from ``spartan_agent_cli/_studio_deps.py``'s
     ``damaged_installed_files`` rather than imported from it. The backend runs
     with ``studio/spartan_backend`` on sys.path and never imports the CLI package (which
     may be an entirely different install), and the subject differs: that one

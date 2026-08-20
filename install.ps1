@@ -55,7 +55,7 @@ function Install-SpartanStudio {
     # as the table above: no qualifier, so the caller's own preference survives a piped web run.
     $ProgressPreference = 'SilentlyContinue'
 
-    # The kept proxies travel to studio/setup.ps1 (launched -NoProfile by unsloth_cli, and it
+    # The kept proxies travel to studio/setup.ps1 (launched -NoProfile by spartan_agent_cli, and it
     # downloads the VC++ runtime and the uv installer) as JSON in _UNSLOTH_PS_PROXY_DEFAULTS,
     # since a PowerShell variable does not cross a process boundary. Credentials do not travel:
     # a PSCredential does not serialize, and an environment variable is the wrong place for one.
@@ -1641,18 +1641,18 @@ public static class UnslothStudioFinalPathV2
     #
     # Byte-identical to WINDOWS_CLI_ENTRYPOINT in studio/src-tauri/src/process.rs. Two
     # halves, both load bearing:
-    #   argv[0] BEFORE the import, because unsloth_cli/__init__ decides at import time
+    #   argv[0] BEFORE the import, because spartan_agent_cli/__init__ decides at import time
     #   whether it is the console script (UTF-8 streams, the -np<N> rewrite) and typer
     #   reads it for the program name in usage text.
     #   sys.path[:1] drops the working directory `python -c` adds and a console script
-    #   does not, so a stray `unsloth_cli` folder cannot shadow the managed package. It
+    #   does not, so a stray `spartan_agent_cli` folder cannot shadow the managed package. It
     #   is a no-op under -P or PYTHONSAFEPATH. -I would drop it too, but -I implies -E,
     #   and discarding PYTHONPATH, PYTHONWARNINGS and user site-packages diverges from
     #   the console script on machines with no policy at all.
     # Written into every generated bin\unsloth.cmd and required by every ownership
     # check that accepts one. Mirrored in scripts/uninstall.ps1 and studio/setup.ps1.
     $script:UnslothCmdShimMarker = "unsloth-studio-managed-launcher"
-    $script:UnslothCliTrampoline = "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from unsloth_cli import app; sys.exit(app())"
+    $script:UnslothCliTrampoline = "import sys, os; sys.path[:1] = [x for x in sys.path[:1] if getattr(sys.flags, 'safe_path', False) or x not in ('', os.getcwd())]; sys.argv[0] = 'unsloth'; from spartan_agent_cli import app; sys.exit(app())"
 
     # Recognize ERROR_ACCESS_DISABLED_BY_POLICY through PowerShell's wrapper exceptions,
     # the same way Test-AccessDeniedError above recognizes ERROR_ACCESS_DENIED.
@@ -1868,7 +1868,7 @@ public static class UnslothStudioFinalPathV2
             "rem denies it on managed machines; this file is the way through.",
             # The ownership marker, and the only reason a .cmd may stand in for the other
             # sentinels. It gates a recursive delete, so it has to be something nobody
-            # writes by accident: `from unsloth_cli import app` is a plausible line in
+            # writes by accident: `from spartan_agent_cli import app` is a plausible line in
             # anyone's hand-rolled wrapper, this is not.
             "rem $script:UnslothCmdShimMarker",
             # With delayed expansion on (cmd /V:ON, or the machine-wide default) a '!'
@@ -1954,7 +1954,7 @@ public static class UnslothStudioFinalPathV2
             # Unreadable proves nothing, and "proves nothing" must not mean "deletable".
             return $false
         }
-        return ($text -like "*unsloth-studio-managed-launcher*" -and $text -like "*from unsloth_cli import app*")
+        return ($text -like "*unsloth-studio-managed-launcher*" -and $text -like "*from spartan_agent_cli import app*")
     }
 
     function New-StudioShortcuts {
@@ -5881,7 +5881,7 @@ exit 0
     # install_python_stack.py and every requirements/constraints file they reach via
     # Path(__file__)) would be the released wheel's and a branch could not be
     # validated. The `studio setup` handoff below goes through the CLI, and an
-    # editable overlay makes _PACKAGE_ROOT in unsloth_cli/commands/studio.py resolve to
+    # editable overlay makes _PACKAGE_ROOT in spartan_agent_cli/commands/studio.py resolve to
     # the working tree by PEP 660 __file__, so setup.ps1 comes from this ref. NOT
     # --local: that also installs `unsloth-zoo @ git+https://...`, which genuinely needs
     # the git these legs remove; editable + --no-deps resolves and clones nothing, so it
@@ -6153,7 +6153,7 @@ exit 0
             # The interpreter, not $UnslothExe: this arm is reached on machines whose
             # policy denies the generated console script, where that advice cannot work.
             Write-StudioLine "       Until the next successful install, start Studio with:" -ForegroundColor Yellow
-            Write-StudioLine "       & '$VenvPython' -I -m unsloth_cli studio -p 8888" -ForegroundColor Yellow
+            Write-StudioLine "       & '$VenvPython' -I -m spartan_agent_cli studio -p 8888" -ForegroundColor Yellow
         }
     }
     # Companion launcher for machines whose policy denies the generated .exe. PATHEXT

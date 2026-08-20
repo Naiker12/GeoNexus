@@ -18,7 +18,7 @@ import sys
 from typing import Iterable, Mapping, Optional
 
 # Valid llama-server --parallel range, shared with LoadRequest.n_parallel.
-# Mirrored by callers that cannot import this: run.py and unsloth_cli/commands/
+# Mirrored by callers that cannot import this: run.py and spartan_agent_cli/commands/
 # studio.py (_PARALLEL_MIN/MAX), per-model-config.ts (N_PARALLEL_MIN/MAX);
 # test_parallel_slots_per_load.py pins them together.
 PARALLEL_MIN = 1

@@ -18,7 +18,7 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 STUDIO_TXT = REPO_ROOT / "studio" / "backend" / "requirements" / "studio.txt"
 
 # Imported at module scope by the chain every CLI command walks: structlog via
-# studio.spartan_backend, click via unsloth_cli/commands/start.py.
+# studio.spartan_backend, click via spartan_agent_cli/commands/start.py.
 CORE_RUNTIME_PACKAGES = ("structlog", "click")
 
 

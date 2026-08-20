@@ -1056,7 +1056,7 @@ class _FakeWinreg:
 
 def _probe_with_display_class(monkeypatch, adapters):
     # The helper lazily does `import winreg`; plant the fake in sys.modules the
-    # same way unsloth_cli/tests/test_start.py fakes it for _refresh_windows_path.
+    # same way spartan_agent_cli/tests/test_start.py fakes it for _refresh_windows_path.
     monkeypatch.setitem(sys.modules, "winreg", _FakeWinreg(_FakeRegKey(subkeys = adapters)))
     return ilp.windows_intel_gpu_in_registry()
 

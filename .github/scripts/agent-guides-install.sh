@@ -7,7 +7,7 @@
 # is the single biggest source of false reds, so installs retry with
 # backoff and the only ::error:: this script can emit is class (b). The
 # install recipes mirror the install_hint strings in
-# unsloth_cli/commands/start.py at HEAD.
+# spartan_agent_cli/commands/start.py at HEAD.
 #
 # Usage: agent-guides-install.sh <agent>
 #   agent in: claude codex hermes openclaw opencode pi

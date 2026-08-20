@@ -20,7 +20,7 @@ from spartan_agent_cli import _studio_runtime_gate as gate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-STUDIO_COMMAND = REPO_ROOT / "unsloth_cli" / "commands" / "studio.py"
+STUDIO_COMMAND = REPO_ROOT / "spartan_agent_cli" / "commands" / "studio.py"
 
 
 def test_runtime_mutex_name_matches_installer_and_tauri():

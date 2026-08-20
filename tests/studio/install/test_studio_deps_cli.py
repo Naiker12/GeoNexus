@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Copyright 2026-present the Unsloth AI Inc. team. All rights reserved. See /studio/LICENSE.AGPL-3.0
 
-"""Coverage for unsloth_cli/_studio_deps.py.
+"""Coverage for spartan_agent_cli/_studio_deps.py.
 
 Two things have to be right for the CLI half of the install check.
 
@@ -29,7 +29,7 @@ import pytest
 import typer
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
-DEPS_PATH = REPO_ROOT / "unsloth_cli" / "_studio_deps.py"
+DEPS_PATH = REPO_ROOT / "spartan_agent_cli" / "_studio_deps.py"
 MANIFEST_PATH = REPO_ROOT / "studio" / "install_manifest.py"
 REQUIREMENTS = REPO_ROOT / "studio" / "backend" / "requirements"
 
@@ -149,10 +149,10 @@ def cross_venv(tmp_path, monkeypatch):
         if with_manifest:
             _write_manifest(managed, managed_site, managed_version)
 
-        (caller_site / "unsloth_cli").mkdir(parents = True)
-        shutil.copy(DEPS_PATH, caller_site / "unsloth_cli" / "_studio_deps.py")
+        (caller_site / "spartan_agent_cli").mkdir(parents = True)
+        shutil.copy(DEPS_PATH, caller_site / "spartan_agent_cli" / "_studio_deps.py")
         monkeypatch.setattr(sys, "prefix", str(caller))
-        deps = _load(caller_site / "unsloth_cli" / "_studio_deps.py", "studio_deps_cross_venv")
+        deps = _load(caller_site / "spartan_agent_cli" / "_studio_deps.py", "studio_deps_cross_venv")
         return deps.install_state(extra_roots = (managed,))
 
     return build
@@ -267,12 +267,12 @@ def test_a_torn_tree_without_the_manifest_helper_is_incomplete(tmp_path, monkeyp
     backend whose own files may be just as absent."""
     caller = tmp_path / "caller_venv"
     site_packages = caller / "lib" / "python3.11" / "site-packages"
-    (site_packages / "unsloth_cli").mkdir(parents = True)
-    shutil.copy(DEPS_PATH, site_packages / "unsloth_cli" / "_studio_deps.py")
+    (site_packages / "spartan_agent_cli").mkdir(parents = True)
+    shutil.copy(DEPS_PATH, site_packages / "spartan_agent_cli" / "_studio_deps.py")
     (caller / "pyvenv.cfg").write_text("home = /usr/bin\n", encoding = "utf-8")
     monkeypatch.setattr(sys, "prefix", str(caller))
 
-    deps = _load(site_packages / "unsloth_cli" / "_studio_deps.py", "studio_deps_torn_tree")
+    deps = _load(site_packages / "spartan_agent_cli" / "_studio_deps.py", "studio_deps_torn_tree")
     state = deps.install_state()
 
     assert state["ok"] is False, state

@@ -110,7 +110,7 @@ def _build_report_targets(training_args) -> list[str] | str:
 def _verbose_logging_requested() -> bool:
     """Whether `unsloth studio --verbose` is in effect.
 
-    --verbose zeroes both access-log windows (unsloth_cli/commands/studio.py), and the
+    --verbose zeroes both access-log windows (spartan_agent_cli/commands/studio.py), and the
     env is inherited by the training subprocess, so the same pair is the signal here.
     """
 
