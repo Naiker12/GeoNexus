@@ -3,6 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n";
 import { openLink } from "@/lib/open-link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -44,6 +45,7 @@ export function OpenAICodexConnect({
   ensureProvider,
   initialFlow = null,
 }: Props) {
+  const t = useT();
   const [flow, setFlow] = useState<CodexOAuthFlow | null>(initialFlow);
   const [callbackUrl, setCallbackUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,9 +72,9 @@ export function OpenAICodexConnect({
         setFlow((current) => current ? {
           ...current,
           status: "error",
-          message: "Authorization expired. Start a new connection.",
+          message: t("chat.providersDialog.authorizationExpired"),
         } : current);
-        setError("Authorization expired. Start a new connection.");
+        setError(t("chat.providersDialog.authorizationExpired"));
         return;
       }
       void getCodexOAuthFlow(activeProviderId, flow.flow_id)
@@ -85,7 +87,7 @@ export function OpenAICodexConnect({
         .catch((cause) => mounted.current && setError(cause instanceof Error ? cause.message : "Authorization failed."));
     }, delay);
     return () => window.clearInterval(timer);
-  }, [flow, activeProviderId, onChanged]);
+  }, [flow, activeProviderId, onChanged, t]);
 
   async function start(method: "browser" | "device") {
     setBusy(true);
@@ -166,24 +168,27 @@ export function OpenAICodexConnect({
     !locallyDisconnected &&
     (authStatus === "connected" || flow?.status === "connected");
 
-  const visibleError = error || (flow?.status === "error" ? flow.message || "Authorization failed." : "");
+  const rawError = error || (flow?.status === "error" ? flow.message || "Authorization failed." : "");
+  const visibleError = rawError.toLowerCase().includes("invalid or expired token")
+    ? t("chat.providersDialog.invalidOrExpiredToken")
+    : rawError;
   return (
     <section className="space-y-3 rounded-[8px] border border-border/70 bg-background/45 p-4">
       <div>
-        <p className="text-sm font-medium">ChatGPT subscription</p>
+        <p className="text-sm font-medium">{t("chat.providersDialog.chatgptSubscription")}</p>
         <p className="text-xs text-muted-foreground">
           {connected
-            ? "Connected securely on this Studio installation."
+            ? t("chat.providersDialog.chatgptConnected")
             : authStatus === "reauthorization_required"
-              ? "Your saved authorization is no longer valid. Reconnect to continue."
-              : "Authorize in your system browser. Tokens never enter browser storage."}
+              ? t("chat.providersDialog.chatgptReconnect")
+              : t("chat.providersDialog.chatgptAuthorize")}
         </p>
       </div>
       {flow?.method === "device" && flow.status === "pending" ? (
         <div className="space-y-2 text-sm">
-          <p>Enter this code in ChatGPT:</p>
+          <p>{t("chat.providersDialog.deviceCodeInstruction")}</p>
           <code className="block w-fit rounded bg-muted px-3 py-2 font-mono text-base">{flow.user_code}</code>
-          <p className="text-xs text-muted-foreground">Device login may need to be enabled in ChatGPT security or workspace settings.</p>
+          <p className="text-xs text-muted-foreground">{t("chat.providersDialog.deviceCodeHelp")}</p>
 
           <Button
             type="button"
@@ -191,20 +196,20 @@ export function OpenAICodexConnect({
             variant="outline"
             onClick={() => void navigator.clipboard.writeText(flow.user_code || "")}
           >
-            Copy code
+            {t("chat.providersDialog.copyCode")}
           </Button>
 
           <p className="text-xs text-muted-foreground">
-            Expires {new Date(flow.expires_at * 1000).toLocaleTimeString()}.
+            {t("chat.providersDialog.expiresAt", { time: new Date(flow.expires_at * 1000).toLocaleTimeString() })}
           </p>
         </div>
       ) : null}
       {flow?.method === "browser" && flow.status === "pending" ? (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">If the browser cannot return automatically, paste the complete localhost callback URL.</p>
+          <p className="text-xs text-muted-foreground">{t("chat.providersDialog.callbackHelp")}</p>
           <div className="flex gap-2">
             <Input value={callbackUrl} onChange={(event) => setCallbackUrl(event.target.value)} placeholder="http://localhost:1455/auth/callback?..." />
-            <Button type="button" variant="outline" disabled={busy || !callbackUrl.trim()} onClick={() => void complete()}>Complete</Button>
+            <Button type="button" variant="outline" disabled={busy || !callbackUrl.trim()} onClick={() => void complete()}>{t("chat.providersDialog.complete")}</Button>
           </div>
         </div>
       ) : null}
@@ -217,11 +222,13 @@ export function OpenAICodexConnect({
         {!connected ? (
           <>
             <Button type="button" size="sm" disabled={busy} onClick={() => void start("browser")}>
-              {authStatus === "reauthorization_required" ? "Reconnect in browser" : "Connect in browser"}
+              {authStatus === "reauthorization_required"
+                ? t("chat.providersDialog.reconnectInBrowser")
+                : t("chat.providersDialog.connectInBrowser")}
             </Button>
-            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void start("device")}>Use device code</Button>
+            <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void start("device")}>{t("chat.providersDialog.useDeviceCode")}</Button>
             {flow?.status === "pending" ? (
-              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void cancel()}>Cancel</Button>
+              <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void cancel()}>{t("chat.providersDialog.cancelAuthorization")}</Button>
             ) : null}
           </>
         ) : (

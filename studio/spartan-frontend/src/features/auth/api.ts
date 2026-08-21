@@ -6,10 +6,12 @@ import {
   clearAuthTokens,
   getAuthToken,
   getRefreshToken,
+  hasAuthToken,
   mustChangePassword,
   setMustChangePassword,
   storeAuthTokens,
 } from "./session";
+import { createTauriSessionRecovery } from "./tauri-session-recovery";
 
 type RefreshResponse = {
   access_token: string;
@@ -21,6 +23,15 @@ let isRedirecting = false;
 let refreshInflight: Promise<boolean> | null = null;
 let refreshInflightToken: string | null = null;
 let logoutGeneration = 0;
+
+const recoverTauriSession = createTauriSessionRecovery({
+  clearSession: clearAuthTokens,
+  hasSession: hasAuthToken,
+  authenticate: async () => {
+    const { tauriAutoAuth } = await import("./tauri-auto-auth");
+    return tauriAutoAuth({ force: true });
+  },
+});
 
 const TAURI_FETCH_RETRY_DELAYS_MS = [250, 750, 1500] as const;
 
@@ -134,9 +145,7 @@ async function retryWithTauriAutoAuth(
   init?: RequestInit,
   retryNetworkErrors = true,
 ): Promise<Response | null> {
-  clearAuthTokens();
-  const { tauriAutoAuth } = await import("./tauri-auto-auth");
-  if (await tauriAutoAuth()) {
+  if (await recoverTauriSession()) {
     return retryWithCurrentToken(input, init, retryNetworkErrors);
   }
   return null;

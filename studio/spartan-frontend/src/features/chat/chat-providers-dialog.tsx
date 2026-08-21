@@ -158,6 +158,7 @@ export function ChatProvidersSettings({
   providers,
   onProvidersChange,
 }: ChatProvidersSettingsProps) {
+  const t = useT();
   const providersRef = useRef(providers);
   const seededProviderTypeRef = useRef<string | null>(null);
   // Latches the one-shot auto-open below. Every navigation the user drives sets
@@ -252,8 +253,13 @@ export function ChatProvidersSettings({
     !isManualModelList &&
     !remoteAllowsManual &&
     availableModels.length === 0
-      ? "No models loaded"
-      : `${formModelCount} ${formModelCount === 1 ? "model" : "models"} selected`;
+      ? t("chat.providersDialog.noModelsLoaded")
+      : t(
+          formModelCount === 1
+            ? "chat.providersDialog.modelSelected"
+            : "chat.providersDialog.modelsSelected",
+          { count: formModelCount },
+        );
   const showModelsBody =
     isManualModelList ||
     remoteAllowsManual ||
@@ -328,8 +334,8 @@ export function ChatProvidersSettings({
     );
   }, [availableModels, modelSearchQuery]);
   const availableModelsLabel = modelSearchQuery.trim()
-    ? `${filteredAvailableModels.length} of ${availableModels.length} models`
-    : `${availableModels.length} models`;
+    ? t("chat.providersDialog.modelsFiltered", { shown: filteredAvailableModels.length, total: availableModels.length })
+    : t("chat.providersDialog.modelsTotal", { count: availableModels.length });
   const modelSearchInputClassName =
     "h-8 w-full bg-background/55 text-xs placeholder:text-muted-foreground/65 focus-visible:border-border focus-visible:ring-0";
 
@@ -509,10 +515,10 @@ export function ChatProvidersSettings({
     try {
       parsed = new URL(trimmed);
     } catch {
-      throw new Error("Base URL must be a valid URL.");
+      throw new Error(t("chat.providersDialog.baseUrl") + " must be a valid URL.");
     }
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      throw new Error("Base URL must use http or https.");
+      throw new Error(t("chat.providersDialog.baseUrl") + " must use http or https.");
     }
     if (options.appendOpenAiVersionPath) {
       const pathname = parsed.pathname.replace(/\/+$/, "");
@@ -531,7 +537,7 @@ export function ChatProvidersSettings({
     const trimmed = input.trim();
     if (!trimmed) {
       if (required) {
-        throw new Error("Base URL is required for this connection.");
+        throw new Error(t("chat.providersDialog.baseUrl") + " is required for this connection.");
       }
       return null;
     }
@@ -565,7 +571,7 @@ export function ChatProvidersSettings({
 
   async function loadModels() {
     if (!providerType) {
-      toast.error("Choose a connection first.");
+      toast.error(t("chat.providersDialog.chooseConnectionFirst"));
       return;
     }
     if (isCustomProvider && !supportsRemoteModelCatalog(providerType)) {
@@ -579,7 +585,7 @@ export function ChatProvidersSettings({
       return;
     }
     if (!isCustomProvider && !apiKey.trim() && !editingProviderHasSavedKey) {
-      toast.error("Add an API key first.");
+      toast.error(t("chat.providersDialog.addApiKeyFirst"));
       return;
     }
     setModelsLoading(true);
@@ -635,7 +641,7 @@ export function ChatProvidersSettings({
       }
       setModelSearchQuery("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("chat.providersDialog.unknownError");
       toast.error(`Could not load models: ${message}`);
     } finally {
       setModelsLoading(false);
@@ -644,7 +650,7 @@ export function ChatProvidersSettings({
 
   async function testAndPrepareModels() {
     if (!providerType) {
-      toast.error("Choose a connection first.");
+      toast.error(t("chat.providersDialog.chooseConnectionFirst"));
       return;
     }
 
@@ -660,7 +666,7 @@ export function ChatProvidersSettings({
     }
 
     if (!isCustomProvider && !apiKey.trim() && !editingProviderHasSavedKey) {
-      toast.error("Add an API key first.");
+      toast.error(t("chat.providersDialog.addApiKeyFirst"));
       return;
     }
     if (isCustomProvider && !manualTestModelId) {
@@ -702,7 +708,7 @@ export function ChatProvidersSettings({
       }
       toast.success(result.message);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("chat.providersDialog.unknownError");
       toast.error(`Test failed: ${message}`);
     } finally {
       setModelsLoading(false);
@@ -768,7 +774,7 @@ export function ChatProvidersSettings({
 
   async function addProvider() {
     if (!providerType) {
-      toast.error("Choose a connection first.");
+      toast.error(t("chat.providersDialog.chooseConnectionFirst"));
       return;
     }
     const backendProviderType = toExternalBackendProviderType(providerType);
@@ -781,7 +787,7 @@ export function ChatProvidersSettings({
       selectedRegistryEntry?.auth_kind !== "chatgpt_oauth" &&
       !apiKey.trim()
     ) {
-      toast.error("API key is required.");
+      toast.error(t("chat.providersDialog.apiKeyRequired"));
       return;
     }
     const curated = selectedRegistryEntry?.model_list_mode === "curated";
@@ -804,12 +810,12 @@ export function ChatProvidersSettings({
     );
     if (manualOnly) {
       if (modelsToSave.length === 0) {
-        toast.error("Add at least one model ID.");
+        toast.error(t("chat.providersDialog.addAtLeastOneModel"));
         return;
       }
     } else if (remoteAllowsManual) {
       if (modelsToSave.length === 0) {
-        toast.error("Add at least one model ID.");
+        toast.error(t("chat.providersDialog.addAtLeastOneModel"));
         return;
       }
     } else {
@@ -820,7 +826,7 @@ export function ChatProvidersSettings({
         return;
       }
       if (selectedModelIds.length === 0) {
-        toast.error("Select at least one model.");
+        toast.error(t("chat.providersDialog.selectAtLeastOneModel"));
         return;
       }
     }
@@ -885,9 +891,9 @@ export function ChatProvidersSettings({
       resetForm();
       autoOpenedAddFormRef.current = true;
       setPage("list");
-      toast.success("Connection added.");
+      toast.success(t("chat.providersDialog.connectionAdded"));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("chat.providersDialog.unknownError");
       toast.error(`Failed to add connection: ${message}`);
     } finally {
       setMutatingProvider(false);
@@ -900,7 +906,7 @@ export function ChatProvidersSettings({
       (provider) => provider.id === editingProviderId,
     );
     if (!existing) {
-      toast.error("Connection not found.");
+      toast.error(t("chat.providersDialog.connectionNotFound"));
       return;
     }
     const isEditingCustomProvider =
@@ -922,7 +928,7 @@ export function ChatProvidersSettings({
       !isEditingOAuthProvider &&
       credentialEdit.action === "missing"
     ) {
-      toast.error("API key is required.");
+      toast.error(t("chat.providersDialog.apiKeyRequired"));
       return;
     }
     const entry = registryByType.get(existing.providerType);
@@ -949,12 +955,12 @@ export function ChatProvidersSettings({
     );
     if (manualOnly) {
       if (modelsToSave.length === 0) {
-        toast.error("Add at least one model ID.");
+        toast.error(t("chat.providersDialog.addAtLeastOneModel"));
         return;
       }
     } else if (remoteAllowsManual) {
       if (modelsToSave.length === 0) {
-        toast.error("Add at least one model ID.");
+        toast.error(t("chat.providersDialog.addAtLeastOneModel"));
         return;
       }
     } else {
@@ -965,7 +971,7 @@ export function ChatProvidersSettings({
         return;
       }
       if (selectedModelIds.length === 0) {
-        toast.error("Select at least one model.");
+        toast.error(t("chat.providersDialog.selectAtLeastOneModel"));
         return;
       }
     }
@@ -1031,12 +1037,12 @@ export function ChatProvidersSettings({
             : provider,
         ),
       );
-      toast.success("Connection updated.");
+      toast.success(t("chat.providersDialog.connectionUpdated"));
       resetForm();
       autoOpenedAddFormRef.current = true;
       setPage("list");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("chat.providersDialog.unknownError");
       toast.error(`Failed to update connection: ${message}`);
     } finally {
       setMutatingProvider(false);
@@ -1138,7 +1144,7 @@ export function ChatProvidersSettings({
         providers.filter((provider) => provider.id !== providerId),
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
+      const message = error instanceof Error ? error.message : t("chat.providersDialog.unknownError");
       toast.error(`Failed to delete connection: ${message}`);
     } finally {
       setMutatingProvider(false);
@@ -1149,10 +1155,10 @@ export function ChatProvidersSettings({
 
     if (provider.authKind === "chatgpt_oauth") {
       if (provider.authStatus === "connected") {
-        toast.success("ChatGPT subscription is connected.");
+        toast.success(t("chat.providersDialog.chatgptSubscriptionConnected"));
       } else {
         await editProvider(provider);
-        toast.info("Authorize this ChatGPT subscription connection.");
+        toast.info(t("chat.providersDialog.authorizeChatgptSubscription"));
       }
       return;
     }
@@ -1224,18 +1230,18 @@ export function ChatProvidersSettings({
             size="icon-sm"
             className="size-8 rounded-[8px]"
             onClick={closeForm}
-            aria-label="Back to connections"
-            title="Back to connections"
+            aria-label={t("chat.providersDialog.backToConnections")}
+            title={t("chat.providersDialog.backToConnections")}
           >
             <HugeiconsIcon icon={ArrowLeft02Icon} className="size-4" />
           </Button>
           <div className="flex min-w-0 items-center gap-2 leading-none">
             <span className="text-xs font-medium text-muted-foreground">
-              Connections
+              {t("chat.providersDialog.title")}
             </span>
             <span className="size-1 rounded-full bg-muted-foreground/35" />
             <span className="truncate text-xs font-medium text-muted-foreground">
-              {editingProviderId ? "Edit" : "New"}
+              {editingProviderId ? t("chat.providersDialog.edit") : t("common.new")}
             </span>
           </div>
         </header>
@@ -1249,10 +1255,10 @@ export function ChatProvidersSettings({
                     htmlFor="provider-preset"
                     className="text-sm font-medium"
                   >
-                    Connection
+                    {t("chat.providersDialog.connection")}
                   </Label>
                   <p className="text-xs leading-snug text-muted-foreground">
-                    OpenAI, Anthropic, or a compatible local endpoint.
+                    {t("chat.providersDialog.connectionDescription")}
                   </p>
                 </div>
                 <Select
@@ -1274,7 +1280,7 @@ export function ChatProvidersSettings({
                     className="h-9 w-full text-sm"
                     disabled={editingProviderId != null}
                   >
-                    <SelectValue placeholder="Choose a connection" />
+                    <SelectValue placeholder={t("chat.providersDialog.chooseConnection")} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -1338,7 +1344,9 @@ export function ChatProvidersSettings({
                       htmlFor="provider-api-key"
                       className="text-sm font-medium"
                     >
-                      API key {isCustomProvider ? "(optional)" : ""}
+                      {isCustomProvider
+                        ? t("chat.providersDialog.apiKeyOptional")
+                        : t("chat.providersDialog.apiKey")}
                     </Label>
                     <p className="text-xs leading-snug text-muted-foreground">
                       {editingProviderHasSavedKey
@@ -1358,7 +1366,7 @@ export function ChatProvidersSettings({
                       placeholder={
                         editingProviderHasSavedKey
                           ? "Leave blank to keep saved key"
-                          : "Enter API key"
+                          : t("chat.providersDialog.enterApiKey")
                       }
                       className="h-9 pr-9 text-sm"
                     />
@@ -1366,7 +1374,7 @@ export function ChatProvidersSettings({
                       type="button"
                       onClick={() => setShowApiKey((visible) => !visible)}
                       className="absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                      aria-label={showApiKey ? t("chat.providersDialog.hideApiKey") : t("chat.providersDialog.showApiKey")}
                       aria-pressed={showApiKey}
                     >
                       {showApiKey ? (
@@ -1428,7 +1436,7 @@ export function ChatProvidersSettings({
                       htmlFor="provider-base-url"
                       className="text-sm font-medium"
                     >
-                      Base URL
+                      {t("chat.providersDialog.baseUrl")}
                     </Label>
                     <p className="text-xs leading-snug text-muted-foreground">
                       OpenAI-compatible endpoint.
@@ -1526,11 +1534,7 @@ export function ChatProvidersSettings({
               {runsStudioToolsLocally ? (
                 <div className="px-4 py-3">
                   <p className="text-xs text-muted-foreground">
-                    Models on this connection can use Studio&apos;s Search, Code,
-                    MCP and Docs tools. Those run on this machine, and their
-                    results are sent back to the provider as part of the next
-                    message. Code and terminal calls still ask before anything
-                    risky runs.
+                    {t("chat.providersDialog.localToolsDisclosure")}
                   </p>
                 </div>
               ) : null}
@@ -1574,7 +1578,7 @@ export function ChatProvidersSettings({
                   className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 ${showModelsBody ? "border-border/60 border-b" : ""}`}
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <Label className="text-sm font-medium">Models</Label>
+                    <Label className="text-sm font-medium">{t("chat.providersDialog.models")}</Label>
                     <p className="text-xs leading-snug text-muted-foreground">
                       {modelStatusLabel}
                     </p>
@@ -1609,15 +1613,15 @@ export function ChatProvidersSettings({
                     {modelsLoading ? (
                       <>
                         <Spinner className="mr-2 size-3.5" />
-                        Loading…
+                        {t("chat.providersDialog.loadingModels")}
                       </>
                     ) : !requiresConnectionTestAction ? (
-                      "Reload models"
+                      t("chat.providersDialog.reloadModels")
                     ) : isCustomProvider &&
                       !supportsRemoteModelCatalog(providerType) ? (
-                      "Test connection"
+                      t("chat.providersDialog.testConnection")
                     ) : (
-                      "Test and load models"
+                      t("chat.providersDialog.testAndLoadModels")
                     )}
                   </Button>
                 </div>
@@ -1628,7 +1632,7 @@ export function ChatProvidersSettings({
                         htmlFor="provider-manual-models"
                         className="text-sm font-medium"
                       >
-                        Model IDs (one per line or comma-separated)
+                        {t("chat.providersDialog.modelIds")}
                       </Label>
                       <Textarea
                         id="provider-manual-models"
@@ -1645,7 +1649,7 @@ export function ChatProvidersSettings({
                 ) : isCuratedModelList ? (
                   <div className="space-y-3 px-4 py-4">
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Select from suggestions below or enter exact model IDs.
+                      {t("chat.providersDialog.selectModelHint")}
                     </p>
                     {availableModels.length > 0 ? (
                       <div className="space-y-3 rounded-[8px] border border-border/70 bg-background/50 p-3">
@@ -1660,8 +1664,8 @@ export function ChatProvidersSettings({
                             onChange={(event) =>
                               setModelSearchQuery(event.target.value)
                             }
-                            placeholder="Search"
-                            aria-label="Search models"
+                            placeholder={t("chat.providersDialog.search")}
+                            aria-label={t("chat.providersDialog.searchModels")}
                             className={modelSearchInputClassName}
                           />
                           <div className="flex items-center justify-end gap-2">
@@ -1672,7 +1676,7 @@ export function ChatProvidersSettings({
                               className="h-8 px-2 text-xs font-medium text-foreground/80 hover:bg-muted/45"
                               onClick={selectAllModels}
                             >
-                              Select all
+                              {t("chat.providersDialog.selectAll")}
                             </Button>
                             <Button
                               type="button"
@@ -1684,14 +1688,14 @@ export function ChatProvidersSettings({
                                 setManualModelIds("");
                               }}
                             >
-                              Clear
+                              {t("chat.providersDialog.clear")}
                             </Button>
                           </div>
                         </div>
                         <ul className="max-h-56 overflow-y-auto rounded-[8px] border border-border/70 bg-background/50">
                           {filteredAvailableModels.length === 0 ? (
                             <li className="px-3 py-3 text-xs text-muted-foreground">
-                              No matching models
+                              {t("chat.providersDialog.noMatchingModels")}
                             </li>
                           ) : (
                             filteredAvailableModels.map((model, index) => (
@@ -1752,8 +1756,8 @@ export function ChatProvidersSettings({
                             onChange={(event) =>
                               setModelSearchQuery(event.target.value)
                             }
-                            placeholder="Search"
-                            aria-label="Search models"
+                            placeholder={t("chat.providersDialog.search")}
+                            aria-label={t("chat.providersDialog.searchModels")}
                             className={modelSearchInputClassName}
                           />
                           <div className="flex items-center justify-end gap-2">
@@ -1764,7 +1768,7 @@ export function ChatProvidersSettings({
                               className="h-8 px-2 text-xs font-medium text-foreground/80 hover:bg-muted/45"
                               onClick={selectAllModels}
                             >
-                              Select all
+                              {t("chat.providersDialog.selectAll")}
                             </Button>
                             <Button
                               type="button"
@@ -1773,14 +1777,14 @@ export function ChatProvidersSettings({
                               className="h-8 px-2 text-xs font-medium text-foreground/80 hover:bg-muted/45"
                               onClick={clearModelSelection}
                             >
-                              Clear
+                              {t("chat.providersDialog.clear")}
                             </Button>
                           </div>
                         </div>
                         <ul className="max-h-56 overflow-y-auto rounded-[8px] border border-border/70 bg-background/50">
                           {filteredAvailableModels.length === 0 ? (
                             <li className="px-3 py-3 text-xs text-muted-foreground">
-                              No matching models
+                              {t("chat.providersDialog.noMatchingModels")}
                             </li>
                           ) : (
                             filteredAvailableModels.map((model, index) => (
@@ -1814,8 +1818,8 @@ export function ChatProvidersSettings({
                           className="text-sm font-medium"
                         >
                           {availableModels.length === 0
-                            ? "Or enter model IDs manually (one per line or comma-separated)"
-                            : "Additional model IDs (one per line or comma-separated)"}
+                            ? t("chat.providersDialog.enterModelIds")
+                            : t("chat.providersDialog.additionalModelIds")}
                         </Label>
                         <Textarea
                           id="provider-manual-models"
@@ -1855,7 +1859,7 @@ export function ChatProvidersSettings({
                     : void addProvider()
                 }
               >
-                {editingProviderId ? "Save connection" : "Add connection"}
+                {editingProviderId ? t("chat.providersDialog.saveConnection") : t("chat.providersDialog.addConnection")}
               </Button>
               <Button
                 type="button"
@@ -1864,7 +1868,7 @@ export function ChatProvidersSettings({
                 className="h-8"
                 onClick={editingProviderId ? closeForm : resetForm}
               >
-                {editingProviderId ? "Cancel" : "Clear"}
+                {editingProviderId ? t("chat.providersDialog.cancel") : t("chat.providersDialog.clear")}
               </Button>
             </div>
           </div>
@@ -1877,9 +1881,9 @@ export function ChatProvidersSettings({
     <div className="flex min-h-0 flex-col gap-6">
       <header className="flex flex-col gap-1 pr-8">
         <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="font-heading text-lg font-semibold">Connections</h1>
+          <h1 className="font-heading text-lg font-semibold">{t("chat.providersDialog.title")}</h1>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Manage model connections for chat.
+            {t("chat.providersDialog.description")}
           </p>
         </div>
       </header>
@@ -1890,13 +1894,13 @@ export function ChatProvidersSettings({
             htmlFor="chat-connections-enabled"
             className="cursor-pointer text-xs text-muted-foreground"
           >
-            Enable connections
+            {t("chat.providersDialog.enableConnections")}
           </Label>
           <Switch
             id="chat-connections-enabled"
             checked={connectionsEnabled}
             onCheckedChange={setConnectionsEnabled}
-            aria-label="Enable connections"
+            aria-label={t("chat.providersDialog.enableConnections")}
             aria-describedby="chat-connections-description"
           />
         </div>
@@ -1904,7 +1908,7 @@ export function ChatProvidersSettings({
           id="chat-connections-description"
           className="max-w-md text-ui-11 leading-snug text-muted-foreground/65 sm:text-right"
         >
-          When off, all connections are disabled.
+          {t("chat.providersDialog.connectionsDisabledHelp")}
         </p>
       </div>
 
@@ -1917,7 +1921,7 @@ export function ChatProvidersSettings({
           >
             <span className="flex min-w-0 items-center gap-2 rounded-full border border-border bg-background/50 px-3 py-1.5 transition-colors group-hover/add:border-control-accent/25 group-hover/add:text-control-accent">
               <HugeiconsIcon icon={PlusSignIcon} className="size-4 shrink-0" />
-              <span>Add connection</span>
+              <span>{t("chat.providersDialog.addConnection")}</span>
             </span>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground/90">
               {providers.length} connections · {totalModels} models
@@ -1927,10 +1931,10 @@ export function ChatProvidersSettings({
             <div className="px-3 py-4">
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">
-                  No connections yet
+                  {t("chat.providersDialog.noConnectionsYet")}
                 </span>
                 <span className="text-xs leading-snug text-muted-foreground">
-                  Add a connection to use hosted models from chat.
+                  {t("chat.providersDialog.noConnectionsHelp")}
                 </span>
               </div>
             </div>
@@ -1964,7 +1968,12 @@ export function ChatProvidersSettings({
                           </span>
                           <span className="shrink-0 rounded-[6px] border border-control-accent/15 bg-control-accent/8 px-1.5 py-0.5 text-ui-10 leading-none text-control-accent">
                             {provider.models.length}{" "}
-                            {provider.models.length === 1 ? "model" : "models"}
+                            {t(
+                              provider.models.length === 1
+                                ? "chat.providersDialog.modelSelected"
+                                : "chat.providersDialog.modelsSelected",
+                              { count: provider.models.length },
+                            )}
                           </span>
                         </div>
                         <div className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -1992,8 +2001,8 @@ export function ChatProvidersSettings({
                         className="size-7 rounded-[8px] hover:text-foreground"
                         disabled={mutatingProvider}
                         onClick={() => editProvider(provider)}
-                        title="Edit connection"
-                        aria-label={`Edit ${provider.name}`}
+                        title={t("chat.providersDialog.editConnection")}
+                        aria-label={`${t("chat.providersDialog.editConnection")} ${provider.name}`}
                       >
                         <HugeiconsIcon icon={Edit03Icon} className="size-4" />
                       </Button>
@@ -2004,8 +2013,8 @@ export function ChatProvidersSettings({
                         className="size-7 rounded-[8px] hover:text-foreground"
                         disabled={mutatingProvider}
                         onClick={() => void testProvider(provider)}
-                        title="Check connection"
-                        aria-label={`Check ${provider.name}`}
+                        title={t("chat.providersDialog.checkConnection")}
+                        aria-label={`${t("chat.providersDialog.checkConnection")} ${provider.name}`}
                       >
                         <HugeiconsIcon icon={Wifi02Icon} className="size-4" />
                       </Button>
@@ -2016,8 +2025,8 @@ export function ChatProvidersSettings({
                         className="size-7 rounded-[8px] hover:text-destructive"
                         disabled={mutatingProvider}
                         onClick={() => void deleteProvider(provider.id)}
-                        title="Delete connection"
-                        aria-label={`Delete ${provider.name}`}
+                        title={t("chat.providersDialog.deleteConnection")}
+                        aria-label={`${t("chat.providersDialog.deleteConnection")} ${provider.name}`}
                       >
                         <HugeiconsIcon icon={Delete02Icon} className="size-4" />
                       </Button>

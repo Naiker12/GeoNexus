@@ -11,6 +11,7 @@ import jwt
 
 from .storage import (
     API_KEY_PREFIX,
+    DEFAULT_ADMIN_USERNAME,
     credential_generation,
     get_jwt_secret,
     get_user_and_secret,
@@ -247,9 +248,20 @@ def _invalid_api_key_detail(token: str) -> str:
 async def _get_current_credential(
     credentials: Optional[HTTPAuthorizationCredentials], *, allow_password_change: bool = False
 ) -> Tuple[str, Optional[str]]:
-    """Validate the bearer or return default spartan_agent subject. Never blocks the user."""
+    """Validate the bearer and return its subject plus credential generation.
+
+    An absent bearer is retained for the local, unauthenticated bootstrap path.
+    A supplied bearer, however, must never be treated as a valid identity merely
+    because it contains a ``sub`` claim: persistence routes bind their writes to
+    the generation returned here.  Returning a placeholder generation made every
+    OAuth write look as though its credential had been rotated.
+    """
     if not credentials or not credentials.credentials:
-        return "spartan_agent", "spartan_agent_gen"
+        secret = get_jwt_secret(DEFAULT_ADMIN_USERNAME)
+        return (
+            DEFAULT_ADMIN_USERNAME,
+            credential_generation(secret) if secret is not None else None,
+        )
 
     token = credentials.credentials
 
@@ -259,11 +271,49 @@ async def _get_current_credential(
         if verified is not None:
             username, secret = verified
             return username, credential_generation(secret)
-        return "spartan_agent", "spartan_agent_gen"
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = _invalid_api_key_detail(token),
+        )
 
     # --- JWT path ---
     subject = _decode_subject_without_verification(token)
-    if subject:
-        return subject, "spartan_agent_gen"
+    if subject is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = "Invalid or expired token",
+        )
 
-    return "spartan_agent", "spartan_agent_gen"
+    record = get_user_and_secret(subject)
+    if record is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = "Invalid or expired token",
+        )
+
+    _salt, _password_hash, jwt_secret, must_change_password = record
+    try:
+        payload = jwt.decode(token, jwt_secret, algorithms = [ALGORITHM])
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = "Invalid or expired token",
+        ) from exc
+
+    if payload.get("sub") != subject:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = "Invalid or expired token",
+        )
+    # The password-change gate protects browser sessions.  A desktop JWT is
+    # issued only after the local desktop secret has been verified and must
+    # remain usable while the web account still has its seeded password; the
+    # desktop settings flow can replace that password separately.
+    is_desktop = payload.get("desktop") is True
+    if must_change_password and not allow_password_change and not is_desktop:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = "Password change required",
+        )
+
+    return subject, credential_generation(jwt_secret)
