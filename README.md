@@ -1,5 +1,5 @@
 <h1 align="center" style="margin:0;">
-  ⚔️ Spartan Agent
+  ⚔️
 </h1>
 <h3 align="center" style="margin: 0; margin-top: 0;">
   Local AI Training & Agent Platform — Desktop App
